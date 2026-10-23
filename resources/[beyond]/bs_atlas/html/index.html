@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BeyondSurvival - Node Atlas</title>
+<!-- Node Atlas - live view and config panel for the node simulation -->
+<script src="nui://bs_ui/html/js/i18n.js"></script>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+<div id="atlas" class="atlas" hidden>
+
+    <!-- Map. Single canvas, since nothing on it is static. -->
+    <canvas id="map" class="map"></canvas>
+
+    <!-- Cross-hair at screen centre; the observer control and centre readout act on this point -->
+    <div class="crosshair" aria-hidden="true"></div>
+
+    <!-- Top bar: identity, live state, stale-data banner -->
+    <header class="bar bar--top">
+        <div class="brand">
+            <span class="brand__name" data-i18n="atlas.brand">NODE ATLAS</span>
+            <span class="brand__sub" id="simState" data-i18n="atlas.connecting">connecting...</span>
+        </div>
+
+        <!-- Stale-data banner -->
+        <div class="stale" id="staleBanner" hidden>
+            <span class="stale__dot"></span>
+            <span id="staleText" data-i18n="atlas.stale_none">NO ANSWER FROM THE SIMULATION</span>
+        </div>
+
+        <div class="stats" id="stats"><!-- filled by app.js --></div>
+
+        <button class="x" id="btnClose" title="Close (ESC)" data-i18n="atlas.close" data-i18n-attr="title:atlas.close_title">CLOSE</button>
+    </header>
+
+    <!-- Left: layers -->
+    <aside class="side side--left">
+        <section class="card">
+            <h2 class="card__h" data-i18n="atlas.h_layers">LAYERS</h2>
+            <div class="layers" id="layers"><!-- built by app.js from LAYERS[] --></div>
+        </section>
+
+        <!-- Real GTA map image: nodes/html/img/map.png, aligned by nodes/calibration.json (same files in game and web) -->
+        <section class="card">
+            <h2 class="card__h" data-i18n="atlas.h_map">MAP</h2>
+            <div class="row">
+                <label class="lbl" for="mapOpacity" data-i18n="atlas.opacity">OPACITY</label>
+                <input class="rng" type="range" id="mapOpacity" min="0" max="100" step="5" value="55" />
+                <output class="out" id="mapOpacityOut">55%</output>
+            </div>
+            <p class="note" id="mapState">-</p>
+
+            <!-- Web panel only (app.js hides it in game) -->
+            <div data-host="web" hidden>
+                <h3 class="card__h card__h--warn">MAP CALIBRATION</h3>
+                <p class="note">The world rectangle the image's edges sit on.
+                   Saved to <code>nodes/calibration.json</code> - the one
+                   source of truth for this page AND the in-game /atlas.</p>
+                <div class="row"><label class="lbl" for="calMinX">MIN X</label><input class="num" type="number" step="1" id="calMinX" /></div>
+                <div class="row"><label class="lbl" for="calMaxX">MAX X</label><input class="num" type="number" step="1" id="calMaxX" /></div>
+                <div class="row"><label class="lbl" for="calMinY">MIN Y</label><input class="num" type="number" step="1" id="calMinY" /></div>
+                <div class="row"><label class="lbl" for="calMaxY">MAX Y</label><input class="num" type="number" step="1" id="calMaxY" /></div>
+                <div class="btns">
+                    <button class="btn" id="btnCalPreview">PREVIEW</button>
+                    <button class="btn btn--warn" id="btnCalSave">SAVE MAP BOUNDS</button>
+                </div>
+                <p class="note" id="calState">-</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="card__h" data-i18n="atlas.h_view">VIEW</h2>
+            <div class="row">
+                <label class="lbl" for="pollMs" data-i18n="atlas.refresh">REFRESH</label>
+                <input class="rng" type="range" id="pollMs" min="150" max="5000" step="50" />
+                <output class="out" id="pollMsOut">500ms</output>
+            </div>
+            <p class="note" data-i18n="atlas.view_note">How often the atlas asks the server what is inside
+               the current view. It asks for the VISIBLE RECTANGLE ONLY - panning
+               to an empty quarter costs nothing.</p>
+            <div class="btns">
+                <button class="btn" id="btnFindMe" data-i18n="atlas.btn_me">GO TO ME</button>
+                <button class="btn" id="btnWorld" data-i18n="atlas.btn_world">WHOLE WORLD</button>
+                <button class="btn" id="btnWaypoint" data-i18n="atlas.btn_waypoint">WAYPOINT HERE</button>
+                <button class="btn" id="btnTeleport" data-i18n="atlas.btn_teleport">TELEPORT HERE</button>
+            </div>
+            <p class="note" id="viewReadout">-</p>
+        </section>
+
+        <section class="card">
+            <h2 class="card__h" data-i18n="atlas.h_legend">LEGEND</h2>
+            <div class="legend" id="legend"><!-- built by app.js from the renderer's colour tables --></div>
+        </section>
+    </aside>
+
+    <!-- Right: three working panels as tabs -->
+    <aside class="side side--right">
+        <nav class="tabs">
+            <button class="tab is-on" data-tab="inspect" data-i18n="atlas.tab_inspect">INSPECT</button>
+            <button class="tab" data-tab="observe" data-i18n="atlas.tab_observe">OBSERVE</button>
+            <button class="tab" data-tab="config" data-i18n="atlas.tab_config">CONFIG</button>
+            <button class="tab" data-tab="survey" data-i18n="atlas.tab_survey">SURVEY</button>
+        </nav>
+
+        <!-- Inspect / edit -->
+        <section class="pane is-on" data-pane="inspect">
+            <p class="note" data-i18n-html="atlas.inspect_note">Click a cell on the map to inspect it. A cell is
+               <b>50m x 50m</b> and is the unit the far field counts in.</p>
+
+            <div id="inspectBody"><!-- filled by app.js --></div>
+
+            <!-- Edit block stays hidden until a cell is loaded, so buttons cannot act on nothing selected -->
+            <div id="editBlock" hidden>
+                <h3 class="card__h card__h--warn" data-i18n="atlas.h_edit">EDIT THIS CELL</h3>
+                <p class="note" data-i18n="atlas.edit_note">Every one of these changes the world immediately
+                   and is printed to the server console with your name on it (from
+                   the web panel: as "web panel key holder" - the panel key
+                   does not identify a person).</p>
+
+                <div class="row">
+                    <label class="lbl" for="editN" data-i18n="atlas.count">COUNT</label>
+                    <input class="num" type="number" id="editN" min="0" step="1" />
+                    <button class="btn btn--warn" id="btnSetN" data-i18n="atlas.set">SET</button>
+                </div>
+                <div class="row">
+                    <label class="lbl" for="editBase" data-i18n="atlas.baseline">BASELINE</label>
+                    <input class="num" type="number" id="editBase" min="0" step="1" />
+                    <button class="btn btn--warn" id="btnSetBase" data-i18n="atlas.set">SET</button>
+                </div>
+                <p class="note" data-i18n-html="atlas.base_note">BASELINE is what the cell regrows <i>towards</i>.
+                   COUNT is what is standing there now.</p>
+
+                <div class="btns">
+                    <button class="btn" id="btnLock" data-i18n="atlas.lock">LOCK</button>
+                    <button class="btn" id="btnUnlock" data-i18n="atlas.unlock">UNLOCK</button>
+                    <button class="btn btn--danger" id="btnClear" data-i18n="atlas.clear">CLEAR</button>
+                </div>
+                <p class="note" data-i18n="atlas.lock_note">A LOCKED cell is skipped by regrowth and
+                   migration. CLEAR empties the count and starts the grace
+                   period - it does not despawn zombies that are already live
+                   peds in front of a player.</p>
+            </div>
+
+            <h3 class="card__h card__h--warn" data-i18n="atlas.h_repop">REPOPULATE AN AREA</h3>
+            <p class="note" data-i18n-html="atlas.repop_note">
+                "...or an admin repopulates from the atlas." Drag a rectangle on
+                the map with <b>right mouse</b> (or press SELECT and drag), then
+                choose how many to add. They are spread <b>by density weight</b>,
+                not evenly - the map's own idea of where a street is decides
+                where they land.
+            </p>
+            <div class="row">
+                <button class="btn" id="btnRectMode" data-i18n="atlas.btn_rect">SELECT AREA</button>
+                <label class="lbl" for="repopN" data-i18n="atlas.amount">AMOUNT</label>
+                <input class="num" type="number" id="repopN" min="1" step="10" value="250" />
+            </div>
+            <p class="note" id="rectReadout" data-i18n="atlas.no_area">No area selected.</p>
+            <button class="btn btn--danger wide" id="btnRepop" disabled data-i18n="atlas.btn_repop">REPOPULATE</button>
+        </section>
+
+        <!-- Observe -->
+        <section class="pane" data-pane="observe">
+            <h3 class="card__h" data-i18n="atlas.obs_h">WATCH THIS AREA LIVE WITH NO PLAYER THERE</h3>
+            <p class="note" data-i18n-html="atlas.obs_note1">
+                Normally the simulation only turns counts into individual,
+                position-holding zombies near a <b>player</b>. An
+                <b>observer</b> makes it do that for <i>you</i>, from here, with
+                nobody in the area at all - so you can watch a town wander,
+                lurk and drift on an empty server.
+            </p>
+            <p class="note note--warn" id="obsNote2"></p>
+
+            <div class="row">
+                <label class="lbl" for="obsRadius" data-i18n="atlas.radius">RADIUS</label>
+                <input class="rng" type="range" id="obsRadius" min="50" max="1200" step="25" />
+                <output class="out" id="obsRadiusOut">300m</output>
+            </div>
+            <div class="btns">
+                <button class="btn btn--go" id="btnObserveCentre" data-i18n="atlas.obs_centre">OBSERVE MAP CENTRE</button>
+                <button class="btn" id="btnObservePick" data-i18n="atlas.obs_pick">PICK A POINT</button>
+                <button class="btn btn--danger" id="btnObserveClear" data-i18n="atlas.clear">CLEAR</button>
+            </div>
+            <p class="note" id="obsState" data-i18n="atlas.obs_none">No observer registered.</p>
+            <!-- Web panel only -->
+            <p class="note note--warn" data-host="web" hidden>
+                <b>WEB PANEL:</b> every browser tab holding the panel key shares
+                <b>one</b> web observer. Registering here moves it; it does not
+                add a second. It is refreshed while this tab is open and expires
+                on its own within 300s after the tab closes.
+            </p>
+        </section>
+
+        <!-- Survey -->
+        <section class="pane" data-pane="survey">
+            <h3 class="card__h card__h--warn" data-i18n="atlas.sv_h">MAP POINTS FOR OUR MAP</h3>
+            <p class="note" data-i18n-html="atlas.sv_note1">The density map was drawn for stock GTA V. Walk to a
+               place on The Apocalypse Project, stand in the middle of it, and
+               drop a point. Higher density = more zombies around it. Points are
+               saved to <code>bs_zombies/data/atlas_points.json</code> and win over
+               <code>config_atlas.lua</code>.</p>
+            <p class="note note--warn" data-i18n-html="atlas.sv_note2"><b>In game only</b> - a point goes where your
+               character stands. Density changes apply after <code>restart bs_zombies</code>;
+               labels update straight away.</p>
+            <div class="row"><label class="lbl" for="svId" data-i18n="atlas.sv_id">POINT ID</label><input class="num" type="text" id="svId" placeholder="e.g. paleto_camp" data-i18n-attr="placeholder:atlas.sv_id_ph" /></div>
+            <div class="row"><label class="lbl" for="svD" data-i18n="atlas.sv_d">DENSITY</label><input class="num" type="number" id="svD" min="0" max="20" step="0.5" value="3" /></div>
+            <div class="row"><label class="lbl" for="svT" data-i18n="atlas.sv_t">TERRAIN</label>
+                <select class="num" id="svT">
+                    <option value="town" data-i18n="atlas.t.town">town</option><option value="city" data-i18n="atlas.t.city">city</option><option value="rural" data-i18n="atlas.t.rural">rural</option><option value="industrial" data-i18n="atlas.t.industrial">industrial</option>
+                    <option value="military" data-i18n="atlas.t.military">military</option><option value="coast" data-i18n="atlas.t.coast">coast</option><option value="forest" data-i18n="atlas.t.forest">forest</option><option value="mountain" data-i18n="atlas.t.mountain">mountain</option>
+                    <option value="desert" data-i18n="atlas.t.desert">desert</option><option value="road" data-i18n="atlas.t.road">road</option>
+                </select></div>
+            <div class="row"><label class="lbl" for="svN" data-i18n="atlas.sv_n">LINKS</label><input class="num" type="text" id="svN" placeholder="point numbers, e.g. 3,7,12" data-i18n-attr="placeholder:atlas.sv_n_ph" /></div>
+            <div class="btns">
+                <button class="btn btn--go" id="btnSvAdd" data-i18n="atlas.sv_add">ADD HERE</button>
+                <button class="btn" id="btnSvMove" data-i18n="atlas.sv_move">MOVE HERE</button>
+                <button class="btn" id="btnSvSet" data-i18n="atlas.sv_set">UPDATE</button>
+                <button class="btn btn--danger" id="btnSvRemove" data-i18n="atlas.sv_remove">REMOVE</button>
+            </div>
+            <div class="btns"><button class="btn btn--warn" id="btnSvSave" data-i18n="atlas.sv_save">SAVE SURVEY</button></div>
+            <p class="note" id="svState" data-i18n="atlas.sv_loading">Loading points...</p>
+            <div class="layers" id="svList"></div>
+        </section>
+
+        <!-- Config -->
+        <section class="pane" data-pane="config">
+            <h3 class="card__h" data-i18n="atlas.cfg_h">LIVE SIMULATION TUNABLES</h3>
+            <p class="note note--warn" data-i18n-html="atlas.cfg_note1">
+                <b>NOT SAVED.</b> The server reports <code>persisted = false</code>:
+                every value here returns to
+                <code>bs_zombies/config/config_sim.lua</code> on the next
+                restart. This is a dial to turn while watching the world. When
+                you find a number you want to keep, write it in that file, where
+                it can carry the paragraph explaining why.
+            </p>
+            <p class="note" data-i18n-html="atlas.cfg_note2">
+                Out-of-range values are <b>clamped by the server and reported
+                back</b>, not silently ignored - if a slider does nothing at the
+                end of its travel, the result box below will say so.
+            </p>
+            <div class="btns">
+                <button class="btn" id="btnCfgRead" data-i18n="atlas.cfg_read">RELOAD FROM SERVER</button>
+                <button class="btn btn--go" id="btnCfgApply" disabled data-i18n="atlas.cfg_apply">APPLY CHANGES</button>
+            </div>
+            <p class="note" id="cfgDirty" data-i18n="atlas.cfg_none">No pending changes.</p>
+            <pre class="out-box" id="cfgResult" hidden></pre>
+            <div id="cfgBody"><!-- Built entirely from the server's writable map and the boolean leaves of config -->
+            </div>
+        </section>
+    </aside>
+
+    <!-- Bottom bar: sampling info and cursor world position -->
+    <footer class="bar bar--bottom">
+        <span class="chip" id="chipStride" hidden>SAMPLED 1:1</span>
+        <span class="chip chip--warn" id="chipTrunc" hidden>AGENT CAP REACHED</span>
+        <span class="chip" id="chipObs" hidden>OBSERVING</span>
+        <span class="grow"></span>
+        <span class="mono" id="cursorPos">-</span>
+        <span class="mono" id="lastPoll">-</span>
+        <span class="hint" data-i18n="atlas.hint">DRAG pan · WHEEL zoom · CLICK a cell · RIGHT-DRAG select · ESC close</span>
+    </footer>
+
+    <!-- Confirm dialog. Every destructive action goes through here. -->
+    <div class="modal" id="modal" hidden>
+        <div class="modal__box">
+            <h3 class="card__h card__h--warn" id="modalTitle" data-i18n="atlas.modal_confirm">CONFIRM</h3>
+            <p class="modal__text" id="modalText">-</p>
+            <div class="btns">
+                <button class="btn" id="modalNo" data-i18n="atlas.modal_no">CANCEL</button>
+                <button class="btn btn--danger" id="modalYes" data-i18n="atlas.modal_yes">DO IT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result of the last edit / repopulate / observe call, shown verbatim -->
+    <div class="toast" id="toast" hidden></div>
+</div>
+
+<script src="js/map.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

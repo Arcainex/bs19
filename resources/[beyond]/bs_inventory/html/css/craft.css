@@ -1,0 +1,133 @@
+/* Craft tab: hand crafting, station panels, recycler machine. Uses the inventory palette from style.css. */
+.craft { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; color: var(--bone); }
+.craft__head { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--amber); backdrop-filter: blur(6px); }
+.craft__title { font-size: 18px; letter-spacing: 3px; font-weight: 700; }
+.craft__hint { flex: 1; font-size: 12px; color: var(--dust); }
+.craft__chip { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 4px 8px; border: 1px solid var(--line); color: var(--dust); white-space: nowrap; }
+.craft__chip--good { color: var(--good); border-color: rgba(127,212,162,.35); }
+.craft__chip--warn { color: var(--amber); border-color: rgba(224,140,70,.4); }
+.craft__cols { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(260px, 1.15fr) minmax(280px, 1fr) minmax(260px, .9fr); gap: 10px; }
+.cbox { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px); }
+.cbox__head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 12px; letter-spacing: 2px; color: var(--dust); }
+.cbox__head b { color: var(--bone); font-weight: 600; flex: 1; }
+.cbox__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px; }
+.cbox__body::-webkit-scrollbar { width: 6px; } .cbox__body::-webkit-scrollbar-thumb { background: rgba(224,140,70,.45); }
+.cbtn { background: rgba(240,235,221,.05); border: 1px solid var(--line); color: var(--bone); font-size: 12px; letter-spacing: 2px; padding: 8px 12px; cursor: pointer; transition: .15s; font-family: inherit; }
+.cbtn:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); }
+.cbtn--go { background: rgba(224,140,70,.18); border-color: var(--amber); color: var(--amber); }
+.cbtn--go:hover:not(:disabled) { background: rgba(224,140,70,.32); color: var(--bone); }
+.cbtn--bad:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+.cbtn:disabled { opacity: .35; cursor: default; }
+.cbtn--sm { padding: 4px 8px; font-size: 10px; letter-spacing: 1px; }
+.csearch { width: 100%; box-sizing: border-box; background: rgba(0,0,0,.35); border: 1px solid var(--line); color: var(--bone); padding: 7px 10px; font-size: 12px; letter-spacing: 1px; outline: none; margin-bottom: 6px; }
+.csearch:focus { border-color: var(--amber); }
+.ccats { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.ccat { font-size: 10px; letter-spacing: 1px; padding: 4px 7px; border: 1px solid var(--line); color: var(--dust); cursor: pointer; background: none; font-family: inherit; }
+.ccat.is-on { color: var(--amber); border-color: var(--amber); background: rgba(224,140,70,.1); }
+.crow { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid transparent; cursor: pointer; transition: .12s; }
+.crow:hover { background: rgba(240,235,221,.05); }
+.crow.is-sel { border-color: var(--amber); background: rgba(224,140,70,.09); }
+.crow.is-off { opacity: .45; }
+.crow__name { font-size: 13px; }
+.crow__sub { font-size: 10px; color: var(--dust); font-family: var(--mono); letter-spacing: 1px; }
+.cicon { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); color: var(--c, var(--dust)); background: rgba(0,0,0,.3); }
+.cicon svg { width: 26px; height: 26px; }
+.cicon--lg { width: 72px; height: 72px; } .cicon--lg svg { width: 52px; height: 52px; }
+.cdetail { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+.cdetail__top { display: flex; gap: 14px; align-items: center; }
+.cdetail__name { font-size: 18px; letter-spacing: 1px; }
+.cdetail__meta { font-family: var(--mono); font-size: 11px; color: var(--dust); margin-top: 4px; }
+.clabel { font-size: 10px; letter-spacing: 2px; color: var(--dust); margin-bottom: 4px; }
+.ccost { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.ccost .cicon { width: 28px; height: 28px; } .ccost .cicon svg { width: 20px; height: 20px; }
+.ccost__n { font-family: var(--mono); font-size: 12px; }
+.ccost.is-short .ccost__n { color: var(--danger); } .ccost.is-ok .ccost__n { color: var(--good); }
+.cblock { font-size: 12px; color: var(--amber); }
+.cqty { display: flex; align-items: center; gap: 6px; }
+.cqty input { width: 46px; text-align: center; background: rgba(0,0,0,.35); border: 1px solid var(--line); color: var(--bone); padding: 6px; font-family: var(--mono); }
+.cjob { padding: 7px 8px; border: 1px solid var(--line); margin-bottom: 6px; background: rgba(0,0,0,.2); }
+.cjob__top { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.cjob__top span { flex: 1; }
+.cjob__state { font-family: var(--mono); font-size: 10px; color: var(--dust); letter-spacing: 1px; }
+.cjob__state.is-run { color: var(--amber); } .cjob__state.is-full { color: var(--danger); }
+.cbar { height: 3px; background: rgba(240,235,221,.08); margin-top: 6px; overflow: hidden; }
+.cbar i { display: block; height: 100%; background: var(--amber); transition: width 1s linear; }
+.cempty { color: var(--dust); font-size: 12px; padding: 12px; text-align: center; }
+.cstore { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 4px; }
+.cslot { position: relative; height: 58px; border: 1px solid var(--line); background: rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--c, var(--dust)); transition: .12s; }
+.cslot:hover { border-color: var(--amber); }
+.cslot svg { width: 30px; height: 30px; }
+.cslot b { position: absolute; right: 3px; bottom: 2px; font-size: 10px; font-family: var(--mono); color: var(--bone); font-weight: 400; }
+.cslot--empty { cursor: default; opacity: .35; } .cslot--empty:hover { border-color: var(--line); }
+.cfarm { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.cfarm__state { font-size: 14px; letter-spacing: 2px; }
+.cfarm__row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ctag { font-size: 10px; letter-spacing: 1px; padding: 3px 6px; border: 1px solid var(--line); color: var(--dust); }
+.ctag.is-on { color: var(--good); border-color: rgba(127,212,162,.4); }
+.cmach { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; flex: 1 1 auto; min-height: 0; }
+.cfuel { display: flex; align-items: center; gap: 10px; flex: 1; }
+.cfuel__track { flex: 1; max-width: 240px; height: 6px; background: rgba(240,235,221,.08); }
+.cfuel__track i { display: block; height: 100%; background: linear-gradient(90deg, var(--amber), #f0c06b); }
+.cyield { font-size: 11px; color: var(--dust); padding: 6px 2px; line-height: 1.6; }
+.cyield b { color: var(--good); font-weight: 400; }
+
+/* Icon boxes. BSIcons.get can return a painted <img> at its natural size, so every icon is held to a fixed box here (same source and fallback as the grid). */
+.cicon { flex: 0 0 auto; box-sizing: border-box; overflow: hidden; padding: 3px; position: relative;
+    background: radial-gradient(circle at 50% 40%, rgba(240,235,221,.07), rgba(0,0,0,.35) 70%); }
+.cicon img, .cicon svg { display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
+.crow .cicon { width: 40px; height: 40px; }
+.cicon--sm { width: 28px; height: 28px; padding: 2px; }
+.cicon--lg { width: 96px; height: 96px; padding: 8px; border-color: rgba(224,140,70,.35); }
+.ccost .cicon { width: 30px; height: 30px; padding: 2px; }
+.ccost .cicon img, .ccost .cicon svg, .cicon--lg img, .cicon--lg svg, .cicon--sm img, .cicon--sm svg { width: 100%; height: 100%; }
+.cslot { overflow: hidden; }
+.cslot img, .cslot svg { width: 70%; height: 70%; max-width: 40px; max-height: 40px; object-fit: contain; }
+
+/* Rows: icon, text that may shrink, a fixed right column. */
+.crow { grid-template-columns: 40px minmax(0, 1fr) auto; min-height: 44px; box-sizing: border-box; border-bottom: 1px solid var(--line2); }
+.crow__main { min-width: 0; }
+.crow__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--bone); }
+.crow__clip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.crow__time { text-align: right; color: var(--amber); opacity: .85; }
+.crow.is-off .crow__time { color: var(--dust); }
+.ccost { grid-template-columns: 30px minmax(0, 1fr) auto; }
+.ccost__name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.cdetail__top { align-items: flex-start; }
+.cdetail__name { line-height: 1.2; word-break: break-word; }
+.cjob__top span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Search + filters stay pinned and fully opaque above the scrolling list. */
+.ctools { position: sticky; top: -8px; z-index: 2; margin: -8px -8px 6px; padding: 8px 8px 6px; background: var(--panel2); border-bottom: 1px solid var(--line); }
+.csearch { background: rgba(0,0,0,.55); border-color: rgba(240,235,221,.2); color: var(--bone); font-family: inherit; height: 30px; padding: 0 10px; }
+.csearch::placeholder { color: var(--dust); opacity: 1; letter-spacing: 2px; }
+.ccats { margin-bottom: 0; }
+.ccat { color: var(--bone); opacity: .8; background: rgba(240,235,221,.04); border-color: rgba(240,235,221,.18); padding: 5px 9px; line-height: 1; white-space: nowrap; transition: .12s; }
+.ccat:hover { opacity: 1; border-color: var(--amber); color: var(--amber); }
+.ccat.is-on { opacity: 1; background: rgba(224,140,70,.2); }
+
+/* Fixed panel height: the grid row is clamped to the pane so long lists scroll inside each box. */
+.pane[data-pane="craft"] { overflow: hidden; }
+.craft { height: 100%; overflow: hidden; }
+.craft__cols, .cmach { grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+.craft__cols > *, .cmach > * { min-height: 0; max-height: 100%; overflow: hidden; }
+.cbox__body { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(224,140,70,.45) transparent; }
+.cbox__body::-webkit-scrollbar-track { background: rgba(240,235,221,.04); }
+.cbox__body::-webkit-scrollbar-thumb { border-radius: 3px; }
+.cbox__body::-webkit-scrollbar-thumb:hover { background: rgba(224,140,70,.75); }
+
+/* Real height chain. #root had no height, so .wrap's height:100% resolved to auto and the whole page grew past the screen.
+   Clamp every ancestor to the (ui-scaled) body height and let only the list bodies scroll. */
+#root { height: 100%; max-height: 100%; overflow: hidden; }
+#root > .wrap { height: 100%; max-height: 100%; min-height: 0; overflow: hidden; }
+.pane[data-pane="craft"].is-active { flex: 1 1 0; min-height: 0; max-height: 100%; }
+.craft { flex: 1 1 0; min-height: 0; max-height: 100%; }
+.craft__cols, .cmach { flex: 1 1 0; height: 0; min-height: 0; }
+.craft__cols > *, .cmach > * { height: 100%; display: flex; flex-direction: column; }
+.craft__cols > * > .cbox, .cmach > * > .cbox { min-height: 0; }
+.cbox > .cbox__body { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+
+/* Side column: the queue keeps room for ~3 rows and only scrolls when it is fuller; storage/dismantle take the rest. */
+.craft__side { display: flex; flex-direction: column; gap: 10px; min-height: 0; height: 100%; }
+.craft__side > .cbox--queue { flex: 0 1 auto; min-height: 190px; max-height: 60%; }
+.craft__side > .cbox--queue > .cbox__body { flex: 1 1 auto; }
+.craft__side > .cbox--fill { flex: 1 1 0; min-height: 120px; }

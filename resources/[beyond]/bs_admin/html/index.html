@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <script src="nui://bs_ui/html/shared/window.js?v=20261015"></script>
+    <meta charset="utf-8" />
+    <script src="nui://bs_ui/html/js/i18n.js"></script>
+    <title>Staff</title>
+    <!-- v= is bumped by hand on every asset change -->
+    <link rel="stylesheet" href="css/style.css?v=20261016b" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <section class="menu">
+        <header class="menu__head">
+            <h1><span data-i18n="admin.h.staff">STAFF</span></h1>
+            <button id="modeBtn" class="modebtn" title="Simple / Advanced"><span data-i18n="admin.u.simple">SIMPLE</span></button>
+            <span id="tier">-</span>
+        </header>
+
+        <div class="target">
+            <span class="target__label"><span data-i18n="admin.h.acting_on">ACTING ON</span></span>
+            <input id="targetSearch" type="text" class="target__search" autocomplete="off" placeholder="SEARCH PLAYER" data-i18n-attr="placeholder:admin.u.search_player" />
+            <select id="targetSelect"><option value="">MYSELF</option></select>
+        </div>
+
+        <div class="menu__main">
+        <nav class="menu__tabs rail">
+            <button class="mtab" data-tab="quick" data-simple="1" title="Quick"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="mtab__t" data-i18n="admin.u.tab_quick">QUICK</span></button>
+            <button class="mtab is-active" data-tab="self" title="Self"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"/></svg><span class="mtab__t" data-i18n="admin.h.self">SELF</span></button>
+            <button class="mtab" data-tab="manage" title="Player"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21a7 7 0 0114 0M16 11l2 2 4-4"/></svg><span class="mtab__t" data-i18n="admin.u.tab_player">PLAYER</span></button>
+            <button class="mtab" data-tab="players" title="Players"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6zM2 20a7 7 0 0114 0M17 11a3 3 0 100-6M18 20h4a6 6 0 00-4-5.5"/></svg><span class="mtab__t" data-i18n="admin.h.players">PLAYERS</span></button>
+            <button class="mtab" data-tab="server" title="Server"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v6H3zM3 14h18v6H3zM7 7h.01M7 17h.01"/></svg><span class="mtab__t" data-i18n="admin.u.tab_server">SERVER</span></button>
+            <button class="mtab" data-tab="skills" title="Skills"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="mtab__t" data-i18n="admin.h.skills">SKILLS</span></button>
+            <span class="rail__sep" aria-hidden="true"></span>
+            <button class="mtab" data-tab="world" title="World"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span class="mtab__t" data-i18n="admin.h.world">WORLD</span></button>
+            <button class="mtab" data-tab="vehicle" title="Vehicle"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15v-4l2-5h14l2 5v4M3 15h18M3 15v3h3v-3M18 15v3h3v-3M6 11h12"/></svg><span class="mtab__t" data-i18n="admin.h.vehicle">VEHICLE</span></button>
+            <span class="rail__sep" aria-hidden="true"></span>
+            <button class="mtab" data-tab="items" title="Items"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/></svg><span class="mtab__t" data-i18n="admin.h.items">ITEMS</span></button>
+            <button class="mtab" data-tab="weapons" title="Weapons"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 2v5M12 17v5M2 12h5M17 12h5"/></svg><span class="mtab__t" data-i18n="admin.h.weapons">WEAPONS</span></button>
+            <button class="mtab" data-tab="clothing" title="Clothing"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3L3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 01-8 0z"/></svg><span class="mtab__t" data-i18n="admin.h.clothing">CLOTHING</span></button>
+            <button class="mtab" data-tab="build" title="Build"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l4 4-9 9H5v-4zM13 7l4 4"/></svg><span class="mtab__t" data-i18n="admin.tab_build">BUILD</span></button>
+            <span class="rail__sep" aria-hidden="true"></span>
+            <button class="mtab" data-tab="power" title="Power"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.3 6.3a8 8 0 1011.4 0"/></svg><span class="mtab__t" data-i18n="admin.tab_power">POWER</span></button>
+            <button class="mtab" data-tab="debug" title="Debug"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8a3 3 0 016 0v1H9zM7 11h10v4a5 5 0 01-10 0zM3 12h4M17 12h4M4 7l3 2M20 7l-3 2M5 19l3-2M19 19l-3-2"/></svg><span class="mtab__t" data-i18n="admin.h.debug">DEBUG</span></button>
+            <span class="rail__sep" aria-hidden="true"></span>
+            <button class="mtab" data-tab="sanctions" title="Sanctions"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9.5 9.5l5 5M14.5 9.5l-5 5"/></svg><span class="mtab__t" data-i18n="admin.h.sanctions">SANCTIONS</span></button>
+            <button class="railact" id="gdOpen" title="Guard logs"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5"/></svg><span class="mtab__t" data-i18n="admin.gl.open">GUARD LOGS</span></button>
+            <button class="mtab" data-tab="test" title="Test Server"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3M8 15h8"/></svg><span class="mtab__t" data-i18n="admin.tab_test">TEST SERVER</span></button>
+        </nav>
+
+        <div class="menu__body">
+            <!-- Simple view: the everyday actions only. Built by js/staff.js. -->
+            <div class="mpane" data-pane="quick">
+                <p class="mpane__label" data-i18n="admin.u.players">PLAYERS</p>
+                <div class="split">
+                    <input id="qkSearch" type="text" class="sx-wide" autocomplete="off" placeholder="SEARCH NAME OR ID" data-i18n-attr="placeholder:admin.u.search" />
+                    <input id="qkReason" type="text" class="sx-wide" maxlength="120" placeholder="KICK REASON" data-i18n-attr="placeholder:admin.u.kick_reason" />
+                </div>
+                <div id="qkPlayers"></div>
+                <p class="mpane__label" data-i18n="admin.u.announce">ANNOUNCEMENT</p>
+                <input id="qkAnnTitle" type="text" class="fld" maxlength="60" placeholder="TITLE (OPTIONAL)" data-i18n-attr="placeholder:admin.u.ann_title" />
+                <textarea id="qkAnnText" class="fld" maxlength="400" rows="2" placeholder="MESSAGE" data-i18n-attr="placeholder:admin.u.ann_text"></textarea>
+                <div class="split">
+                    <select id="qkAnnDur" class="sx-select"><option value="6">6 S</option><option value="10" selected>10 S</option><option value="20">20 S</option><option value="30">30 S</option></select>
+                    <button class="row row--inline" id="qkAnnSend" data-i18n="admin.u.send_all">SEND TO EVERYONE</button>
+                </div>
+                <p class="mpane__label" data-i18n="admin.u.give_item">GIVE ITEM</p>
+                <div class="split">
+                    <input id="qkItem" type="text" class="sx-wide" list="itemNames" autocomplete="off" placeholder="ITEM" data-i18n-attr="placeholder:admin.u.item" />
+                    <input id="qkItemAmt" type="number" value="1" min="1" />
+                    <button class="row row--inline" id="qkGive" data-i18n="admin.u.give">GIVE</button>
+                </div>
+                <p class="hint" data-i18n="admin.u.give_hint">Goes to the ACTING ON player (top).</p>
+                <p class="mpane__label" data-i18n="admin.u.tpc">TELEPORT TO COORDS</p>
+                <input id="qkTpPaste" type="text" class="fld" autocomplete="off" placeholder="PASTE: X, Y, Z OR VECTOR3(...)" data-i18n-attr="placeholder:admin.u.tpc_paste" />
+                <div class="split">
+                    <input id="qkTpX" type="number" step="any" class="sx-wide" placeholder="X" />
+                    <input id="qkTpY" type="number" step="any" class="sx-wide" placeholder="Y" />
+                    <input id="qkTpZ" type="number" step="any" class="sx-wide" placeholder="Z (AUTO)" data-i18n-attr="placeholder:admin.u.tpc_z" />
+                </div>
+                <div class="split">
+                    <button class="row row--inline" id="qkTpGo" data-i18n="admin.u.tpc_go">TELEPORT</button>
+                    <button class="row row--inline row--ghost" id="qkTpMine" data-i18n="admin.u.tpc_mine">COPY MY COORDS</button>
+                </div>
+                <p class="hint" data-i18n="admin.u.tpc_hint">Empty Z finds the ground. Your car comes along if you are driving.</p>
+            </div>
+
+            <!-- Advanced: one player in depth. Built by js/staff.js. -->
+            <div class="mpane" data-pane="manage">
+                <div class="split">
+                    <input id="pmSearch" type="text" class="sx-wide" autocomplete="off" placeholder="SEARCH NAME OR ID" data-i18n-attr="placeholder:admin.u.search" />
+                    <button class="row row--inline row--ghost" id="pmRefresh" data-i18n="admin.u.refresh">REFRESH</button>
+                </div>
+                <div id="pmList" class="pmlist"></div>
+                <div id="pmDetail"><p class="hint" data-i18n="admin.u.pick_player">Pick a player above.</p></div>
+            </div>
+
+            <!-- Advanced: server-wide tools. Built by js/staff.js. -->
+            <div class="mpane" data-pane="server">
+                <div class="split">
+                    <p class="mpane__label sx-wide" data-i18n="admin.u.stats">SERVER</p>
+                    <button class="row row--inline row--ghost" id="svRefresh" data-i18n="admin.u.refresh">REFRESH</button>
+                </div>
+                <div id="svStats" class="stats"></div>
+                <p class="mpane__label" data-i18n="admin.u.announce">ANNOUNCEMENT</p>
+                <input id="svAnnTitle" type="text" class="fld" maxlength="60" placeholder="TITLE (OPTIONAL)" data-i18n-attr="placeholder:admin.u.ann_title" />
+                <textarea id="svAnnText" class="fld" maxlength="400" rows="2" placeholder="MESSAGE" data-i18n-attr="placeholder:admin.u.ann_text"></textarea>
+                <div class="split">
+                    <select id="svAnnDur" class="sx-select"><option value="6">6 S</option><option value="10" selected>10 S</option><option value="20">20 S</option><option value="30">30 S</option></select>
+                    <button class="row row--inline" id="svAnnSend" data-i18n="admin.u.send_all">SEND TO EVERYONE</button>
+                </div>
+                <p class="mpane__label" data-i18n="admin.u.world">WORLD</p>
+                <button class="row" id="svBlackout"><span data-i18n="admin.u.blackout">BLACKOUT (ALL GENERATORS OFF)</span><span class="row__state" id="st-blackout">OFF</span></button>
+                <div class="split">
+                    <input id="svDz" type="number" value="50" min="1" max="500" />
+                    <button class="row row--inline" id="svDzGo" data-i18n="admin.u.clear_walkers">CLEAR WALKERS IN RADIUS (M)</button>
+                </div>
+                <p class="mpane__label" data-i18n="admin.u.bans">ACTIVE BANS</p>
+                <div id="svBans"></div>
+                <p class="mpane__label" data-i18n="admin.u.stored">STORED OWNED CARS</p>
+                <div id="svCars"></div>
+            </div>
+
+            <div class="mpane is-active" data-pane="self">
+                <p class="mpane__label" data-i18n="admin.s.quick">QUICK ACTIONS</p>
+                <button class="row" data-local="godmode"><span data-i18n="admin.h.godmode">GODMODE</span><span class="row__state" id="st-godmode">OFF</span></button>
+                <button class="row" data-local="zombieGodmode"><span data-i18n="admin.h.zombie_godmode">ZOMBIE GODMODE</span><span class="row__state" id="st-zombiegodmode">OFF</span></button>
+                <button class="row" data-local="noclip"><span data-i18n="admin.h.noclip">NOCLIP</span><span class="row__state" id="st-noclip">OFF</span></button>
+                <button class="row" data-local="invisible"><span data-i18n="admin.h.invisible">INVISIBLE</span><span class="row__state" id="st-invisible">OFF</span></button>
+                <button class="row" data-local="guardAlerts"><span data-i18n="admin.gl.alerts">GUARD ALERTS</span><span class="row__state" id="st-guardalerts">OFF</span></button>
+                <button class="row" data-server="heal"><span data-i18n="admin.h.heal_armour">HEAL &amp; ARMOUR</span></button>
+                <button class="row" data-server="giveammo"><span data-i18n="admin.h.refill_ammo_for_held_weapon">REFILL AMMO FOR HELD WEAPON</span>
+                    <span class="row__hint">boxes for whatever is in your hands</span></button>
+                <button class="row" data-server="revive"><span data-i18n="admin.h.revive">REVIVE</span></button>
+                <button class="row" data-local="tpWaypoint"><span data-i18n="admin.h.teleport_to_waypoint">TELEPORT TO WAYPOINT</span></button>
+                <p class="mpane__label" data-i18n="admin.u.tpc">TELEPORT TO COORDS</p>
+                <input id="sfTpPaste" type="text" class="fld" autocomplete="off" placeholder="PASTE: X, Y, Z OR VECTOR3(...)" data-i18n-attr="placeholder:admin.u.tpc_paste" />
+                <div class="split">
+                    <input id="sfTpX" type="number" step="any" class="sx-wide" placeholder="X" />
+                    <input id="sfTpY" type="number" step="any" class="sx-wide" placeholder="Y" />
+                    <input id="sfTpZ" type="number" step="any" class="sx-wide" placeholder="Z (AUTO)" data-i18n-attr="placeholder:admin.u.tpc_z" />
+                </div>
+                <div class="split">
+                    <button class="row row--inline" id="sfTpGo" data-i18n="admin.u.tpc_go">TELEPORT</button>
+                    <button class="row row--inline row--ghost" id="sfTpMine" data-i18n="admin.u.tpc_mine">COPY MY COORDS</button>
+                </div>
+                <p class="hint" data-i18n="admin.u.tpc_hint">Empty Z finds the ground. Your car comes along if you are driving.</p>
+                <button class="row" data-server="save"><span data-i18n="admin.h.force_save_character">FORCE SAVE CHARACTER</span></button>
+
+                <p class="mpane__label"><span data-i18n="admin.h.progression">PROGRESSION</span></p>
+                <div class="split">
+                    <input id="xpAmount" type="number" value="500" min="1" />
+                    <button class="row row--inline" data-give="givexp"><span data-i18n="admin.h.give_xp">GIVE XP</span></button>
+                </div>
+                <div class="split">
+                    <input id="moneyAmount" type="number" value="1000" min="1" />
+                    <button class="row row--inline" data-give="givemoney"><span data-i18n="admin.h.give_cash">GIVE CASH</span></button>
+                </div>
+                <div class="split">
+                    <select id="classSelect" class="sx-select"></select>
+                    <button class="row row--inline" id="setClassBtn"><span data-i18n="admin.h.set_class">SET CLASS</span></button>
+                </div>
+                <div class="split">
+                    <input id="levelAmount" type="number" value="10" min="1" max="100" />
+                    <button class="row row--inline" data-give="setlevel"><span data-i18n="admin.h.set_level">SET LEVEL</span></button>
+                </div>
+                <div class="split">
+                    <input id="pointsAmount" type="number" value="5" min="-50" />
+                    <button class="row row--inline" data-give="givepoints"><span data-i18n="admin.h.give_skill_points">GIVE SKILL POINTS</span></button>
+                </div>
+
+                <p class="mpane__label"><span data-i18n="admin.h.condition">CONDITION</span></p>
+                <div class="chips" id="condition"></div>
+
+                <!-- VIP tiers, granted by an admin (/grantvip) -->
+                <p class="mpane__label"><span data-i18n="admin.h.vip">VIP</span></p>
+                <div class="split">
+                    <select id="vipTier">
+                        <option value="supporter"><span data-i18n="admin.h.supporter">SUPPORTER</span></option>
+                        <option value="patron"><span data-i18n="admin.h.patron">PATRON</span></option>
+                        <option value="legend"><span data-i18n="admin.h.legend">LEGEND</span></option>
+                    </select>
+                    <input id="vipDays" type="number" value="30" min="0" placeholder="days, 0 = forever" />
+                </div>
+                <button class="row" data-vip="grant"><span data-i18n="admin.h.grant_vip_to_target">GRANT VIP TO TARGET</span></button>
+                <button data-confirm="1" class="row row--danger" data-vip="revoke"><span data-i18n="admin.h.revoke_vip_from_target">REVOKE VIP FROM TARGET</span></button>
+                <button class="row" data-vip="ticket"><span data-i18n="admin.h.give_appearance_ticket">GIVE APPEARANCE TICKET</span></button>
+            </div>
+
+            <div class="mpane" data-pane="players">
+                <button class="row row--ghost" id="refreshPlayers"><span data-i18n="admin.h.refresh_list">REFRESH LIST</span></button>
+                <div id="players"></div>
+            </div>
+
+            <div class="mpane" data-pane="skills">
+                <button class="row row--ghost" id="refreshSkills"><span data-i18n="admin.h.refresh">REFRESH</span></button>
+                <div id="skills"></div>
+                <p class="mpane__label"><span data-i18n="admin.h.perks">PERKS</span></p>
+                <div id="perks"></div>
+                <button data-confirm="1" class="row row--danger" data-server="respec"><span data-i18n="admin.h.wipe_all_perks_refund">WIPE ALL PERKS (REFUND)</span></button>
+            </div>
+
+            <div class="mpane" data-pane="items">
+                <p class="mpane__label"><span data-i18n="admin.items_to">GIVES TO THE ACTING ON PLAYER</span></p>
+                <div class="itabs" id="itemTabs"></div>
+                <div class="split">
+                    <input id="itemFilter" type="text" placeholder="SEARCH ITEMS" data-i18n-attr="placeholder:admin.search" autocomplete="off" class="sx-wide" />
+                    <input id="itemAmount" type="number" value="1" min="1" title="amount" />
+                </div>
+                <div class="chips chips--amt">
+                    <button class="chip" data-amt="1">1</button><button class="chip" data-amt="10">10</button>
+                    <button class="chip" data-amt="50">50</button><button class="chip" data-amt="100">100</button>
+                </div>
+                <div class="chips" id="items"></div>
+            </div>
+
+            <div class="mpane" data-pane="build">
+                <p class="mpane__label"><span data-i18n="admin.b_give">GIVE TO THE ACTING ON PLAYER</span></p>
+                <select id="abPiece" class="sx-select sel-full"></select>
+                <p class="hint cost-line" id="abPieceCost"></p>
+                <div class="split">
+                    <input id="abPieceN" type="number" value="1" min="1" max="50" />
+                    <button class="row row--inline" id="abPieceGive" data-i18n="admin.b_piece">MATERIALS FOR PIECE x N</button>
+                </div>
+                <select id="abRecipe" class="sx-select sel-full"></select>
+                <p class="hint cost-line" id="abRecipeCost"></p>
+                <div class="split">
+                    <input id="abRecipeN" type="number" value="1" min="1" max="50" />
+                    <button class="row row--inline" id="abRecipeGive" data-i18n="admin.b_recipe">INGREDIENTS FOR RECIPE x N</button>
+                </div>
+                <button class="row" data-server="giveBuildMats" data-i18n="admin.b_allmats">GIVE A BIT OF EVERY BUILDING MATERIAL</button>
+
+                <p class="mpane__label"><span data-i18n="admin.b_tools">QUICK TOOLS</span></p>
+                <button class="row" id="abFree"><span data-i18n="admin.b_free">FREE BUILD (ME)</span><span class="row__state" id="st-freebuild">OFF</span></button>
+                <button class="row" id="abRaid"><span data-i18n="admin.b_raid">RAIDS ALWAYS OPEN</span><span class="row__state" id="st-raidalways">OFF</span></button>
+                <button class="row" data-server="resetDecayAll" data-i18n="admin.b_decay">RESET DECAY ON EVERY BASE</button>
+                <div class="split">
+                    <input id="abRadius" type="number" value="25" min="1" max="200" />
+                    <button class="row row--inline" id="abFinish" data-i18n="admin.b_finish">FINISH FRAMES IN RADIUS (M)</button>
+                </div>
+
+                <p class="mpane__label"><span data-i18n="admin.b_bases">BASES</span></p>
+                <button class="row" data-server="openBases"><span data-i18n="admin.h.bases_manager">BASES MANAGER</span><span class="row__hint">list, teleport, delete, transfer, reset decay</span></button>
+                <button data-confirm="1" class="row row--danger" data-server="wipeBuilds" data-radius="50"><span data-i18n="admin.h.clear_structures_50m">CLEAR STRUCTURES (50M)</span></button>
+            </div>
+
+            <div class="mpane" data-pane="weapons">
+                <p class="mpane__label" data-i18n="admin.h.weapons">WEAPONS</p>
+                <div id="weapons"></div>
+            </div>
+
+
+            <!-- Clothing: appearance tuner, steps components live on your ped -->
+            <div class="mpane" data-pane="clothing">
+                <p class="mpane__label"><span data-i18n="admin.h.wardrobe">WARDROBE</span><span class="row__hint"> - backpack and body armour items only</span></p>
+                <input id="clothFilter" type="text" placeholder="FILTER GARMENTS" autocomplete="off" />
+                <div id="clothGroups"></div>
+
+                <p class="mpane__label"><span data-i18n="admin.h.component_tuner">COMPONENT TUNER</span><span class="row__hint"> - live, on your ped only; nothing is saved</span></p>
+                <div class="split">
+                    <button class="row" id="clothStrip"><span data-i18n="admin.h.strip_to_bare">STRIP TO BARE</span>
+                        <span class="row__hint">apply every slot's `off` value</span></button>
+                    <button class="row" id="clothRestore"><span data-i18n="admin.h.restore">RESTORE</span>
+                        <span class="row__hint">re-apply what you are really wearing</span></button>
+                </div>
+                <div id="clothTuner"></div>
+                <button class="row" id="clothScanArms"><span data-i18n="admin.h.list_valid_arms_3">LIST VALID ARMS (3)</span>
+                    <span class="row__hint">narrows the search - validity only, not a match</span></button>
+                <p class="mpane__label"><span data-i18n="admin.h.config_line">CONFIG LINE</span><span class="row__hint"> - paste into bs_inventory/config/config_clothing.lua</span></p>
+                <div class="cfgout" id="clothConfig">-</div>
+            </div>
+
+            <div class="mpane" data-pane="world">
+                <p class="mpane__label"><span data-i18n="admin.h.time">TIME</span><span class="row__hint"> - sets the clock; it keeps running from there</span></p>
+                <div class="chips" id="times"></div>
+                <button class="row" id="freezeTime"><span data-i18n="admin.h.freeze_the_clock">FREEZE THE CLOCK</span>
+                    <span class="row__hint">stop time where it is</span></button>
+                <p class="mpane__label"><span data-i18n="admin.h.weather">WEATHER</span><span class="row__hint"> - picking one freezes it</span></p>
+                <div class="chips" id="weather"></div>
+                <button class="row" id="freezeWeather"><span data-i18n="admin.h.unfreeze_weather">UNFREEZE WEATHER</span>
+                    <span class="row__hint">let it drift naturally again</span></button>
+                <p class="mpane__label" data-i18n="admin.u.power">POWER</p>
+                <button class="row" id="wBlackout"><span data-i18n="admin.u.blackout">BLACKOUT (ALL GENERATORS OFF)</span><span class="row__state" id="st-blackout2">OFF</span></button>
+                <p class="mpane__label" data-i18n="admin.w.traders">TRADERS</p>
+                <button class="row" data-server="openTraderEditor"><span data-i18n="admin.w.trader_editor">OPEN TRADER EDITOR</span><span class="row__hint" data-i18n="admin.w.trader_hint">bs_traders debug editor, closes this menu</span></button>
+                <p class="mpane__label"><span data-i18n="admin.ev.title">EVENTS</span><span class="row__hint" data-i18n="admin.ev.hint"> - START = event default location, MY POSITION = where you stand</span></p>
+                <div id="evList"></div>
+                <button class="row row--danger" id="evStop"><span data-i18n="admin.ev.stop">STOP ACTIVE EVENTS</span></button>
+                <button class="row row--danger" data-confirm="1" data-server="worldCarsReset"><span data-i18n="admin.ev.cars">RESET WORLD CARS</span><span class="row__hint" data-i18n="admin.ev.cars_hint">deletes unowned system cars and respawns them over the map</span></button>
+                <p class="mpane__label"><span data-i18n="admin.h.zombies">ZOMBIES</span></p>
+                <button class="row" data-server="horde"><span data-i18n="admin.h.trigger_a_horde">TRIGGER A HORDE</span><span class="row__hint">scans every spawn zone, not your position</span></button>
+                <button class="row row--danger" data-confirm="1" data-server="zombieReset"><span data-i18n="admin.h.clear_all_walkers">CLEAR ALL WALKERS</span><span class="row__hint">they repopulate from the simulation</span></button>
+                <button class="row" data-local="zombieHealthbars"><span data-i18n="admin.h.zombie_health_bars">ZOMBIE HEALTH BARS</span><span class="row__state" id="st-zombiehp">OFF</span></button>
+            </div>
+
+            <div class="mpane" data-pane="vehicle">
+                <p class="mpane__label" data-i18n="admin.h.vehicle">VEHICLE</p>
+                <div id="vehicles"></div>
+                <p class="mpane__label" data-i18n="admin.v.current">THE CAR I AM IN / LOOKING AT</p>
+                <button class="row" data-local="repairVehicle"><span data-i18n="admin.u.repair_one">REPAIR THE CAR I AM IN / LOOKING AT</span></button>
+                <button class="row row--danger" data-confirm="1" data-local="deleteVehicle"><span data-i18n="admin.u.dv_one">DELETE THE CAR I AM IN / LOOKING AT</span></button>
+                <div class="split">
+                    <input id="vehRadius" type="number" value="25" min="1" max="500" />
+                    <button class="row row--inline row--danger" data-confirm="1" data-local="deleteVehicle" data-radius-from="vehRadius" data-i18n="admin.u.dv_radius">DELETE ALL IN RADIUS (M)</button>
+                </div>
+                <p class="hint" data-i18n="admin.u.dv_hint">Owned cars are stored, not lost. Cars with players inside are skipped.</p>
+                <p class="mpane__label"><span data-i18n="admin.h.car_tuning">CAR TUNING</span></p>
+                <button class="row" data-local="tuningRead"><span data-i18n="admin.h.read_this_car_s_tune_into_the_database">READ THIS CAR'S TUNE INTO THE DATABASE</span></button>
+                <button class="row" data-local="tuningApply"><span data-i18n="admin.h.apply_this_car_s_saved_tune">APPLY THIS CAR'S SAVED TUNE</span></button>
+                <p class="mpane__label"><span data-i18n="admin.h.testing">TESTING</span></p>
+                <button data-confirm="1" class="row row--danger" data-local="failVehicle" data-seconds="10"><span data-i18n="admin.h.fail_current_car_in_10s">FAIL CURRENT CAR IN 10S</span></button>
+                <button data-confirm="1" class="row row--danger" data-local="failVehicle" data-seconds="15"><span data-i18n="admin.h.fail_current_car_in_15s">FAIL CURRENT CAR IN 15S</span></button>
+            </div>
+
+            <div class="mpane" data-pane="power">
+                <p class="mpane__label"><span data-i18n="admin.p_grid">GENERATORS AND GRID</span></p>
+                <button class="row" id="pBlackout"><span data-i18n="admin.u.blackout">BLACKOUT (ALL GENERATORS OFF)</span><span class="row__state" id="st-blackout3">OFF</span></button>
+                <button class="row" id="pRestore"><span data-i18n="admin.p_restore">RESTORE POWER EVERYWHERE</span><span class="row__hint" data-i18n="admin.p_restore_hint">all on, refuelled, repaired</span></button>
+                <button class="row row--ghost" id="pRefresh"><span data-i18n="admin.p_refresh">REFRESH</span></button>
+                <p class="mpane__label"><span data-i18n="admin.p_zones">ZONES</span></p>
+                <div id="powerList"></div>
+                <p class="mpane__label"><span data-i18n="admin.p_stations">GAS STATIONS</span></p>
+                <div id="pumpList"></div>
+            </div>
+
+            <div class="mpane" data-pane="debug">
+                <p class="mpane__label"><span data-i18n="admin.overlays">OVERLAYS</span><span class="row__hint" data-i18n="admin.overlays_hint"> - off after relog</span></p>
+                <button class="row" data-local="coords"><span data-i18n="admin.h.show_coords_overlay">SHOW COORDS OVERLAY</span><span class="row__state" id="st-coords">OFF</span></button>
+                <button class="row" data-local="propId"><span data-i18n="admin.h.alt_look_prop_id_overlay">ALT-LOOK PROP ID OVERLAY</span><span class="row__state" id="st-propid">OFF</span></button>
+                <p class="mpane__label" data-i18n="admin.tools">TOOLS</p>
+                <button class="row" data-local="copyCoords"><span data-i18n="admin.h.print_my_coords_to_console">PRINT MY COORDS TO CONSOLE</span></button>
+                <button class="row" data-local="entities"><span data-i18n="admin.h.count_nearby_entities">COUNT NEARBY ENTITIES</span></button>
+                <button class="row" data-local="zombieInfo"><span data-i18n="admin.h.zombie_sim_state">ZOMBIE SIM STATE</span></button>
+                <!-- Teleport and camera tools -->
+                <button class="row" data-local="forceZombie" data-close="1"><span data-i18n="admin.h.force_spawn_a_zombie_in_front_of_me">FORCE SPAWN A ZOMBIE IN FRONT OF ME</span><span class="row__hint">real pipeline</span></button>
+                <button class="row" data-local="forceEatingZombie" data-close="1"><span data-i18n="admin.h.force_spawn_an_eating_zombie">FORCE SPAWN AN EATING ZOMBIE</span><span class="row__hint">22m away - close enough to watch, too far for it to notice you</span></button>
+                <!-- One row per archetype in bs_zombies' config, built by app.js from the list the client sends -->
+                <p class="mpane__label"><span data-i18n="admin.h.spawn_system">SPAWN SYSTEM</span></p>
+                <button class="row" data-server="zspawnmode" data-mode="simulation"><span data-i18n="admin.h.use_simulation">USE SIMULATION</span><span class="row__hint">nodes, depletion, migration</span></button>
+                <button class="row" data-server="zspawnmode" data-mode="local"><span data-i18n="admin.h.use_local_ring">USE LOCAL RING</span><span class="row__hint">no simulation - the control</span></button>
+                <button class="row" data-server="zspawnmode"><span data-i18n="admin.h.which_mode_am_i_in">WHICH MODE AM I IN?</span></button>
+
+                <p class="mpane__label"><span data-i18n="admin.h.spawn_a_specific_type">SPAWN A SPECIFIC TYPE</span></p>
+                <div id="zombieTypes"></div>
+                <button class="row" data-local="tpNearestZombie" data-close="1"><span data-i18n="admin.h.teleport_to_nearest_zombie">TELEPORT TO NEAREST ZOMBIE</span></button>
+                <button class="row" data-local="spectateNearestZombie" data-close="1"><span data-i18n="admin.h.spectate_nearest_zombie">SPECTATE NEAREST ZOMBIE</span><span class="row__hint">ESC to stop</span></button>
+                <button class="row" data-server="diagnostics"><span data-i18n="admin.h.server_diagnostics">SERVER DIAGNOSTICS</span></button>
+                <p class="mpane__label"><span data-i18n="admin.h.test_kits">TEST KITS</span></p>
+                <button data-confirm="1" class="row row--danger" data-server="wipeInventory"><span data-i18n="admin.h.wipe_my_inventory">WIPE MY INVENTORY</span></button>
+                <pre id="debugOut" class="debug"></pre>
+            </div>
+
+            <!-- Faction sanctions and jails (bs_faction_bases/server/sv_sanctions.lua) -->
+            <div class="mpane" data-pane="sanctions">
+                <p class="mpane__label"><span data-i18n="admin.h.issue">ISSUE</span><span class="row__hint"> - target: ACTING ON, or a character id</span></p>
+                <div class="split">
+                    <input id="sxChar" type="number" min="1" placeholder="char id" />
+                    <select id="sxTemplate" class="sx-select"></select>
+                </div>
+                <div class="split">
+                    <input id="sxMinutes" type="number" min="1" placeholder="minutes" />
+                    <input id="sxReason" type="text" maxlength="255" placeholder="reason" class="sx-wide" />
+                </div>
+                <div class="split">
+                    <input id="sxJailScope" type="text" value="global" placeholder="jail: global / faction id" class="sx-wide" />
+                </div>
+                <button class="row" id="sxIssue"><span data-i18n="admin.h.issue_sanction_on_target">ISSUE SANCTION ON TARGET</span></button>
+                <div class="split">
+                    <input id="sxFaction" type="text" placeholder="faction id" class="sx-wide" />
+                    <button data-confirm="1" class="row row--inline row--danger" id="sxIssueFaction"><span data-i18n="admin.h.issue_on_whole_faction">ISSUE ON WHOLE FACTION</span></button>
+                </div>
+                <p class="mpane__label"><span data-i18n="admin.h.active_sanctions">ACTIVE SANCTIONS</span></p>
+                <button class="row row--ghost" id="sxRefresh"><span data-i18n="admin.h.refresh">REFRESH</span><span class="row__hint">filter: faction id above</span></button>
+                <div id="sxList"></div>
+
+                <p class="mpane__label"><span data-i18n="admin.h.jails">JAILS</span><span class="row__hint"> - 'global' is the admin jail; stand where you want each point</span></p>
+                <div class="split">
+                    <input id="sxScope" type="text" value="global" class="sx-wide" />
+                    <button class="row row--inline" id="sxJailLoad"><span data-i18n="admin.h.load">LOAD</span></button>
+                </div>
+                <div class="split">
+                    <input id="sxRadius" type="number" value="25" min="5" max="150" />
+                    <button class="row row--inline" id="sxOrigin"><span data-i18n="admin.h.set_origin_radius_here">SET ORIGIN + RADIUS HERE</span></button>
+                </div>
+                <button class="row" id="sxExit"><span data-i18n="admin.h.set_release_point_here">SET RELEASE POINT HERE</span></button>
+                <button class="row" id="sxCell"><span data-i18n="admin.h.add_cell_here">ADD CELL HERE</span></button>
+                <div id="sxJail"></div>
+            </div>
+
+            <!-- Built by js/staff.js -->
+            <div class="mpane" data-pane="test">
+                <p class="mpane__label" data-i18n="admin.t.mode">TEST SERVER MODE</p>
+                <div id="tsMode" class="tsmode">-</div>
+                <p class="mpane__label" data-i18n="admin.t.allowed">WHAT PLAYERS MAY DO</p>
+                <div id="tsFlags" class="tsflags"></div>
+                <p class="hint" data-i18n="admin.t.f1_hint">Change these in F1, Test server.</p>
+                <p class="mpane__label" data-i18n="admin.t.access">TESTER ACCESS</p>
+                <button class="row" data-server="toggleTester"><span data-i18n="admin.t.toggle_tester">TOGGLE TESTER ACCESS (ACTING ON)</span></button>
+                <button class="row row--ghost" id="tsRefresh"><span data-i18n="admin.u.refresh">REFRESH</span></button>
+            </div>
+        </div>
+        </div>
+
+        <footer class="menu__foot">
+            <span class="msg" id="msg"></span>
+            <span class="hint"><span data-i18n="admin.h.f10_esc_to_close">F10 / ESC TO CLOSE</span></span>
+        </footer>
+    </section>
+</div>
+<!-- Guard logs viewer (bs_guard_log, read only) -->
+<div id="gl" class="gl hidden" role="dialog" aria-modal="true">
+    <div class="gl__bar">
+        <h2 class="gl__title"><span data-i18n="admin.gl.title">Guard logs</span><small id="glTotal"></small></h2>
+        <button class="gl__x" id="glClose" title="ESC">ESC</button>
+    </div>
+    <div class="gl__filters">
+        <select id="glKind"><option value="" data-i18n="admin.gl.all_kinds">All kinds</option>
+            <option>teleport</option><option>speed</option><option>superjump</option><option>noclip</option>
+            <option>godmode</option><option>weapon</option><option>explosion</option><option>ptfx</option>
+            <option>entity</option><option>eventspam</option><option>money</option><option>items</option>
+            <option>admin</option><option>tester</option></select>
+        <input id="glQ" type="text" autocomplete="off" placeholder="Player, license or char id" data-i18n-attr="placeholder:admin.gl.search" />
+        <label><span data-i18n="admin.gl.from">From</span><input id="glFrom" type="date" /></label>
+        <label><span data-i18n="admin.gl.to">To</span><input id="glTo" type="date" /></label>
+        <label><span data-i18n="admin.gl.min">Min %</span><input id="glMin" type="number" min="0" max="100" value="0" /></label>
+        <select id="glPer"><option>25</option><option>50</option><option>100</option></select>
+        <button id="glReset" data-i18n="admin.gl.reset">Reset</button>
+    </div>
+    <div class="gl__tablewrap">
+        <table class="gl__table">
+            <thead><tr>
+                <th data-sort="time" data-i18n="admin.gl.c_time">Time</th>
+                <th data-sort="player" data-i18n="admin.gl.c_player">Player</th>
+                <th data-sort="char" data-i18n="admin.gl.c_char">Char</th>
+                <th data-sort="kind" data-i18n="admin.gl.c_kind">Kind</th>
+                <th data-sort="confidence" data-i18n="admin.gl.c_conf">Conf.</th>
+                <th data-i18n="admin.gl.c_details">Details</th>
+                <th data-i18n="admin.gl.c_coords">Coords</th>
+            </tr></thead>
+            <tbody id="glBody"></tbody>
+        </table>
+        <p class="gl__empty hidden" id="glEmpty" data-i18n="admin.gl.empty">No entries match.</p>
+    </div>
+    <div class="gl__pager">
+        <button id="glPrev" data-i18n="admin.gl.prev">Prev</button>
+        <span id="glPage"></span>
+        <button id="glNext" data-i18n="admin.gl.next">Next</button>
+    </div>
+    <aside id="glDrawer" class="gl__drawer hidden">
+        <div class="gl__dhead"><b data-i18n="admin.gl.entry">Entry</b><button id="glDClose" title="ESC">x</button></div>
+        <dl id="glDBody"></dl>
+        <div class="gl__dact">
+            <button id="glTp" data-i18n="admin.gl.teleport">Teleport</button>
+            <button id="glSpec" data-i18n="admin.gl.spectate">Spectate</button>
+            <button id="glCopy" data-i18n="admin.gl.copy">Copy</button>
+        </div>
+        <button id="glStop" class="gl__stop" data-i18n="admin.gl.stop_spec">Stop spectating</button>
+    </aside>
+</div>
+<!-- The shared item icon set. One drawing per item, for every UI. -->
+<script src="nui://bs_ui/html/js/icons.js?v=20260930h"></script>
+<datalist id="itemNames"></datalist>
+<script src="js/app.js?v=20261016b"></script>
+<script src="js/staff.js?v=20261016b"></script>
+</body>
+</html>

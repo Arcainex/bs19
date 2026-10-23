@@ -1,0 +1,175 @@
+/* bs_cinecam - side panel, not a modal. It must be usable while flying, so it never covers the middle of the frame or dims the game. */
+
+:root{
+    --soot:#0c0c0b; --panel:rgba(14,14,12,.94); --line:rgba(240,235,221,.10);
+    --line2:rgba(240,235,221,.18);
+    --bone:#f0ebdd; --dust:#a8a293; --faint:#6f6a5e;
+    --amber:#e08c46; --good:#7fd4a2; --blood:#b4574a;
+    --mono:'Consolas','DejaVu Sans Mono',monospace;
+    --sans:'Segoe UI',system-ui,sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:transparent}
+body{font-family:var(--sans);color:var(--bone);font-size:13px;user-select:none}
+
+#root{width:100%;height:100%}
+#root.hidden{display:none}
+
+/* panel */
+#panel{
+    position:absolute;top:0;right:0;bottom:0;width:370px;
+    background:var(--panel);border-left:1px solid var(--line2);
+    display:flex;flex-direction:column;
+    box-shadow:-24px 0 60px rgba(0,0,0,.5);
+}
+
+header{
+    display:flex;align-items:center;gap:.6rem;
+    padding:.85rem 1rem;border-bottom:1px solid var(--line);
+}
+header .title{
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--bone);flex:1;
+}
+#close{
+    background:none;border:0;color:var(--faint);font-size:1.4rem;
+    line-height:1;cursor:pointer;padding:0 .2rem;
+}
+#close:hover{color:var(--blood)}
+
+/* the big toggle */
+.bigrow{padding:.8rem 1rem 0}
+button.big{
+    width:100%;padding:.7rem;font-family:var(--mono);font-size:.72rem;
+    letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+    background:rgba(224,140,70,.12);border:1px solid var(--amber);
+    color:var(--amber);border-radius:2px;cursor:pointer;
+}
+button.big:hover{background:var(--amber);color:var(--soot)}
+button.big.active{
+    background:rgba(127,212,162,.12);border-color:var(--good);color:var(--good);
+}
+button.big.active:hover{background:var(--good);color:var(--soot)}
+
+/* readout */
+.readout{
+    display:flex;gap:.9rem;padding:.6rem 1rem;
+    font-family:var(--mono);font-size:.66rem;color:var(--faint);
+    border-bottom:1px solid var(--line);
+}
+
+/* tabs */
+#tabs{display:flex;border-bottom:1px solid var(--line)}
+.tab{
+    flex:1;background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--faint);font-family:var(--mono);font-size:.64rem;
+    letter-spacing:.12em;text-transform:uppercase;padding:.6rem .2rem;cursor:pointer;
+}
+.tab:hover{color:var(--dust)}
+.tab.on{color:var(--amber);border-bottom-color:var(--amber)}
+
+main{flex:1;overflow-y:auto;padding:1rem}
+section{display:none}
+section.on{display:block}
+
+hr{border:0;border-top:1px solid var(--line);margin:1rem 0}
+
+/* sliders */
+.slider{margin-bottom:.85rem}
+.slider .head{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.3rem}
+.slider label{font-size:.82rem;color:var(--dust);flex:1}
+.slider .val{
+    font-family:var(--mono);font-size:.72rem;color:var(--amber);
+    min-width:3.6em;text-align:right;
+}
+input[type=range]{
+    width:100%;height:3px;-webkit-appearance:none;appearance:none;
+    background:var(--line2);border-radius:2px;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:13px;height:13px;
+    border-radius:50%;background:var(--amber);cursor:pointer;
+    border:2px solid var(--soot);
+}
+
+/* checkbox */
+.check{
+    display:block;font-size:.82rem;color:var(--dust);
+    margin-bottom:.7rem;cursor:pointer;line-height:1.5;
+}
+.check input{margin-right:.5rem;accent-color:var(--amber);vertical-align:middle}
+.check em{display:block;margin-left:1.5rem;font-style:normal;
+    font-size:.72rem;color:var(--faint)}
+
+/* presets */
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:1rem}
+.presets button{
+    padding:.45rem .5rem;font-size:.72rem;background:rgba(240,235,221,.04);
+    border:1px solid var(--line);color:var(--dust);border-radius:2px;cursor:pointer;
+}
+.presets button:hover{border-color:var(--amber);color:var(--amber)}
+
+/* blocks */
+.hint{
+    font-size:.75rem;color:var(--faint);line-height:1.55;
+    border-left:2px solid var(--line2);padding-left:.7rem;margin:0 0 1rem;
+}
+.hint b{color:var(--dust)}
+.hint.warn{border-left-color:var(--blood)}
+.hint code{font-family:var(--mono);color:var(--amber);font-size:.9em}
+
+.btnrow{display:flex;gap:.4rem;margin-bottom:.5rem}
+.btnrow button{
+    flex:1;padding:.55rem;font-size:.75rem;border-radius:2px;cursor:pointer;
+    background:rgba(224,140,70,.12);border:1px solid var(--amber);color:var(--amber);
+}
+.btnrow button.big{font-size:.7rem}
+button.ghost{background:rgba(240,235,221,.04);border:1px solid var(--line2);color:var(--dust)}
+button.ghost:hover{border-color:var(--bone);color:var(--bone)}
+button.danger:hover{border-color:var(--blood);color:var(--blood)}
+#reset{width:100%;padding:.55rem;border-radius:2px;cursor:pointer;font-size:.75rem}
+
+.pathstate{
+    font-family:var(--mono);font-size:.75rem;color:var(--dust);
+    padding:.5rem .7rem;background:rgba(240,235,221,.03);
+    border:1px solid var(--line);border-radius:2px;margin-bottom:.7rem;
+}
+.pathstate b{color:var(--amber)}
+#pathPlaying{color:var(--good);margin-left:.5rem}
+
+table.keys{width:100%;border-collapse:collapse;margin-bottom:1rem}
+table.keys td{padding:.3rem 0;border-bottom:1px solid var(--line);
+    font-size:.78rem;color:var(--dust);vertical-align:top}
+table.keys td:first-child{width:38%;white-space:nowrap}
+
+kbd{
+    font-family:var(--mono);font-size:.68rem;background:rgba(240,235,221,.07);
+    border:1px solid var(--line2);border-bottom-width:2px;border-radius:3px;
+    padding:.08rem .35rem;color:var(--bone);margin-right:.15rem;
+}
+
+/* footer */
+footer{
+    display:flex;align-items:center;gap:.5rem;
+    padding:.55rem 1rem;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:.64rem;color:var(--faint);
+}
+footer .spacer{flex:1}
+#status{color:var(--good)}
+.muted{color:var(--faint)}
+
+
+/* The grade picker. Chips instead of a select, so the options do not cover the frame while you compare looks. */
+.grades { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 10px; }
+.grades button {
+    flex: 0 0 auto; cursor: pointer;
+    padding: 4px 9px; border-radius: 3px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.14);
+    color: #cfcabb; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+}
+.grades button:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+.grades button.on {
+    border-color: #e08c46; color: #e08c46; background: rgba(224,140,70,.14);
+}
+#gradeBox.hidden { display: none !important; }

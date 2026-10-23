@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>Beyond Survival</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+    <canvas id="spores"></canvas>
+
+    <main class="stage">
+        <header class="head">
+            <div class="head__day" id="day">DAY 1,412</div>
+            <div class="head__since">SINCE THE OUTBREAK</div>
+        </header>
+
+        <section class="log" id="log" aria-live="polite"></section>
+
+        <section class="tip">
+            <span class="tip__label">FIELD NOTE</span>
+            <span class="tip__text" id="tip"></span>
+        </section>
+
+        <footer class="foot">
+            <div class="bar"><div class="bar__fill" id="bar"></div></div>
+            <div class="foot__row">
+                <span class="foot__status" id="status">ESTABLISHING UPLINK</span>
+                <span class="foot__pct" id="pct">0%</span>
+            </div>
+        </footer>
+    </main>
+
+    <script src="lang.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

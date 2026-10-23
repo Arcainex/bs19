@@ -1,0 +1,69 @@
+/* No backdrop-filter anywhere: NUI is composited over the game, so it blurs transparent black into an opaque slab. Real blur comes from the game side (TriggerScreenblurFadeIn). */
+
+/* notify.css - no cards: coloured edge, icon and text that fades out, each glyph with its own shadow. */
+
+.notifications {
+    position: absolute;
+    top: calc(2.4vh / var(--ui-scale, 1));
+    right: calc(1.6vw / var(--ui-scale, 1));
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 300px;
+    pointer-events: none;
+}
+
+.notifications[data-position='top-left'] { right: auto; left: calc(1.6vw / var(--ui-scale, 1)); }
+.notifications[data-position='bottom-right'] { top: auto; bottom: calc(2.4vh / var(--ui-scale, 1)); flex-direction: column-reverse; }
+
+.notification {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    padding: 0.45rem 0.7rem;
+    /* Fades away to the right instead of sitting in a black box. */
+    background: linear-gradient(90deg, rgba(10, 10, 9, 0.52), rgba(10, 10, 9, 0) 92%);
+    border: none;
+    border-left: 2px solid var(--bs-accent);
+    animation: bs-slide-in 190ms ease-out;
+}
+
+.notification--closing { animation: bs-slide-out 190ms ease-in forwards; }
+
+.notification--success { border-left-color: var(--bs-good); }
+.notification--error   { border-left-color: var(--bs-danger); }
+.notification--warn    { border-left-color: var(--bs-warn); }
+.notification--info    { border-left-color: var(--bs-accent); }
+
+.notification__icon {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    margin-top: 2px;
+    opacity: 0.9;
+    filter: drop-shadow(0 1px 2px #000);
+}
+
+.notification__body { flex: 1; min-width: 0; }
+
+.notification__title {
+    font-size: 0.701rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--bs-text-muted);
+    margin-bottom: 1px;
+    text-shadow: 0 1px 3px #000;
+}
+
+.notification__message {
+    font-size: 1.02rem;
+    line-height: 1.4;
+    letter-spacing: 0.03em;
+    color: var(--bs-text);
+    word-wrap: break-word;
+    text-shadow: 0 1px 3px #000, 0 0 9px rgba(0, 0, 0, 0.95);
+}
+
+/* Same halo as everything else (defined in root.css, which this page loads). */
+.notification, .notification * { text-shadow: var(--bs-halo); }

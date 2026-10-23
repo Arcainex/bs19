@@ -1,0 +1,248 @@
+<!doctype html>
+<html>
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+<meta charset="utf-8">
+<style>
+    :root { --amber: #d7a046; --bone: #e8e1d2; --dust: #a59f90; --danger: #d9493b; --ok: #6fd18a; --mono: 'Consolas', 'Courier New', monospace; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; font-family: var(--mono); color: var(--bone); user-select: none; }
+    .hidden { display: none !important; }
+
+    /* active gadget timers, top right */
+    #active { position: absolute; top: calc(18vh / var(--ui-scale, 1)); right: 18px; display: flex; flex-direction: column; gap: 6px; }
+    .gchip { min-width: 170px; padding: 6px 10px; background: rgba(12, 12, 10, .72); border-left: 2px solid var(--amber); font-size: 11px; letter-spacing: .08em; }
+    .gchip b { color: var(--amber); font-weight: 700; }
+    .gchip .bar { height: 3px; margin-top: 4px; background: rgba(255, 255, 255, .1); }
+    .gchip .bar i { display: block; height: 100%; background: var(--amber); }
+
+    /* drone feed: rust / ash / bone / charcoal */
+    #drone { position: absolute; inset: 0; --rust: #b5562b; --rust2: #d9793f; --ash: #8a857b; --bone: #e6dcc4; --char: rgba(20, 18, 16, .62); --warn: #e0412f;
+             font-size: clamp(10px, calc(1.1vh / var(--ui-scale, 1)), 14px); color: var(--bone); pointer-events: none; animation: bootIn .6s ease-out; }
+    @keyframes bootIn { 0% { opacity: 0; filter: brightness(3); } 100% { opacity: 1; filter: none; } }
+    #noise { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; mix-blend-mode: screen; }
+    #hudc { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .scan { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); opacity: .5; }
+    .scan::after { content: ''; position: absolute; left: 0; right: 0; height: calc(18vh / var(--ui-scale, 1)); background: linear-gradient(transparent, rgba(230,220,196,.05), transparent); animation: sweep 6s linear infinite; }
+    @keyframes sweep { from { top: calc(-18vh / var(--ui-scale, 1)); } to { top: 100%; } }
+    .vig { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(10,8,6,.75) 100%); }
+    .corner { position: absolute; width: calc(5vh / var(--ui-scale, 1)); height: calc(5vh / var(--ui-scale, 1)); border: 2px solid var(--rust2); opacity: .85; }
+    .c1 { top: calc(3vh / var(--ui-scale, 1)); left: calc(3vh / var(--ui-scale, 1)); border-right: 0; border-bottom: 0; } .c2 { top: calc(3vh / var(--ui-scale, 1)); right: calc(3vh / var(--ui-scale, 1)); border-left: 0; border-bottom: 0; }
+    .c3 { bottom: calc(3vh / var(--ui-scale, 1)); left: calc(3vh / var(--ui-scale, 1)); border-right: 0; border-top: 0; } .c4 { bottom: calc(3vh / var(--ui-scale, 1)); right: calc(3vh / var(--ui-scale, 1)); border-left: 0; border-top: 0; }
+    .panel { position: absolute; background: var(--char); border-left: 2px solid var(--rust); padding: .6em .9em; letter-spacing: .12em; white-space: nowrap; }
+    .lbl { color: var(--ash); font-size: .85em; }
+    .val { color: var(--bone); font-weight: 700; }
+    .tl { top: calc(5vh / var(--ui-scale, 1)); left: calc(5vh / var(--ui-scale, 1)); }
+    .rec { color: var(--warn); font-weight: 700; }
+    .rec::before { content: ''; display: inline-block; width: .8em; height: .8em; border-radius: 50%; background: var(--warn); margin-right: .5em; animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .tr { top: calc(5vh / var(--ui-scale, 1)); right: calc(5vh / var(--ui-scale, 1)); display: grid; grid-template-columns: auto auto; column-gap: 1.2em; row-gap: .25em; text-align: right; border-left: 0; border-right: 2px solid var(--rust); }
+    .bl { bottom: calc(8vh / var(--ui-scale, 1)); left: calc(5vh / var(--ui-scale, 1)); width: 17em; }
+    .br { bottom: calc(8vh / var(--ui-scale, 1)); right: calc(5vh / var(--ui-scale, 1)); width: 17em; border-left: 0; border-right: 2px solid var(--rust); text-align: right; }
+    .bc { bottom: calc(8vh / var(--ui-scale, 1)); left: 50%; transform: translateX(-50%); width: 14em; text-align: center; border-left: 0; border-bottom: 2px solid var(--rust); }
+    .gauge { height: .7em; margin-top: .45em; border: 1px solid rgba(230,220,196,.4); position: relative; overflow: hidden; }
+    .gauge i { display: block; height: 100%; background: linear-gradient(90deg, var(--rust), var(--rust2)); transition: width .2s linear; }
+    .gauge.bad i { background: var(--warn); animation: pulse .6s ease-in-out infinite alternate; }
+    .gauge::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 9%, rgba(20,18,16,.8) 9% 10%); }
+    @keyframes pulse { from { opacity: 1; } to { opacity: .45; } }
+    .sig { display: inline-flex; align-items: flex-end; gap: 3px; height: 1.4em; vertical-align: middle; margin-left: .6em; }
+    .sig i { width: .45em; background: rgba(230,220,196,.18); }
+    .sig i.on { background: var(--bone); }
+    .sig.weak i.on { background: var(--warn); }
+    .rng { position: absolute; left: 50%; top: calc(50% + calc(6vh / var(--ui-scale, 1))); transform: translateX(-50%); letter-spacing: .2em; color: var(--bone); text-shadow: 0 0 4px #000; }
+    .warns { position: absolute; left: 50%; top: calc(30vh / var(--ui-scale, 1)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .5em; }
+    .warn { padding: .35em 1.2em; border: 1px solid var(--warn); color: var(--warn); background: rgba(40,10,6,.55); font-weight: 700; letter-spacing: .3em; animation: flash .8s steps(2) infinite; }
+    @keyframes flash { 50% { opacity: .25; } }
+    .keys { position: absolute; bottom: calc(3.2vh / var(--ui-scale, 1)); left: 50%; transform: translateX(-50%); font-size: .8em; letter-spacing: .12em; color: var(--ash); white-space: nowrap; }
+    .keys b { color: var(--bone); font-weight: 400; border: 1px solid rgba(230,220,196,.3); padding: 0 .35em; margin: 0 .2em; }
+    .mode { color: var(--rust2); }
+</style>
+</head>
+<body>
+<div id="active"></div>
+
+<div id="drone" class="hidden">
+    <canvas id="noise"></canvas>
+    <div class="scan"></div>
+    <div class="vig"></div>
+    <canvas id="hudc"></canvas>
+    <div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+    <div class="panel tl"><span class="rec" data-i18n="ui.rec">REC</span> <span id="clock">00:00:00</span><br><span class="lbl" data-i18n="ui.uav_7_scout_feed">UAV-7 SCOUT FEED</span> <span class="mode" id="mode" data-i18n="ui.hover">HOVER</span></div>
+    <div class="panel tr">
+        <span class="lbl" data-i18n="ui.alt">ALT</span><span class="val" id="alt">0 M</span>
+        <span class="lbl" data-i18n="ui.spd">SPD</span><span class="val" id="spd">0.0 M/S</span>
+        <span class="lbl" data-i18n="ui.zoom">ZOOM</span><span class="val" id="zoom">x1.0</span>
+        <span class="lbl" data-i18n="ui.marked">MARKED</span><span class="val" id="marks">0</span>
+    </div>
+    <div class="panel bl"><span class="lbl" data-i18n="ui.battery">BATTERY</span> <span class="val" id="bpct">0%</span> <span class="lbl" style="float:right" id="secs">0:00</span><div class="gauge" id="batt"><i id="battFill"></i></div></div>
+    <div class="panel bc"><span class="lbl" data-i18n="ui.hull">HULL</span> <span class="val" id="hp">100%</span><div class="gauge" id="hull"><i id="hullFill"></i></div></div>
+    <div class="panel br"><span class="lbl" data-i18n="ui.link">LINK</span> <span class="val" id="dist">0 / 0 M</span><span class="sig" id="sig"><i style="height:20%"></i><i style="height:40%"></i><i style="height:60%"></i><i style="height:80%"></i><i style="height:100%"></i></span><div class="gauge" id="link"><i id="linkFill"></i></div></div>
+    <div class="rng" id="rng" data-i18n="ui.rng">RNG ---</div>
+    <div class="warns" id="warns"></div>
+    <div class="keys"><b data-i18n="ui.wasd">WASD</b><span data-i18n="ui.k_move">MOVE</span> <b data-i18n="ui.space">SPACE</b>/<b data-i18n="ui.ctrl">CTRL</b><span data-i18n="ui.k_alt">ALT</span> <b data-i18n="ui.shift">SHIFT</b><span data-i18n="ui.k_boost">BOOST</span> <b data-i18n="ui.mouse">MOUSE</b><span data-i18n="ui.k_look">LOOK</span> <b data-i18n="ui.alt">ALT</b><span data-i18n="ui.k_zoom">ZOOM</span> <b>E</b><span data-i18n="ui.k_ping">PING</span> <b>F</b>/<b data-i18n="ui.bksp">BKSP</b><span data-i18n="ui.k_exit">EXIT</span></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const noise = $('noise');
+const nctx = noise.getContext('2d');
+const hudc = $('hudc');
+const hctx = hudc.getContext('2d');
+let noiseOn = false;
+const D = { heading: 0, alt: 0, pitch: 0, static: 0, ratio: 0 };   // last values from Lua
+const V = { heading: 0, alt: 0, pitch: 0 };                        // smoothed for drawing
+const COL = { bone: 'rgba(230,220,196,.85)', dim: 'rgba(230,220,196,.35)', rust: '#d9793f' };
+
+function drawNoise() {
+    const w = noise.width = 320, h = noise.height = 180;
+    const img = nctx.createImageData(w, h);
+    for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.random() * 255;
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+        img.data[i + 3] = 255;
+    }
+    nctx.putImageData(img, 0, 0);
+    // a little grain always, more with distance, a lot once static kicks in
+    noise.style.opacity = String(Math.min(0.85, 0.03 + D.ratio * 0.1 + D.static * 0.75));
+}
+
+function text(s, x, y, align, col) { hctx.textAlign = align; hctx.fillStyle = col || COL.bone; hctx.fillText(s, x, y); }
+
+function drawHud(t) {
+    const W = hudc.width = window.innerWidth, H = hudc.height = window.innerHeight;
+    const u = Math.max(10, Math.min(14, H * 0.011));
+    hctx.font = `${u}px Consolas, 'Courier New', monospace`;
+    hctx.lineWidth = 1.5;
+    // ease toward the latest values, headings wrap
+    let dh = ((D.heading - V.heading + 540) % 360) - 180;
+    V.heading = (V.heading + dh * 0.25 + 360) % 360;
+    V.alt += (D.alt - V.alt) * 0.25;
+    V.pitch += (D.pitch - V.pitch) * 0.25;
+
+    // compass tape, top centre
+    const cw = W * 0.34, cx = W / 2, cy = H * 0.07, ppd = cw / 90;
+    hctx.strokeStyle = COL.dim; hctx.beginPath(); hctx.moveTo(cx - cw / 2, cy + 14); hctx.lineTo(cx + cw / 2, cy + 14); hctx.stroke();
+    const names = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+    for (let d = Math.floor(V.heading - 45); d <= V.heading + 45; d++) {
+        if (d % 5) continue;
+        const x = cx + (d - V.heading) * ppd, dd = ((d % 360) + 360) % 360;
+        const a = 1 - Math.abs(x - cx) / (cw / 2);
+        hctx.globalAlpha = Math.max(0, a);
+        hctx.strokeStyle = COL.bone; hctx.beginPath(); hctx.moveTo(x, cy + 14); hctx.lineTo(x, cy + (dd % 15 ? 9 : 4)); hctx.stroke();
+        if (dd % 45 === 0) text(names[dd], x, cy - 2, 'center', dd === 0 ? COL.rust : COL.bone);
+        else if (dd % 15 === 0) text(String(dd), x, cy, 'center', COL.dim);
+    }
+    hctx.globalAlpha = 1;
+    hctx.fillStyle = COL.rust; hctx.beginPath(); hctx.moveTo(cx, cy + 16); hctx.lineTo(cx - 6, cy + 24); hctx.lineTo(cx + 6, cy + 24); hctx.fill();
+    text(String(Math.round(V.heading) % 360).padStart(3, '0') + '°', cx, cy + 24 + u * 1.3, 'center');
+
+    // altitude ladder, left
+    const lx = W * 0.12, lh = H * 0.36, ly = H / 2, ppm = lh / 40;
+    hctx.strokeStyle = COL.dim; hctx.beginPath(); hctx.moveTo(lx, ly - lh / 2); hctx.lineTo(lx, ly + lh / 2); hctx.stroke();
+    for (let m = Math.floor(V.alt - 20); m <= V.alt + 20; m++) {
+        if (m % 2) continue;
+        const y = ly - (m - V.alt) * ppm;
+        hctx.globalAlpha = Math.max(0, 1 - Math.abs(y - ly) / (lh / 2));
+        hctx.strokeStyle = COL.bone; hctx.beginPath(); hctx.moveTo(lx, y); hctx.lineTo(lx + (m % 10 ? 6 : 12), y); hctx.stroke();
+        if (m % 10 === 0) text(String(m), lx - 6, y + u / 3, 'right', COL.dim);
+    }
+    hctx.globalAlpha = 1;
+    hctx.strokeStyle = COL.rust; hctx.strokeRect(lx + 16, ly - u, u * 5, u * 2);
+    text(`${V.alt.toFixed(1)}`, lx + 16 + u * 2.5, ly + u / 3, 'center', COL.rust);
+    text(window.t('ui.alt_m', { fallback: 'ALT M' }), lx, ly - lh / 2 - 8, 'center', COL.dim);
+
+    // pitch ladder, right
+    const px = W * 0.88, ppp = lh / 60;
+    hctx.strokeStyle = COL.dim; hctx.beginPath(); hctx.moveTo(px, ly - lh / 2); hctx.lineTo(px, ly + lh / 2); hctx.stroke();
+    for (let p = -90; p <= 30; p += 5) {
+        const y = ly - (p - V.pitch) * ppp;
+        if (Math.abs(y - ly) > lh / 2) continue;
+        hctx.globalAlpha = Math.max(0, 1 - Math.abs(y - ly) / (lh / 2));
+        hctx.strokeStyle = COL.bone; hctx.beginPath(); hctx.moveTo(px, y); hctx.lineTo(px - (p % 15 ? 6 : 12), y); hctx.stroke();
+        if (p % 15 === 0) text(String(p), px + 6, y + u / 3, 'left', COL.dim);
+    }
+    hctx.globalAlpha = 1;
+    hctx.strokeStyle = COL.rust; hctx.strokeRect(px - 16 - u * 4, ly - u, u * 4, u * 2);
+    text(`${Math.round(V.pitch)}°`, px - 16 - u * 2, ly + u / 3, 'center', COL.rust);
+    text(window.t('ui.pitch', { fallback: 'PITCH' }), px, ly - lh / 2 - 8, 'center', COL.dim);
+
+    // reticle: fixed cross, slow rotating ring
+    const rx = W / 2, ry = H / 2, r = Math.max(22, H * 0.035);
+    hctx.strokeStyle = COL.bone;
+    hctx.beginPath();
+    [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([a, b]) => { hctx.moveTo(rx + a * r * 0.35, ry + b * r * 0.35); hctx.lineTo(rx + a * r * 0.9, ry + b * r * 0.9); });
+    hctx.stroke();
+    hctx.fillStyle = COL.rust; hctx.fillRect(rx - 1.5, ry - 1.5, 3, 3);
+    hctx.strokeStyle = COL.dim;
+    const rot = t / 4000;
+    for (let i = 0; i < 4; i++) { hctx.beginPath(); hctx.arc(rx, ry, r * 1.25, rot + i * Math.PI / 2 + 0.2, rot + i * Math.PI / 2 + 1.2); hctx.stroke(); }
+}
+
+function loop(t) {
+    if (!noiseOn) return;
+    drawNoise();
+    drawHud(t);
+    const d = new Date();
+    $('clock').textContent = d.toTimeString().slice(0, 8);
+    requestAnimationFrame(loop);
+}
+
+function mmss(s) { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+
+function drone(d) {
+    const box = $('drone');
+    $('active').classList.toggle('hidden', !!d.show);   // gadget timers stay out of the feed
+    if (!d.show) { box.classList.add('hidden'); noiseOn = false; return; }
+    box.classList.remove('hidden');
+    Object.assign(D, { heading: d.heading || 0, alt: d.alt || 0, pitch: d.pitch || 0, static: d.static || 0, ratio: d.ratio || 0 });
+    $('alt').textContent = `${Math.round(d.alt || 0)} M`;
+    $('spd').textContent = `${(d.speed || 0).toFixed(1)} M/S`;
+    $('marks').textContent = d.marks || 0;
+    $('zoom').textContent = `x${(d.zoom || 1).toFixed(1)}`;
+    $('mode').textContent = d.boost ? t('ui.m_boost', { fallback: 'BOOST' }) : d.idle ? t('ui.m_hover', { fallback: 'HOVER' }) : t('ui.m_cruise', { fallback: 'CRUISE' });
+    const bat = d.battery || 0, hp = d.hp || 0, sig = d.signal || 0;
+    $('bpct').textContent = `${Math.round(bat * 100)}%`;
+    $('secs').textContent = t('ui.time_left', { t: mmss(d.secs) });
+    $('battFill').style.width = `${Math.round(bat * 100)}%`;
+    $('batt').classList.toggle('bad', bat < 0.2);
+    $('hp').textContent = `${Math.round(hp * 100)}%`;
+    $('hullFill').style.width = `${Math.round(hp * 100)}%`;
+    $('hull').classList.toggle('bad', hp < 0.35);
+    $('dist').textContent = `${Math.round(d.dist || 0)} / ${Math.round(d.maxRange || 0)} M`;
+    $('linkFill').style.width = `${Math.round(sig * 100)}%`;
+    const bars = Math.ceil(sig * 5);
+    document.querySelectorAll('#sig i').forEach((n, i) => n.classList.toggle('on', i < bars));
+    $('sig').classList.toggle('weak', bars <= 1);
+    $('link').classList.toggle('bad', sig < 0.2);
+    $('rng').textContent = d.range >= 0 ? `${t('ui.rng', { fallback: 'RNG' })} ${d.range.toFixed(1)} M` : `${t('ui.rng', { fallback: 'RNG' })} ---`;
+    const w = [];
+    if (bat < 0.15) w.push(t('ui.w_battery', { fallback: 'LOW BATTERY' }));
+    if (sig < 0.2) w.push(t('ui.w_signal', { fallback: 'WEAK SIGNAL' }));
+    if (hp < 0.35) w.push(t('ui.w_hull', { fallback: 'HULL CRITICAL' }));
+    const html = w.map((s) => `<div class="warn">${s}</div>`).join('');
+    if ($('warns').innerHTML !== html) $('warns').innerHTML = html;
+    if (!noiseOn) { noiseOn = true; requestAnimationFrame(loop); }
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+const maxLeft = {};
+function active(list) {
+    $('active').innerHTML = (list || []).map((g) => {
+        maxLeft[g.kind] = Math.max(maxLeft[g.kind] || 0, g.left);
+        const pct = maxLeft[g.kind] ? Math.round(g.left / maxLeft[g.kind] * 100) : 0;
+        const ammo = g.ammo != null ? ` &middot; ${Number(g.ammo)} rds` : '';
+        return `<div class="gchip"><b>${esc(g.label).toUpperCase()}</b> ${Number(g.left)}s${ammo}<div class="bar"><i style="width:${pct}%"></i></div></div>`;
+    }).join('');
+    const live = new Set((list || []).map((g) => g.kind));
+    Object.keys(maxLeft).forEach((k) => { if (!live.has(k)) delete maxLeft[k]; });
+}
+
+window.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.action === 'drone') drone(d);
+    else if (d.action === 'active') active(d.list);
+});
+</script>
+</body>
+</html>

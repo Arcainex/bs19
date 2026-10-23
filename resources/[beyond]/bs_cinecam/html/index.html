@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>bs_cinecam</title>
+<link rel="stylesheet" href="css/style.css" />
+<script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+</head>
+<body>
+
+<!-- Hidden until the client says open. A NUI page is always "loaded"; what
+     makes it invisible is this class, never display juggling in JS. -->
+<div id="root" class="hidden">
+
+    <div id="panel">
+
+        <header>
+            <div class="title" data-i18n="ui.title">Cinematic camera</div>
+            <button id="close" title="Close (F3)" data-i18n-attr="title:ui.close">&times;</button>
+        </header>
+
+        <!-- The one control that matters, kept out of the tabs so it is never
+             more than zero clicks away. -->
+        <div class="bigrow">
+            <button id="toggleCam" class="big" data-i18n="ui.enter_cine">Enter cinematic camera mode</button>
+        </div>
+
+        <div id="readout" class="readout">
+            <span data-k="pos">-</span>
+            <span data-k="fov">-</span>
+            <span data-k="spd">-</span>
+        </div>
+
+        <nav id="tabs">
+            <button class="tab on" data-tab="feel" data-i18n="ui.tab_feel">Feel</button>
+            <button class="tab" data-tab="lens" data-i18n="ui.tab_lens">Lens</button>
+            <button class="tab" data-tab="world" data-i18n="ui.tab_world">World</button>
+            <button class="tab" data-tab="path" data-i18n="ui.tab_path">Path</button>
+            <button class="tab" data-tab="keys" data-i18n="ui.tab_keys">Keys</button>
+        </nav>
+
+        <main>
+
+            <!-- feel -->
+            <section data-page="feel" class="on">
+                <div class="presets" id="presets"></div>
+
+                <div class="hint" data-i18n-html="ui.hint_smooth">
+                    Smoothing values are <b>time constants in seconds</b> - how long the
+                    camera takes to cover most of the distance to what you are asking
+                    for. <b>0</b> is instant. Higher is heavier.
+                </div>
+
+                <div class="slider" data-key="moveSmooth" data-min="0" data-max="2" data-step="0.01" data-unit="s">
+                    <label data-i18n="ui.move_smooth">Movement smoothing</label>
+                </div>
+                <div class="slider" data-key="lookSmooth" data-min="0" data-max="2" data-step="0.01" data-unit="s">
+                    <label data-i18n="ui.look_smooth">Look smoothing</label>
+                </div>
+                <div class="slider" data-key="fovSmooth" data-min="0" data-max="2" data-step="0.01" data-unit="s">
+                    <label data-i18n="ui.zoom_smooth">Zoom smoothing</label>
+                </div>
+                <div class="slider" data-key="rollSmooth" data-min="0" data-max="2" data-step="0.01" data-unit="s">
+                    <label data-i18n="ui.roll_smooth">Roll smoothing</label>
+                </div>
+
+                <hr />
+
+                <div class="slider" data-key="speed" data-min="0.2" data-max="60" data-step="0.1" data-unit=" m/s">
+                    <label data-i18n="ui.base_speed">Base speed</label>
+                </div>
+                <div class="slider" data-key="fastMult" data-min="1" data-max="20" data-step="0.1" data-unit="&times;">
+                    <label data-i18n="ui.shift_mult">Shift multiplier</label>
+                </div>
+                <div class="slider" data-key="slowMult" data-min="0.02" data-max="1" data-step="0.01" data-unit="&times;">
+                    <label data-i18n="ui.slow_mult">Shift+Ctrl multiplier</label>
+                </div>
+                <div class="slider" data-key="sensitivity" data-min="0.1" data-max="3" data-step="0.05" data-unit="">
+                    <label data-i18n="ui.sens">Mouse sensitivity</label>
+                </div>
+
+                <label class="check"><input type="checkbox" data-key="scaleLookByFov" />
+                    <span data-i18n="ui.scale_look">Scale look speed with zoom</span>
+                    <em data-i18n="ui.scale_look_note">keeps a long-lens pan controllable</em></label>
+                <label class="check"><input type="checkbox" data-key="invertY" />
+                    <span data-i18n="ui.invert_y">Invert Y axis</span></label>
+            </section>
+
+            <!-- lens -->
+            <section data-page="lens">
+                <div class="slider" data-key="fov" data-min="6" data-max="110" data-step="0.5" data-unit="&deg;">
+                    <label data-i18n="ui.fov">Field of view</label>
+                </div>
+                <div class="hint" data-i18n="ui.hint_fov">Mouse wheel changes this while flying. Low numbers are a
+                    long lens: flat, compressed, hard to hold steady. High numbers are wide
+                    and exaggerate every movement.</div>
+
+                <hr />
+
+                <label class="check"><input type="checkbox" data-key="dofEnabled" />
+                    <span data-i18n="ui.dof">Depth of field</span></label>
+                <div class="slider" data-key="dofNear" data-min="0" data-max="10" data-step="0.1" data-unit=" m">
+                    <label data-i18n="ui.near">Near focus</label>
+                </div>
+                <div class="slider" data-key="dofFar" data-min="1" data-max="300" data-step="1" data-unit=" m">
+                    <label data-i18n="ui.far">Far focus</label>
+                </div>
+                <div class="slider" data-key="dofStrength" data-min="0" data-max="1" data-step="0.01" data-unit="">
+                    <label data-i18n="ui.blur">Blur strength</label>
+                </div>
+                <div class="hint warn" data-i18n="ui.hint_dof">GTA's depth of field is coarse. It reads well on a
+                    wide shot with a clear foreground and badly on anything mid-distance.</div>
+            </section>
+
+            <!-- world -->
+            <section data-page="world">
+                <!-- Grade picker, built at runtime from bs_ui's preset list (see `filters` in the payload and cl_grade.lua). Hidden when bs_ui is not running. -->
+                <div id="gradeBox" class="hidden">
+                    <label data-i18n="ui.grade">Grade</label>
+                    <div class="grades" id="grades"></div>
+                    <div class="slider" data-key="filterStrength" data-min="0" data-max="1" data-step="0.05" data-unit="">
+                        <label data-i18n="ui.grade_strength">Grade strength</label>
+                    </div>
+                    <div class="hint" id="gradeNote" data-i18n-html="ui.hint_grade">Only you see it, and only while
+                        you are flying &mdash; your own filter comes back when you land.
+                        <em>Mine</em> leaves whatever you picked in Settings alone.</div>
+                    <hr />
+                </div>
+
+                <div class="slider" data-key="timescale" data-min="0.05" data-max="1" data-step="0.01" data-unit="&times;">
+                    <label data-i18n="ui.timescale">Time scale</label>
+                </div>
+                <div class="hint" data-i18n="ui.hint_time">Slow motion. Path playback is measured in game time, so a
+                    slower scale gives you more frames of the same move rather than less
+                    of it.</div>
+
+                <hr />
+
+                <label class="check"><input type="checkbox" data-key="hideHud" />
+                    <span data-i18n="ui.hide_hud">Hide the HUD in camera mode</span>
+                    <em data-i18n="ui.hide_hud_note">also available on its own as /hidehud</em></label>
+
+                <label class="check"><input type="checkbox" data-key="allowMenuHotkeys" />
+                    <span data-i18n="ui.hotkeys">Allow menu hotkeys</span>
+                    <em data-i18n="ui.hotkeys_note">off = every key except the camera's own is dead</em></label>
+
+                <label class="check"><input type="checkbox" data-key="collide" />
+                    <span data-i18n="ui.collide">Camera collides with the world</span>
+                    <em data-i18n="ui.collide_note">off = flies through walls</em></label>
+
+                <hr />
+                <button id="reset" class="ghost" data-i18n="ui.reset">Reset everything to defaults</button>
+            </section>
+
+            <!-- path -->
+            <section data-page="path">
+                <div class="hint" data-i18n="ui.hint_path">Fly to a position, drop a keyframe, fly to the next one.
+                    Playback curves through every keyframe at a constant speed you could
+                    not hold by hand - and gives you the same move on every take.</div>
+
+                <div class="pathstate">
+                    <b id="pathCount">0</b> <span data-i18n="ui.keyframes">keyframes</span>
+                    <span id="pathPlaying"></span>
+                </div>
+
+                <div class="btnrow">
+                    <button data-path="add"><span data-i18n="ui.add_kf">Add keyframe</span> <kbd>G</kbd></button>
+                    <button data-path="pop" class="ghost" data-i18n="ui.undo">Undo last</button>
+                    <button data-path="clear" class="ghost danger" data-i18n="ui.clear">Clear</button>
+                </div>
+                <div class="btnrow">
+                    <button data-path="play" class="big"><span data-i18n="ui.play">Play</span> <kbd>Y</kbd></button>
+                    <button data-path="stop" class="ghost" data-i18n="ui.stop">Stop</button>
+                </div>
+
+                <hr />
+
+                <div class="slider" data-path-key="duration" data-min="0.5" data-max="120" data-step="0.5" data-unit="s">
+                    <label data-i18n="ui.duration">Duration</label>
+                </div>
+                <div class="slider" data-path-key="ease" data-min="0" data-max="0.5" data-step="0.01" data-unit="">
+                    <label data-i18n="ui.ease">Ease in / out</label>
+                </div>
+                <label class="check"><input type="checkbox" data-path-key="loop" /> <span data-i18n="ui.loop">Loop</span></label>
+            </section>
+
+            <!-- keys -->
+            <section data-page="keys">
+                <table class="keys">
+                    <tr><td><kbd>F3</kbd></td><td data-i18n="ui.k_menu">This menu - works even under full lockout</td></tr>
+                    <tr><td><kbd>DELETE</kbd></td><td data-i18n="ui.k_leave">Leave camera mode immediately</td></tr>
+                    <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td data-i18n="ui.k_fly">Fly, relative to where you are looking</td></tr>
+                    <tr><td><kbd>SPACE</kbd> / <kbd>CTRL</kbd></td><td data-i18n="ui.k_updown">Straight up / straight down</td></tr>
+                    <tr><td><kbd>SHIFT</kbd></td><td data-i18n="ui.k_fast">Fast</td></tr>
+                    <tr><td><kbd>SHIFT</kbd>+<kbd>CTRL</kbd></td><td data-i18n="ui.k_crawl">Crawl - for close work</td></tr>
+                    <tr><td><kbd>WHEEL</kbd></td><td data-i18n="ui.k_zoom">Zoom, eased by the zoom smoothing</td></tr>
+                    <tr><td><kbd>Q</kbd> / <kbd>E</kbd></td><td data-i18n="ui.k_roll">Roll (dutch angle)</td></tr>
+                    <tr><td><kbd>G</kbd></td><td data-i18n="ui.k_drop">Drop a keyframe here</td></tr>
+                    <tr><td><kbd>Y</kbd></td><td data-i18n="ui.k_play">Play / stop the path</td></tr>
+                </table>
+
+                <div class="hint"><span data-i18n="ui.commands">Commands:</span> <code>/cine</code>, <code>/cine menu</code>,
+                    <code>/hidehud</code>, <code>/showhud</code>, <code>/cinediag</code>.</div>
+
+                <div class="hint warn" data-i18n="ui.hint_pause">The pause menu and the F8 console are not controls
+                    and cannot be locked out by any resource. Everything else is.</div>
+            </section>
+
+        </main>
+
+        <footer>
+            <span id="status" data-i18n="ui.ready">ready</span>
+            <span class="spacer"></span>
+            <span class="muted" data-i18n="ui.autosave">settings save automatically</span>
+        </footer>
+
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

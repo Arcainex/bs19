@@ -1,0 +1,100 @@
+/* announce.css - staff broadcast. A torn strip of tape across the upper third, no solid slab. */
+
+.announce {
+    position: absolute;
+    top: 17vh;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.announce__band {
+    position: relative;
+    width: min(880px, 78vw);
+    padding: 1.1rem 2.4rem 1.3rem;
+    text-align: center;
+    background:
+        linear-gradient(90deg, rgba(10, 10, 9, 0) 0%, rgba(10, 10, 9, 0.62) 14%, rgba(10, 10, 9, 0.62) 86%, rgba(10, 10, 9, 0) 100%);
+    border-top: 1px solid rgba(224, 140, 70, 0.55);
+    border-bottom: 1px solid rgba(110, 43, 33, 0.8);
+}
+
+/* hazard ticks on both edges */
+.announce__band::before,
+.announce__band::after {
+    content: '';
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    height: 3px;
+    background: repeating-linear-gradient(-45deg, var(--bs-accent) 0 6px, transparent 6px 12px);
+    opacity: 0.55;
+}
+.announce__band::before { top: -5px; }
+.announce__band::after { bottom: -5px; }
+
+.announce__kicker {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.4em;
+    color: var(--bs-accent);
+    text-shadow: 0 1px 3px #000;
+    margin-bottom: 0.2rem;
+}
+
+.announce__title {
+    font-family: var(--bs-serif);
+    font-weight: 400;
+    font-size: 2.1rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--bs-text);
+    text-shadow: 0 2px 10px #000, 0 0 22px rgba(224, 140, 70, 0.25);
+}
+
+.announce__text {
+    margin-top: 0.45rem;
+    font-size: 1.08rem;
+    line-height: 1.45;
+    letter-spacing: 0.04em;
+    color: var(--bs-text);
+    text-shadow: 0 1px 4px #000;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.announce__timer {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background: var(--bs-accent);
+    opacity: 0.7;
+    transform-origin: left center;
+}
+
+.announce--in .announce__band { animation: announce-in 520ms ease-out; }
+.announce--in .announce__title { animation: announce-flicker 900ms steps(1) 1; }
+.announce--out .announce__band { animation: announce-out 420ms ease-in forwards; }
+
+@keyframes announce-in {
+    from { opacity: 0; transform: scaleX(0.6); filter: blur(4px); }
+    to   { opacity: 1; transform: scaleX(1); filter: blur(0); }
+}
+
+@keyframes announce-out {
+    to { opacity: 0; transform: translateY(-12px); }
+}
+
+@keyframes announce-flicker {
+    0% { opacity: 0.2; } 10% { opacity: 1; } 18% { opacity: 0.35; } 26% { opacity: 1; } 60% { opacity: 0.8; } 70% { opacity: 1; }
+}
+
+@keyframes announce-drain {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}

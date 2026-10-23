@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sector Map - BeyondSurvival</title>
+
+<!-- Self-contained on purpose: the game server may have no outbound internet, so no CDN fonts or libraries. Everything is inline. -->
+<style>
+:root {
+    --soot:#0a0a09; --ash:#14140f; --char:#1d1c16;
+    --bone:#d8d2c2; --dust:#8b8474; --amber:#c8763a; --blood:#6e2b21;
+    --good:#7fd4a2;
+    --rule:rgba(216,210,194,0.10); --rule2:rgba(216,210,194,0.20);
+    --mono:'Consolas','DejaVu Sans Mono','Courier New',monospace;
+    --sans:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+
+/* Fits the window, nothing scrolls. The map is portrait, so it is sized by height (the plate takes the space under the topbar and width follows the aspect). The sidebar has its own scrollbar so the map stays put. */
+html,body{height:100%; overflow:hidden}
+body{
+    margin:0; background:var(--soot); color:var(--bone);
+    font-family:var(--sans); font-size:14px; line-height:1.55;
+    background-image:radial-gradient(120% 90% at 50% 0%,#12120e 0%,#0a0a09 70%);
+    display:flex; flex-direction:column;
+}
+h1{
+    font-family:var(--mono); font-size:1rem; letter-spacing:.28em;
+    text-transform:uppercase; margin:0; color:var(--bone); font-weight:600;
+}
+.topbar{
+    flex:0 0 auto;
+    display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap;
+    padding:.7rem 1.2rem; border-bottom:1px solid var(--rule2); background:var(--ash);
+}
+.topbar .sp{flex:1}
+.stat{font-family:var(--mono); font-size:.78rem; letter-spacing:.1em; color:var(--dust)}
+.stat b{color:var(--amber); font-weight:600}
+
+.layout{
+    flex:1; min-height:0;               /* min-height:0 or the grid refuses to shrink */
+    display:grid; grid-template-columns:minmax(0,1fr) 330px;
+    gap:1rem; padding:1rem; align-items:stretch;
+}
+@media(max-width:940px){.layout{grid-template-columns:1fr}}
+
+.plate{
+    background:var(--ash); border:1px solid var(--rule2); padding:.6rem;
+    position:relative; min-height:0;
+    display:flex; align-items:center; justify-content:center;
+}
+/* Height-driven: the map is portrait, so height is the constraint. width:auto lets the aspect decide the rest. */
+svg{display:block; height:100%; width:auto; max-width:100%; touch-action:none}
+
+aside{min-height:0; overflow-y:auto; padding-right:.2rem}
+aside::-webkit-scrollbar{width:3px}
+aside::-webkit-scrollbar-thumb{background:var(--blood)}
+
+/* vector-effect keeps strokes one screen pixel wide at any zoom. */
+.cell{fill:transparent; stroke:var(--rule); stroke-width:1.4; cursor:pointer;
+      vector-effect:non-scaling-stroke}
+.cell:hover{fill:rgba(200,118,58,.14); stroke:var(--amber); stroke-width:2.4}
+.cell.sel{fill:rgba(200,118,58,.24); stroke:var(--amber); stroke-width:3}
+.cell.off{fill:rgba(110,43,33,.30)}
+.cell.hot{fill:rgba(200,118,58,.30)}
+
+/* Labels are drawn at full strength; fewer are drawn instead, only where there is room. */
+.cellLabel{
+    font-family:var(--mono); font-weight:600;
+    fill:var(--bone); paint-order:stroke;
+    stroke:rgba(10,10,9,.85); stroke-width:3px; vector-effect:non-scaling-stroke;
+    text-anchor:middle; dominant-baseline:middle; pointer-events:none; user-select:none;
+}
+.cellLabel.dim{fill:var(--dust)}
+.axis{
+    font-family:var(--mono); font-weight:600; fill:var(--amber);
+    paint-order:stroke; stroke:rgba(10,10,9,.9); stroke-width:3px;
+    vector-effect:non-scaling-stroke;
+    text-anchor:middle; dominant-baseline:middle; pointer-events:none; user-select:none;
+}
+.zoneRing{fill-opacity:.09; stroke-width:2; vector-effect:non-scaling-stroke}
+.anchorDot{fill:none; stroke:#7fd4a2; stroke-width:2; vector-effect:non-scaling-stroke}
+
+#map{cursor:grab}
+#map.dragging{cursor:grabbing}
+
+.zoomBar{
+    position:absolute; right:1rem; bottom:1rem; z-index:4;
+    display:flex; gap:.25rem; background:rgba(10,10,9,.8);
+    border:1px solid var(--rule2); padding:.25rem;
+}
+.zoomBar button{padding:.25rem .5rem; min-width:2rem}
+.zoomBar .lvl{
+    font-family:var(--mono); font-size:.7rem; color:var(--dust);
+    align-self:center; padding:0 .4rem; min-width:3.2rem; text-align:center;
+    font-variant-numeric:tabular-nums;
+}
+
+.panel{background:var(--ash); border:1px solid var(--rule2)}
+.panel h2{
+    margin:0; padding:.65rem .85rem; border-bottom:1px solid var(--rule);
+    font-family:var(--mono); font-size:.8rem; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--amber); font-weight:600;
+}
+.panel .body{padding:.85rem}
+.panel + .panel{margin-top:.8rem}
+
+dl{display:grid; grid-template-columns:auto 1fr; gap:.3rem .8rem; margin:0}
+dt{font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dust)}
+dd{margin:0; font-family:var(--mono); font-size:.84rem; text-align:right; font-variant-numeric:tabular-nums}
+dd.amber{color:var(--amber)} dd.good{color:var(--good)} dd.bad{color:#c9705f}
+
+.ctl{display:flex; align-items:center; gap:.4rem; margin-top:.55rem}
+.ctl span{font-family:var(--mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dust); flex:1}
+button{
+    font-family:var(--mono); font-size:.74rem; letter-spacing:.1em;
+    background:var(--char); color:var(--bone); border:1px solid var(--rule2);
+    padding:.32rem .6rem; cursor:pointer; transition:all 120ms ease;
+}
+button:hover{border-color:var(--amber); color:var(--amber)}
+button.wide{width:100%; margin-top:.5rem; padding:.45rem}
+button.danger:hover{border-color:var(--blood); color:#c9705f}
+button[disabled]{opacity:.4; cursor:not-allowed}
+.val{font-family:var(--mono); min-width:3.4rem; text-align:center; font-variant-numeric:tabular-nums}
+
+.msg{padding:.5rem .85rem; font-family:var(--mono); font-size:.74rem; letter-spacing:.1em; min-height:2rem}
+.msg.ok{color:var(--good)} .msg.bad{color:#c9705f}
+
+.hint{font-size:.8rem; color:var(--dust); margin:.7rem 0 0}
+.warn{border-left:2px solid var(--amber); background:rgba(200,118,58,.08); padding:.6rem .8rem; margin:.7rem 0 0; font-size:.8rem}
+code{font-family:var(--mono); background:var(--char); padding:.05em .3em; color:var(--amber)}
+:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+/* The drop target covers the whole plate and only appears while something is dragged over the window, so it never blocks the cells. */
+#drop{
+    position:absolute; inset:0; display:none; z-index:5;
+    align-items:center; justify-content:center; text-align:center;
+    background:rgba(10,10,9,.86); border:2px dashed var(--amber);
+    font-family:var(--mono); letter-spacing:.16em; color:var(--amber);
+    text-transform:uppercase; font-size:.9rem; pointer-events:none;
+}
+#drop.on{display:flex}
+.calib{display:grid; grid-template-columns:auto 1fr auto auto; gap:.3rem .5rem; align-items:center; margin-top:.5rem}
+.calib label{font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--dust)}
+.calib .v{font-family:var(--mono); font-size:.78rem; text-align:right; font-variant-numeric:tabular-nums}
+select{
+    font-family:var(--mono); font-size:.74rem; background:var(--char);
+    color:var(--bone); border:1px solid var(--rule2); padding:.28rem;
+    flex:1; min-width:0;
+}
+.anchor{
+    display:flex; justify-content:space-between; gap:.5rem; margin-top:.4rem;
+    font-family:var(--mono); font-size:.72rem; color:var(--dust);
+    border-left:2px solid var(--good); padding-left:.5rem;
+}
+.anchor b{color:var(--bone); font-weight:500}
+#map.picking{cursor:crosshair}
+#map.picking .cell{pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>Sector Map</h1>
+    <span class="stat">GRID <b id="stGrid">-</b></span>
+    <span class="stat">AWAKE <b id="stAwake">-</b></span>
+    <span class="stat">WALKERS <b id="stWalkers">-</b></span>
+    <span class="sp"></span>
+    <button id="btnRefresh">REFRESH</button>
+    <label class="stat"><input type="checkbox" id="chkAuto" checked /> AUTO 5s</label>
+</div>
+
+<div class="layout">
+    <div class="plate">
+        <div id="drop">Drop the map image here</div>
+        <div class="zoomBar">
+            <button id="zOut" title="Zoom out">&minus;</button>
+            <span class="lvl" id="zLvl">1.0&times;</span>
+            <button id="zIn" title="Zoom in">+</button>
+            <button id="zFit" title="Fit the whole map">FIT</button>
+        </div>
+        <svg id="map" role="img" aria-label="Sector grid over the map">
+            <defs>
+                <clipPath id="clipWorld"><rect id="clipRect" /></clipPath>
+            </defs>
+            <image id="mapImg" href="" preserveAspectRatio="none" opacity="0.85" />
+            <g id="zones"></g>
+            <g id="grid"></g>
+            <g id="labels"></g>
+            <g id="marks"></g>
+        </svg>
+    </div>
+
+    <aside>
+        <div class="panel">
+            <h2 id="selName">Pick a sector</h2>
+            <div class="body">
+                <dl id="selBody">
+                    <dt>Key</dt><dd>-</dd>
+                </dl>
+
+                <div id="editor" style="display:none">
+                    <div class="ctl">
+                        <span>Target</span>
+                        <button data-adj="target" data-d="-5">−5</button>
+                        <span class="val" id="vTarget">-</span>
+                        <button data-adj="target" data-d="5">+5</button>
+                    </div>
+                    <div class="ctl">
+                        <span>Respawn</span>
+                        <button data-adj="respawnSeconds" data-d="-300">−5m</button>
+                        <span class="val" id="vRespawn">-</span>
+                        <button data-adj="respawnSeconds" data-d="300">+5m</button>
+                    </div>
+                    <div class="ctl">
+                        <span>Max noise</span>
+                        <button data-adj="maxMultiplier" data-d="-0.5">−0.5</button>
+                        <span class="val" id="vMult">-</span>
+                        <button data-adj="maxMultiplier" data-d="0.5">+0.5</button>
+                    </div>
+
+                    <button class="wide" id="btnToggle">DISABLE SECTOR</button>
+                    <button class="wide danger" id="btnClear">CLEAR RESPAWN DEBT</button>
+                </div>
+
+                <p class="hint" id="selHint">
+                    Click any cell. Edits save to <code>sector_overrides.json</code>
+                    and survive a restart.
+                </p>
+            </div>
+            <div class="msg" id="msg"></div>
+        </div>
+
+        <div class="panel" id="calibPanel" style="display:none">
+            <h2>Line the map up</h2>
+            <div class="body">
+                <p class="hint" style="margin-top:0">
+                    Stand somewhere obvious in game, pick yourself below, then
+                    click that exact spot on the map. Do it twice, far apart,
+                    and the alignment is solved from your real coordinates -
+                    no guessing at landmarks.
+                </p>
+
+                <div class="ctl">
+                    <span>Player</span>
+                    <select id="calPlayer"></select>
+                </div>
+
+                <div id="anchorList"></div>
+
+                <button class="wide" id="btnAnchor">USE MY POSITION AS ANCHOR 1</button>
+                <button class="wide" id="btnSolve" disabled>SOLVE ALIGNMENT</button>
+
+                <p class="hint">
+                    Or nudge the edges by hand:
+                </p>
+                <div class="calib" id="calibRows"></div>
+                <button class="wide" id="btnCalibReset">RESET TO DEFAULT</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Legend</h2>
+            <div class="body">
+                <dl>
+                    <dt style="color:var(--amber)">Amber fill</dt><dd>noisy right now</dd>
+                    <dt style="color:#c9705f">Red fill</dt><dd>disabled</dd>
+                    <dt>Bright ref</dt><dd>awake</dd>
+                </dl>
+                <div class="warn" id="mapWarn" style="display:none">
+                    <b>No map behind the grid yet.</b> Take a screenshot of the
+                    GTA&nbsp;V pause map and <b>drag it onto this page</b>, or
+                    press Ctrl+V with it on your clipboard. It uploads straight
+                    away - no files, no restart.
+                </div>
+                <button class="wide" id="btnPick">CHOOSE A MAP IMAGE...</button>
+                <input type="file" id="filePick" accept="image/*" hidden />
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+'use strict';
+
+// The page token also authorises the API. Read from the URL and not stored, so closing the tab logs out.
+const KEY = new URLSearchParams(location.search).get('key') || '';
+
+// Build the API base once from the page URL. A relative fetch breaks when the address has no trailing slash (e.g. localhost:30120/bs_sectormap).
+const BASE = (() => {
+    let p = location.pathname;
+    p = p.replace(/\/[^/]*\.[^/]*$/, '/');    // drop a trailing file name
+    if (!p.endsWith('/')) p += '/';           // /bs_sectormap -> /bs_sectormap/
+    return p;
+})();
+
+// Mirrors ZSectors.LabelFor in sv_sectors.lua (I and O omitted). If they disagree, the game is right.
+const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+// Counted from the south-west corner of the playable area, like ZSectors.LabelFor. ORIGIN comes from the server so they cannot drift.
+let ORIGIN = { x: -4000, y: -4000 };
+
+// 24 letters, so columns past Z use two letters (Z, AA, AB...), bijective base-24. Same as ZSectors.LabelFor in sv_sectors.lua.
+const colLabel = (col) => {
+    if (col < 0) return '?';
+    const n = ALPHABET.length;
+    if (col < n) return ALPHABET[col];
+    const hi = Math.floor(col / n), lo = col % n;
+    return hi <= n ? ALPHABET[hi - 1] + ALPHABET[lo] : '?';
+};
+
+const colOf = (cx) => cx - Math.floor(ORIGIN.x / SIZE);
+const rowOf = (cy) => cy - Math.floor(ORIGIN.y / SIZE) + 1;
+
+const labelFor = (cx, cy) => `${colLabel(colOf(cx))}-${rowOf(cy)}`;
+
+// GTA V playable area in world metres. The map image is stretched to this box. Comes from the server so it can be adjusted in the panel and saved.
+let WORLD = { minX: -4000, maxX: 5000, minY: -4000, maxY: 8000 };
+
+const svgNS = 'http://www.w3.org/2000/svg';
+const $ = (id) => document.getElementById(id);
+const sy = (worldY) => -worldY;          // north up; the one negation
+
+let GRID = null, SECTORS = [], SEL = null, SIZE = 1000;
+
+// Zoom moves the SVG viewBox instead of transforming a group, so everything stays in world metres. VIEW keeps the map's aspect ratio.
+let VIEW = null;
+const VIEW_PAD = 700;
+const MAX_ZOOM = 60;      /* about 30 m across the screen at the far end */
+let BY = {};              /* key -> server state, for tinting labels */
+
+const el = (n, a, t) => {
+    const e = document.createElementNS(svgNS, n);
+    for (const k in a) e.setAttribute(k, a[k]);
+    if (t !== undefined) e.textContent = t;
+    return e;
+};
+
+function say(text, bad) {
+    const m = $('msg');
+    m.textContent = text || '';
+    m.className = 'msg' + (text ? (bad ? ' bad' : ' ok') : '');
+    clearTimeout(say._t);
+    say._t = setTimeout(() => { m.textContent = ''; m.className = 'msg'; }, 4000);
+}
+
+async function api(path, body) {
+    const url = `${BASE}${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(KEY)}`;
+    const opts = body
+        ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        : {};
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+}
+
+// draw
+
+function drawStatic() {
+    if (!VIEW) fitView(true);
+
+    const img = $('mapImg');
+    img.setAttribute('x', WORLD.minX);
+    img.setAttribute('y', sy(WORLD.maxY));
+    img.setAttribute('width', WORLD.maxX - WORLD.minX);
+    img.setAttribute('height', WORLD.maxY - WORLD.minY);
+
+    // Zone circles go under the grid so the rules stay readable.
+    const gz = $('zones');
+    gz.innerHTML = '';
+    const colours = {
+        military: '#6e2b21', los_santos: '#c8763a',
+        hospital: '#a8582c', blaine_county: '#5c6b4a',
+    };
+    for (const z of (GRID.spawn || [])) {
+        const c = colours[z.id] || '#8b8474';
+        gz.appendChild(el('circle', {
+            cx: z.coords.x, cy: sy(z.coords.y), r: z.radius,
+            class: 'zoneRing', fill: c, stroke: c,
+        }));
+    }
+    for (const s of (GRID.safe || [])) {
+        // Floor the drawn radius so small safe zones stay visible on a large chart. The readout shows the true number.
+        gz.appendChild(el('circle', {
+            cx: s.coords.x, cy: sy(s.coords.y), r: Math.max(s.radius, 140),
+            fill: '#7fd4a2', 'fill-opacity': 0.22, stroke: '#7fd4a2', 'stroke-width': 14,
+        }));
+    }
+
+    const colMin = Math.floor(WORLD.minX / SIZE), colMax = Math.ceil(WORLD.maxX / SIZE) - 1;
+    const rowMin = Math.floor(WORLD.minY / SIZE), rowMax = Math.ceil(WORLD.maxY / SIZE) - 1;
+
+    BOUNDS = { colMin, colMax, rowMin, rowMax };
+
+    const gg = $('grid');
+    gg.innerHTML = '';
+
+    for (let cx = colMin; cx <= colMax; cx++) {
+        for (let cy = rowMin; cy <= rowMax; cy++) {
+            const key = `${cx}:${cy}`;
+            const r = el('rect', {
+                x: cx * SIZE, y: sy((cy + 1) * SIZE), width: SIZE, height: SIZE,
+                class: 'cell', 'data-key': key, tabindex: '0', role: 'button',
+                'aria-label': `Sector ${labelFor(cx, cy)}`,
+            });
+            r.addEventListener('click', () => select(key));
+            r.addEventListener('focus', () => select(key));
+            gg.appendChild(r);
+        }
+    }
+
+    renderLabels();
+}
+
+// Lettering: labels are drawn only for visible cells, at a constant screen size and only when a cell is big enough. Zoomed out you get axis letters at the edges.
+let BOUNDS = null;
+
+function screenScale() {
+    const svg = $('map');
+    const cw = svg.clientWidth || 1, chh = svg.clientHeight || 1;
+    // preserveAspectRatio is 'meet', so the smaller axis governs.
+    return Math.min(cw / VIEW.w, chh / VIEW.h);
+}
+
+function renderLabels() {
+    const gl = $('labels');
+    gl.innerHTML = '';
+    if (!VIEW || !BOUNDS) return;
+
+    const s = screenScale();               /* screen pixels per world metre */
+    const cellPx = SIZE * s;
+
+    // Only draw what is on screen plus one cell of slack so panning shows no empty margin.
+    const c0 = Math.max(BOUNDS.colMin, Math.floor(VIEW.x / SIZE) - 1);
+    const c1 = Math.min(BOUNDS.colMax, Math.ceil((VIEW.x + VIEW.w) / SIZE));
+    const r0 = Math.max(BOUNDS.rowMin, Math.floor(-(VIEW.y + VIEW.h) / SIZE) - 1);
+    const r1 = Math.min(BOUNDS.rowMax, Math.ceil(-VIEW.y / SIZE));
+
+    if (cellPx >= 34) {
+        const fs = 13 / s;                 /* world units that read as 13px */
+        for (let cx = c0; cx <= c1; cx++) {
+            for (let cy = r0; cy <= r1; cy++) {
+                gl.appendChild(el('text', {
+                    x: cx * SIZE + SIZE / 2, y: sy(cy * SIZE + SIZE / 2),
+                    class: 'cellLabel', 'data-lab': `${cx}:${cy}`,
+                    'font-size': fs,
+                }, labelFor(cx, cy)));
+            }
+        }
+    }
+
+    // The axis follows the edge of the view, so the reference stays visible when panned.
+    if (cellPx >= 15) {
+        const fs = 14 / s, inset = 12 / s;
+        for (let cx = c0; cx <= c1; cx++) {
+            gl.appendChild(el('text', {
+                x: cx * SIZE + SIZE / 2, y: VIEW.y + inset * 1.4,
+                class: 'axis', 'font-size': fs,
+            }, colLabel(colOf(cx))));
+        }
+        for (let cy = r0; cy <= r1; cy++) {
+            gl.appendChild(el('text', {
+                x: VIEW.x + inset * 2.2, y: sy(cy * SIZE + SIZE / 2),
+                class: 'axis', 'font-size': fs,
+            }, String(rowOf(cy))));
+        }
+    }
+
+    tintLabels();
+}
+
+function tintLabels() {
+    document.querySelectorAll('[data-lab]').forEach((t) => {
+        const st = BY[t.dataset.lab];
+        t.style.fill = (st && st.awake) ? 'var(--bone)' : 'rgba(216,210,194,.55)';
+    });
+}
+
+// zoom / pan
+
+function fullBox() {
+    return {
+        x: WORLD.minX - VIEW_PAD,
+        y: sy(WORLD.maxY) - VIEW_PAD,
+        w: (WORLD.maxX - WORLD.minX) + VIEW_PAD * 2,
+        h: (WORLD.maxY - WORLD.minY) + VIEW_PAD * 2,
+    };
+}
+
+function fitView(quiet) {
+    VIEW = fullBox();
+    applyView(quiet);
+}
+
+function applyView(quiet) {
+    const b = fullBox();
+
+    // Keep one aspect ratio: zoom scales width and height together, so the map is never stretched.
+    const aspect = b.h / b.w;
+    VIEW.w = Math.max(b.w / MAX_ZOOM, Math.min(b.w, VIEW.w));
+    VIEW.h = VIEW.w * aspect;
+
+    // Pan is clamped to the map plus one screen-width of slack.
+    const slackX = VIEW.w * 0.25, slackY = VIEW.h * 0.25;
+    VIEW.x = Math.max(b.x - slackX, Math.min(b.x + b.w - VIEW.w + slackX, VIEW.x));
+    VIEW.y = Math.max(b.y - slackY, Math.min(b.y + b.h - VIEW.h + slackY, VIEW.y));
+
+    $('map').setAttribute('viewBox', `${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`);
+    $('zLvl').textContent = `${(b.w / VIEW.w).toFixed(1)}\u00d7`;
+    if (!quiet) renderLabels();
+}
+
+// Zoom about a world point so the point under the cursor stays put.
+function zoomAt(factor, px, py) {
+    if (!VIEW) return;
+    const before = VIEW.w;
+    VIEW.w = VIEW.w * factor;
+    applyView(true);
+    const k = VIEW.w / before;              /* what the clamp actually allowed */
+    VIEW.x = px - (px - VIEW.x) * k;
+    VIEW.y = py - (py - VIEW.y) * k;
+    applyView();
+}
+
+function worldAt(clientX, clientY) {
+    const svg = $('map');
+    const pt = svg.createSVGPoint();
+    pt.x = clientX; pt.y = clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function centre() { return { x: VIEW.x + VIEW.w / 2, y: VIEW.y + VIEW.h / 2 }; }
+
+$('zIn').addEventListener('click', () => { const c = centre(); zoomAt(1 / 1.4, c.x, c.y); });
+$('zOut').addEventListener('click', () => { const c = centre(); zoomAt(1.4, c.x, c.y); });
+$('zFit').addEventListener('click', () => fitView());
+
+$('map').addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const p = worldAt(e.clientX, e.clientY);
+    zoomAt(e.deltaY > 0 ? 1.2 : 1 / 1.2, p.x, p.y);
+}, { passive: false });
+
+// Drag to pan. A press only becomes a pan after moving a few pixels, and the click that follows is swallowed, so a drag does not place a calibration anchor.
+let PAN = null;
+
+$('map').addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || PICKING) return;
+    PAN = { sx: e.clientX, sy: e.clientY, vx: VIEW.x, vy: VIEW.y, moved: false };
+});
+
+window.addEventListener('pointermove', (e) => {
+    if (!PAN) return;
+    const dx = e.clientX - PAN.sx, dy = e.clientY - PAN.sy;
+    if (!PAN.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+
+    if (!PAN.moved) { PAN.moved = true; $('map').classList.add('dragging'); }
+    const s = screenScale();
+    VIEW.x = PAN.vx - dx / s;
+    VIEW.y = PAN.vy - dy / s;
+    applyView();
+});
+
+window.addEventListener('pointerup', () => {
+    if (!PAN) return;
+    const moved = PAN.moved;
+    PAN = null;
+    $('map').classList.remove('dragging');
+    if (moved) {
+        // Swallow exactly one click (the one this drag produces).
+        window.addEventListener('click', (e) => {
+            e.stopPropagation(); e.preventDefault();
+        }, { capture: true, once: true });
+    }
+});
+
+window.addEventListener('resize', () => { if (VIEW) renderLabels(); });
+
+// Only cells the server knows about get state; others are just unvisited.
+function paintState() {
+    const by = {};
+    for (const s of SECTORS) by[s.key] = s;
+    BY = by;
+
+    let awake = 0, walkers = 0;
+
+    document.querySelectorAll('.cell').forEach((c) => {
+        const s = by[c.dataset.key];
+        c.classList.toggle('off', !!s && !s.enabled);
+        c.classList.toggle('hot', !!s && s.mult > 1.05);
+        c.classList.toggle('sel', c.dataset.key === SEL);
+    });
+
+    tintLabels();
+
+    for (const s of SECTORS) { if (s.awake) awake++; walkers += s.count || 0; }
+    $('stAwake').textContent = awake;
+    $('stWalkers').textContent = walkers;
+
+    if (SEL) paintSelection(by[SEL]);
+}
+
+function paintSelection(s) {
+    const [cx, cy] = SEL.split(':').map(Number);
+    $('selName').textContent = labelFor(cx, cy);
+
+    if (!s) {
+        $('editor').style.display = 'none';
+        $('selBody').innerHTML =
+            `<dt>Key</dt><dd>${SEL}</dd>` +
+            `<dt>World X</dt><dd>${cx * SIZE} -> ${(cx + 1) * SIZE}</dd>` +
+            `<dt>World Y</dt><dd>${cy * SIZE} -> ${(cy + 1) * SIZE}</dd>`;
+        $('selHint').textContent =
+            'Nobody has been near this sector since the last restart, so the '
+            + 'server has not built it yet. It will appear here the first time '
+            + 'a player comes within 800 m of it.';
+        return;
+    }
+
+    $('editor').style.display = '';
+    $('selBody').innerHTML =
+        `<dt>Key</dt><dd>${s.key}</dd>` +
+        `<dt>State</dt><dd class="${s.enabled ? (s.awake ? 'good' : '') : 'bad'}">` +
+            `${s.enabled ? (s.awake ? 'awake' : 'asleep') : 'DISABLED'}</dd>` +
+        `<dt>Walkers</dt><dd>${s.count} / ${s.target}</dd>` +
+        `<dt>Owed</dt><dd>${s.debt}</dd>` +
+        `<dt>Noise</dt><dd class="${s.mult > 1.05 ? 'amber' : ''}">${s.noise} (×${s.mult.toFixed(2)})</dd>`;
+
+    $('vTarget').textContent = s.target;
+    $('vRespawn').textContent = `${Math.round(s.respawnSeconds / 60)}m`;
+    $('vMult').textContent = `×${Number(s.maxMultiplier ?? GRID.maxMultiplier ?? 3).toFixed(1)}`;
+    $('btnToggle').textContent = s.enabled ? 'DISABLE SECTOR' : 'ENABLE SECTOR';
+    $('selHint').textContent = 'Edits save immediately and survive a restart.';
+}
+
+function select(key) { SEL = key; paintState(); }
+
+// data
+
+function current() { return SECTORS.find((s) => s.key === SEL); }
+
+async function load(first) {
+    try {
+        const d = await api('api/state');
+        if (!d.ok) return say(d.error || 'no data', true);
+
+        GRID = d.grid;
+        SIZE = GRID.size || 1000;
+        if (GRID.origin) ORIGIN = GRID.origin;
+        SECTORS = d.sectors || [];
+        if (d.calib) WORLD = d.calib;
+
+        if (first) {
+            drawStatic();
+            paintCalib();
+            $('stGrid').textContent = `${SIZE}m`;
+            setMap(d.hasMap);
+        }
+        paintState();
+    } catch (e) {
+        say(`could not reach the server (${e.message})`, true);
+    }
+}
+
+async function set(field, value) {
+    if (!SEL) return;
+    try {
+        const d = await api('api/set', { key: SEL, field, value });
+        if (!d.ok) return say(d.error || 'refused', true);
+        SECTORS = d.sectors || SECTORS;
+        paintState();
+        say(`${labelFor(...SEL.split(':').map(Number))} · ${field} = ${value}`);
+    } catch (e) { say(`failed (${e.message})`, true); }
+}
+
+document.querySelectorAll('[data-adj]').forEach((b) => {
+    b.addEventListener('click', () => {
+        const s = current();
+        if (!s) return;
+        const field = b.dataset.adj;
+        const delta = Number(b.dataset.d);
+        const base = field === 'maxMultiplier'
+            ? Number(s.maxMultiplier ?? GRID.maxMultiplier ?? 3)
+            : Number(s[field] ?? 0);
+        set(field, Math.max(0, +(base + delta).toFixed(2)));
+    });
+});
+
+$('btnToggle').addEventListener('click', () => {
+    const s = current();
+    if (s) set('enabled', !s.enabled);
+});
+
+$('btnClear').addEventListener('click', async () => {
+    if (!SEL) return;
+    try {
+        const d = await api('api/set', { key: SEL, action: 'clearDebt' });
+        if (!d.ok) return say(d.error || 'refused', true);
+        SECTORS = d.sectors || SECTORS;
+        paintState();
+        say(`cleared ${d.cleared} owed`);
+    } catch (e) { say(`failed (${e.message})`, true); }
+});
+
+$('btnRefresh').addEventListener('click', () => load(false));
+
+// Polling instead of a websocket: a few numbers on an admin panel. Paused when the tab is hidden.
+setInterval(() => {
+    if ($('chkAuto').checked && !document.hidden) load(false);
+}, 5000);
+
+// the image
+
+function setMap(has) {
+    $('mapImg').setAttribute('href',
+        has ? `${BASE}map?key=${encodeURIComponent(KEY)}&t=${Date.now()}` : '');
+    $('mapWarn').style.display = has ? 'none' : '';
+    $('calibPanel').style.display = has ? '' : 'none';
+    if (has) matchAspect();
+}
+
+// Reshape the world box to the image's own aspect on load: keep the north-south span, derive east-west, centre on the playable area. Only a starting point until calibrated; skipped once calibrated.
+let aspectMatched = false;
+
+function matchAspect() {
+    if (aspectMatched) return;
+
+    const probe = new Image();
+    probe.onload = () => {
+        aspectMatched = true;
+
+        const a = probe.naturalWidth / probe.naturalHeight;
+        if (!isFinite(a) || a <= 0) return;
+
+        const spanY = WORLD.maxY - WORLD.minY;
+        const spanX = WORLD.maxX - WORLD.minX;
+
+        // Already within a couple of percent? Leave it (correct or already calibrated).
+        if (Math.abs((spanX / spanY) - a) < 0.02) return;
+
+        const centreX = (WORLD.minX + WORLD.maxX) / 2;
+        const want = spanY * a;
+
+        saveCalib({
+            minX: Math.round(centreX - want / 2),
+            maxX: Math.round(centreX + want / 2),
+            minY: Math.round(WORLD.minY),
+            maxY: Math.round(WORLD.maxY),
+        });
+    };
+    probe.src = `${BASE}map?key=${encodeURIComponent(KEY)}&probe=1`;
+}
+
+async function upload(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) return say('that is not an image', true);
+
+    say('uploading...');
+
+    // readAsDataURL, then drop the prefix up to the comma. The server checks the bytes anyway.
+    const reader = new FileReader();
+    reader.onload = async () => {
+        try {
+            const b64 = String(reader.result).split(',')[1] || '';
+            const d = await api('api/map', { data: b64 });
+            if (!d.ok) return say(d.error || 'refused', true);
+            setMap(true);
+            say(`map set · ${Math.round(d.bytes / 1024)}KB`);
+        } catch (e) { say(`upload failed (${e.message})`, true); }
+    };
+    reader.onerror = () => say('could not read that file', true);
+    reader.readAsDataURL(file);
+}
+
+// Drag anywhere over the window. The overlay only shows during a drag.
+const drop = $('drop');
+let dragDepth = 0;
+
+window.addEventListener('dragenter', (e) => { e.preventDefault(); if (++dragDepth) drop.classList.add('on'); });
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; drop.classList.remove('on'); } });
+window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragDepth = 0; drop.classList.remove('on');
+    upload(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+});
+
+// Ctrl+V with a screenshot on the clipboard.
+window.addEventListener('paste', (e) => {
+    for (const item of (e.clipboardData && e.clipboardData.items) || []) {
+        if (item.type.startsWith('image/')) return upload(item.getAsFile());
+    }
+});
+
+$('btnPick').addEventListener('click', () => $('filePick').click());
+$('filePick').addEventListener('change', (e) => upload(e.target.files[0]));
+
+// lining it up
+
+const CALIB_FIELDS = [
+    ['minX', 'West edge'], ['maxX', 'East edge'],
+    ['minY', 'South edge'], ['maxY', 'North edge'],
+];
+
+function paintCalib() {
+    $('calibRows').innerHTML = CALIB_FIELDS.map(([f, label]) => `
+        <label>${label}</label>
+        <span class="v" data-cv="${f}">${WORLD[f]}</span>
+        <button data-cal="${f}" data-d="-250">−</button>
+        <button data-cal="${f}" data-d="250">+</button>`).join('');
+
+    $('calibRows').querySelectorAll('[data-cal]').forEach((b) => {
+        b.addEventListener('click', () => {
+            const next = { ...WORLD };
+            next[b.dataset.cal] += Number(b.dataset.d);
+            saveCalib(next);
+        });
+    });
+}
+
+async function saveCalib(next) {
+    try {
+        const d = await api('api/calibration', next);
+        if (!d.ok) return say(d.error || 'refused', true);
+        WORLD = d.calib;
+        VIEW = null;        /* the world box moved; start from a clean fit */
+        drawStatic();       /* the grid is positioned from WORLD, so redraw it */
+        paintCalib();
+        paintAnchors();
+        paintState();
+        say('map lined up');
+    } catch (e) { say(`failed (${e.message})`, true); }
+}
+
+$('btnCalibReset').addEventListener('click', () => {
+    ANCHORS = [];
+    paintAnchors();
+    saveCalib({ minX: -4000, maxX: 5000, minY: -4000, maxY: 8000 });
+});
+
+// Exact alignment: click where a known player is standing on the image, twice, far apart. Two (u, worldX) pairs fix span and offset exactly (same for Y).
+// Anchors close together magnify click error, so the solve refuses them.
+
+let ANCHORS = [];        /* { u, v, x, y, who } */
+let PICKING = false;
+let PLAYERS = [];
+
+async function loadPlayers() {
+    try {
+        const d = await api('api/players');
+        if (!d.ok) return;
+        PLAYERS = d.players || [];
+
+        const sel = $('calPlayer');
+        const keep = sel.value;
+        sel.innerHTML = PLAYERS.length
+            ? PLAYERS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')
+            : '<option value="">nobody online</option>';
+        if (keep) sel.value = keep;
+    } catch (e) { /* the panel is still usable without this */ }
+}
+
+function paintAnchors() {
+    $('anchorList').innerHTML = ANCHORS.map((a, i) => `
+        <div class="anchor">
+            <span>ANCHOR ${i + 1} · <b>${a.who}</b></span>
+            <span>${Math.round(a.x)}, ${Math.round(a.y)}</span>
+        </div>`).join('');
+
+    $('btnAnchor').textContent = ANCHORS.length >= 2
+        ? 'START OVER' : `USE MY POSITION AS ANCHOR ${ANCHORS.length + 1}`;
+    $('btnSolve').disabled = ANCHORS.length < 2;
+
+    // Draw the anchors so it is clear where the player was placed.
+    const g = $('marks');
+    if (g) {
+        g.innerHTML = '';
+        for (const a of ANCHORS) {
+            const wx = WORLD.minX + a.u * (WORLD.maxX - WORLD.minX);
+            const wy = WORLD.maxY - a.v * (WORLD.maxY - WORLD.minY);
+            g.appendChild(el('path', {
+                d: `M ${wx - 140} ${sy(wy)} H ${wx + 140} M ${wx} ${sy(wy) - 140} V ${sy(wy) + 140}`,
+                class: 'anchorDot',
+            }));
+        }
+    }
+}
+
+$('btnAnchor').addEventListener('click', () => {
+    if (ANCHORS.length >= 2) {
+        ANCHORS = [];
+        PICKING = false;
+        $('map').classList.remove('picking');
+        paintAnchors();
+        return say('anchors cleared');
+    }
+
+    const id = Number($('calPlayer').value);
+    const p = PLAYERS.find((q) => q.id === id);
+    if (!p) return say('pick a player first - is anyone online?', true);
+
+    PICKING = p;
+    $('map').classList.add('picking');
+    say(`now click where ${p.name} is standing`);
+});
+
+$('map').addEventListener('click', (e) => {
+    if (!PICKING) return;
+
+    // Screen pixels -> SVG units -> fraction of the image, which stays valid when calibration changes.
+    const svg = $('map');
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+    // u runs east, v runs down the image, so v is measured from the top edge, sy(maxY).
+    const u = (loc.x - WORLD.minX) / (WORLD.maxX - WORLD.minX);
+    const v = (loc.y - sy(WORLD.maxY)) / (WORLD.maxY - WORLD.minY);
+
+    ANCHORS.push({ u, v, x: PICKING.x, y: PICKING.y, who: PICKING.name });
+    PICKING = false;
+    svg.classList.remove('picking');
+    paintAnchors();
+
+    say(ANCHORS.length < 2
+        ? 'anchor set - now move a long way and set the second'
+        : 'two anchors set - press SOLVE ALIGNMENT');
+});
+
+$('btnSolve').addEventListener('click', () => {
+    if (ANCHORS.length < 2) return;
+    const [a, b] = ANCHORS;
+
+    // Anchors too close together turn click error into kilometres. Refuse instead of returning a wrong answer.
+    if (Math.abs(b.u - a.u) < 0.15 || Math.abs(b.v - a.v) < 0.15) {
+        return say('those two spots are too close together - set them far apart', true);
+    }
+
+    const spanX = (b.x - a.x) / (b.u - a.u);
+    const minX = a.x - a.u * spanX;
+
+    // v runs down the image while world Y runs north, hence the sign flip.
+    const spanY = (a.y - b.y) / (b.v - a.v);
+    const maxY = a.y + a.v * spanY;
+
+    saveCalib({
+        minX: Math.round(minX),
+        maxX: Math.round(minX + spanX),
+        minY: Math.round(maxY - spanY),
+        maxY: Math.round(maxY),
+    });
+
+    ANCHORS = [];
+    paintAnchors();
+});
+
+loadPlayers();
+setInterval(loadPlayers, 10000);
+
+load(true);
+</script>
+</body>
+</html>

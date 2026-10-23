@@ -1,0 +1,87 @@
+/* root.css - tokens and reset. Every colour is a custom property overwritten at runtime from bs_ui/config/config_ui.lua. */
+
+:root {
+    /* Overwritten at runtime from bs_ui/config/config_ui.lua */
+    --bs-accent: #e08c46;
+    --bs-good:   #7fd4a2;
+    --bs-danger: #b4574a;
+    --bs-warn:   #d9a441;
+    --bs-blood:  #6e2b21;
+    --bs-bg:     #0a0a09;
+    --bs-text:   #f0ebdd;
+    --bs-text-muted: #a8a293;
+    --bs-radius: 2px;
+    --bs-font:   'Courier New', 'Consolas', monospace;
+    --bs-serif:  'Times New Roman', Georgia, serif;
+    --bs-scale:  1;
+
+    /* Player settings */
+    --bs-hud-opacity: 0.72;
+    --bs-xp-opacity:  0.55;
+    --bs-xp-width:    46%;
+
+    --bs-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    --bs-border: 1px solid rgba(216, 210, 194, 0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    font-family: var(--bs-font);
+    color: var(--bs-text);
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+
+@keyframes bs-slide-in {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes bs-slide-out {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(24px); }
+}
+
+@keyframes bs-fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Readability in bright light without a background: text carries its own dark halo (tight opaque + wide soft) and SVG icons get a drop-shadow. Inherited from the document, so new elements are readable by default. */
+:root {
+    --bs-halo:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 1px 1px rgba(0, 0, 0, 1),
+        -1px 0 1px rgba(0, 0, 0, 0.9),
+        1px 0 1px rgba(0, 0, 0, 0.9),
+        0 0 5px rgba(0, 0, 0, 0.95),
+        0 0 12px rgba(0, 0, 0, 0.85),
+        0 0 26px rgba(0, 0, 0, 0.6);
+
+    /* For anything sitting on top of the brightest possible ground. */
+    --bs-halo-strong:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 1px 2px rgba(0, 0, 0, 1),
+        0 0 8px rgba(0, 0, 0, 0.95),
+        0 0 22px rgba(0, 0, 0, 0.65);
+
+    --bs-ink-shadow:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.98))
+        drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85))
+        drop-shadow(0 0 6px rgba(0, 0, 0, 0.6));
+}
+
+body, body * { text-shadow: var(--bs-halo); }
+
+/* Line art gets the same edge the letters do. */
+svg, .icon, .ico { filter: var(--bs-ink-shadow); }
+
+/* Hairline rules and borders get an edge too. */
+hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }

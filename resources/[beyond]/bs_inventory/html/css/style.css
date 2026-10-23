@@ -1,0 +1,1340 @@
+/*
+   bs_inventory - stylesheet.
+   Keep each selector defined once; edit rules in place instead of appending overrides.
+   No backdrop-filter: a NUI page has no game pixels to sample, so it paints an opaque slab. The world blur comes from GTA (TriggerScreenblurFadeIn in cl_main.lua).
+*/
+
+:root {
+    --soot:   #0a0a09;
+    --panel:  rgba(14, 13, 11, 0.82);
+    --panel2: rgba(20, 18, 15, 0.90);
+    --bone:   #f0ebdd;
+    --dust:   #a8a293;
+    --amber:  #e08c46;
+    --blood:  #6e2b21;
+    --good:   #7fd4a2;
+    --danger: #b4574a;
+    --line:   rgba(240, 235, 221, 0.12);
+    --line2:  rgba(240, 235, 221, 0.06);
+    --mono:   'Consolas', 'Courier New', monospace;
+
+    /* Proportion: everything is measured in --cell (one grid square), clamped on viewport height, so the panel does not stretch with the monitor. --icon is the single size every item picture is drawn at. */
+    --cell: clamp(42px, calc(4.4vh / var(--ui-scale, 1)), 64px);
+    --gap:  2px;
+    --icon: calc(var(--cell) * 0.68);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: transparent !important;                /* the world shows through */
+    font-family: var(--mono);
+    color: var(--bone);
+    overflow: hidden;
+    user-select: none;
+}
+
+.hidden { display: none !important; }
+
+/* A vignette rather than a blackout; the ped in the middle column is lit by the world behind. */
+.scrim {
+    position: fixed; inset: 0;
+    background: radial-gradient(120% 90% at 50% 50%,
+        rgba(0,0,0,0.14) 0%, rgba(0,0,0,0.46) 62%, rgba(0,0,0,0.68) 100%);
+    pointer-events: none;
+}
+
+/* shell */
+
+.wrap {
+    position: relative;
+    height: 100%;
+    width: calc(66vw / var(--ui-scale, 1));                /* the right third stays empty: the camera shows you there */
+    max-width: 1500px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    padding: calc(2.2vh / var(--ui-scale, 1)) calc(2.4vw / var(--ui-scale, 1));
+    gap: calc(1.2vh / var(--ui-scale, 1));
+}
+
+.topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 1px 0 rgba(224,140,70,.10);
+    flex: 0 0 auto;
+}
+.topbar__title {
+    margin-left: auto; margin-right: auto;
+    font-size: 11px; letter-spacing: .42em; color: var(--dust);
+    text-transform: uppercase;
+}
+.tabs { display: flex; gap: 4px; }
+
+.tab {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--dust);
+    font: 600 10px/1 var(--mono);
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+.tab:hover { color: var(--bone); }
+.tab.is-active {
+    color: var(--soot);
+    background: var(--amber);
+    border-color: var(--amber);
+}
+.tab--close { border-color: var(--line); }
+.tab--close:hover { border-color: var(--danger); color: var(--danger); }
+
+.pane { display: none; flex: 1 1 auto; min-height: 0; }
+.pane.is-active { display: flex; flex-direction: column; gap: calc(1vh / var(--ui-scale, 1)); }
+
+/*
+   layout
+   Three explicit columns own the horizontal space; everything else lives inside one of them.
+*/
+.layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(300px, 36%) minmax(0, 1fr);
+    width: min(100%, 1130px);
+    gap: calc(1.4vw / var(--ui-scale, 1));
+}
+.col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+
+/* Columns do not stretch their children, so the panels sit under the frames and grid. */
+.col--character, .col--stash { justify-content: flex-start; }
+.col--stash .board { flex: 0 0 auto; }
+
+/*
+   character
+   Equipment rails on either side of a hole. They use the grid's gap so the rails and the grid read as one lattice.
+*/
+.doll {
+    flex: 0 0 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1.35fr 1fr;
+    gap: var(--gap);
+    align-items: stretch;
+}
+.doll__rail {
+    display: flex; flex-direction: column; gap: var(--gap);
+    justify-content: flex-start;
+}
+
+/* A frame is 1.5 cells tall. `flex: 0 0 auto` stops frames from dividing the column height. `overflow: hidden` clips the worn garment plate (inset: 0) so its icon and name stay inside the border. */
+.eq {
+    position: relative;
+    flex: 0 0 auto;
+    height: calc(var(--cell) * 1.5);
+    min-height: 0;
+    overflow: hidden;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    /* Hatch for an empty socket. */
+    background-image: repeating-linear-gradient(
+        135deg, transparent 0 5px, rgba(240,235,221,.035) 5px 6px);
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+.eq:hover { border-color: rgba(224,140,70,.6); }
+
+/* The label is the empty frame's caption, not a corner tag. A small chip over a frame (about 63px tall on a laptop) covered too much and clipped long names, so it is laid out as a caption instead. */
+.eq__label {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(var(--cell) * 0.08);
+    font: 600 clamp(7px, calc(var(--cell) * 0.17), 10px)/1.25 var(--mono);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--dust);
+    text-align: center;
+    /* Two words may wrap to two lines; anything longer is clipped instead of pushed over the border. */
+    overflow: hidden;
+    pointer-events: none;    /* the FRAME is the drop target, not the caption */
+}
+
+/*
+   silhouette
+   The middle column is a dark diagram figure (the live ped is on the right, see cl_pedcam.lua). The figure has no fixed height: `.doll` is a grid with align-items: stretch, so it matches the tallest rail whatever Clothing.Slots holds.
+*/
+.figure {
+    position: relative;
+    background: linear-gradient(180deg, rgba(20,18,15,.55), rgba(10,10,9,.75));
+    border: 1px solid var(--line2);
+    overflow: hidden;
+    pointer-events: none;
+}
+/* Viewfinder corners. */
+.figure::before, .figure::after {
+    content: '';
+    position: absolute; width: 24px; height: 24px;
+    border: 1px solid rgba(224,140,70,.5);
+}
+.figure::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.figure::after  { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+.figure__body {
+    position: absolute; inset: 6% 0 2%;
+    width: 100%; height: 92%;
+    fill: #08080a;                 /* near-black, like the reference */
+    opacity: .92;
+    pointer-events: none;
+}
+
+/* The two frames on the body use percentage heights against the figure and stay above the silhouette. */
+.eq--onbody {
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    width: 62%; height: auto; min-height: 0;
+    z-index: 2;
+    pointer-events: auto;
+    background-color: rgba(14,13,11,.55);
+}
+.eq--onbody[data-eq="armour"]   { top: 16%;  height: 22%; }
+.eq--onbody[data-eq="backpack"] { top: 44%;  height: 22%; }
+
+.figure__turn {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 34px;
+    pointer-events: auto; cursor: ew-resize;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, transparent, rgba(10,10,8,.6));
+}
+.figure__turn span {
+    font: 600 8px/1 var(--mono); letter-spacing: .18em;
+    text-transform: uppercase; color: var(--dust); opacity: .75;
+}
+.figure__turn:hover span { color: var(--amber); opacity: 1; }
+
+/*
+   board
+   The board wraps its grid, leaving room underneath for the character sheet.
+*/
+.board {
+    flex: 0 0 auto;
+    min-height: 0;
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, rgba(20,18,15,.90), rgba(11,10,9,.88));
+    border: 1px solid var(--line);
+    border-top: 2px solid rgba(224,140,70,.55);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    animation: panelIn .22s ease-out both;
+}
+@keyframes panelIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.board__head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    flex: 0 0 auto;
+}
+.board__head h2 {
+    margin: 0;
+    font: 700 11px/1 var(--mono);
+    letter-spacing: .2em; text-transform: uppercase; color: var(--bone);
+}
+.board__foot {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--line);
+    flex: 0 0 auto;
+}
+.weight__track {
+    flex: 1 1 auto; height: 4px;
+    background: rgba(240,235,221,.10);
+}
+.weight__fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--blood), var(--amber));
+    transition: width .18s ease;
+}
+.weight__fill.is-heavy { background: var(--danger); }
+.weight {
+    font: 600 9px/1 var(--mono); letter-spacing: .1em; color: var(--dust);
+    white-space: nowrap;
+}
+
+.catfilter { display: flex; gap: 3px; margin-left: auto; }
+.catfilter button {
+    background: transparent; border: 1px solid var(--line);
+    color: var(--dust);
+    font: 600 8px/1 var(--mono); letter-spacing: .12em;
+    padding: 5px 9px; cursor: pointer;
+}
+.catfilter button { transition: color .12s, border-color .12s, background .12s; }
+.catfilter button:hover { color: var(--bone); border-color: rgba(224,140,70,.5); }
+.catfilter button.is-active { color: var(--soot); background: var(--amber); border-color: var(--amber); }
+
+.hollow {
+    margin: auto; padding: 20px;
+    font-size: 10px; line-height: 1.7; color: var(--dust);
+    text-align: center; max-width: 26ch;
+}
+
+/*
+   grid
+   Two layers in one CSS grid: a lattice of cells and item plates placed on top (see renderGrid in app.js). Tracks use the fixed cell size so items are the same size everywhere; the grid stays top-left.
+*/
+.grid {
+    flex: 0 0 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 8), var(--cell));
+    grid-template-rows: repeat(var(--rows, 5), var(--cell));
+    gap: var(--gap);
+    padding: 10px;
+    justify-content: start;
+    align-content: start;
+}
+
+.grid--scroll {
+    max-height: max(calc(var(--cell) * 2 + 30px), calc(100vh - 380px));
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.grid .cell {
+    background: rgba(240,235,221,.03);
+    border: 1px solid var(--line2);
+    transition: background .1s ease, border-color .1s ease;
+}
+.grid .cell:hover { background: rgba(224,140,70,.08); }
+body.is-carrying .grid .cell:hover {
+    background: rgba(224,140,70,.18);
+    border-color: rgba(224,140,70,.6);
+}
+
+/*
+   item plates
+   A plate is a frame, not a stack. The icon is centred on the whole plate (not what is left after the name), and sizing uses --icon with min() because a percentage max-height against an indefinite height does nothing.
+*/
+.grid .slot.has-item,
+.slot--loose {
+    position: relative;
+    container-type: inline-size;
+    background: linear-gradient(180deg, rgba(48,44,38,.96), rgba(26,24,20,.98));
+    border: 1px solid rgba(240,235,221,.18);
+    box-shadow: inset 0 1px 0 rgba(240,235,221,.06), 0 2px 7px rgba(0,0,0,.55);
+    cursor: grab;
+    overflow: hidden;
+    margin: 0; padding: 0;
+    transition: border-color .1s ease, transform .08s ease, box-shadow .1s ease;
+}
+.grid .slot.has-item:hover,
+.slot--loose:hover {
+    border-color: rgba(224,140,70,.8);
+    box-shadow: 0 0 0 1px rgba(224,140,70,.3), 0 5px 14px rgba(0,0,0,.6);
+    z-index: 3;
+}
+.grid .slot.has-item:active { cursor: grabbing; transform: scale(.98); }
+.grid .slot.is-filtered { opacity: .2; }
+
+/* Loose items in the overflow strip are off the lattice, so they get an explicit one-cell size. */
+.slot--loose { width: var(--cell); height: var(--cell); }
+
+/* A corner notch marks a rotated item. */
+.grid .slot.is-rot::before {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    border-width: 0 7px 7px 0; border-style: solid;
+    border-color: transparent var(--amber) transparent transparent;
+    opacity: .8;
+    z-index: 2;
+}
+
+.slot__name {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    padding: 2px 3px 3px;
+    /* The strip keeps a pale name readable over a dark icon; it uses the panel colour. */
+    background: linear-gradient(180deg, rgba(10,10,9,0), rgba(10,10,9,.78) 45%);
+    font: 600 8px/1.1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+    color: var(--dust); text-align: center; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    pointer-events: none;
+}
+/* On a 1x1 the icon is the label; four clipped characters are worse. */
+@container (max-width: 64px) { .slot__name { display: none; } }
+
+.slot__foot {
+    position: absolute; top: 2px; left: 4px; z-index: 2;
+    font: 700 9px/1 var(--mono); color: var(--bone);
+    text-shadow: 0 1px 2px #000; pointer-events: none;
+}
+.slot__amount::before { content: 'x'; opacity: .55; }
+
+.slot__fill {
+    position: absolute; left: 3px; right: 3px; bottom: 3px; z-index: 3;
+    height: 2px; background: rgba(240,235,221,.15);
+}
+.slot__fill i { display: block; height: 100%; background: var(--amber); }
+
+/*
+   Every icon the same size, and none outside its plate
+   Icons are sized off `--icon` (derived from the cell), not a percentage of the slot, so a toolbox and a bandage draw at the same size. It is the same in the bag, bar, equipment frames, bar picker and drag ghost. `min(var(--icon), 100%)` keeps it inside the plate.
+*/
+
+/* Centred on the whole plate with a cell-based inset so artwork never touches the border. */
+.slot__icon {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(var(--cell) * 0.08);
+    pointer-events: none;
+}
+.slot__icon svg,
+.slot__icon img {
+    width: min(var(--icon), 100%);
+    height: min(var(--icon), 100%);
+    object-fit: contain;
+}
+
+/* Items the grid could not seat. Kept visible so players do not think they lost them. */
+.overflow {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin: 0 10px 10px; padding: 8px;
+    background: rgba(110,43,33,.16);
+    border: 1px solid rgba(180,87,74,.5);
+}
+.overflow__label { width: 100%; font: 700 8px/1 var(--mono);
+    letter-spacing: .14em; color: var(--danger); }
+
+/*
+   bar
+   Five slots at exactly one cell each, left-aligned, so a hotbar slot is the same square as a bag square.
+*/
+.bar {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+}
+.bar__label { font: 700 9px/1 var(--mono); letter-spacing: .2em; color: var(--dust); }
+.bar__slots { display: flex; gap: 5px; flex: 0 0 auto; }
+.bar__slot {
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--cell); height: var(--cell);
+    background: rgba(240,235,221,.035);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    overflow: hidden;
+}
+.bar__slot:hover { border-color: rgba(224,140,70,.6); }
+.bar__slot.is-refused { border-color: var(--danger); }
+/* The key number is a real element (see renderBar), not a ::after on a data attribute. */
+.bar__key {
+    position: absolute; top: 2px; left: 4px; z-index: 2;
+    font: 700 8px/1 var(--mono); color: var(--amber);
+    pointer-events: none;
+}
+/* A bar slot has no room for a name. The count goes to the opposite corner because the key number owns the top left. */
+.bar__slot .slot__name { display: none; }
+.bar__slot .slot__foot { top: auto; left: auto; right: 4px; bottom: 2px; }
+
+/* foot */
+.foot { flex: 0 0 auto; padding-top: 4px; text-align: center; }
+.foot__hint { font: 600 8px/1 var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--dust); opacity: .65; }
+
+/* settings */
+.settings {
+    display: flex; flex-direction: column; gap: 18px; padding: 16px; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line);
+}
+.settings__bar { position: sticky; top: -16px; z-index: 2; margin: -16px -16px 0; padding: 10px 16px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+.settings__search { width: 100%; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); color: var(--bone);
+    font: 600 10px/1 var(--mono); letter-spacing: .1em; padding: 9px 10px; outline: none; }
+.settings__search:focus { border-color: var(--amber); }
+.sgroup__title { margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+    font: 700 10px/1 var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--amber); }
+.sgroup__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.setting--wide { grid-column: 1 / -1; }
+.seg button .swatch { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -1px; }
+.seg button .swatch i { width: 7px; height: 7px; border: 1px solid rgba(255, 255, 255, .25); }
+
+/* live HUD style preview (mirrors bs_ui hud.css, scaled down) */
+.hudprev { width: 230px; padding: 8px 10px; margin: 2px 0; background: rgba(0, 0, 0, .35); border-left: 2px solid rgba(110, 43, 33, .8);
+    font: 600 8px/1 var(--mono); color: var(--bone); }
+.hudprev__id { margin-bottom: 6px; letter-spacing: .08em; } .hudprev__id i { color: var(--amber); font-style: normal; letter-spacing: .2em; margin-left: 6px; }
+.hudprev__row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.hudprev__row b { flex: 0 0 48px; font-weight: 600; letter-spacing: .15em; opacity: .75; }
+.hudprev__row em { flex: 0 0 26px; text-align: right; font-style: normal; opacity: .85; }
+.hudprev__track { flex: 1; height: 3px; background: rgba(0, 0, 0, .55); overflow: hidden; }
+.hudprev__track u { display: block; height: 100%; width: var(--w); background: var(--c); text-decoration: none; }
+.hudprev[data-style='slim'] .hudprev__row b { display: none; }
+.hudprev[data-style='slim'] .hudprev__track { height: 2px; }
+.hudprev[data-style='blocks'] .hudprev__track { height: 8px; }
+.hudprev[data-style='blocks'] .hudprev__track u { -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); }
+.hudprev[data-style='capsule'] { border-left-color: transparent; }
+.hudprev[data-style='capsule'] .hudprev__track, .hudprev[data-style='capsule'] .hudprev__track u { height: 7px; border-radius: 7px; }
+.hudprev[data-style='glow'] { border-left-color: var(--amber); background: linear-gradient(90deg, rgba(0, 0, 0, .5), transparent); }
+.hudprev[data-style='glow'] .hudprev__track { height: 4px; }
+.hudprev[data-style='glow'] .hudprev__track u { box-shadow: 0 0 6px rgba(255, 255, 255, .45); filter: brightness(1.25); }
+.hudprev[data-style='glow'] .hudprev__row em { color: var(--amber); }
+.hudprev[data-style='plate'] { border: 1px solid var(--amber); clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px)); }
+.hudprev[data-style='plate'] .hudprev__track { height: 5px; clip-path: polygon(0 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
+.setting { display: flex; flex-direction: column; gap: 7px; }
+.setting__label { font: 700 9px/1 var(--mono); letter-spacing: .18em; color: var(--dust); }
+.setting__note { margin: 0; font-size: 9px; line-height: 1.5; color: var(--dust); opacity: .7; }
+.setting__value { font: 600 9px/1 var(--mono); color: var(--amber); }
+.seg { display: flex; gap: 3px; }
+.seg button {
+    flex: 1 1 0; background: transparent; border: 1px solid var(--line);
+    color: var(--dust); font: 600 9px/1 var(--mono); letter-spacing: .1em;
+    padding: 8px; cursor: pointer;
+}
+.seg button.is-active { color: var(--soot); background: var(--amber); border-color: var(--amber); }
+input[type=range] { width: 100%; accent-color: var(--amber); }
+.setting.is-disabled input[type=range], .setting.is-disabled .setting__value { opacity: .35; }
+input[type=range]:disabled { cursor: default; }
+
+/* menus and modals */
+.ctx {
+    position: fixed; z-index: 40; min-width: 170px;
+    background: var(--panel2); border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(0,0,0,.7);
+}
+.ctx__head {
+    padding: 8px 11px; border-bottom: 1px solid var(--line);
+    font: 700 9px/1 var(--mono); letter-spacing: .12em;
+    text-transform: uppercase; color: var(--amber);
+}
+.ctx__item {
+    display: block; width: 100%; text-align: left;
+    background: transparent; border: 0; color: var(--bone);
+    font: 600 10px/1 var(--mono); letter-spacing: .1em;
+    padding: 9px 11px; cursor: pointer;
+}
+.ctx__item:hover { background: rgba(224,140,70,.16); }
+.ctx__item--danger:hover { background: rgba(180,87,74,.22); color: var(--danger); }
+.ctx__bind { display: flex; align-items: center; gap: 4px;
+    padding: 8px 11px; border-top: 1px solid var(--line); }
+.ctx__bindlabel { font: 700 8px/1 var(--mono); letter-spacing: .16em; color: var(--dust); }
+.ctx__slot {
+    width: 22px; height: 22px; background: transparent;
+    border: 1px solid var(--line); color: var(--dust);
+    font: 700 9px/1 var(--mono); cursor: pointer;
+}
+.ctx__slot:hover { border-color: var(--amber); color: var(--amber); }
+
+.modal { position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.55); }
+.modal__box {
+    min-width: 280px; padding: 18px;
+    background: var(--panel2); border: 1px solid var(--line);
+}
+.modal__box h3 { margin: 0 0 12px;
+    font: 700 11px/1 var(--mono); letter-spacing: .2em; color: var(--bone); }
+.modal__actions { display: flex; gap: 8px; margin-top: 14px; }
+.btn {
+    flex: 1 1 0; background: transparent; border: 1px solid var(--line);
+    color: var(--dust); font: 600 10px/1 var(--mono); letter-spacing: .12em;
+    padding: 10px; cursor: pointer;
+}
+.btn:hover { color: var(--bone); border-color: var(--amber); }
+.btn--primary { background: var(--amber); border-color: var(--amber); color: var(--soot); }
+#splitInput {
+    width: 100%; padding: 9px; background: rgba(0,0,0,.45);
+    border: 1px solid var(--line); color: var(--bone);
+    font: 600 12px/1 var(--mono); text-align: center;
+}
+.who { display: flex; flex-direction: column; gap: 4px; max-height: calc(40vh / var(--ui-scale, 1)); overflow-y: auto; }
+/* Built by app.js, so easy to miss when restyling; an unstyled runtime element looks like a broken feature. */
+.who__btn {
+    width: 100%; text-align: left;
+    background: transparent; border: 1px solid var(--line);
+    color: var(--bone); font: 600 10px/1 var(--mono); letter-spacing: .08em;
+    padding: 9px 11px; cursor: pointer;
+}
+.who__btn:hover { border-color: var(--amber); color: var(--amber); }
+
+/*
+   runtime-built elements
+   Created by app.js rather than index.html.
+*/
+
+/* Dragging: the source plate dims, the destination lights. */
+.is-dragging { opacity: .35; }
+.is-over {
+    border-color: rgba(224,140,70,.8) !important;
+    background: rgba(224,140,70,.16) !important;
+}
+
+/* A refused drop says why, in the element that refused it. */
+.is-refused { border-color: var(--danger) !important; animation: refuse .35s ease; }
+.is-refused::after {
+    content: attr(data-why);
+    position: absolute; left: 50%; bottom: calc(100% + 5px);
+    transform: translateX(-50%);
+    padding: 4px 8px; white-space: nowrap; z-index: 30;
+    background: var(--panel2); border: 1px solid var(--danger);
+    font: 600 8px/1 var(--mono); letter-spacing: .1em;
+    text-transform: uppercase; color: var(--danger);
+}
+@keyframes refuse {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+/* thresholds x0.6: body is ui-scaled (bs_ui/html/shared/scale.js); local width is >=1920 until the 0.6 floor */
+@media (prefers-reduced-motion: reduce) { .is-refused { animation: none; } }
+
+/* The drag ghost follows the cursor and must never take pointer events. It uses the same icon size as the plate, so picking up does not resize it. */
+.ghost {
+    position: fixed; z-index: 60; pointer-events: none; opacity: .9;
+    width: auto; height: auto;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+/* The ghost is not inside a plate, so its icon box carries the size itself (a percentage would resolve against a shrink-to-fit parent). */
+.ghost__icon {
+    display: flex; align-items: center; justify-content: center;
+    width: var(--icon); height: var(--icon);
+}
+.ghost__icon svg, .ghost__icon img {
+    width: 100%; height: 100%; object-fit: contain;
+}
+.ghost__name {
+    font: 600 8px/1 var(--mono); letter-spacing: .08em;
+    text-transform: uppercase; color: var(--bone);
+    text-shadow: 0 1px 3px #000; white-space: nowrap;
+}
+
+/* Clicking an empty bar slot opens a picker of what could go there. */
+.barpick {
+    position: fixed; z-index: 45; min-width: 200px; max-height: calc(44vh / var(--ui-scale, 1));
+    overflow-y: auto; padding: 5px;
+    background: var(--panel2); border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(0,0,0,.7);
+}
+.barpick__head {
+    margin: 0; padding: 7px 9px;
+    font: 700 8px/1 var(--mono); letter-spacing: .16em; color: var(--amber);
+}
+.barpick__row {
+    display: flex; align-items: center; gap: 9px;
+    width: 100%; padding: 7px 9px;
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--bone); font: 600 10px/1 var(--mono); text-align: left;
+}
+.barpick__row:hover { background: rgba(224,140,70,.16); }
+/* The picker icon needs a fixed box with a contained image; otherwise a large PNG renders at natural size and breaks the row. */
+.barpick__icon {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+}
+.barpick__icon svg, .barpick__icon img {
+    width: 100%; height: 100%; object-fit: contain;
+}
+.barpick__count { margin-left: auto; color: var(--dust); font-weight: 700; }
+.barpick__empty { margin: 0; padding: 12px;
+    font-size: 9px; line-height: 1.6; color: var(--dust); }
+
+/*
+   stats
+   Fills the space under the bar with info you would otherwise close the bag to read.
+*/
+.stats {
+    flex: 0 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+}
+.stats__head {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 8px 11px; border-bottom: 1px solid var(--line);
+}
+.stats__name {
+    font: 700 11px/1 var(--mono); letter-spacing: .1em; color: var(--bone);
+}
+.stats__class {
+    font: 600 8px/1 var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--amber);
+}
+.stats__rows { padding: 8px 11px 10px; display: flex; flex-direction: column; gap: 7px; }
+
+.stat { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 8px; }
+.stat__label {
+    font: 600 8px/1 var(--mono); letter-spacing: .12em;
+    text-transform: uppercase; color: var(--dust);
+}
+.stat__track { height: 4px; background: rgba(240,235,221,.10); }
+
+/* `.stat__fill` is a span (inline by default), which ignores width and height, so bars rendered empty. Declared display: block explicitly so restructuring the row cannot break it. */
+.stat__fill { display: block; height: 100%; width: 0; transition: width .2s ease; }
+.stat__val {
+    font: 600 9px/1 var(--mono); color: var(--bone);
+    text-align: right; font-variant-numeric: tabular-nums;
+}
+
+/* Semantic colours, separate from the amber accent. */
+.stat--health .stat__fill { background: #7fd4a2; }
+.stat--armour .stat__fill { background: #6fa8c8; }
+.stat--hunger .stat__fill { background: #d8a24a; }
+.stat--thirst .stat__fill { background: #5fa8d0; }
+.stat--infect .stat__fill { background: #a86fc0; }
+.stat--xp     .stat__fill { background: var(--amber); }
+.stat.is-low .stat__fill  { background: var(--danger); }
+
+/*
+   character sheet
+   Levels on the left, their effects (modifiers) on the right.
+*/
+.sheet {
+    flex: 0 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+}
+.sheet__head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 11px; border-bottom: 1px solid var(--line);
+}
+.sheet__title {
+    font: 700 9px/1 var(--mono); letter-spacing: .2em; color: var(--bone);
+}
+.sheet__points {
+    margin-left: auto;
+    font: 700 8px/1 var(--mono); letter-spacing: .1em; color: var(--amber);
+}
+.sheet__body {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    padding: 9px 11px 11px;
+}
+.sheet__trees { display: flex; flex-direction: column; gap: 6px; }
+
+.tree { display: grid; grid-template-columns: 62px 1fr 30px; align-items: center; gap: 8px; }
+.tree__name {
+    font: 600 8px/1 var(--mono); letter-spacing: .1em;
+    text-transform: uppercase; color: var(--dust);
+}
+.tree__track { height: 3px; background: rgba(240,235,221,.10); }
+.tree__fill { height: 100%; background: var(--amber); transition: width .2s ease; }
+.tree__lvl {
+    font: 700 9px/1 var(--mono); color: var(--bone);
+    text-align: right; font-variant-numeric: tabular-nums;
+}
+
+.sheet__modhead {
+    display: block; margin-bottom: 6px;
+    font: 700 8px/1 var(--mono); letter-spacing: .16em; color: var(--dust);
+}
+.mod {
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 2px 0;
+    font: 600 9px/1.4 var(--mono);
+}
+.mod__label { color: var(--dust); }
+.mod__val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Green is good, red is bad, and which is which depends on the stat, not the sign (slower hunger is a negative rate and a good thing). */
+.mod--good .mod__val { color: var(--good); }
+.mod--bad  .mod__val { color: var(--danger); }
+.mod__none { font: 600 9px/1.6 var(--mono); color: var(--dust); opacity: .6; }
+
+/*
+   worn equipment
+   A garment in a body frame reuses the grid's `.slot` plate (drag, category tint, fill bar). It fills the frame and drops the amount and the hatch. The icon is deliberately not resized; `.slot__icon` already centres it.
+*/
+.eq.has-worn {
+    background-image: none;
+    border-color: rgba(224,140,70,.45);
+}
+.slot.is-worn {
+    position: absolute;
+    inset: 0;
+    background: var(--panel2);
+    border: 0;
+    overflow: hidden;
+    z-index: 3;
+    cursor: grab;
+}
+
+/* A worn container (pack) gets a small corner mark so it is discoverable that clicking opens it. */
+.eq.is-openable { cursor: pointer; }
+.eq.is-openable::after {
+    content: '';
+    position: absolute;
+    right: 3px; bottom: 3px;
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-bottom: 7px solid rgba(224,140,70,.85);
+    z-index: 4;
+    pointer-events: none;
+}
+.eq.is-openable:hover { border-color: rgba(224,140,70,.9); }
+
+@media (max-width: 840px) {
+    .layout { grid-template-columns: minmax(260px, 26%) minmax(0, 1fr) minmax(210px, 24%); }
+}
+
+/* The plate clips its contents and the name is not drawn in the grid. A 1x1 plate is one cell tall, too small for icon + name + quantity, so the icon spilled out. The icon says what the item is, and hover, right-click and the drag ghost show the full label. */
+
+.grid .slot.has-item {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The label stays in the DOM for the context menu and screen readers; it just is not drawn in the grid. */
+.grid .slot.has-item .slot__name { display: none; }
+
+/* The count sits in the corner so it costs the icon nothing. */
+.grid .slot.has-item .slot__foot {
+    position: absolute;
+    top: 2px; left: 3px;
+    pointer-events: none;
+}
+.grid .slot.has-item .slot__amount {
+    font: 700 8px/1 var(--mono);
+    color: var(--dust);
+    text-shadow: 0 1px 2px rgba(0,0,0,.9);
+}
+
+.slot__icon { overflow: hidden; }
+
+/*
+   rarity and wear
+   Rarity is a border, not a fill, since the background carries the category tint. Common is left unstyled so the grid is not a colour chart.
+*/
+.slot[data-rarity="worn"]     { border-color: rgba(139,133,120,.55); }
+.slot[data-rarity="good"]     { border-color: rgba(95,168,211,.75); }
+.slot[data-rarity="military"] { border-color: rgba(224,140,70,.85); }
+.eq[data-rarity="good"]       { border-color: rgba(95,168,211,.55); }
+.eq[data-rarity="military"]   { border-color: rgba(224,140,70,.65); }
+
+/* Condition bar along the bottom of a worn garment; the fill colour shows low condition. */
+.cond {
+    position: absolute;
+    left: 3px; right: 3px; bottom: 2px;
+    height: 2px;
+    background: rgba(0,0,0,.55);
+    overflow: hidden;
+}
+.cond__fill {
+    display: block; height: 100%;
+    background: var(--good);
+    transition: width .2s ease;
+}
+.slot.is-worn .cond__fill { background: var(--good); }
+.slot.is-worn[data-rarity] .cond { bottom: 2px; }
+
+/* Under ~35% the bar changes colour (cosmetic threshold). */
+.cond__fill[style*="width:3"],
+.cond__fill[style*="width:2"],
+.cond__fill[style*="width:1"],
+.cond__fill[style*="width:0"] { background: var(--danger); }
+
+/*
+   gear list
+   Attribution lines sit under the totals, indented and quieter.
+*/
+.gear__src {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 2px 0 2px 10px;
+    font: 500 8px/1.4 var(--mono);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--dust);
+    opacity: .7;
+}
+.gear__empty {
+    margin: 4px 0 0;
+    font: 500 8px/1.5 var(--mono);
+    letter-spacing: .04em;
+    color: var(--dust);
+    opacity: .7;
+}
+
+/* Eight filter presets will not fit on one row, so the control wraps instead of scrolling. */
+.seg--wrap { flex-wrap: wrap; }
+.seg--wrap button { flex: 0 0 auto; }
+
+/*
+   field medical
+   Body snapshot on a dark plate (left), vitals + active effects (right).
+*/
+.fieldmed {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    color: var(--bone);
+    background: linear-gradient(160deg, rgba(18, 19, 17, .94), rgba(8, 9, 8, .95));
+    border: 1px solid rgba(214, 205, 178, .22);
+    box-shadow: inset 3px 0 0 rgba(193, 117, 56, .88), 0 10px 30px rgba(0, 0, 0, .35);
+    animation: panelIn .22s ease-out both;
+}
+.fieldmed__head {
+    min-height: 42px;
+    padding: 0 14px 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(214, 205, 178, .16);
+    background: rgba(10, 11, 10, .9);
+}
+.fieldmed__title { font: 800 12px/1 var(--mono); letter-spacing: .2em; color: #f4f0df; }
+.fieldmed__state {
+    padding: 6px 9px;
+    font: 800 10px/1 var(--mono);
+    letter-spacing: .14em;
+    color: var(--good);
+    background: rgba(127, 212, 162, .08);
+    border: 1px solid rgba(127, 212, 162, .35);
+    transition: color .2s, background .2s, border-color .2s;
+}
+.fieldmed__state.is-watch { color: #f2a451; background: rgba(218, 137, 65, .10); border-color: rgba(218, 137, 65, .45); }
+.fieldmed__state.is-critical { color: #ff7969; background: rgba(195, 57, 47, .16); border-color: rgba(224, 93, 79, .62); animation: critPulse 1.4s ease-in-out infinite; }
+@keyframes critPulse { 50% { box-shadow: 0 0 12px rgba(224, 93, 79, .45); } }
+.fieldmed__body {
+    display: grid;
+    grid-template-columns: minmax(150px, 46%) minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+}
+.fieldmed__side { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.fieldmed__readout { min-width: 0; display: flex; flex-direction: column; }
+.medrow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 30px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(231, 226, 205, .09);
+    transition: background .12s;
+}
+.medrow:hover { background: rgba(240, 235, 221, .03); }
+.medrow__label {
+    font: 700 10px/1.2 var(--mono);
+    letter-spacing: .08em;
+    color: #b9baac;
+    text-transform: uppercase;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.medrow__value { justify-self: end; white-space: nowrap; font: 800 13px/1 var(--mono); color: #faf5e7; }
+.medrow.is-watch .medrow__label, .medrow.is-watch .medrow__value { color: #f0a04e; }
+.medrow.is-critical .medrow__label, .medrow.is-critical .medrow__value { color: #ff7565; }
+.fieldmed__refresh { margin-top: 6px; padding: 4px 10px; font: 700 9px/1.3 var(--mono); letter-spacing: .1em; color: rgba(220, 224, 208, .85); background: rgba(220, 224, 208, .06); border: 1px solid rgba(220, 224, 208, .25); cursor: pointer; }
+.fieldmed__refresh:hover:not(:disabled) { background: rgba(220, 224, 208, .14); }
+.fieldmed__refresh:disabled { opacity: .45; cursor: default; }
+.fieldmed__note { margin-top: 8px; font: 700 9px/1.3 var(--mono); letter-spacing: .1em; color: rgba(220, 224, 208, .55); }
+.fieldmed__foot {
+    min-height: 34px;
+    padding: 8px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    border-top: 1px solid rgba(214, 205, 178, .14);
+    background: rgba(10, 11, 10, .9);
+    font: 700 8px/1.35 var(--mono);
+    letter-spacing: .08em;
+    color: rgba(225, 221, 202, .6);
+}
+.fieldmed__foot span { color: #dca060; text-align: right; }
+
+/* snapshot plate: charcoal radial, character on top */
+.bodycard { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bodycard__label { font: 800 9px/1 var(--mono); letter-spacing: .22em; color: rgba(224, 140, 70, .9); }
+.bodycard__stage {
+    position: relative;
+    height: 300px;
+    cursor: ew-resize;
+    overflow: hidden;
+    background:
+        radial-gradient(ellipse 60% 8% at 50% 94%, rgba(0, 0, 0, .65), transparent 70%),
+        radial-gradient(ellipse 70% 60% at 50% 45%, #1d1e1b 0%, #111210 55%, #070707 100%);
+    box-shadow: inset 0 0 0 1px rgba(214, 205, 178, .12), inset 0 0 40px rgba(0, 0, 0, .7);
+}
+.bodycard__stage::after {    /* faint scan lines */
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 3px);
+}
+.bodycard__img {
+    position: absolute; inset: 4% 0 2%;
+    width: 100%; height: 94%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity .16s ease;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .6));
+}
+.bodycard__img.is-on { opacity: 1; }
+.bodycard__img.is-instant { transition: none; }
+.bodycard__sil {
+    position: absolute; left: 50%; top: 5%;
+    height: 90%; width: auto;
+    transform: translateX(-50%);
+    transition: transform .2s ease, opacity .2s;
+    pointer-events: none;
+}
+.bodycard__sil[data-angle="1"], .bodycard__sil[data-angle="3"] { transform: translateX(-50%) scaleX(.55); }
+.bodycard__silbody { fill: url(#silFill); stroke: rgba(224, 140, 70, .55); stroke-width: .8; }
+.bodycard__siline { fill: none; stroke: rgba(224, 140, 70, .18); stroke-width: .6; }
+.bodycard__sil[data-angle="1"] .bodycard__siline, .bodycard__sil[data-angle="3"] .bodycard__siline { display: none; }
+.bodycard__stage.has-shots .bodycard__sil { opacity: 0; }
+.bodycard__corner { position: absolute; width: 14px; height: 14px; border: 0 solid rgba(193, 117, 56, .8); pointer-events: none; transition: border-color .15s; }
+.bodycard__corner:nth-of-type(1) { left: 4px; top: 4px; border-width: 2px 0 0 2px; }
+.bodycard__corner:nth-of-type(2) { right: 4px; top: 4px; border-width: 2px 2px 0 0; }
+.bodycard__corner:nth-of-type(3) { left: 4px; bottom: 4px; border-width: 0 0 2px 2px; }
+.bodycard__corner:nth-of-type(4) { right: 4px; bottom: 4px; border-width: 0 2px 2px 0; }
+.bodycard__stage:hover .bodycard__corner { border-color: var(--amber); }
+.bodycard__marks { position: absolute; inset: 4% 0 2%; pointer-events: none; }
+.bmark { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #e0392d; box-shadow: 0 0 0 2px rgba(20, 0, 0, .6), 0 0 10px rgba(255, 60, 45, .8); }
+.bmark i { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(255, 70, 55, .7); animation: bmarkPing 1.6s ease-out infinite; }
+.bmark--2 { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; }
+.bmark--3 { width: 18px; height: 18px; margin: -9px 0 0 -9px; background: #ff2d1f; }
+@keyframes bmarkPing { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
+.bodycard__foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 8px/1 var(--mono); letter-spacing: .14em; color: rgba(221, 225, 206, .55); }
+.bodycard__angle { color: var(--bone); }
+.bodycard__dots { display: flex; gap: 4px; }
+.bodycard__dots b { width: 6px; height: 6px; background: rgba(240, 235, 221, .18); transition: background .15s; }
+.bodycard__dots b.is-on { background: var(--amber); }
+
+/* active drugs / boosters / hurt zones */
+.fxchips { display: flex; flex-wrap: wrap; gap: 4px; }
+.fxchip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 7px;
+    font: 700 8px/1 var(--mono); letter-spacing: .1em;
+    border: 1px solid var(--line); background: rgba(0, 0, 0, .3); color: var(--dust);
+    animation: panelIn .18s ease-out both;
+}
+.fxchip small { font-size: 8px; opacity: .75; }
+.fxchip--hurt { color: #ff8a7c; border-color: rgba(224, 93, 79, .55); background: rgba(195, 57, 47, .12); }
+.fxchip--drug { color: #d6a8ff; border-color: rgba(190, 130, 255, .5); background: rgba(150, 90, 230, .10); }
+.fxchip--boost { color: #7fd8ff; border-color: rgba(96, 210, 255, .5); background: rgba(60, 200, 255, .08); }
+.fxchip--none { opacity: .5; }
+.trade-panel {
+    position: fixed;
+    z-index: 50;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(1050px, calc(94vw / var(--ui-scale, 1)));
+    max-height: calc(90vh / var(--ui-scale, 1));
+    overflow: auto;
+    padding: 24px;
+    box-sizing: border-box;
+    color: #eee9d8;
+    background: rgba(17, 25, 26, .97);
+    border: 1px solid rgba(218, 169, 91, .8);
+    box-shadow: 0 18px 52px rgba(0, 0, 0, .65);
+    font: 14px/1.45 var(--mono);
+}
+.trade-active .wrap, .trade-active .scrim { display: none; }
+.trade-panel__eyebrow { display: block; color: #b7b1a1; font-size: 11px; letter-spacing: .25em; }
+.trade-panel__head strong { display: block; font-size: 21px; }
+.trade-panel__bag { margin: 16px 0; padding: 14px; border: 1px solid rgba(222, 218, 195, .22); background: rgba(0,0,0,.25); }
+.trade-panel__bag h4, .trade-panel__offers h4 { display: flex; justify-content: space-between; align-items: center; }
+.trade-panel__bag small, .trade-panel__offers small { color: #a5a99f; font-size: 10px; }
+.trade-panel__bag-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 7px; max-height: calc(30vh / var(--ui-scale, 1)); overflow: auto; }
+.trade-panel__bag-item { min-height: 64px; display: flex; align-items: center; gap: 8px; padding: 8px; color: #eee9d8; border: 1px solid rgba(222,218,195,.19); background: rgba(255,255,255,.04); cursor: grab; text-align: left; font: inherit; }
+.trade-panel__bag-item:active { cursor: grabbing; }
+.trade-panel__bag-item[disabled] { opacity: .4; cursor: default; }
+.trade-panel__bag-item .trade-panel__icon { width: 34px; height: 34px; flex: none; }
+.trade-panel__bag-item span:last-child { overflow-wrap: anywhere; }
+.trade-panel__offers > div.is-over { border-color: #e08c46; background: rgba(224,140,70,.16); }
+.trade-panel__cash { display: flex; align-items: center; gap: 8px; margin-top: 12px; border-top: 1px solid rgba(222,218,195,.18); padding-top: 12px; }
+.trade-panel__cash input { min-width: 0; width: 125px; padding: 8px; background: #111b1c; border: 1px solid #726958; color: #fff; font: inherit; }
+.trade-panel__cash-note { display: block; margin-top: 6px; color: #aaa797; font-size: 11px; }
+.trade-panel.hidden, .trade-notice.hidden { display: none; }
+.trade-panel__head, .trade-panel__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.trade-panel__head strong { color: #e9bb75; letter-spacing: .14em; }
+.trade-panel__status { margin: 16px 0; color: #d5d0bb; }
+.trade-panel__offers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.trade-panel__offers > div {
+    min-height: 200px;
+    padding: 10px;
+    background: rgba(0, 0, 0, .28);
+    border: 1px solid rgba(222, 218, 195, .16);
+}
+.trade-panel__offers h4 { margin: 0 0 9px; color: #e9bb75; }
+.trade-panel__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 0;
+    border-top: 1px solid rgba(222, 218, 195, .12);
+}
+.trade-panel__item button { border: 0; background: transparent; color: #e9bb75; cursor: pointer; }
+.trade-panel__icon { display: inline-flex; width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
+.trade-panel__icon svg, .trade-panel__icon img { max-width: 100%; max-height: 100%; }
+.trade-panel__actions { justify-content: flex-end; margin-top: 12px; }
+.trade-panel__actions .btn--primary { min-width: 210px; min-height: 42px; }
+.trade-notice {
+    position: fixed;
+    z-index: 60;
+    bottom: calc(2vh / var(--ui-scale, 1));
+    right: calc(3vw / var(--ui-scale, 1));
+    padding: 8px 12px;
+    background: #162025;
+    border: 1px solid #d9a95b;
+    color: #fff0d5;
+    font: 12px var(--mono);
+}
+@media (max-width: 708px), (max-height: 456px) {
+    .fieldmed { min-height: 0; }
+    .bodycard__stage { height: 250px; }
+    .medrow { min-height: 26px; }
+    .medrow__label { font-size: 9px; }
+    .medrow__value { font-size: 12px; }
+    .fieldmed__foot { min-height: 30px; padding: 7px 11px; font-size: 7px; }
+}
+
+/*
+   boosters
+   Three single-use gadget slots (bs_boosters).
+*/
+.boosters {
+    margin-top: 8px;
+    padding: 8px 10px 10px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--amber);
+}
+.boosters__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.boosters__title { font: 700 11px/1 var(--mono); letter-spacing: .18em; color: var(--amber); }
+.boosters__hint { font: 600 8px/1 var(--mono); letter-spacing: .1em; color: var(--dust); opacity: .6; }
+.boosters__slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.booster {
+    position: relative;
+    height: calc(var(--cell, 56px) * 1.1);
+    border: 1px dashed rgba(96, 210, 255, .28);
+    background: linear-gradient(180deg, rgba(60, 200, 255, .05), rgba(0, 0, 0, .25));
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; overflow: hidden; cursor: default;
+    transition: border-color .15s, box-shadow .15s;
+}
+.booster.is-over, .booster:hover { border-color: rgba(96, 210, 255, .7); box-shadow: inset 0 0 12px rgba(96, 210, 255, .18); }
+.booster.has-booster { border-style: solid; border-color: rgba(96, 210, 255, .45); }
+.booster__key {
+    position: absolute; top: 3px; left: 4px;
+    font: 700 9px/1 var(--mono); color: var(--bone);
+    padding: 2px 4px; border: 1px solid var(--line); background: rgba(0, 0, 0, .45);
+}
+.booster__count { position: absolute; top: 3px; right: 5px; font: 700 9px/1 var(--mono); color: var(--dust); }
+.booster__empty { font: 600 8px/1 var(--mono); letter-spacing: .14em; color: var(--dust); opacity: .5; }
+.booster__icon { width: 55%; height: 45%; display: flex; align-items: center; justify-content: center; color: #60d2ff; }
+.booster__icon svg { width: 100%; height: 100%; }
+.booster__name { font: 700 8px/1.1 var(--mono); letter-spacing: .06em; color: var(--bone); text-align: center; padding: 0 4px; }
+.booster.is-out .booster__icon, .booster.is-out .booster__name { opacity: .35; }
+.booster__cd {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10, 10, 9, .72);
+    font: 700 13px/1 var(--mono); color: var(--amber);
+}
+.booster.is-refused { border-color: var(--danger); }
+
+/*
+   gear
+   Armour + backpack frames, left of the boosters.
+*/
+.gearrow { display: flex; gap: 8px; align-items: stretch; }
+.gearrow > .boosters { flex: 3 1 0; min-width: 0; }
+.gearrow > .gear { flex: 2 1 0; }
+.gearrow > .boosters.gadgets { flex: 2 1 0; border-left-color: #8fd16f; }
+.gadgets .boosters__title { color: #8fd16f; }
+.gadgets__slots { grid-template-columns: repeat(2, 1fr); }
+.booster.gadget { border-color: rgba(143, 209, 111, .28); }
+.booster.gadget.has-booster { border-color: rgba(143, 209, 111, .5); }
+.booster.gadget.is-over, .booster.gadget:hover { border-color: rgba(143, 209, 111, .8); box-shadow: inset 0 0 12px rgba(143, 209, 111, .18); }
+.booster.gadget .booster__icon { color: #8fd16f; }
+.gear__slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.gear__slot.slot {
+    position: relative; width: auto;
+    height: calc(var(--cell, 56px) * 1.1);
+    border: 1px dashed rgba(215, 160, 70, .3);
+    background: linear-gradient(180deg, rgba(215, 160, 70, .05), rgba(0, 0, 0, .25));
+}
+.gear__slot.slot.has-item { border-style: solid; border-color: rgba(215, 160, 70, .5); cursor: grab; }
+.gear__slot.is-over { border-color: var(--amber); box-shadow: inset 0 0 12px rgba(215, 160, 70, .2); }
+.gear__label {
+    position: absolute; top: 3px; left: 4px;
+    font: 700 8px/1 var(--mono); letter-spacing: .12em; color: var(--dust);
+}
+.gear__slot:not(.has-item) .gear__label { inset: 0; display: flex; align-items: center; justify-content: center; opacity: .55; }
+
+/*
+   snapshot cover
+   Opaque on purpose: the camera is elsewhere while it is up.
+*/
+.capcover {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 40% 50%, #151512, #050505 75%);
+}
+.capcover span { font: 700 11px/1 var(--mono); letter-spacing: .35em; color: var(--dust); animation: critPulse 1s ease-in-out infinite; }
+
+/* search / sort bar */
+.invsearch, .invsort {
+    background: rgba(0, 0, 0, .35);
+    border: 1px solid var(--line);
+    color: var(--bone);
+    font: 600 9px/1 var(--mono); letter-spacing: .12em;
+    padding: 5px 8px; outline: none;
+    transition: border-color .12s, background .12s;
+}
+.invsearch { width: 110px; }
+.invsearch::placeholder { color: var(--dust); opacity: .6; }
+.invsearch:focus, .invsort:focus, .invsearch:hover, .invsort:hover { border-color: rgba(224, 140, 70, .6); background: rgba(0, 0, 0, .5); }
+.invsort option { background: #14120f; color: var(--bone); }
+
+/* sorted list view (view only; the grid is the real layout) */
+.invlist { display: flex; flex-direction: column; gap: 2px; padding: 10px; max-height: calc(var(--cell) * 5 + 8px); overflow-y: auto; }
+.invlist::-webkit-scrollbar { width: 5px; }
+.invlist::-webkit-scrollbar-thumb { background: rgba(224, 140, 70, .4); }
+.invlist__empty { margin: 16px auto; font: 600 9px/1 var(--mono); letter-spacing: .16em; color: var(--dust); }
+.invrow {
+    display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 46px 58px; align-items: center; gap: 8px;
+    min-height: 32px; padding: 2px 8px 2px 4px;
+    background: rgba(240, 235, 221, .03); border: 1px solid var(--line2);
+    font: 600 10px/1 var(--mono); cursor: pointer;
+    transition: border-color .1s, background .1s;
+}
+.invrow:hover { border-color: rgba(224, 140, 70, .6); background: rgba(224, 140, 70, .06); }
+.invrow__icon { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
+.invrow__icon svg, .invrow__icon img { max-width: 100%; max-height: 100%; }
+.invrow__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bone); }
+.invrow__cat { font-size: 8px; letter-spacing: .12em; color: var(--dust); }
+.invrow__amt, .invrow__kg { text-align: right; color: var(--dust); }
+
+/* selection */
+.grid .slot.has-item.is-selected, .invrow.is-selected {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 1px var(--amber), inset 0 0 14px rgba(224, 140, 70, .22);
+}
+
+/* quick actions */
+.quick {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 10px;
+    border-top: 1px solid var(--line2);
+}
+.quick__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px/1 var(--mono); letter-spacing: .12em; color: var(--dust); opacity: .6; transition: opacity .15s, color .15s; }
+.quick.has-sel .quick__name { color: var(--bone); opacity: 1; }
+.quick__btn {
+    background: transparent; border: 1px solid var(--line); color: var(--bone);
+    font: 700 9px/1 var(--mono); letter-spacing: .14em; padding: 6px 11px; cursor: pointer;
+    transition: color .12s, border-color .12s, background .12s, opacity .12s;
+}
+.quick__btn:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); background: rgba(224, 140, 70, .08); }
+.quick__btn--danger:hover:not(:disabled) { border-color: var(--danger); color: #ff8a7c; background: rgba(180, 87, 74, .12); }
+.quick__btn:disabled { opacity: .3; cursor: default; }
+
+/* weight by category */
+.wbreak { padding: 0 12px 9px; display: flex; flex-direction: column; gap: 5px; }
+.wbreak__bar { display: flex; height: 5px; background: rgba(240, 235, 221, .06); overflow: hidden; }
+.wbreak__bar i { display: block; height: 100%; background: var(--c, #8a8579); transition: width .2s ease; }
+.wbreak__legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 600 8px/1 var(--mono); letter-spacing: .08em; color: var(--dust); }
+.wbreak__legend b { display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--c, #8a8579); vertical-align: -1px; }
+.wbreak__warn { font: 800 9px/1 var(--mono); letter-spacing: .16em; color: #ff7565; padding: 5px 7px; border: 1px solid rgba(224, 93, 79, .5); background: rgba(195, 57, 47, .12); animation: critPulse 1.4s ease-in-out infinite; }
+.wbreak__warn.is-near { color: #f0a04e; border-color: rgba(218, 137, 65, .45); background: rgba(218, 137, 65, .08); animation: none; }
+[data-cat="weapon"]   { --c: #c9573f; }
+[data-cat="ammo"]     { --c: #d99a3e; }
+[data-cat="food"]     { --c: #8fb35a; }
+[data-cat="drink"]    { --c: #4fa3c9; }
+[data-cat="medical"]  { --c: #e06a7a; }
+[data-cat="gear"]     { --c: #a38b62; }
+[data-cat="booster"]  { --c: #60d2ff; }
+[data-cat="gadget"]   { --c: #8fd16f; }
+[data-cat="material"] { --c: #8d8a80; }
+[data-cat="tool"]     { --c: #b3a36b; }
+[data-cat="clothing"] { --c: #9a7fc4; }
+
+/* tooltip */
+.tip {
+    position: fixed; z-index: 120; pointer-events: none;
+    width: 230px; padding: 9px 10px;
+    background: linear-gradient(180deg, rgba(24, 22, 19, .97), rgba(12, 11, 10, .98));
+    border: 1px solid rgba(224, 140, 70, .45);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .6);
+    font: 600 10px/1.3 var(--mono);
+    animation: tipIn .12s ease-out both;
+}
+@keyframes tipIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.tip__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
+.tip__name { font-weight: 800; color: var(--bone); letter-spacing: .04em; }
+.tip__cat { font-size: 8px; letter-spacing: .14em; color: var(--c, var(--dust)); white-space: nowrap; }
+.tip__row { display: flex; justify-content: space-between; gap: 8px; color: var(--dust); font-size: 9px; letter-spacing: .08em; padding: 1px 0; }
+.tip__row b { color: var(--bone); font-weight: 700; }
+.tip__row small { color: var(--dust); font-weight: 600; }
+.tip__desc { margin: 6px 0 0; color: #cfc9b8; font-size: 9px; line-height: 1.45; letter-spacing: .02em; }
+.tip__keys { margin-top: 7px; font-size: 7px; letter-spacing: .14em; color: var(--dust); opacity: .7; }
+
+/*
+   gear / booster / gadget plates
+   Shared by all three panels: icon in the middle, key top-left, count bottom-right, small name along the bottom.
+*/
+.gear__slot.slot, .booster { container-type: normal; }
+.lslot__icon {
+    position: absolute; inset: 12px 4px 13px; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; color: inherit;
+}
+.lslot__icon svg, .lslot__icon img {
+    max-width: 100%; max-height: 100%; width: auto; height: 100%;
+    object-fit: contain;
+}
+.gear__slot .lslot__icon { color: #d7a046; }
+.booster .lslot__icon { color: #60d2ff; }
+.booster.gadget .lslot__icon { color: #8fd16f; }
+.lslot__key {
+    position: absolute; top: 2px; left: 3px; z-index: 2;
+    font: 700 8px/1 var(--mono); color: var(--bone);
+    padding: 1px 3px; border: 1px solid var(--line); background: rgba(0, 0, 0, .55);
+}
+.lslot__count {
+    position: absolute; right: 3px; bottom: 12px; z-index: 2;
+    font: 700 8px/1 var(--mono); color: var(--bone); text-shadow: 0 1px 2px #000;
+}
+.lslot__name {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    padding: 1px 3px 2px; background: rgba(10, 10, 9, .7);
+    font: 600 7px/1.1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+    color: var(--dust); text-align: center;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lslot__empty {
+    font: 700 8px/1.1 var(--mono); letter-spacing: .12em; color: var(--dust);
+    opacity: .55; text-align: center; padding: 0 4px;
+}
+.gear__slot.slot:not(.has-item) { display: flex; align-items: center; justify-content: center; }
+.booster__cd { z-index: 3; }
+
+/* A worn backpack adds rows; the bag scrolls instead of pushing the panel. */
+#playerGrid { max-height: calc((var(--cell) + var(--gap, 2px)) * 8 + 20px); overflow-y: auto; }
+#playerGrid::-webkit-scrollbar { width: 5px; }
+#playerGrid::-webkit-scrollbar-thumb { background: rgba(224, 140, 70, .4); }
+
+/* locked VIP choice in a segmented picker */
+.seg button.is-locked { opacity: .45; cursor: not-allowed; position: relative; }
+.seg button.is-locked::after {
+    content: 'VIP'; position: absolute; top: -7px; right: -4px;
+    font-size: 9px; padding: 0 3px; color: var(--soot); background: var(--amber); letter-spacing: .05em;
+}
+.seg--wrap { flex-wrap: wrap; }
+
+/* Worn vest pockets and backpack: own grids under the pockets. Scrolls if the screen is short. */
+.bags { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 0 10px 10px; border-top: 1px solid var(--line); }
+.bags::-webkit-scrollbar { width: 5px; } .bags::-webkit-scrollbar-thumb { background: rgba(224,140,70,.4); }
+.bagbox { flex: 0 0 auto; border: 1px solid var(--line); background: rgba(0,0,0,.22); margin-top: 8px; }
+.bagbox__head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line2); font: 700 10px/1 var(--mono); letter-spacing: 2px; color: var(--dust); }
+.bagbox__title { color: var(--bone); flex: 1; white-space: nowrap; }
+.bagbox__w { color: var(--dust); white-space: nowrap; }
+.bagbox__look { background: rgba(0,0,0,.45); color: var(--bone); border: 1px solid var(--line); font: 10px var(--mono); padding: 2px 4px; max-width: 110px; }
+.bagbox__btn { background: rgba(240,235,221,.05); border: 1px solid var(--line); color: var(--bone); font: 10px var(--mono); letter-spacing: 1px; padding: 3px 7px; cursor: pointer; }
+.bagbox__btn:hover, .bagbox__btn.is-on { border-color: var(--amber); color: var(--amber); }
+.grid--bag { padding: 6px; }

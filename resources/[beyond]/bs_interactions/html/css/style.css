@@ -1,0 +1,191 @@
+/* No backdrop-filter anywhere in this project. NUI is composited over the game and has no game pixels to sample, so backdrop-filter: blur() paints an opaque black slab. Real blur comes from the game side (TriggerScreenblurFadeIn). */
+
+/* interactions - the dot, its option list and the search bar */
+
+:root {
+    --soot:  #0a0a09;
+    --bone:  #f0ebdd;
+    --dust:  #a8a293;
+    --amber: #e08c46;
+    --blood: #6e2b21;
+    --mono:  'Courier New', 'Consolas', monospace;
+    --serif: 'Times New Roman', Georgia, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: transparent; font-family: var(--mono);
+    color: var(--bone); user-select: none; pointer-events: none;
+}
+
+.hidden { display: none !important; }
+
+/* dot */
+
+.dot {
+    position: fixed;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    width: 40px; height: 40px;
+}
+
+.dot__core {
+    position: absolute;
+    width: var(--dot-size, 6px);
+    height: var(--dot-size, 6px);
+    border-radius: 50%;
+    background: var(--bone);
+    opacity: var(--dot-alpha, 0.35);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+    transition: opacity 140ms ease, transform 140ms ease, background-color 140ms ease;
+}
+
+.dot__ring {
+    position: absolute;
+    width: var(--ring-size, 26px);
+    height: var(--ring-size, 26px);
+    border: 1px solid var(--amber);
+    border-radius: 50%;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Something targetable under the dot. */
+.dot.is-live .dot__core {
+    opacity: 1;
+    background: var(--amber);
+    transform: scale(0.85);
+}
+
+.dot.is-live .dot__ring {
+    opacity: 0.9;
+    transform: scale(1);
+    animation: dot-breathe 2.2s ease-in-out infinite;
+}
+
+@keyframes dot-breathe {
+    50% { transform: scale(1.12); opacity: 0.55; }
+}
+
+/* options */
+
+.options {
+    position: fixed;
+    left: calc(50% + 34px);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 190px;
+    animation: opt-in 140ms ease-out;
+}
+
+@keyframes opt-in { from { opacity: 0; transform: translate(-8px, -50%); } }
+
+.opt {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.7rem;
+    background: rgba(10, 10, 9, 0.86);
+    border: 1px solid rgba(216, 210, 194, 0.08);
+    border-left: 2px solid transparent;
+    font-size: 0.934rem;
+    letter-spacing: 0.14em;
+    color: var(--dust);
+    transition: all 130ms ease;
+}
+
+.opt.is-active {
+    border-left-color: var(--amber);
+    color: var(--bone);
+    background: rgba(200, 118, 58, 0.12);
+}
+
+.opt__key {
+    display: grid;
+    place-items: center;
+    width: 15px; height: 15px;
+    flex: 0 0 15px;
+    border: 1px solid rgba(216, 210, 194, 0.25);
+    font-size: 0.73rem;
+    color: var(--bone);
+}
+
+.opt.is-active .opt__key { border-color: var(--amber); color: var(--amber); }
+
+.opt__hint {
+    margin-left: auto;
+    font-size: 0.73rem;
+    color: var(--blood);
+    letter-spacing: 0.1em;
+}
+
+/* progress */
+
+.progress {
+    position: fixed;
+    left: 50%;
+    bottom: calc(22vh / var(--ui-scale, 1));
+    transform: translateX(-50%);
+    width: 260px;
+    padding: 0.6rem 0.8rem;
+    background: rgba(10, 10, 9, 0.86);
+    border: 1px solid rgba(216, 210, 194, 0.08);
+    border-left: 2px solid var(--blood);
+    animation: opt-in 160ms ease-out;
+}
+
+.progress__label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-size: 0.847rem;
+    letter-spacing: 0.24em;
+    color: var(--dust);
+}
+
+.progress__track { height: 2px; background: rgba(216, 210, 194, 0.12); overflow: hidden; }
+
+.progress__fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--blood), var(--amber));
+}
+
+/* Readability in bright light without a background: text carries its own dark halo (tight opaque edge plus a wider soft one) and SVG icons get a drop-shadow, so nothing paints a rectangle. Applied to the whole document and inherited, so new elements are readable by default. */
+:root {
+    --bs-halo:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 1px 1px rgba(0, 0, 0, 1),
+        -1px 0 1px rgba(0, 0, 0, 0.9),
+        1px 0 1px rgba(0, 0, 0, 0.9),
+        0 0 5px rgba(0, 0, 0, 0.95),
+        0 0 12px rgba(0, 0, 0, 0.85),
+        0 0 26px rgba(0, 0, 0, 0.6);
+
+    /* For anything on the brightest ground. */
+    --bs-halo-strong:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 1px 2px rgba(0, 0, 0, 1),
+        0 0 8px rgba(0, 0, 0, 0.95),
+        0 0 22px rgba(0, 0, 0, 0.65);
+
+    --bs-ink-shadow:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.98))
+        drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85))
+        drop-shadow(0 0 6px rgba(0, 0, 0, 0.6));
+}
+
+body, body * { text-shadow: var(--bs-halo); }
+
+/* Line art gets the same edge the letters do. */
+svg, .icon, .ico { filter: var(--bs-ink-shadow); }
+
+/* Hairline rules and borders vanish over bright ground; give them an edge. */
+hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }

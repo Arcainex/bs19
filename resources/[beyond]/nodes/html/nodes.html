@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Node Atlas - BeyondSurvival</title>
+
+<!-- Self-contained (no CDN fonts or chart libraries): served by the game server, which may have no outbound internet. -->
+<style>
+:root{
+    --soot:#0a0a09; --ash:#14140f; --char:#1d1c16;
+    --bone:#d8d2c2; --dust:#8b8474; --amber:#c8763a; --blood:#6e2b21;
+    --good:#7fd4a2; --warn:#d8c15a;
+    --rule:rgba(216,210,194,0.10); --rule2:rgba(216,210,194,0.20);
+    --mono:'Consolas','DejaVu Sans Mono','Courier New',monospace;
+    --sans:'Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+    margin:0;background:var(--soot);color:var(--bone);
+    font-family:var(--sans);font-size:14px;line-height:1.5;
+    background-image:radial-gradient(120% 90% at 50% 0%,#12120e 0%,#0a0a09 70%);
+    display:flex;flex-direction:column;
+}
+h1{font-family:var(--mono);font-size:1rem;letter-spacing:.28em;text-transform:uppercase;margin:0;font-weight:600}
+.topbar{flex:0 0 auto;display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap;
+    padding:.7rem 1.2rem;border-bottom:1px solid var(--rule2);background:var(--ash)}
+.topbar .sp{flex:1}
+.stat{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--dust)}
+.stat b{color:var(--amber);font-weight:600}
+a{color:var(--amber)}
+
+/* State banner. A planner that is off and one that is starving look the same from the counters alone. */
+.banner{flex:0 0 auto;padding:.5rem 1.2rem;font-family:var(--mono);font-size:.78rem;
+    letter-spacing:.06em;border-bottom:1px solid var(--rule)}
+.banner.off{background:#2a1a12;color:#e2a06a}
+.banner.dry{background:#241f10;color:var(--warn)}
+.banner.live{background:#14251b;color:var(--good)}
+
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 340px;
+    gap:1rem;padding:1rem;align-items:stretch}
+@media(max-width:940px){.layout{grid-template-columns:1fr}}
+
+.plate{position:relative;min-height:0;background:var(--ash);border:1px solid var(--rule2);
+    border-radius:3px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+svg{height:100%;width:auto;max-width:100%;display:block}
+
+.side{min-height:0;overflow-y:auto;padding-right:.3rem}
+.card{background:var(--ash);border:1px solid var(--rule2);border-radius:3px;
+    padding:.8rem .9rem;margin-bottom:.8rem}
+.card h2{font-family:var(--mono);font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--dust);margin:0 0 .6rem;font-weight:600}
+.row{display:flex;justify-content:space-between;gap:1rem;font-family:var(--mono);font-size:.78rem;
+    padding:.15rem 0;border-bottom:1px solid var(--rule)}
+.row:last-child{border-bottom:0}
+.row span:first-child{color:var(--dust)}
+.row span:last-child{color:var(--bone)}
+.row.bad span:last-child{color:var(--blood);filter:brightness(1.7)}
+.row.good span:last-child{color:var(--good)}
+.hint{font-size:.75rem;color:var(--dust);margin:.5rem 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem .9rem;font-family:var(--mono);font-size:.72rem;color:var(--dust)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:.35rem;vertical-align:middle}
+button{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+    background:var(--char);color:var(--bone);border:1px solid var(--rule2);border-radius:2px;
+    padding:.35rem .7rem;cursor:pointer}
+button:hover{border-color:var(--amber);color:var(--amber)}
+button.on{border-color:var(--amber);color:var(--amber)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.field{display:grid;grid-template-columns:1fr 92px;gap:.45rem;align-items:center;margin:.35rem 0;font-family:var(--mono);font-size:.72rem;color:var(--dust)}
+.field input{width:100%;background:var(--soot);color:var(--bone);border:1px solid var(--rule2);padding:.3rem .4rem;font:inherit}
+.map-tools{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.7rem}
+
+.node{cursor:pointer}
+.node:hover circle{stroke:#fff}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>Node Atlas</h1>
+    <span class="stat">herds <b id="s-nodes">-</b></span>
+    <span class="stat">population <b id="s-pop">-</b></span>
+    <span class="stat">sim <b id="s-sim">-</b></span>
+    <span class="sp"></span>
+    <button id="t-mem" class="on">kill pressure</button>
+    <button id="t-safe" class="on">safe zones</button>
+    <button id="t-atlas" class="on">graph</button>
+    <button id="t-pause">pause refresh</button>
+    <button id="t-reset">reset view</button>
+</div>
+
+<div class="banner off" id="banner">connecting...</div>
+
+<div class="layout">
+    <div class="plate">
+        <svg id="map" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet">
+            <image id="bg" x="0" y="0" width="1000" height="1000" href="" opacity="0.5"/>
+            <g id="g-mem"></g>
+            <g id="g-safe"></g>
+            <g id="g-edges" stroke="rgba(216,210,194,0.13)" stroke-width="1" fill="none"></g>
+            <g id="g-points"></g>
+            <g id="g-nodes"></g>
+            <g id="g-clusters"></g>
+            <g id="g-players"></g>
+        </svg>
+    </div>
+
+    <div class="side">
+        <div class="card">
+            <h2>Simulation</h2>
+            <div id="sim-rows"></div>
+        </div>
+        <div class="card">
+            <h2>Streaming</h2>
+            <div id="stream-rows"></div>
+            <p class="hint" id="stream-hint"></p>
+        </div>
+        <div class="card">
+            <h2>Selected herd</h2>
+            <div id="sel-rows"><p class="hint">Click a herd on the map.</p></div>
+        </div>
+        <div class="card">
+            <h2>Map calibration</h2>
+            <div class="field"><label for="c-minx">Min X</label><input id="c-minx" type="number" step="1"></div>
+            <div class="field"><label for="c-maxx">Max X</label><input id="c-maxx" type="number" step="1"></div>
+            <div class="field"><label for="c-miny">Min Y</label><input id="c-miny" type="number" step="1"></div>
+            <div class="field"><label for="c-maxy">Max Y</label><input id="c-maxy" type="number" step="1"></div>
+            <button id="save-calib">save map bounds</button>
+            <p class="hint">Wheel to zoom. Drag the map to pan. These world bounds align the map image and every marker.</p>
+        </div>
+        <div class="card">
+            <h2>Legend</h2>
+            <div class="legend">
+                <span><i style="background:#7fd4a2"></i>wandering</span>
+                <span><i style="background:#c8763a"></i>migrating</span>
+                <span><i style="background:#d85a3a"></i>stimulus</span>
+                <span><i style="background:#8b8474"></i>settled</span>
+                <span><i style="background:#5aa8d8"></i>player</span>
+                <span><i style="background:#7fd4a2"></i>safe zone</span>
+                <span><i style="background:#b03a28"></i>its padded exclusion</span>
+            </div>
+            <p class="hint">Circle area is herd population. The faint red squares are
+                kill pressure - places players have been clearing, where growth is
+                suppressed.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+// The key from the page URL must be sent with every fetch, or the handler returns 403 and the panel silently stops updating.
+const KEY = new URLSearchParams(location.search).get('key');
+// /nodes has no trailing slash, so use an explicit resource-relative base.
+const BASE = location.pathname.replace(/\/?$/, '/');
+const api = (p) => {
+    const url = new URL(String(p).replace(/^\//, ''), location.origin + BASE);
+    if (KEY) url.searchParams.set('key', KEY);
+    return url.toString();
+};
+
+const $ = (id) => document.getElementById(id);
+const SVG = 'http://www.w3.org/2000/svg';
+
+let calib = { minX:-4000, maxX:5000, minY:-4000, maxY:8000 };
+let paused = false, showMem = true, showAtlas = true, showSafe = true, selected = null;
+
+// Viewport state is separate from calibration (calibration aligns the world, this is only the view).
+const mapEl = $('map');
+let view = { x:0, y:0, w:1000, h:1000 };
+let dragging = false, lastPointer = null;
+function clampView(){ view.w=Math.max(150,Math.min(1000,view.w)); view.h=view.w; view.x=Math.max(0,Math.min(1000-view.w,view.x)); view.y=Math.max(0,Math.min(1000-view.h,view.y)); }
+function applyView(){ clampView(); mapEl.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`); }
+function resetView(){ view={x:0,y:0,w:1000,h:1000}; applyView(); }
+function syncCalibrationInputs(value){
+    const active = document.activeElement && document.activeElement.id;
+    if (active && /^c-(minx|maxx|miny|maxy)$/.test(active)) return;
+    $('c-minx').value=value.minX; $('c-maxx').value=value.maxX;
+    $('c-miny').value=value.minY; $('c-maxy').value=value.maxY;
+}
+async function saveCalibration(){
+    const button=$('save-calib');
+    const next={minX:Number($('c-minx').value),maxX:Number($('c-maxx').value),minY:Number($('c-miny').value),maxY:Number($('c-maxy').value)};
+    if (!Object.values(next).every(Number.isFinite)) return;
+    button.disabled=true; button.textContent='saving...';
+    try {
+        const response=await fetch(api('api/calibration'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(next)});
+        const result=await response.json();
+        if (!result.ok) throw new Error(result.error || 'save failed');
+        calib=result.calib; syncCalibrationInputs(calib); resetView(); button.textContent='saved';
+    } catch (_) { button.textContent='save failed'; }
+    setTimeout(()=>{button.disabled=false;button.textContent='save map bounds';},1600);
+}
+
+// World metres -> the 0..1000 SVG square. Y is flipped: GTA Y grows north, SVG Y grows down.
+function px(x, y) {
+    const u = (x - calib.minX) / (calib.maxX - calib.minX);
+    const v = (y - calib.minY) / (calib.maxY - calib.minY);
+    return [u * 1000, (1 - v) * 1000];
+}
+function scaleM(metres) {
+    return metres / (calib.maxX - calib.minX) * 1000;
+}
+
+const INTENT_COLOUR = {
+    wandering:'#7fd4a2', migrating:'#c8763a', stimulus:'#d85a3a',
+    settled:'#8b8474', feeding:'#b58a4a',
+};
+
+function clear(el){ while (el.firstChild) el.removeChild(el.firstChild); }
+function node(name, attrs){
+    const e = document.createElementNS(SVG, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+}
+function rows(el, list){
+    el.innerHTML = list.map(([k, v, cls]) =>
+        `<div class="row ${cls||''}"><span>${k}</span><span>${v}</span></div>`).join('');
+}
+const num = (n) => (n == null ? '-' : Number(n).toLocaleString());
+
+function drawMemory(cells){
+    const g = $('g-mem'); clear(g);
+    if (!showMem) return;
+    for (const c of cells) {
+        // Cells are keyed by a position inside them, so draw the square centred on it (corner-first shifts the heat layer half a cell).
+        const [sx, sy] = px(c.x - c.size/2, c.y + c.size/2);
+        const s = scaleM(c.size);
+        const p = Math.min(1, c.killPressure / 3);
+        if (p > 0.01) g.appendChild(node('rect', {
+            x:sx, y:sy, width:s, height:s,
+            fill:'#b03a28', opacity:(0.08 + p*0.42).toFixed(3),
+        }));
+    }
+}
+
+// Safe zones: dashed outer circle = padded exclusion the spawner refuses to place inside, solid inner = zone as configured.
+function drawSafe(zones){
+    const g = $('g-safe'); clear(g);
+    if (!showSafe) return;
+
+    for (const z of zones || []) {
+        const [x, y] = px(z.x, z.y);
+
+        g.appendChild(node('circle', { cx:x, cy:y, r:scaleM(z.padded),
+            fill:'#b03a28', 'fill-opacity':0.07,
+            stroke:'#b03a28', 'stroke-width':1, 'stroke-dasharray':'5 4',
+            'stroke-opacity':0.75 }));
+
+        g.appendChild(node('circle', { cx:x, cy:y, r:scaleM(z.radius),
+            fill:'#7fd4a2', 'fill-opacity':0.09,
+            stroke:'#7fd4a2', 'stroke-width':1, 'stroke-opacity':0.9 }));
+
+        const t = node('text', { x:x, y:y - scaleM(z.padded) - 4,
+            fill:'#7fd4a2', 'font-size':8, 'font-family':'monospace',
+            'text-anchor':'middle' });
+        t.textContent = `${z.label || z.id} ${Math.round(z.radius)}m +${Math.round(z.padded - z.radius)}m`;
+        g.appendChild(t);
+    }
+}
+
+function drawAtlas(atlas){
+    const ge = $('g-edges'), gp = $('g-points');
+    clear(ge); clear(gp);
+    if (!showAtlas || !atlas || !atlas.points) return;
+
+    const pts = atlas.points;
+    for (const e of atlas.edges || []) {
+        const a = pts[e.a - 1], b = pts[e.b - 1];
+        if (!a || !b) continue;
+        const [x1,y1] = px(a.x, a.y), [x2,y2] = px(b.x, b.y);
+        ge.appendChild(node('line', { x1, y1, x2, y2 }));
+    }
+    for (const p of pts) {
+        const [x, y] = px(p.x, p.y);
+        gp.appendChild(node('circle', { cx:x, cy:y, r:2.5,
+            fill:'none', stroke:'rgba(216,210,194,0.45)', 'stroke-width':1 }));
+        const t = node('text', { x:x + 5, y:y + 3,
+            fill:'rgba(216,210,194,0.4)', 'font-size':7, 'font-family':'monospace' });
+        t.textContent = p.id;
+        gp.appendChild(t);
+    }
+}
+
+function drawNodes(nodes){
+    const g = $('g-nodes'); clear(g);
+    for (const n of nodes) {
+        const [x, y] = px(n.x, n.y);
+        // Radius by area, not population, so big herds do not swallow the map.
+        const r = Math.max(2, Math.min(26, Math.sqrt(n.population) * 0.30));
+        const colour = INTENT_COLOUR[n.intent] || '#8b8474';
+
+        const grp = node('g', { class:'node' });
+        grp.appendChild(node('circle', {
+            cx:x, cy:y, r,
+            fill:colour, 'fill-opacity':0.28,
+            stroke:colour, 'stroke-width': selected === n.id ? 2 : 1,
+            'stroke-opacity':0.9,
+        }));
+
+        // A herd under alert gets a line to whatever pulled it (handy for testing noise).
+        if (n.alert) {
+            const [ax, ay] = px(n.alert.x, n.alert.y);
+            grp.appendChild(node('line', { x1:x, y1:y, x2:ax, y2:ay,
+                stroke:'#d85a3a', 'stroke-width':1, 'stroke-dasharray':'3 3', opacity:0.8 }));
+            grp.appendChild(node('circle', { cx:ax, cy:ay, r:2.5, fill:'#d85a3a' }));
+        }
+
+        grp.addEventListener('click', () => { selected = n.id; showSelected(n); });
+        g.appendChild(grp);
+    }
+}
+
+function drawClusters(clusters){
+    const g = $('g-clusters'); clear(g);
+    for (const c of clusters || []) {
+        const [x, y] = px(c.x, c.y);
+        g.appendChild(node('circle', { cx:x, cy:y, r:scaleM(300),
+            fill:'none', stroke:c.arrival ? '#7fd4a2' : 'rgba(90,168,216,0.5)',
+            'stroke-width':1, 'stroke-dasharray':'4 4' }));
+    }
+}
+
+function drawPlayers(players){
+    const g = $('g-players'); clear(g);
+    for (const p of players || []) {
+        const [x, y] = px(p.x, p.y);
+        g.appendChild(node('circle', { cx:x, cy:y, r:3.5, fill:'#5aa8d8',
+            stroke:'#0a0a09', 'stroke-width':1 }));
+        const t = node('text', { x:x + 6, y:y + 3, fill:'#5aa8d8',
+            'font-size':8, 'font-family':'monospace' });
+        t.textContent = p.name;
+        g.appendChild(t);
+    }
+}
+
+function showSelected(n){
+    rows($('sel-rows'), [
+        ['id', '#' + n.id],
+        ['population', num(n.population)],
+        ['intent', n.intent || '-'],
+        ['position', `${Math.round(n.x)}, ${Math.round(n.y)}`],
+        ['radius', Math.round(n.radius) + ' m'],
+        ['home / target', `${n.homeAtlas} -> ${n.targetAtlas}`],
+        ['cohesion', (n.traits.cohesion ?? 0).toFixed(2)],
+        ['migration', (n.traits.migration ?? 0).toFixed(2)],
+        ['aggression', (n.traits.aggression ?? 0).toFixed(2)],
+        ['noise response', (n.traits.noiseResponse ?? 0).toFixed(2)],
+        ['spread', (n.traits.spread ?? 0).toFixed(2)],
+        ['split impulse', (n.traits.splitImpulse ?? 0).toFixed(2)],
+        ['behaviour', n.traits.behavior || '-'],
+        ['alert', n.alert ? (n.alert.kind || 'yes') : 'none', n.alert ? 'bad' : ''],
+    ]);
+}
+
+function banner(stream, snapshot){
+    const el = $('banner');
+
+    // A broken graph outranks everything else here; other numbers are unreliable if herds cannot migrate.
+    if (snapshot.atlasProblems && snapshot.atlasProblems.length) {
+        el.className = 'banner off';
+        el.textContent = 'ATLAS GRAPH BROKEN (' + snapshot.atlasProblems.length
+            + ') - ' + snapshot.atlasProblems[0]
+            + '. Fix config_atlas.lua before reading anything else here.';
+        return;
+    }
+
+    if (!snapshot.ready) {
+        el.className = 'banner off';
+        el.textContent = 'The node simulation is still loading - no herds seeded yet.';
+        return;
+    }
+    if (!stream || !stream.enabled) {
+        el.className = 'banner off';
+        el.textContent = 'STREAMING OFF - Streaming.enabled = false. Herds are simulating, '
+            + 'but the sector system is what you are seeing in game.';
+        return;
+    }
+    if (stream.dryRun) {
+        el.className = 'banner dry';
+        el.textContent = 'DRY RUN - the planner is planning and clients are validating '
+            + 'candidates, but nothing is spawned by this path. Watch the rejection '
+            + 'breakdown below: that is what Stage 5 will be switching on.';
+        return;
+    }
+    el.className = 'banner live';
+    el.textContent = 'LIVE - this path is placing walkers in the world.';
+}
+
+async function poll(){
+    if (paused) return;
+    let data;
+    try {
+        const r = await fetch(api('api/nodes'), { cache:'no-store' });
+        data = await r.json();
+    } catch (e) {
+        $('banner').className = 'banner off';
+        $('banner').textContent = 'Lost contact with the server.';
+        return;
+    }
+    if (!data.ok) {
+        $('banner').className = 'banner off';
+        $('banner').textContent = data.error || 'not ready';
+        return;
+    }
+
+    if (data.calib) { calib = data.calib; syncCalibrationInputs(calib); }
+    if (data.hasMap && !$('bg').getAttribute('href')) $('bg').setAttribute('href', api('map'));
+
+    const s = data.snapshot, st = data.stream;
+    banner(st, s);
+
+    $('s-nodes').textContent = num(s.nodeCount);
+    $('s-pop').textContent = num(s.totalPopulation);
+    $('s-sim').textContent = (s.simTimeMs / 3600000).toFixed(1) + ' h';
+
+    rows($('sim-rows'), [
+        ['status', s.status],
+        ['campaign', '#' + s.campaignId],
+        ['herds', num(s.nodeCount)],
+        ['population', num(s.totalPopulation) + ' / ' + num(s.globalCap)],
+        ['mean speed', (s.meanSpeed || 0).toFixed(2) + ' m/s'],
+        ['memory cells', num(s.memoryCells)],
+        ['atlas', 'v' + (s.atlasVersion || '?') + ' - '
+            + ((s.atlasProblems && s.atlasProblems.length)
+                ? s.atlasProblems.length + ' problem(s)' : 'healthy'),
+            (s.atlasProblems && s.atlasProblems.length) ? 'bad' : 'good'],
+        ['births / deaths', num(s.stats.births) + ' / ' + num(s.stats.deaths)],
+        ['splits / merges', num(s.stats.splits) + ' / ' + num(s.stats.merges)],
+        ['persistence', s.persistence.enabled ? 'on' : 'off',
+            s.persistence.enabled ? 'good' : ''],
+        ['saves / failures', num(s.persistence.saves) + ' / ' + num(s.persistence.failures),
+            s.persistence.failures > 0 ? 'bad' : ''],
+        ['pending rows', num(s.persistence.pendingNodes) + ' + ' + num(s.persistence.pendingDeletes)],
+    ]);
+
+    if (st) {
+        const tried = st.accepted + st.rejected;
+        rows($('stream-rows'), [
+            ['enabled / dry run', (st.enabled ? 'yes' : 'no') + ' / ' + (st.dryRun ? 'yes' : 'no')],
+            ['plans', num(st.plans)],
+            ['clusters', num(st.clusterCount)],
+            ['offered', num(st.offered)],
+            ['accepted', num(st.accepted), st.accepted > 0 ? 'good' : ''],
+            ['rejected', num(st.rejected) + (tried ? ` (${Math.round(st.rejected/tried*100)}%)` : '')],
+            ['- seen cell', num(st.reasons.seen)],
+            ['- ray clear', num(st.reasons.rayClear)],
+            ['- no safe coord', num(st.reasons.noSafeCoord)],
+            ['- safe zone', num(st.reasons.safeZone)],
+            ['- too far', num(st.reasons.tooFar)],
+            ['- no node', num(st.reasons.noNode)],
+        ]);
+
+        // A rejection rate near 100% with most cells seen means observation memory is poisoned around a stationary player (starvation, not health).
+        const hint = $('stream-hint');
+        if (!st.enabled) hint.textContent = '';
+        else if (tried === 0) hint.textContent = 'No candidates tried yet - either nobody is in game, or the planner is finding no herds near anyone.';
+        else if (st.accepted === 0 && st.reasons.seen > tried * 0.8)
+            hint.textContent = 'Everything is being refused as recently-seen. That is the hidden-spawn rule starving - expected if you have been standing still, a problem if you have been driving.';
+        else hint.textContent = '';
+    } else {
+        rows($('stream-rows'), [['planner', 'not loaded']]);
+    }
+
+    drawMemory(data.memory || []);
+    drawSafe(data.safeZones || []);
+    drawAtlas(data.atlas);
+    drawNodes(data.nodes || []);
+    drawClusters(st && st.clusters);
+    drawPlayers(data.players);
+
+    if (selected) {
+        const n = (data.nodes || []).find(n => n.id === selected);
+        if (n) showSelected(n);
+    }
+}
+
+$('t-mem').addEventListener('click', (e) => {
+    showMem = !showMem; e.target.classList.toggle('on', showMem);
+});
+$('t-safe').addEventListener('click', (e) => {
+    showSafe = !showSafe; e.target.classList.toggle('on', showSafe);
+});
+$('t-atlas').addEventListener('click', (e) => {
+    showAtlas = !showAtlas; e.target.classList.toggle('on', showAtlas);
+});
+$('t-pause').addEventListener('click', (e) => {
+    paused = !paused; e.target.classList.toggle('on', paused);
+    e.target.textContent = paused ? 'resume refresh' : 'pause refresh';
+});
+$('t-reset').addEventListener('click', resetView);
+$('save-calib').addEventListener('click', saveCalibration);
+mapEl.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect=mapEl.getBoundingClientRect();
+    const mx=view.x+((e.clientX-rect.left)/rect.width)*view.w, my=view.y+((e.clientY-rect.top)/rect.height)*view.h;
+    const nextW=Math.max(150,Math.min(1000,view.w*(e.deltaY<0?0.80:1.25))), ratio=nextW/view.w;
+    view.x=mx-(mx-view.x)*ratio; view.y=my-(my-view.y)*ratio; view.w=nextW; view.h=nextW; applyView();
+}, {passive:false});
+mapEl.addEventListener('pointerdown', (e) => {
+    if(e.button!==0) return;
+    dragging=true; lastPointer={x:e.clientX,y:e.clientY}; mapEl.setPointerCapture(e.pointerId); mapEl.style.cursor='grabbing';
+});
+mapEl.addEventListener('pointermove', (e) => {
+    if(!dragging || !lastPointer) return;
+    const rect=mapEl.getBoundingClientRect();
+    view.x-=(e.clientX-lastPointer.x)/rect.width*view.w; view.y-=(e.clientY-lastPointer.y)/rect.height*view.h;
+    lastPointer={x:e.clientX,y:e.clientY}; applyView();
+});
+function stopDrag(){ dragging=false; lastPointer=null; mapEl.style.cursor=''; }
+mapEl.addEventListener('pointerup', stopDrag);
+mapEl.addEventListener('pointercancel', stopDrag);
+
+poll();
+// 2s: the server plans every 2.5s and the sim ticks every 2s, so polling faster just redraws the same frame.
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

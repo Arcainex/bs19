@@ -1,0 +1,22 @@
+-- bs_guard strings (en).
+return {
+    ['guard.spec_stopped'] = 'Spectate stopped.',
+    ['guard.spec_nostream'] = 'Target did not stream in.',
+    ['guard.spec_on'] = 'Spectating [{id}]. /guardspec to stop.',
+    ['guard.err_denied'] = 'not allowed',
+    ['guard.err_nopos'] = 'no position',
+    ['guard.err_offline'] = 'player is offline',
+    ['guard.err_self'] = 'that is you',
+    ['guard.kind.teleport'] = 'teleport',
+    ['guard.kind.speed'] = 'speed',
+    ['guard.kind.superjump'] = 'super jump',
+    ['guard.kind.noclip'] = 'noclip',
+    ['guard.kind.godmode'] = 'god mode',
+    ['guard.kind.weapon'] = 'weapon',
+    ['guard.kind.explosion'] = 'explosion',
+    ['guard.kind.ptfx'] = 'particles',
+    ['guard.kind.entity'] = 'entity',
+    ['guard.kind.money'] = 'money',
+    ['guard.kind.items'] = 'items',
+    ['guard.kind.eventspam'] = 'event spam',
+}

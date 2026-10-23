@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>Scoreboard</title>
+    <!-- v= is bumped by hand on every asset change -->
+    <link rel="stylesheet" href="css/style.css?v=20261013i" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <div class="sb">
+        <header class="head">
+            <div>
+                <h1 id="title" data-i18n="ui.beyond_survival">BEYOND SURVIVAL</h1>
+                <p class="head__sub" id="subtitle"></p>
+            </div>
+            <div class="head__count"><b id="count">0</b><span id="max">/ 32</span><em data-i18n="ui.survivors">SURVIVORS</em></div>
+        </header>
+        <div id="vipStrip" class="vip-strip hidden"></div>
+
+        <div class="grid">
+            <section class="panel here">
+                <h2 class="panel__label" data-i18n="ui.still_breathing">STILL BREATHING</h2>
+                <div class="thead prow">
+                    <span data-i18n="ui.id">ID</span><span data-i18n="ui.survivor">SURVIVOR</span><span data-i18n="ui.class">CLASS</span><span class="r" data-i18n="ui.lvl">LVL</span><span class="r" data-i18n="ui.ping">PING</span>
+                </div>
+                <div class="here__rows" id="players"></div>
+            </section>
+
+            <section class="boards" id="boards"></section>
+        </div>
+
+        <footer class="foot" data-i18n="ui.hold_f9">HOLD F9</footer>
+    </div>
+</div>
+<script src="js/app.js?v=20261014c1"></script>
+</body>
+</html>

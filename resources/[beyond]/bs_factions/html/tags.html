@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+<meta charset="utf-8">
+<title>BeyondSurvival agent tags</title>
+<style>
+/*
+   Name tags. Same palette and type as the hub (bs_menu): bone text, dust for
+   quiet parts, amber accent, Consolas. Thin bracket lines and a hairline
+   divider, no boxes. Colours come from config at start.
+*/
+:root { --accent:#e08c46; --squad:#7fd4a2; --bone:#f0ebdd; --dust:#a8a293; --down:#c0564a; --neutral:#c9c2b0;
+        --mono:'Consolas','Courier New',monospace; }
+html, body { margin:0; width:100%; height:100%; overflow:hidden; background:transparent!important; pointer-events:none; user-select:none; }
+#layer { position:fixed; inset:0; }
+.tag { position:absolute; left:0; top:0; transform-origin:50% 100%; display:flex; flex-direction:column; align-items:center;
+       font-family:var(--mono); white-space:nowrap; will-change:transform,opacity; transition:opacity .18s linear;
+       filter:drop-shadow(0 1px 1px rgba(0,0,0,.95)) drop-shadow(0 0 4px rgba(0,0,0,.6)); }
+.tag__group { --c:var(--accent); display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; letter-spacing:.16em;
+              text-transform:uppercase; color:var(--c); line-height:1; padding:2px 4px; }
+.tag--squad .tag__group { --c:var(--squad); }
+.tag__br { display:inline-block; width:5px; height:13px; border:1.5px solid var(--c); opacity:.9; }
+.tag__br--l { border-right:0; } .tag__br--r { border-left:0; }
+.tag__sep { width:1px; height:10px; background:var(--c); opacity:.55; }
+.tag__rank { color:var(--bone); opacity:.85; }
+.tag__rule { width:100%; min-width:90px; height:1px; margin:3px 0 2px;
+             background:linear-gradient(90deg,transparent,var(--c,var(--accent)) 20%,var(--c,var(--accent)) 80%,transparent); opacity:.45; }
+.tag--squad .tag__rule { --c:var(--squad); }
+.tag__name { font-size:15px; font-weight:700; letter-spacing:.06em; color:var(--bone); text-transform:uppercase; }
+.tag__lv { font-size:10px; letter-spacing:.14em; color:var(--dust); margin-left:6px; }
+.tag__down { display:none; font-size:10px; letter-spacing:.24em; color:var(--down); margin-top:2px; }
+.tag.is-down .tag__name, .tag.is-down .tag__group { filter:grayscale(1); opacity:.55; }
+.tag.is-down .tag__down { display:block; }
+.tag--safe .tag__group, .tag--safe .tag__rule { --c:var(--neutral); }
+/* Appear: fade up, brackets slide in from the name, rule draws from centre. */
+.tag__in { display:flex; flex-direction:column; align-items:center; transition:opacity .28s ease, filter .28s ease; }
+.tag.is-new .tag__in { animation:tagIn .34s cubic-bezier(.2,.8,.2,1) both; }
+.tag.is-new .tag__br--l { animation:brL .42s cubic-bezier(.2,.8,.2,1) .04s both; }
+.tag.is-new .tag__br--r { animation:brR .42s cubic-bezier(.2,.8,.2,1) .04s both; }
+.tag.is-new .tag__rule { animation:rule .5s cubic-bezier(.2,.8,.2,1) .1s both; }
+.tag.is-out .tag__in { opacity:0; filter:blur(1px); }
+/* Faction tag styles, unlocked by faction level (bsFactionStyle statebag). */
+.tag--st-plain .tag__br { display:none; }
+.tag--st-stencil .tag__group { font-family:Impact,'Arial Black',sans-serif; font-weight:400; letter-spacing:.28em; }
+.tag--st-glow .tag__group { text-shadow:0 0 6px var(--c), 0 0 12px var(--c); }
+.tag--st-glow .tag__rule { opacity:.8; box-shadow:0 0 6px var(--c); }
+.tag--st-chevron .tag__br { width:7px; height:7px; border-width:0 2px 2px 0; transform:rotate(135deg); }
+.tag--st-chevron .tag__br--r { transform:rotate(-45deg); }
+.tag--st-elite .tag__group { border:1px solid var(--c); box-shadow:0 0 8px var(--c), inset 0 0 6px var(--c); padding:3px 6px; text-shadow:0 0 6px var(--c); }
+.tag--st-elite .tag__rule { opacity:.85; }
+/* VIP personal styles (bsVipTag statebag). */
+.tag--st-pulse .tag__group { animation:tagPulse 1.8s ease-in-out infinite; }
+.tag--st-scan .tag__group { background:linear-gradient(90deg,transparent 0,rgba(255,255,255,.22) 50%,transparent 100%) no-repeat; background-size:30% 100%; animation:tagScan 2.2s linear infinite; }
+@keyframes tagPulse { 0%,100% { text-shadow:0 0 2px var(--c); } 50% { text-shadow:0 0 10px var(--c), 0 0 18px var(--c); } }
+@keyframes tagScan { from { background-position:-40% 0; } to { background-position:140% 0; } }
+@keyframes tagIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+@keyframes brL { from { opacity:0; transform:translateX(18px) scaleY(.2); } to { opacity:.9; transform:none; } }
+@keyframes brR { from { opacity:0; transform:translateX(-18px) scaleY(.2); } to { opacity:.9; transform:none; } }
+@keyframes rule { from { transform:scaleX(0); opacity:0; } to { transform:scaleX(1); opacity:.45; } }
+</style>
+<link rel="stylesheet" href="squad.css">
+</head>
+<body>
+<div id="layer"></div>
+<script>
+// One element per mate, reused each frame. Only transform and opacity change per update, so no text re-layout.
+const layer = document.getElementById('layer');
+const nodes = new Map();
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function build(t) {
+    const el = document.createElement('div');
+    el.className = 'tag is-new';
+    el.innerHTML = `<div class="tag__in"><div class="tag__group"><span class="tag__br tag__br--l"></span><span class="g"></span><span class="tag__sep"></span><span class="tag__rank"></span><span class="tag__br tag__br--r"></span></div><div class="tag__rule"></div><div><span class="tag__name"></span><span class="tag__lv"></span></div><div class="tag__down">${window.BSI18n ? BSI18n.t('tags.down') : 'DOWN'}</div></div>`;
+    setTimeout(() => el.classList.remove('is-new'), 700);
+    layer.appendChild(el);
+    return el;
+}
+function fill(el, t) {
+    const key = [t.kind, t.group, t.rank, t.name, t.level, t.down, t.hex, t.style].join('|');
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    const kind = t.kind === 'squad' || t.kind === 'safe' ? t.kind : 'faction';
+    for (const k of ['squad','faction','safe']) el.classList.toggle('tag--' + k, k === kind);
+    el.classList.toggle('is-down', !!t.down);
+    for (const c of [...el.classList]) if (c.startsWith('tag--st-')) el.classList.remove(c);
+    if (/^[a-z]+$/.test(t.style || '')) el.classList.add('tag--st-' + t.style);
+    const hex = /^#[0-9a-f]{6}$/i.test(t.hex || '') ? t.hex : '';
+    for (const sel of ['.tag__group', '.tag__rule']) { const n = el.querySelector(sel); if (hex) n.style.setProperty('--c', hex); else n.style.removeProperty('--c'); }
+    el.querySelector('.g').textContent = t.group || '';
+    el.querySelector('.tag__rank').textContent = t.rank || '';
+    const hasRank = !!t.rank;
+    el.querySelector('.tag__sep').style.display = hasRank ? '' : 'none';
+    el.querySelector('.tag__rank').style.display = hasRank ? '' : 'none';
+    el.querySelector('.tag__name').textContent = t.name || (window.BSI18n ? BSI18n.t('tags.survivor') : 'Survivor');
+    el.querySelector('.tag__lv').textContent = (window.BSI18n ? BSI18n.t('sq.lv') : 'LV') + ' ' + (t.level || 1);
+}
+function render(tags) {
+    // body is ui-scaled (scale.js): position tags in local px so they stay on the world point
+    const W = window.BSScale ? window.BSScale.w() : window.innerWidth, H = window.BSScale ? window.BSScale.h() : window.innerHeight, seen = new Set();
+    for (const t of tags) {
+        seen.add(t.id);
+        let el = nodes.get(t.id);
+        if (el && el.classList.contains('is-out')) { clearTimeout(el._rm); el.classList.remove('is-out'); }
+        if (!el) { el = build(t); nodes.set(t.id, el); }
+        fill(el, t);
+        const s = Math.max(0.3, Math.min(1.2, Number(t.s) || 1));
+        el.style.opacity = Math.max(0, Math.min(1, Number(t.a) || 1));
+        el.style.transform = `translate(${(t.x * W).toFixed(1)}px, ${(t.y * H).toFixed(1)}px) translate(-50%, -100%) scale(${s.toFixed(3)})`;
+    }
+    for (const [id, el] of nodes) if (!seen.has(id) && !el.classList.contains('is-out')) {
+        el.classList.add('is-out');
+        el._rm = setTimeout(() => { el.remove(); nodes.delete(id); }, 300);
+    }
+}
+window.addEventListener('message', (e) => {
+    const d = e.data || {};
+    if (d.action === 'tags') render(Array.isArray(d.tags) ? d.tags : []);
+    if (d.action === 'tagsConfig' && d.colours) {
+        const r = document.documentElement.style, c = d.colours;
+        if (c.faction) r.setProperty('--accent', c.faction);
+        if (c.squad) r.setProperty('--squad', c.squad);
+        if (c.text) r.setProperty('--bone', c.text);
+        if (c.muted) r.setProperty('--dust', c.muted);
+        if (c.down) r.setProperty('--down', c.down);
+        if (c.neutral) r.setProperty('--neutral', c.neutral);
+    }
+});
+</script>
+<script src="squad.js"></script>
+</body>
+</html>

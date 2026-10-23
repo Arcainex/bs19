@@ -1,0 +1,22 @@
+-- bs_guard strings (tr).
+return {
+    ['guard.spec_stopped'] = 'İzleme durduruldu.',
+    ['guard.spec_nostream'] = 'Hedef yüklenmedi.',
+    ['guard.spec_on'] = '[{id}] izleniyor. Durdurmak için /guardspec.',
+    ['guard.err_denied'] = 'izin yok',
+    ['guard.err_nopos'] = 'konum yok',
+    ['guard.err_offline'] = 'oyuncu çevrimdışı',
+    ['guard.err_self'] = 'bu sensin',
+    ['guard.kind.teleport'] = 'ışınlanma',
+    ['guard.kind.speed'] = 'hız',
+    ['guard.kind.superjump'] = 'süper zıplama',
+    ['guard.kind.noclip'] = 'noclip',
+    ['guard.kind.godmode'] = 'tanrı modu',
+    ['guard.kind.weapon'] = 'silah',
+    ['guard.kind.explosion'] = 'patlama',
+    ['guard.kind.ptfx'] = 'parçacıklar',
+    ['guard.kind.entity'] = 'varlık',
+    ['guard.kind.money'] = 'para',
+    ['guard.kind.items'] = 'eşyalar',
+    ['guard.kind.eventspam'] = 'olay spamı',
+}

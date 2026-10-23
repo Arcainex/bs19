@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>Interactions</title>
+    <!-- v= bumped by hand on every asset change -->
+    <link rel="stylesheet" href="css/style.css?v=20261013i" />
+</head>
+<body>
+    <!-- The dot: always centred once a character is loaded. -->
+    <div id="dot" class="dot hidden">
+        <span class="dot__core"></span>
+        <span class="dot__ring"></span>
+    </div>
+
+    <!-- Options fan out to the right of the dot. -->
+    <div id="options" class="options hidden"></div>
+
+    <!-- Search progress -->
+    <div id="progress" class="progress hidden">
+        <span class="progress__label" id="progress-label"></span>
+        <div class="progress__track"><div class="progress__fill" id="progress-fill"></div></div>
+    </div>
+
+    <script src="js/app.js?v=20261013i"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="pump.css">
+<link rel="stylesheet" href="scrap.css">
+</head>
+<body>
+<div id="panel" class="panel hidden">
+    <div class="bolt tl"></div><div class="bolt tr"></div><div class="bolt bl"></div><div class="bolt br"></div>
+    <div class="head"><span id="title">PUMP CONTROL</span><span id="state" class="state">OFF</span></div>
+
+    <div class="row">
+        <div class="gauge">
+            <svg viewBox="0 0 200 120">
+                <path class="arc" d="M20 105 A80 80 0 0 1 180 105"/>
+                <path id="zone" class="zone" d=""/>
+                <g id="ticks"></g>
+                <line id="needle" class="needle" x1="100" y1="105" x2="100" y2="35"/>
+                <circle cx="100" cy="105" r="6" class="hub"/>
+            </svg>
+            <div class="volts"><span id="volts">0.0</span><small>V</small></div>
+        </div>
+
+        <div class="side">
+            <div class="block" id="clampBlock">
+                <label id="tClamps">CLAMPS</label>
+                <div class="clamps">
+                    <span class="led red" id="ledRed"></span><span id="tRed">RED +</span>
+                    <span class="led black" id="ledBlack"></span><span id="tBlack">BLACK -</span>
+                </div>
+            </div>
+            <div class="block" id="battBlock">
+                <label><span id="tBattery">BATTERY</span> <b id="battTxt">--</b></label>
+                <div class="bar"><div class="cap" id="battCap"></div><div class="fill" id="battFill"></div></div>
+            </div>
+            <div class="block" id="litersBlock">
+                <label id="tLiters">LITRES</label>
+                <div class="counter" id="liters">000.0</div>
+            </div>
+            <div class="block">
+                <label><span id="tStation">STATION</span> <b id="stationTxt">--</b></label>
+                <div class="bar thin"><div class="fill amber" id="stationFill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="block" id="progBlock">
+        <label><span id="tProgress">CHARGE HOLD</span> <b id="timeLeft"></b></label>
+        <div class="bar"><div class="fill good" id="progFill"></div></div>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div class="hint" id="hint"></div>
+</div>
+<div id="scrap" class="scrap hidden">
+    <div class="sc-head"><span id="scTitle"></span><span id="scTime"></span></div>
+    <div class="sc-meta" id="scMeta"></div>
+    <ul class="sc-parts" id="scParts"></ul>
+    <div class="sc-bar"><div class="sc-zone" id="scZone"></div><div class="sc-perfect" id="scPerfect"></div><div class="sc-marker" id="scMarker"></div></div>
+    <div class="sc-name" id="scName"></div>
+    <div class="sc-hint" id="scHint"></div>
+</div>
+<script src="pump.js"></script>
+<script src="scrap.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+BeyondSurvival License
+Copyright (c) 2026 XanderP (bs19.org)
+
+You can:
+  - download BeyondSurvival and run it on your own servers, public or private,
+    for free;
+  - change it, extend it and add your own resources to it.
+
+You can not:
+  - sell BeyondSurvival, or any part of it, alone or bundled with other things;
+  - put it behind a paywall, a Tebex package, a Patreon tier or any other
+    paid access;
+  - re-upload or redistribute it, changed or unchanged, as your own work or
+    under another name.
+
+You must:
+  - keep this license file and the credits in the README;
+  - credit BeyondSurvival (link to https://bs19.org) when you show or share
+    a server or project that uses it.
+
+Third-party parts (the map conversions, zombie models, sounds and the
+resources in resources/[third-party]) belong to their authors and are listed
+in the README credits. Their own terms apply to them.
+
+BeyondSurvival is provided as is, without any warranty. The authors are not
+liable for anything that happens from using it.

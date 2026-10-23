@@ -1,0 +1,76 @@
+$engine: 3
+$minFxVersion: 12913
+$onesync: on
+name: BeyondSurvival
+version: 1.0.0-beta
+author: XanderP
+description: Zombie survival RPG framework. Fresh install with an empty world - no characters or player data.
+
+tasks:
+  - action: connect_database
+
+  # Framework and server.cfg template
+  - action: download_github
+    src: https://github.com/Arcainex/bs19
+    ref: main
+    dest: ./tmp/bs
+
+  - action: move_path
+    src: ./tmp/bs/resources
+    dest: ./resources
+
+  - action: move_path
+    src: ./tmp/bs/server.cfg
+    dest: ./server.cfg
+
+  - action: move_path
+    src: ./tmp/bs/myLogo.png
+    dest: ./myLogo.png
+
+  # oxmysql (database driver) from its official releases
+  - action: download_file
+    url: https://github.com/overextended/oxmysql/releases/download/v2.14.3/oxmysql.zip
+    path: ./tmp/oxmysql.zip
+
+  - action: unzip
+    src: ./tmp/oxmysql.zip
+    dest: ./resources
+
+  # License key and database go straight into server.cfg
+  - action: replace_string
+    file: ./server.cfg
+    search: 'sv_licenseKey "CHANGEME"'
+    replace: 'sv_licenseKey "{{svLicense}}"'
+
+  - action: replace_string
+    file: ./server.cfg
+    search: 'set mysql_connection_string "mysql://CHANGEME_USER:CHANGEME_PASSWORD@127.0.0.1/beyondsurvival?charset=utf8mb4"'
+    replace: 'set mysql_connection_string "{{dbConnectionString}}"'
+
+  - action: replace_string
+    file: ./server.cfg
+    search: |
+      endpoint_add_tcp "0.0.0.0:30120"
+      endpoint_add_udp "0.0.0.0:30120"
+    replace: "{{serverEndpoints}}"
+
+  - action: replace_string
+    file: ./server.cfg
+    search: "sv_maxclients 48"
+    replace: "sv_maxclients {{maxClients}}"
+
+  # The txAdmin owner becomes admin in game
+  - action: write_file
+    file: ./server.cfg
+    append: true
+    data: |
+
+      # Added by the txAdmin recipe: the server owner
+      {{addPrincipalsMaster}}
+
+  - action: replace_string
+    mode: all_vars
+    file: ./server.cfg
+
+  - action: remove_path
+    path: ./tmp

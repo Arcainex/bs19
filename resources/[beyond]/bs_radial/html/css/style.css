@@ -1,0 +1,175 @@
+/*
+   the radial wheel.
+   No backdrop-filter: NUI is composited over the game with no game pixels to sample, so it blurs transparent black into an opaque slab. The blur comes from the game (TriggerScreenblurFadeIn in cl_main.lua).
+*/
+
+:root {
+    --soot:  #0a0a09;
+    --bone:  #f0ebdd;
+    --dust:  #8b8474;
+    --amber: #e08c46;
+    --blood: #6e2b21;
+    --good:  #7fd4a2;
+    --mono:  'Courier New', 'Consolas', monospace;
+    --serif: 'Times New Roman', Georgia, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: transparent;
+    font-family: var(--mono); color: var(--bone);
+    user-select: none; cursor: default;
+}
+
+.hidden { display: none !important; }
+
+.veil {
+    position: fixed; inset: 0;
+    background: radial-gradient(60% 60% at 50% 50%,
+        rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.30) 70%, rgba(0,0,0,0.55) 100%);
+    animation: fade 140ms ease-out;
+}
+
+@keyframes fade { from { opacity: 0; } }
+
+/* the wheel */
+
+.wheel {
+    position: fixed; left: 50%; top: 50%;
+    width: calc(46vh / var(--ui-scale, 1)); height: calc(46vh / var(--ui-scale, 1));
+    transform: translate(-50%, -50%);
+    animation: pop 140ms cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+@keyframes pop {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+}
+
+.wheel__svg { width: 100%; height: 100%; overflow: visible; }
+
+/* Slices are drawn as paths by app.js. */
+
+.slice {
+    fill: rgba(10, 10, 9, 0.55);
+    stroke: rgba(216, 210, 194, 0.10);
+    stroke-width: 0.35;
+    transition: fill 120ms ease;
+    cursor: pointer;
+}
+.slice.is-hot      { fill: rgba(200, 118, 58, 0.30); stroke: rgba(200,118,58,0.75); }
+.slice.is-active   { fill: rgba(127, 212, 162, 0.16); }
+.slice.is-disabled { fill: rgba(10, 10, 9, 0.35); cursor: default; }
+.slice.is-danger.is-hot { fill: rgba(110, 43, 33, 0.45); stroke: rgba(180,70,55,0.8); }
+
+.slice__icon { pointer-events: none; }
+.slice__icon path {
+    fill: none; stroke: var(--dust); stroke-width: 1.5;
+    stroke-linecap: round; stroke-linejoin: round;
+    transition: stroke 120ms ease;
+    vector-effect: non-scaling-stroke;
+}
+.is-hot      .slice__icon path { stroke: var(--amber); }
+.is-active   .slice__icon path { stroke: var(--good); }
+.is-disabled .slice__icon path { stroke: rgba(139, 132, 116, 0.35); }
+
+.slice__tick { fill: none; stroke: rgba(200,118,58,0.55); stroke-width: 0.5; }
+
+/* the middle */
+
+.hub {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(26vh / var(--ui-scale, 1)); text-align: center; pointer-events: none;
+}
+
+.hub__title {
+    display: block;
+    font-size: 0.905rem; letter-spacing: 0.34em; color: var(--dust);
+    text-shadow: 0 1px 3px #000;
+}
+
+.hub__label {
+    display: block; margin-top: 0.5rem;
+    font-family: var(--serif); font-size: 1.5rem; letter-spacing: 0.06em;
+    color: var(--bone); text-shadow: 0 2px 8px #000;
+    min-height: 1.8rem;
+}
+
+.hub__note {
+    display: block; margin-top: 0.25rem;
+    font-size: 0.876rem; letter-spacing: 0.12em; color: var(--dust);
+    text-shadow: 0 1px 3px #000; min-height: 1rem;
+}
+
+.hub__label.is-disabled { color: var(--dust); }
+.hub__label.is-danger   { color: #c9705f; }
+
+/*
+   Off-center wheels (weapon wheel): the left half of the screen stays clear for the scripted gun camera. The wheel slides to its side, and the veil is re-centered with it and made much lighter on the far side.
+   No geometry in app.js: sliceAt() measures the wheel's bounding box on every mousemove.
+*/
+
+#root.is-right .wheel { left: 72%; }
+#root.is-left  .wheel { left: 28%; }
+
+#root.is-right .veil {
+    background: radial-gradient(52% 62% at 72% 50%,
+        rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.26) 62%, rgba(0,0,0,0.44) 100%);
+}
+#root.is-left .veil {
+    background: radial-gradient(52% 62% at 28% 50%,
+        rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.26) 62%, rgba(0,0,0,0.44) 100%);
+}
+
+/* On a narrow window 72% would push the wheel off the edge, so pull both sides toward the middle. */
+@media (max-aspect-ratio: 4/3) {
+    #root.is-right .wheel { left: 66%; }
+    #root.is-left  .wheel { left: 34%; }
+}
+
+/* The hint follows the wheel so it does not read as a caption for the preview on the other side. */
+#root.is-right .hint { left: 72%; }
+#root.is-left  .hint { left: 28%; }
+
+/* hint */
+
+.hint {
+    position: fixed; left: 50%; bottom: calc(9vh / var(--ui-scale, 1));
+    transform: translateX(-50%);
+    font-size: 0.847rem; letter-spacing: 0.26em; color: rgba(139,132,116,0.9);
+    text-shadow: 0 1px 3px #000; white-space: nowrap;
+}
+
+/* Readability in bright light without a background panel: text carries its own dark halo (tight opaque plus wider soft), and SVG icons get a drop-shadow. Applied to the whole document and inherited, so new elements are readable by default. */
+:root {
+    --bs-halo:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 1px 1px rgba(0, 0, 0, 1),
+        -1px 0 1px rgba(0, 0, 0, 0.9),
+        1px 0 1px rgba(0, 0, 0, 0.9),
+        0 0 5px rgba(0, 0, 0, 0.95),
+        0 0 12px rgba(0, 0, 0, 0.85),
+        0 0 26px rgba(0, 0, 0, 0.6);
+
+    /* For anything on the brightest ground. */
+    --bs-halo-strong:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 1px 2px rgba(0, 0, 0, 1),
+        0 0 8px rgba(0, 0, 0, 0.95),
+        0 0 22px rgba(0, 0, 0, 0.65);
+
+    --bs-ink-shadow:
+        drop-shadow(0 0 1px rgba(0, 0, 0, 0.98))
+        drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85))
+        drop-shadow(0 0 6px rgba(0, 0, 0, 0.6));
+}
+
+body, body * { text-shadow: var(--bs-halo); }
+
+/* Line art gets the same edge as the letters. */
+svg, .icon, .ico { filter: var(--bs-ink-shadow); }
+
+/* Hairline rules and borders vanish over bright ground; give them an edge. */
+hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }

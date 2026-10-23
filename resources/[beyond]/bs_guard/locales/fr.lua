@@ -1,0 +1,22 @@
+-- bs_guard strings (fr).
+return {
+    ['guard.spec_stopped'] = 'Spectate arrêté.',
+    ['guard.spec_nostream'] = 'La cible n\'a pas été chargée.',
+    ['guard.spec_on'] = 'Vous observez [{id}]. /guardspec pour arrêter.',
+    ['guard.err_denied'] = 'non autorisé',
+    ['guard.err_nopos'] = 'pas de position',
+    ['guard.err_offline'] = 'le joueur est hors ligne',
+    ['guard.err_self'] = 'c\'est vous',
+    ['guard.kind.teleport'] = 'téléportation',
+    ['guard.kind.speed'] = 'vitesse',
+    ['guard.kind.superjump'] = 'super saut',
+    ['guard.kind.noclip'] = 'noclip',
+    ['guard.kind.godmode'] = 'mode dieu',
+    ['guard.kind.weapon'] = 'arme',
+    ['guard.kind.explosion'] = 'explosion',
+    ['guard.kind.ptfx'] = 'particules',
+    ['guard.kind.entity'] = 'entité',
+    ['guard.kind.money'] = 'argent',
+    ['guard.kind.items'] = 'objets',
+    ['guard.kind.eventspam'] = 'spam d\'événements',
+}

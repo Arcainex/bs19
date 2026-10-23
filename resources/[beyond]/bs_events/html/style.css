@@ -1,0 +1,40 @@
+:root {
+  --bg: rgba(18, 14, 10, 0.92);
+  --edge: #6b3a1c;
+  --rust: #d6783a;
+  --blood: #b3261e;
+  --ash: #cfc6b8;
+  --dim: #8c8272;
+}
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; font-family: 'Courier New', monospace; }
+.hidden { display: none !important; }
+#radio {
+  position: absolute; top: calc(9vh / var(--ui-scale, 1)); left: 50%; transform: translateX(-50%);
+  width: 460px; padding: 14px 18px 12px; box-sizing: border-box;
+  background: var(--bg); color: var(--ash);
+  border: 1px solid var(--edge); border-left: 4px solid var(--rust);
+  box-shadow: 0 0 24px rgba(0,0,0,.7), inset 0 0 40px rgba(107,58,28,.25);
+  animation: tuneIn .45s steps(6) both, flicker 3.2s infinite;
+  overflow: hidden;
+}
+#radio.out { animation: tuneOut .5s steps(5) both; }
+#radio.horde, #radio.airdrop { border-left-color: var(--blood); }
+.static {
+  position: absolute; inset: 0; pointer-events: none; opacity: .09;
+  background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px);
+  animation: roll 0.35s linear infinite;
+}
+.head { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 2px; color: var(--dim); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blood); animation: blink 1s steps(2) infinite; }
+.kind { margin-left: auto; color: var(--rust); }
+.title { margin-top: 8px; font-size: 20px; font-weight: bold; letter-spacing: 3px; color: var(--rust); text-shadow: 0 0 6px rgba(214,120,58,.5); }
+.body { margin-top: 6px; font-size: 14px; line-height: 1.45; min-height: 40px; white-space: pre-wrap; }
+.body::after { content: '_'; animation: blink .7s steps(2) infinite; }
+.grid { margin-top: 6px; font-size: 12px; color: var(--dim); letter-spacing: 1px; }
+.bar { margin-top: 10px; height: 2px; background: rgba(255,255,255,.08); }
+.bar i { display: block; height: 100%; width: 100%; background: var(--rust); transform-origin: left; }
+@keyframes tuneIn { 0% { opacity: 0; filter: blur(4px); } 50% { opacity: .6; } 100% { opacity: 1; filter: none; } }
+@keyframes tuneOut { to { opacity: 0; filter: blur(3px); transform: translateX(-50%) scaleY(.2); } }
+@keyframes flicker { 0%, 96%, 100% { opacity: 1; } 97% { opacity: .75; } 98% { opacity: .95; } 99% { opacity: .8; } }
+@keyframes roll { from { background-position: 0 0; } to { background-position: 0 6px; } }
+@keyframes blink { 50% { opacity: 0; } }

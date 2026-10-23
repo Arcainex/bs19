@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html, body { margin: 0; background: transparent; overflow: hidden; }</style>
+</head>
+<body>
+<audio id="radio" src="audio/broadcast.ogg" preload="none" loop></audio>
+<script>
+  const audio = document.getElementById('radio');
+  function seek(pos) {
+    const go = () => { try { audio.currentTime = Math.max(0, Number(pos) || 0); } catch (e) { /* not seekable yet */ } };
+    if (audio.readyState >= 1) go(); else audio.addEventListener('loadedmetadata', go, { once: true });
+  }
+  window.addEventListener('message', (ev) => {
+    const d = ev.data || {};
+    if (d.action === 'play') {
+      audio.volume = Math.max(0, Math.min(1, Number(d.volume) || 0));
+      audio.preload = 'auto';
+      seek(d.pos);
+      audio.play().catch(() => audio.addEventListener('canplay', () => audio.play().catch(() => {}), { once: true }));
+    } else if (d.action === 'stop') {
+      audio.pause();
+    } else if (d.action === 'seek') {
+      if (Math.abs(audio.currentTime - Number(d.pos)) > 2) seek(d.pos);
+    } else if (d.action === 'volume') {
+      audio.volume = Math.max(0, Math.min(1, Number(d.volume) || 0));
+    }
+  });
+</script>
+</body>
+</html>

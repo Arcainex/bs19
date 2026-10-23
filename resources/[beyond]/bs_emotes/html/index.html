@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+<meta charset="utf-8">
+<title>Emotes</title>
+<style>
+:root{--accent:#e08c46;--accent2:#e8a05b;--good:#7fd4a2;--danger:#b4574a;--bg:#0a0a09;--text:#f0ebdd;--muted:#a8a293;--line:rgba(235,220,195,.13);--font:'Courier New',Consolas,monospace;--serif:Georgia,'Times New Roman',serif}
+html,body{background:transparent!important;margin:0;height:100%;overflow:hidden;font-family:var(--font);color:var(--text)}
+#app{display:none;position:absolute;left:calc(2.2vw / var(--ui-scale, 1));top:50%;transform:translateY(-50%);width:430px;max-height:calc(80vh / var(--ui-scale, 1));flex-direction:column;border:1px solid var(--line);border-top:2px solid var(--accent);background:linear-gradient(160deg,rgba(24,21,17,.96),rgba(10,10,9,.94));box-shadow:0 16px 40px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.04)}
+#app.show{display:flex}
+header{padding:14px 16px 10px;background:linear-gradient(110deg,rgba(70,39,18,.68),transparent 70%)}
+.eyebrow{color:var(--accent2);font-size:10px;letter-spacing:.28em}
+h1{margin:3px 0 0;font:600 24px/1 var(--serif);letter-spacing:.06em}
+.now{margin-top:6px;font-size:11px;color:var(--muted);min-height:14px}.now b{color:var(--good);font-weight:600}
+nav{display:flex;flex-wrap:wrap;gap:2px 0;padding:2px 4px 0;border-bottom:1px solid var(--line);overflow:visible;flex-shrink:0}
+::-webkit-scrollbar{width:6px;height:0}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.35)}
+::-webkit-scrollbar-thumb{background:#a76532;border-radius:3px}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+nav button{flex:1 1 auto;min-width:0;border:0;border-bottom:2px solid transparent;padding:8px 8px 7px;background:transparent;color:#9d9588;font:600 10px/1.35 var(--font);letter-spacing:.1em;cursor:pointer;text-transform:uppercase;white-space:nowrap}
+nav button:hover,nav button.on{color:var(--text);border-color:var(--accent);background:linear-gradient(180deg,rgba(224,140,70,.15),transparent)}
+nav button small{color:var(--accent2);margin-left:3px}
+.search{padding:10px 12px;border-bottom:1px solid var(--line)}
+.search input{width:100%;box-sizing:border-box;background:rgba(5,5,5,.65);border:1px solid rgba(224,140,70,.38);color:#eee0c9;padding:8px 10px;font:12px var(--font);outline:none}
+.search input:focus{border-color:var(--accent)}
+#list{overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding:4px 0;scrollbar-gutter:stable;scrollbar-color:#a76532 rgba(0,0,0,.35)}
+.cat{display:flex;align-items:center;gap:10px;margin:4px 8px 0;padding:10px 10px;cursor:pointer;user-select:none;border:1px solid transparent;background:rgba(255,255,255,.025);color:#d9cfbf;font:600 11px var(--font);letter-spacing:.16em;text-transform:uppercase}
+.cat:hover{border-color:rgba(224,140,70,.35);background:linear-gradient(90deg,rgba(224,140,70,.12),rgba(255,255,255,.02))}
+.cat.open{color:var(--accent2);border-color:rgba(224,140,70,.25);background:linear-gradient(90deg,rgba(224,140,70,.16),transparent)}
+.cat .chev{width:10px;color:var(--accent);transition:transform .15s;display:inline-block}
+.cat.open .chev{transform:rotate(90deg)}
+.cat .n{margin-left:auto;font-size:10px;letter-spacing:.06em;color:#7d766a;border:1px solid var(--line);padding:1px 6px;min-width:18px;text-align:center}
+.cat.open .n{color:var(--accent2);border-color:rgba(224,140,70,.35)}
+.grp{margin:0 8px 2px;border-left:1px solid rgba(224,140,70,.18)}
+.grp .row{padding-left:14px}
+.tools{display:flex;gap:6px;padding:6px 12px 0}
+.tools button{flex:1;border:1px solid var(--line);background:transparent;color:#8f887b;font:600 9px var(--font);letter-spacing:.14em;padding:5px;cursor:pointer;text-transform:uppercase}
+.tools button:hover{color:var(--accent2);border-color:rgba(224,140,70,.35)}
+.row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:7px 14px 7px 16px;cursor:pointer;border-left:2px solid transparent;font-size:12.5px}
+.row:hover,.row.sel{background:linear-gradient(90deg,rgba(224,140,70,.14),transparent);border-left-color:var(--accent)}
+.row.playing{border-left-color:var(--good)}.row.playing .lbl{color:var(--good)}
+.lbl{min-width:0;overflow:hidden;text-overflow:ellipsis}.tag{white-space:nowrap;justify-self:end}
+.lbl small{display:block;color:#6f6a5f;font-size:10px;margin-top:1px}
+.tag{font-size:9px;letter-spacing:.12em;color:#7fba94;border:1px solid rgba(127,212,162,.3);padding:1px 4px}
+.tag.prop{color:var(--accent2);border-color:rgba(224,140,70,.3)}
+.star{border:0;background:none;color:#5d584f;font-size:16px;cursor:pointer;padding:0 2px;line-height:1}
+.star.on{color:var(--accent);text-shadow:0 0 8px rgba(224,140,70,.6)}.star:hover{color:var(--accent2)}
+.empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:12px}
+footer{display:flex;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
+footer .keys{flex:1;letter-spacing:.06em}footer kbd{color:var(--text);border:1px solid var(--line);padding:0 4px;font-family:var(--font)}
+.btn{color:#d9d0c1;border:1px solid rgba(235,220,195,.2);background:rgba(255,255,255,.035);padding:6px 9px;font:600 10px var(--font);letter-spacing:.1em;cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent2)}.btn.danger{color:#e38b82}.btn.danger:hover{border-color:var(--danger)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header><span class="eyebrow" data-i18n="ui.survivor_body_language">SURVIVOR / BODY LANGUAGE</span><h1 data-i18n="ui.emotes">Emotes</h1><div class="now" id="now"></div></header>
+  <nav id="tabs"></nav>
+  <div class="search"><input id="q" placeholder="Search emotes..." data-i18n-attr="placeholder:ui.search_emotes" autocomplete="off" spellcheck="false"></div>
+  <div class="tools" id="tools"><button id="openAll" data-i18n="ui.expand_all">Expand all</button><button id="closeAll" data-i18n="ui.collapse_all">Collapse all</button></div>
+  <div id="list"></div>
+  <footer><span class="keys" id="keys"></span><button class="btn danger" id="cancel" data-i18n="ui.cancel">CANCEL</button><button class="btn" id="close" data-i18n="ui.close">CLOSE</button></footer>
+</div>
+<script>
+(function(){
+  var RES = (typeof GetParentResourceName === 'function') ? GetParentResourceName() : 'bs_emotes';
+  var S = { data:null, tab:'emotes', q:'', favs:[], sel:0, rows:[], open:{} };
+  var $ = function(id){ return document.getElementById(id); };
+  function post(name, body){
+    return fetch('https://' + RES + '/' + name, { method:'POST', headers:{'Content-Type':'application/json; charset=UTF-8'}, body:JSON.stringify(body||{}) })
+      .then(function(r){ return r.json(); }).catch(function(){ return {}; });
+  }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  var TABS = [['favs','★ Favourites'],['emotes','Emotes'],['dances','Dances'],['props','Props'],['walks','Walks'],['expressions','Expressions']];
+
+  // Every item the menu can show, flattened, with the tab it belongs to.
+  function allItems(){
+    var d = S.data, out = [];
+    (d.categories||[]).forEach(function(c){ (c.items||[]).forEach(function(i){
+      out.push({ id:i.id, label:i.label, cat:c.label, tab:c.group||'emotes', upper:i.upper, prop:i.scenario, vip:i.vip }); }); });
+    (d.walks||[]).forEach(function(i){ out.push({ id:i.id, label:i.label, cat:'Walks', tab:'walks', walk:true, vip:i.vip }); });
+    (d.expressions||[]).forEach(function(i){ out.push({ id:i.id, label:i.label, cat:'Expressions', tab:'expressions', face:true }); });
+    return out;
+  }
+  function renderTabs(){
+    var items = allItems();
+    $('tabs').innerHTML = TABS.filter(function(t){ return t[0]==='favs' || items.some(function(i){ return i.tab===t[0]; }); })
+      .map(function(t){ var n = t[0]==='favs' ? '<small>'+S.favs.length+'/'+S.data.favLimit+'</small>' : '';
+        return '<button data-tab="'+t[0]+'" class="'+(S.tab===t[0]?'on':'')+'">'+t[1]+n+'</button>'; }).join('');
+  }
+  function render(){
+    renderTabs();
+    var q = S.q.trim().toLowerCase(), items = allItems(), rows;
+    if (q) rows = items.filter(function(i){ return i.label.toLowerCase().indexOf(q)>=0 || i.id.indexOf(q)>=0; });
+    else if (S.tab==='favs') rows = S.favs.map(function(id){ return items.filter(function(i){ return i.id===id; })[0]; }).filter(Boolean);
+    else rows = items.filter(function(i){ return i.tab===S.tab; });
+    var grouped = !q && S.tab!=='favs';
+    $('tools').style.display = grouped ? 'flex' : 'none';
+    // group into categories, keep their order
+    var cats = [], byCat = {};
+    rows.forEach(function(i){ if(!byCat[i.cat]){ byCat[i.cat]=[]; cats.push(i.cat); } byCat[i.cat].push(i); });
+    // a tab with a single category is just shown open
+    if (grouped && cats.length===1) S.open[S.tab+'|'+cats[0]] = true;
+    var visible = grouped ? [] : rows;
+    if (grouped) cats.forEach(function(c){ if (S.open[S.tab+'|'+c]) visible = visible.concat(byCat[c]); });
+    S.rows = visible; if (S.sel >= visible.length) S.sel = Math.max(0, visible.length-1);
+    var html = '';
+    function rowHtml(i){
+      var n = S.rows.indexOf(i);
+      var fav = S.favs.indexOf(i.id)>=0, tag = i.vip ? '<span class="tag prop" style="'+(S.data.vipOk?'':'opacity:.45')+'">VIP</span>' : i.prop ? '<span class="tag prop" title="'+esc(t('emote.tip_prop', { fallback: 'Uses a prop' }))+'">'+esc(t('emote.tag_prop', { fallback: 'PROP' }))+'</span>' : i.upper ? '<span class="tag" title="'+esc(t('emote.tip_move', { fallback: 'Upper body: you can move while playing' }))+'">'+esc(t('emote.tag_move', { fallback: 'MOVE' }))+'</span>' : i.walk ? '<span class="tag">'+esc(t('emote.tag_walk', { fallback: 'WALK' }))+'</span>' : i.face ? '<span class="tag">'+esc(t('emote.tag_face', { fallback: 'FACE' }))+'</span>' : '<span></span>';
+      return '<div class="row'+(n===S.sel?' sel':'')+(S.data.current===i.id?' playing':'')+'" data-i="'+n+'"><span class="lbl">'+esc(i.label)+'<small>'+((i.walk||i.face)?(i.walk?'walk style':'expression'):'/e '+esc(i.id))+(grouped?'':' · '+esc(i.cat))+'</small></span>'+tag+
+             '<button class="star'+(fav?' on':'')+'" data-fav="'+esc(i.id)+'" title="Favourite">'+(fav?'★':'☆')+'</button></div>';
+    }
+    if (grouped) {
+      cats.forEach(function(c){
+        var open = !!S.open[S.tab+'|'+c];
+        var playingHere = byCat[c].some(function(i){ return i.id===S.data.current; });
+        html += '<div class="cat'+(open?' open':'')+'" data-cat="'+esc(c)+'"><span class="chev">▶</span>'+esc(c)+(playingHere?' <span style="color:var(--good)">●</span>':'')+'<span class="n">'+byCat[c].length+'</span></div>';
+        if (open) html += '<div class="grp">' + byCat[c].map(rowHtml).join('') + '</div>';
+      });
+    } else rows.forEach(function(i){ html += rowHtml(i); });
+    if (!rows.length) html = '<div class="empty">'+esc(S.tab==='favs'&&!q ? t('emote.no_favs', { key: S.data.keys.fav, fallback: 'No favourites yet. Star an emote to pin it to the wheel ('+S.data.keys.fav+').' }) : t('emote.nothing_matches', { fallback: 'Nothing matches.' }))+'</div>';
+    $('list').innerHTML = html;
+    var cur = items.filter(function(i){ return i.id===S.data.current; })[0];
+    $('now').innerHTML = cur ? esc(t('emote.playing', { fallback: 'Playing:' }))+' <b>'+esc(cur.label)+'</b>' : esc(t('emote.idle', { fallback: 'Standing still.' }));
+    $('keys').innerHTML = '<kbd>'+esc(S.data.keys.menu)+'</kbd> '+esc(t('emote.k_menu', { fallback: 'menu' }))+' · <kbd>'+esc(S.data.keys.fav)+'</kbd> '+esc(t('emote.k_wheel', { fallback: 'wheel' }))+' · <kbd>'+esc(S.data.keys.cancel)+'</kbd> '+esc(t('emote.k_stop', { fallback: 'stop' }));
+  }
+  function play(item){
+    if (!item) return;
+    post('play', { id:item.id }).then(function(r){ if (r && 'current' in r){ S.data.current = r.current || null; render(); } });
+  }
+  function close(){ $('app').classList.remove('show'); post('close'); }
+
+  $('tabs').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b) return; S.tab = b.dataset.tab; S.q=''; $('q').value=''; S.sel=0; render(); });
+  $('list').addEventListener('click', function(e){
+    var f = e.target.closest('[data-fav]');
+    if (f){ post('favourite', { id:f.dataset.fav }).then(function(r){ if (r && r.favourites){ S.favs = r.favourites.slice(); render(); } }); return; }
+    var cat = e.target.closest('.cat');
+    if (cat){ var k = S.tab+'|'+cat.dataset.cat; S.open[k] = !S.open[k]; S.sel = 0; render(); return; }
+    var row = e.target.closest('.row'); if (row){ S.sel = +row.dataset.i; play(S.rows[S.sel]); }
+  });
+  $('q').addEventListener('input', function(){ S.q = this.value; S.sel = 0; render(); });
+  $('cancel').addEventListener('click', function(){ post('cancel'); S.data.current = null; render(); });
+  $('close').addEventListener('click', close);
+  function setAll(v){ allItems().forEach(function(i){ if (i.tab===S.tab) S.open[S.tab+'|'+i.cat] = v; }); S.sel=0; render(); }
+  $('openAll').addEventListener('click', function(){ setAll(true); });
+  $('closeAll').addEventListener('click', function(){ setAll(false); });
+  document.addEventListener('keydown', function(e){
+    if (!$('app').classList.contains('show')) return;
+    if (e.key==='Escape'){ e.preventDefault(); close(); }
+    else if (e.key==='ArrowDown'){ S.sel = Math.min(S.rows.length-1, S.sel+1); render(); e.preventDefault(); }
+    else if (e.key==='ArrowUp'){ S.sel = Math.max(0, S.sel-1); render(); e.preventDefault(); }
+    else if (e.key==='Enter'){ play(S.rows[S.sel]); }
+  });
+  window.addEventListener('message', function(e){
+    var m = e.data || {};
+    if (m.action==='open'){ S.data = m.data; S.favs = (m.data.favourites||[]).slice(); S.sel=0; $('app').classList.add('show'); render(); setTimeout(function(){ $('q').focus(); }, 30); }
+    else if (m.action==='close'){ $('app').classList.remove('show'); }
+  });
+  window.__bsEmotesMock = function(d){ window.postMessage({ action:'open', data:d }, '*'); };
+})();
+</script>
+</body>
+</html>

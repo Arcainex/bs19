@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="nui://bs_ui/html/shared/window.js?v=20261015"></script>
+<script src="nui://bs_ui/html/js/i18n.js"></script>
+<link rel="stylesheet" href="style.css">
+<title>Building</title>
+</head>
+<body>
+<div id="wheel" class="hidden">
+    <div class="wheel-wrap">
+        <svg id="ring" viewBox="-200 -200 400 400"></svg>
+        <div class="hub">
+            <div class="eyebrow" data-i18n="ui.eyebrow">FACTION BASE</div>
+            <div id="hubTitle" class="hub-title"></div>
+            <div id="hubBlurb" class="hub-blurb"></div>
+            <ul id="hubCost" class="cost"></ul>
+            <div id="hubFoot" class="hub-foot"></div>
+        </div>
+    </div>
+    <div class="wheel-help"><span data-i18n="ui.wheel_help">Click a category, then a piece. Right click goes back, ESC closes.</span></div>
+</div>
+
+<div id="hint" class="hidden">
+    <div class="hint-title" id="hintTitle"></div>
+    <div class="hint-state" id="hintState"></div>
+    <ul class="cost hint-cost" id="hintCost"></ul>
+    <div class="keys">
+        <span><b>LMB</b> <i data-i18n="ui.k_place">place</i></span>
+        <span><b>WHEEL</b> <i data-i18n="ui.k_rotate">rotate</i></span>
+        <span><b>SHIFT</b> <i data-i18n="ui.k_snap">snap</i> <em id="hintSnap"></em></span>
+        <span><b>RMB</b> <i data-i18n="ui.k_cancel">cancel</i></span>
+    </div>
+</div>
+
+<div id="keypad" class="hidden">
+    <div class="eyebrow" data-i18n="ui.code_lock">CODE LOCK</div>
+    <div id="kpDisplay" class="kp-display">____</div>
+    <div class="kp-grid" id="kpGrid"></div>
+    <div class="kp-row">
+        <button id="kpClear" data-i18n="ui.clear">CLEAR</button>
+        <button id="kpCancel" data-i18n="ui.cancel">CANCEL</button>
+        <button id="kpOk" class="go" data-i18n="ui.ok">OK</button>
+    </div>
+    <div class="kp-note" data-i18n="ui.code_note">Empty + OK removes the lock (owners only).</div>
+</div>
+
+<div id="inspect" class="hidden">
+    <div class="eyebrow" data-i18n="ui.inspect">INSPECT</div>
+    <div id="inTitle" class="hub-title"></div>
+    <div class="bar"><div id="inBar"></div></div>
+    <div id="inBody" class="in-body"></div>
+</div>
+
+<div id="vend" class="hidden">
+    <header>
+        <div><div class="eyebrow" data-i18n="ui.vending">VENDING CRATE</div><h1 id="vdTitle"></h1></div>
+        <div id="vdCash" class="pill"></div>
+        <button id="vdClose" class="x">&times;</button>
+    </header>
+    <div id="vdOwner" class="vd-owner hidden">
+        <span class="muted" data-i18n="ui.vend_owner_note">Put items in with STOCK, then set a price. 0 = not for sale.</span>
+        <div class="vd-btns">
+            <button id="vdStock" data-i18n="ui.vend_stock">STOCK</button>
+            <button id="vdCollect" class="go"></button>
+        </div>
+    </div>
+    <div id="vdList" class="vd-list"></div>
+    <div id="vdMsg" class="vd-msg"></div>
+</div>
+
+<div id="admin" class="hidden">
+    <header>
+        <div><div class="eyebrow" data-i18n="ui.staff">STAFF</div><h1 data-i18n="ui.bases">Bases</h1></div>
+        <div id="adRaid" class="pill"></div>
+        <button id="adClose" class="x">&times;</button>
+    </header>
+    <div class="ad-body">
+        <div id="adBases" class="ad-list"></div>
+        <div id="adDetail" class="ad-detail"><p class="muted" data-i18n="ui.pick_base">Pick a base on the left.</p></div>
+    </div>
+</div>
+
+<script src="app.js?v=20261022a"></script>
+</body>
+</html>

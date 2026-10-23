@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bs_tutorial</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- faction picker -->
+<div id="picker" class="picker hidden">
+    <div class="bars"><i class="top"></i><i class="bot"></i></div>
+    <div class="pk-head"><small data-t="pick.kicker">A NEW SURVIVOR</small><h1 data-t="pick.title">Choose your faction</h1><p data-t="pick.sub"></p></div>
+    <div id="pkCards" class="pk-cards"></div>
+    <div class="pk-foot"><span id="pkErr" class="err"></span><button id="pkGo" class="btn primary" data-t="pick.confirm">Join</button></div>
+</div>
+
+<!-- tour -->
+<div id="tour" class="tour hidden">
+    <div class="bars"><i class="top"></i><i class="bot"></i></div>
+    <aside class="chapters"><h4 data-t="tut.chapters">CHAPTERS</h4><ol id="chList"></ol>
+        <div class="tour-btns"><button id="tExit" class="btn" data-t="tut.exit">Exit (ESC)</button></div></aside>
+    <div class="caption">
+        <div class="cap-icon" id="capIcon"></div>
+        <div class="cap-body">
+            <small id="capNum"></small>
+            <h2 id="capTitle"></h2>
+            <div id="capLines"></div>
+            <div id="capKeys" class="keys"></div>
+        </div>
+        <div class="cap-nav">
+            <button id="tPrev" class="btn">&#9664;</button><button id="tNext" class="btn">&#9654;</button>
+        </div>
+        <div class="progress"><i id="capBar"></i></div>
+    </div>
+    <div id="tourEnd" class="tour-end hidden">
+        <h2 data-t="tut.end_title">That's the tour</h2>
+        <p data-t="tut.end_text"></p>
+        <div class="row"><button id="eMission" class="btn primary" data-t="mis.start">Start first mission</button>
+            <button id="eAgain" class="btn" data-t="tut.again">Watch again</button><button id="eExit" class="btn" data-t="tut.exit">Exit</button></div>
+    </div>
+</div>
+
+<!-- first-spawn offer -->
+<div id="offer" class="offer hidden">
+    <div class="box"><small data-t="offer.kicker">WELCOME</small><h2 data-t="offer.title">Take a quick tour?</h2><p data-t="offer.text"></p>
+        <div class="row"><button id="oSkip" class="btn" data-t="offer.skip">Skip</button><button id="oYes" class="btn primary" data-t="offer.yes">Start tutorial</button></div></div>
+</div>
+
+<!-- first mission tracker -->
+<div id="mission" class="mission hidden">
+    <h4 data-t="mis.title">FIRST MISSION</h4>
+    <ul><li id="mLoot" data-t="mis.loot"></li><li id="mCraft" data-t="mis.craft"></li><li id="mKill"></li></ul>
+    <p id="mDone" class="hidden" data-t="mis.ready"></p>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

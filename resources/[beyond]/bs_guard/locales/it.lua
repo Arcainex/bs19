@@ -1,0 +1,22 @@
+-- bs_guard strings (it).
+return {
+    ['guard.spec_stopped'] = 'Spettatore terminato.',
+    ['guard.spec_nostream'] = 'Il bersaglio non è stato caricato.',
+    ['guard.spec_on'] = 'Stai osservando [{id}]. /guardspec per fermare.',
+    ['guard.err_denied'] = 'non consentito',
+    ['guard.err_nopos'] = 'nessuna posizione',
+    ['guard.err_offline'] = 'il giocatore è offline',
+    ['guard.err_self'] = 'sei tu',
+    ['guard.kind.teleport'] = 'teletrasporto',
+    ['guard.kind.speed'] = 'velocità',
+    ['guard.kind.superjump'] = 'super salto',
+    ['guard.kind.noclip'] = 'noclip',
+    ['guard.kind.godmode'] = 'modalità dio',
+    ['guard.kind.weapon'] = 'arma',
+    ['guard.kind.explosion'] = 'esplosione',
+    ['guard.kind.ptfx'] = 'particelle',
+    ['guard.kind.entity'] = 'entità',
+    ['guard.kind.money'] = 'denaro',
+    ['guard.kind.items'] = 'oggetti',
+    ['guard.kind.eventspam'] = 'spam di eventi',
+}

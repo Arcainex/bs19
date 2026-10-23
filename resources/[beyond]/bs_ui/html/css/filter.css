@@ -1,0 +1,74 @@
+/* BeyondSurvival - bs_ui personal screen filter. One full-screen layer under the other UI. It can darken, tint and texture but not desaturate (the timecycle does that, see UI.Filters in config_ui.lua). */
+
+#filter {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity .45s ease;
+}
+#filter.on { opacity: 1; }
+
+#filter > * {
+    position: absolute; inset: 0;
+    pointer-events: none;
+}
+
+/* Colour cast: a flat fill at low alpha, so keep `a` low. */
+#filter .filter__tint { background: transparent; }
+
+/* Edge darkening via radial gradient. The centre stays clear out to 45% so it never covers the crosshair. */
+#filter .filter__vignette {
+    background: radial-gradient(ellipse at center,
+        rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%);
+    opacity: 0;
+}
+
+/* Film grain: an inline SVG feTurbulence tile, drawn larger than the viewport and moved by a stepped animation (static noise looks like a dirty screen). */
+#filter .filter__grain {
+    inset: -150%;
+    width: 400%; height: 400%;
+    opacity: 0;
+    background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/>\
+<feColorMatrix type='saturate' values='0'/></filter>\
+<rect width='160' height='160' filter='url(%23n)' opacity='.55'/></svg>");
+    animation: filterGrain .8s steps(8) infinite;
+    will-change: transform;
+}
+
+@keyframes filterGrain {
+    0%   { transform: translate(0, 0); }
+    10%  { transform: translate(-5%, -10%); }
+    20%  { transform: translate(-15%, 5%); }
+    30%  { transform: translate(7%, -25%); }
+    40%  { transform: translate(-5%, 25%); }
+    50%  { transform: translate(-15%, 10%); }
+    60%  { transform: translate(15%, 0); }
+    70%  { transform: translate(0, 15%); }
+    80%  { transform: translate(3%, 35%); }
+    90%  { transform: translate(-10%, 10%); }
+    100% { transform: translate(0, 0); }
+}
+
+/* Scanlines: a 1px repeating gradient with a slow vertical drift. */
+#filter .filter__scanlines {
+    opacity: 0;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,.35) 0px, rgba(0,0,0,.35) 1px,
+        rgba(0,0,0,0)   1px, rgba(0,0,0,0)   3px);
+    animation: filterRoll 8s linear infinite;
+}
+
+@keyframes filterRoll {
+    from { background-position-y: 0; }
+    to   { background-position-y: calc(100vh / var(--ui-scale, 1)); }
+}
+
+/* With reduced motion enabled the grain stays but does not move. */
+@media (prefers-reduced-motion: reduce) {
+    #filter .filter__grain,
+    #filter .filter__scanlines { animation: none; }
+}

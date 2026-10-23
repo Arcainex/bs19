@@ -1,0 +1,138 @@
+/* Scoreboard. Dark panels behind everything so it reads over any sky. Sized off vh so it fits 1080p and 720p alike. */
+
+:root {
+    --bone:   #ece5d3;
+    --ash:    #9b958a;
+    --rust:   #d9783a;
+    --blood:  #9e2f24;
+    --char:   rgba(14, 12, 10, .82);
+    --line:   rgba(236, 229, 211, .08);
+    --good:   #7fd4a2;
+    --warn:   #e0b546;
+    --bad:    #c75a4a;
+    --sans:   'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --mono:   'Consolas', 'Roboto Mono', 'Courier New', monospace;
+    --fs:     clamp(11px, calc(1.3vh / var(--ui-scale, 1)), 15px);
+    --rowh:   clamp(18px, calc(2.35vh / var(--ui-scale, 1)), 28px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: transparent !important;
+    font-family: var(--sans); font-size: var(--fs);
+    color: var(--bone); user-select: none;
+}
+
+.hidden { display: none !important; }
+
+#root {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(3vh / var(--ui-scale, 1)) calc(3vw / var(--ui-scale, 1));
+}
+
+.sb {
+    width: min(calc(94vw / var(--ui-scale, 1)), 1500px); max-height: calc(94vh / var(--ui-scale, 1));
+    display: flex; flex-direction: column; gap: calc(1.2vh / var(--ui-scale, 1));
+    animation: in 180ms ease-out;
+}
+
+@keyframes in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* header */
+.head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: calc(1.2vh / var(--ui-scale, 1)) calc(1.4vw / var(--ui-scale, 1)); background: var(--char);
+    border-left: 3px solid var(--rust); border-radius: 3px;
+    position: relative; overflow: hidden;
+}
+.head::after { /* slow scanline sweep */
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(217,120,58,.08), transparent);
+    transform: translateX(-100%); animation: sweep 6s linear infinite;
+}
+@keyframes sweep { to { transform: translateX(100%); } }
+.head h1 { font-size: 2.1em; font-weight: 800; letter-spacing: .08em; }
+.head__sub { color: var(--ash); font-size: .85em; letter-spacing: .14em; margin-top: .2em; }
+.head__count { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.head__count b { font-size: 2em; color: var(--rust); }
+.head__count span { color: var(--ash); margin-left: .3em; }
+.head__count em { display: block; font-style: normal; font-size: .75em; letter-spacing: .14em; color: var(--ash); }
+
+.vip-strip {
+    padding: .4em calc(1.4vw / var(--ui-scale, 1)); font-size: .85em; letter-spacing: .1em;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--vip) 30%, transparent), transparent 70%), var(--char);
+    border-left: 3px solid var(--vip); color: var(--bone); border-radius: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* layout: players left, 2x2 boards right */
+.grid {
+    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.6fr);
+    gap: calc(1.2vh / var(--ui-scale, 1)); min-height: 0;
+}
+.boards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(1.2vh / var(--ui-scale, 1)); align-content: start; }
+
+.panel {
+    background: var(--char); border: 1px solid var(--line); border-radius: 3px;
+    padding: calc(1vh / var(--ui-scale, 1)) calc(.9vw / var(--ui-scale, 1)); min-width: 0; overflow: hidden;
+}
+.panel__label {
+    font-size: .8em; font-weight: 700; letter-spacing: .12em; color: var(--rust);
+    padding-bottom: .5em; margin-bottom: .3em; border-bottom: 1px solid var(--line);
+}
+.here { max-height: calc(80vh / var(--ui-scale, 1)); }
+
+/* rows */
+.row, .thead { display: grid; align-items: center; column-gap: .7em; height: var(--rowh); padding: 0 .4em; }
+.row { border-radius: 2px; animation: in 220ms ease-out both; }
+.row:nth-child(even) { background: rgba(255,255,255,.025); }
+.thead { color: var(--ash); font-size: .72em; letter-spacing: .1em; height: 1.8em; }
+
+.prow { grid-template-columns: 2.4em minmax(0, 1fr) minmax(0, 7.5em) 2.6em 4.6em; }
+.brow { grid-template-columns: 1.6em minmax(0, 1fr) auto; }
+
+.r { text-align: right; justify-self: end; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.dim { color: var(--ash); }
+.ell, .cell { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell { display: flex; align-items: center; gap: .4em; }
+.cell .ell { flex: 1 1 auto; }
+
+.tag, .badge {
+    flex: none; font-family: var(--mono); font-size: .75em; font-weight: 700; font-style: normal;
+    padding: .05em .4em; border-radius: 2px; line-height: 1.4; letter-spacing: .04em;
+}
+.tag { background: rgba(217,120,58,.16); color: var(--rust); }
+.badge { border: 1px solid var(--ash); color: var(--ash); }
+.badge--vip { border-color: var(--rust); color: var(--rust); }
+
+.is-self { background: rgba(217,120,58,.14) !important; box-shadow: inset 3px 0 0 var(--rust); }
+.is-first .rank { color: var(--rust); }
+.is-first .ell { color: #fff; font-weight: 600; }
+.rank { color: var(--ash); }
+.val small { color: var(--ash); font-size: .75em; margin-left: .25em; }
+.val em { font-style: normal; font-size: .85em; margin-left: .3em; }
+
+/* ping: number + three bars, one cell */
+.ping { display: inline-flex; align-items: flex-end; gap: 2px; }
+.ping .mono { font-size: .8em; color: var(--ash); margin-right: .35em; align-self: center; }
+.ping i { width: 3px; background: rgba(236,229,211,.18); }
+.ping i:nth-of-type(1) { height: 5px; } .ping i:nth-of-type(2) { height: 8px; } .ping i:nth-of-type(3) { height: 11px; }
+.ping--3 i { background: var(--good); }
+.ping--2 i:nth-of-type(-n+2) { background: var(--warn); }
+.ping--1 i:nth-of-type(1) { background: var(--bad); }
+
+.hollow { color: var(--ash); font-style: italic; padding: .5em .4em; font-size: .9em; }
+.foot { text-align: center; color: var(--ash); font-size: .72em; letter-spacing: .2em; }
+
+/*
+   720p and narrower: the class column goes first.
+   Thresholds x0.6: body is ui-scaled (bs_ui/html/shared/scale.js), so local width is at least 1920 until the 0.6 floor.
+*/
+@media (max-width: 840px) {
+    .prow { grid-template-columns: 2.2em minmax(0, 1fr) 2.6em 4.4em; }
+    .prow > :nth-child(3) { display: none; }
+}

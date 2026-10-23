@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>BeyondSurvival - Radial</title>
+    <!-- v= is bumped by hand on every change to style.css/app.js, otherwise a client's cached CEF bundle can outlive a resource restart. -->
+    <link rel="stylesheet" href="css/style.css?v=20261013i" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <div class="veil"></div>
+
+    <div class="wheel" id="wheel">
+        <svg class="wheel__svg" id="svg" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
+
+        <div class="hub" id="hub">
+            <span class="hub__title" id="title" data-i18n="ui.select">SELECT</span>
+            <span class="hub__label" id="label"></span>
+            <span class="hub__note"  id="note"></span>
+        </div>
+    </div>
+
+    <p class="hint" id="hint"></p>
+</div>
+<script src="js/app.js?v=20261014c1"></script>
+</body>
+</html>

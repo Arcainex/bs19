@@ -1,0 +1,849 @@
+/* bs_traders - trade menu styles. Soot/bone/amber, same tokens as the rest of the framework's NUI. Icons are inline SVG in app.js (no image files, one flat colour inherited from the row). The layout is wider because a single narrow column hid half of the trade. */
+
+:root{
+    --soot:#0c0c0b; --panel:rgba(15,15,12,.97); --line:rgba(240,235,221,.10);
+    --line2:rgba(240,235,221,.18);
+    --bone:#f0ebdd; --dust:#a8a293; --faint:#6f6a5e;
+    --amber:#e08c46; --good:#7fd4a2; --blood:#b4574a;
+    --mono:'Consolas','DejaVu Sans Mono',monospace;
+    --sans:'Segoe UI',system-ui,sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:transparent!important}
+body{font-family:var(--sans);color:var(--bone);font-size:13px;user-select:none;
+    display:flex;align-items:center;justify-content:center}
+
+#root{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+#root.hidden{display:none}
+.hidden{display:none !important}
+
+#panel{
+    /* Bigger by default and resizable. A trade menu compares two columns of stock, prices and quantities. `resize: both` needs overflow other than visible; min/max keep a drag usable. app.js remembers the size. */
+    width:1060px;height:740px;
+    min-width:720px;min-height:460px;
+    max-width:calc(94vw / var(--ui-scale, 1));max-height:calc(90vh / var(--ui-scale, 1));
+    resize:none;overflow:hidden;
+    display:flex;flex-direction:column;position:relative;
+    background:var(--panel);border:1px solid var(--line2);border-radius:5px;
+    box-shadow:0 30px 90px rgba(0,0,0,.6);
+    /* A faint warm wash from the top so the panel looks lit, not flat. */
+    background-image:linear-gradient(180deg,rgba(224,140,70,.05),transparent 220px);
+}
+
+/* The visible grip over the native resize corner. pointer-events:none so the drag stays with #panel's own resize, except the double-click reset which needs auto. */
+#grip{position:absolute;right:2px;bottom:2px;width:14px;height:14px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--faint);cursor:nwse-resize}
+#grip svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:1.3;
+    stroke-linecap:round}
+#grip:hover{color:var(--amber)}
+
+/* Header */
+header{display:flex;align-items:center;gap:1rem;padding:.85rem 1.1rem;
+    border-bottom:1px solid var(--line)}
+.titlewrap{flex:1;min-width:0}
+header .title{font-family:var(--mono);font-size:.95rem;letter-spacing:.14em;
+    text-transform:uppercase;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .role{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--faint);margin-top:.15rem}
+
+.cashwrap{display:flex;align-items:baseline;gap:.5rem;
+    background:rgba(224,140,70,.08);border:1px solid rgba(224,140,70,.28);
+    border-radius:3px;padding:.3rem .65rem}
+.outnote{margin:.4rem 1rem 0;padding:.35rem .6rem;font-size:.75rem;color:var(--amber);background:rgba(224,140,70,.08);border:1px solid rgba(224,140,70,.28);border-radius:3px}
+.cashlabel{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--faint)}
+.cashwrap b{color:var(--amber);font-family:var(--mono);font-size:.95rem}
+
+#close{background:none;border:0;color:var(--faint);font-size:1.5rem;
+    line-height:1;cursor:pointer;padding:0 .2rem}
+#close:hover{color:var(--blood)}
+
+/* Tabs */
+#tabs{display:flex;border-bottom:1px solid var(--line)}
+.tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--faint);font-family:var(--mono);font-size:.68rem;
+    letter-spacing:.14em;text-transform:uppercase;padding:.65rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:.45rem}
+.tab:hover{color:var(--dust)}
+.tab.on{color:var(--amber);border-bottom-color:var(--amber);
+    background:linear-gradient(180deg,transparent,rgba(224,140,70,.07))}
+.tabcount{background:var(--amber);color:var(--soot);border-radius:8px;
+    font-size:.58rem;padding:.05rem .32rem;letter-spacing:0}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:.5rem;padding:.55rem 1.1rem;
+    border-bottom:1px solid var(--line)}
+.searchico{width:14px;height:14px;fill:none;stroke:var(--faint);stroke-width:2;
+    stroke-linecap:round;flex:none}
+#search{flex:1;background:rgba(240,235,221,.04);border:1px solid var(--line);
+    border-radius:3px;color:var(--bone);font-family:var(--sans);font-size:.8rem;
+    padding:.35rem .55rem}
+#search::placeholder{color:var(--faint)}
+#search:focus{outline:none;border-color:rgba(224,140,70,.45);
+    background:rgba(240,235,221,.06)}
+
+main{flex:1;min-height:0;display:flex;flex-direction:column;padding:.9rem 1.1rem}
+section{display:none;flex:1;min-height:0}
+section.on{display:flex;flex-direction:column}
+
+/* Trade columns */
+.cols{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:1.1rem}
+.col{display:flex;flex-direction:column;min-height:0}
+.colhead{display:flex;align-items:baseline;gap:.45rem;padding-bottom:.45rem;
+    margin-bottom:.55rem;border-bottom:1px solid var(--line)}
+.colname{font-family:var(--mono);font-size:.68rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--dust)}
+.colhint{flex:1;font-size:.66rem;color:var(--faint)}
+.colcount{font-family:var(--mono);font-size:.62rem;color:var(--faint);
+    border:1px solid var(--line2);border-radius:2px;padding:.05rem .3rem}
+
+.rows{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;
+    gap:.4rem;padding-right:.25rem}
+.rows::-webkit-scrollbar{width:6px}
+.rows::-webkit-scrollbar-thumb{background:rgba(240,235,221,.14);border-radius:3px}
+.rows::-webkit-scrollbar-track{background:transparent}
+
+.colEmpty{color:var(--faint);font-size:.76rem;font-style:italic;padding:1.2rem .2rem}
+
+/* Trade row */
+.row.trade{
+    display:flex;align-items:center;gap:.65rem;
+    padding:.55rem .6rem;background:rgba(240,235,221,.03);
+    border:1px solid var(--line);border-radius:3px;
+    transition:border-color .12s,background .12s;
+}
+.row.trade:hover{border-color:var(--line2);background:rgba(240,235,221,.05)}
+.row.trade.unavailable{opacity:.45}
+
+.ricon{width:40px;height:40px;border-radius:3px;flex:none;
+    background:rgba(224,140,70,.10);border:1px solid var(--line2);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    /* Line-art icons use stroke:currentColor, so color is set once on the container. */
+    color:var(--amber)}
+
+/* bs_ui icons come as an <svg class="bs-icon"> (line art) or <img class="bs-icon bs-icon--art"> (painted art). Both need a fixed size or painted images overflow their box. */
+.ricon .bs-icon{width:26px;height:26px;display:block}
+.ricon svg.bs-icon{fill:none;stroke:currentColor}
+.ricon img.bs-icon--art{width:32px;height:32px;object-fit:contain}
+.row.trade.unavailable .ricon img{filter:grayscale(.7)}
+
+/* Local fallback icons, used only when bs_ui's icons.js has not loaded. */
+.ico{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;
+    stroke-linecap:round;stroke-linejoin:round}
+.ico-ammo,.ico-weapon,.ico-armour{fill:rgba(224,140,70,.22)}
+
+.rinfo{flex:1;min-width:0}
+.rname{font-size:.85rem;color:var(--bone);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+.rmeta{display:flex;gap:.5rem;font-family:var(--mono);font-size:.66rem;
+    margin-top:.1rem}
+.rprice{color:var(--amber)}
+.rstock{color:var(--faint)}
+.rstock.low{color:var(--blood)}
+
+.rctl{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex:none}
+.rqty{display:flex;align-items:center;gap:.2rem}
+.qbtn{width:20px;height:20px;border-radius:2px;background:rgba(240,235,221,.06);
+    border:1px solid var(--line2);color:var(--dust);cursor:pointer;
+    font-size:.75rem;line-height:1;padding:0}
+.qbtn:hover{border-color:var(--amber);color:var(--amber)}
+.qval{width:34px;text-align:center;background:rgba(240,235,221,.05);
+    border:1px solid var(--line2);border-radius:2px;color:var(--bone);
+    font-family:var(--mono);font-size:.74rem;padding:.15rem 0;
+    -moz-appearance:textfield}
+.qval::-webkit-outer-spin-button,.qval::-webkit-inner-spin-button{
+    -webkit-appearance:none;margin:0}
+.qval:focus{outline:none;border-color:rgba(224,140,70,.45)}
+.qmax{background:none;border:1px solid var(--line2);color:var(--faint);
+    border-radius:2px;font-family:var(--mono);font-size:.55rem;letter-spacing:.06em;
+    padding:.15rem .28rem;cursor:pointer;margin-left:.1rem}
+.qmax:hover{border-color:var(--amber);color:var(--amber)}
+
+.raction{min-width:104px;padding:.36rem .6rem;font-family:var(--mono);
+    font-size:.68rem;letter-spacing:.04em;border-radius:2px;cursor:pointer;
+    background:rgba(224,140,70,.14);border:1px solid var(--amber);color:var(--amber);
+    white-space:nowrap}
+.raction:hover:not(:disabled){background:var(--amber);color:var(--soot)}
+.raction:disabled{opacity:.4;cursor:not-allowed;border-color:var(--line2);
+    color:var(--faint);background:none}
+
+/* mission card */
+.rows.missions{gap:.55rem}
+.row.mission{padding:.8rem .85rem;background:rgba(240,235,221,.03);
+    border:1px solid var(--line);border-radius:3px;border-left:2px solid var(--line2)}
+.row.mission.ready{border-left-color:var(--good);background:rgba(127,212,162,.045)}
+.row.mission.available{border-left-color:var(--amber)}
+.row.mission.cooldown{opacity:.5}
+
+.mtop{display:flex;justify-content:space-between;align-items:center;
+    gap:.6rem;margin-bottom:.3rem}
+.mname{font-size:.9rem;color:var(--bone);font-weight:600}
+.mstatus{font-family:var(--mono);font-size:.58rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--faint);border:1px solid var(--line2);
+    border-radius:2px;padding:.1rem .38rem;white-space:nowrap}
+.row.mission.ready .mstatus{color:var(--good);border-color:var(--good)}
+.row.mission.available .mstatus{color:var(--amber);border-color:rgba(224,140,70,.5)}
+
+.mdesc{font-size:.78rem;color:var(--dust);margin-bottom:.6rem;line-height:1.45}
+
+.mprogress{display:flex;align-items:center;gap:.55rem;margin-bottom:.6rem}
+.mbar{flex:1;height:5px;background:rgba(240,235,221,.08);border-radius:3px;overflow:hidden}
+.mfill{height:100%;background:var(--amber);width:0%;transition:width .2s}
+.row.mission.ready .mfill{background:var(--good)}
+.mtext{font-family:var(--mono);font-size:.64rem;color:var(--faint);white-space:nowrap}
+
+.mfoot{display:flex;align-items:center;justify-content:space-between;gap:.7rem}
+.mreward{display:flex;gap:.35rem}
+.chip{font-family:var(--mono);font-size:.62rem;border-radius:2px;
+    padding:.14rem .4rem;border:1px solid var(--line2);color:var(--dust)}
+.chip.xp b{color:var(--bone);font-weight:400}
+.chip.cash b{color:var(--amber);font-weight:400}
+
+.mbuttons{display:flex;gap:.4rem}
+.mbuttons button{padding:.38rem .8rem;font-family:var(--mono);font-size:.66rem;
+    letter-spacing:.06em;border-radius:2px;cursor:pointer}
+.btn-accept{background:rgba(224,140,70,.14);border:1px solid var(--amber);color:var(--amber)}
+.btn-accept:hover{background:var(--amber);color:var(--soot)}
+.btn-turnin{background:rgba(127,212,162,.14);border:1px solid var(--good);color:var(--good)}
+.btn-turnin:hover{background:var(--good);color:var(--soot)}
+.btn-abandon{background:none;border:1px solid var(--line2);color:var(--faint)}
+.btn-abandon:hover{border-color:var(--blood);color:var(--blood)}
+
+.empty{text-align:center;color:var(--faint);font-size:.82rem;padding:2.5rem 0}
+.empty.hidden{display:none}
+
+/*
+   objective tracker
+   Quest readout pinned to the right of the screen, visible while the menu is closed.
+   pointer-events:none is required: the page is always loaded, so otherwise it would block clicks on the game world when another NUI takes focus.
+*/
+#tracker{
+    position:fixed;top:calc(22vh / var(--ui-scale, 1));right:18px;width:268px;
+    display:flex;flex-direction:column;gap:.35rem;
+    pointer-events:none;user-select:none;
+    /* Sits behind the menu if both are shown. */
+    z-index:1;
+}
+#tracker.hidden{display:none !important}
+
+.tkhead{display:flex;align-items:baseline;justify-content:space-between;
+    padding:0 .15rem .3rem;border-bottom:1px solid rgba(240,235,221,.14);
+    margin-bottom:.15rem}
+.tktitle{font-family:var(--mono);font-size:.64rem;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--amber);
+    text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.tkhint{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;
+    color:rgba(240,235,221,.35);text-shadow:0 1px 3px rgba(0,0,0,.9)}
+
+/* Flex, so app.js can reorder rows with `order` instead of moving DOM nodes (moving a node restarts its animations). */
+#tkList{display:flex;flex-direction:column;gap:.35rem}
+
+.tkrow{
+    background:linear-gradient(90deg,rgba(12,12,11,.82),rgba(12,12,11,.55));
+    border-left:2px solid var(--amber);
+    padding:.45rem .55rem;border-radius:2px;
+    /* Needs its own contrast over a bright background. */
+    text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
+.tkrow.ready{border-left-color:var(--good)}
+
+.tkname{font-size:.78rem;color:var(--bone);line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tkobj{font-family:var(--mono);font-size:.62rem;color:var(--dust);margin-top:.12rem;
+    display:flex;justify-content:space-between;gap:.5rem}
+.tkcount{color:var(--amber);white-space:nowrap}
+.tkrow.ready .tkcount{color:var(--good)}
+
+.tkbar{height:3px;background:rgba(240,235,221,.14);border-radius:2px;
+    overflow:hidden;margin-top:.35rem}
+/* Slight overshoot ease-out so small gains still feel like they land. Kept at 220ms so rapid pickups do not queue. */
+.tkfill{height:100%;background:var(--amber);width:0%;
+    transition:width .22s cubic-bezier(.22,1,.36,1)}
+.tkrow.ready .tkfill{background:var(--good)}
+
+.tkdone{font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--good);margin-top:.25rem;
+    display:none}
+.tkrow.ready .tkdone{display:block;animation:tkPulse 1.9s ease-in-out infinite}
+
+/*
+   animations
+   Each one fires on a real state change, never on an idle redraw (see the keyed rows in app.js). Kept short (180-420ms) since the tracker sits in peripheral vision.
+*/
+
+/* A new contract slides in from the screen edge. */
+.tkrow{animation:none}
+.tkrow.tkenter{animation:tkEnter .38s cubic-bezier(.22,1,.36,1)}
+@keyframes tkEnter{
+    from{opacity:0;transform:translateX(26px)}
+    to{opacity:1;transform:translateX(0)}
+}
+
+.tkrow.tkexit{animation:tkExit .3s ease-in forwards;pointer-events:none}
+@keyframes tkExit{
+    from{opacity:1;transform:translateX(0)}
+    to{opacity:0;transform:translateX(26px)}
+}
+
+/* Hit: brightening wash plus a brief widening of the accent edge. */
+.tkrow.tkhit{animation:tkHit .42s ease-out}
+@keyframes tkHit{
+    0%{background:linear-gradient(90deg,rgba(224,140,70,.38),rgba(12,12,11,.55));
+       border-left-color:#ffd9a8;box-shadow:-3px 0 14px rgba(224,140,70,.5)}
+    100%{background:linear-gradient(90deg,rgba(12,12,11,.82),rgba(12,12,11,.55));
+       border-left-color:var(--amber);box-shadow:none}
+}
+
+/* Punch: the number scales up and back with a color flash. */
+.tkcount.tkbump{animation:tkBump .34s cubic-bezier(.3,1.6,.4,1)}
+@keyframes tkBump{
+    0%{transform:scale(1)}
+    35%{transform:scale(1.32);color:#fff3e0}
+    100%{transform:scale(1)}
+}
+.tkcount{display:inline-block;transform-origin:right center}
+
+/* Float: "+1" lifting off the counter, positioned against the row's right edge. */
+.tkpop{position:absolute;right:.55rem;top:1.15rem;
+    font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--amber);
+    opacity:0;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.95)}
+.tkrow{position:relative}
+.tkpop.tkfloat{animation:tkFloat .85s ease-out}
+@keyframes tkFloat{
+    0%{opacity:0;transform:translateY(4px) scale(.85)}
+    18%{opacity:1;transform:translateY(0) scale(1.12)}
+    100%{opacity:0;transform:translateY(-20px) scale(1)}
+}
+
+/* Completion: the loudest beat, played once. */
+.tkrow.tkcomplete{animation:tkComplete .95s cubic-bezier(.22,1,.36,1)}
+@keyframes tkComplete{
+    0%{box-shadow:-3px 0 0 rgba(127,212,162,0);background:linear-gradient(90deg,rgba(12,12,11,.82),rgba(12,12,11,.55))}
+    22%{box-shadow:-4px 0 26px rgba(127,212,162,.85);
+        background:linear-gradient(90deg,rgba(127,212,162,.34),rgba(12,12,11,.55));
+        transform:translateX(-4px)}
+    55%{transform:translateX(0)}
+    100%{box-shadow:none;background:linear-gradient(90deg,rgba(12,12,11,.82),rgba(12,12,11,.55))}
+}
+
+/* The standing ready state pulses gently so a finished contract keeps asking to be handed in. */
+@keyframes tkPulse{
+    0%,100%{opacity:.55}
+    50%{opacity:1}
+}
+
+/* footer */
+footer{display:flex;align-items:center;justify-content:space-between;
+    padding:.5rem 1.1rem;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:.64rem;color:var(--faint)}
+#status.good{color:var(--good)}
+#status.bad{color:var(--blood)}
+.keyhint{color:var(--faint)}
+kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
+    border-radius:2px;padding:.05rem .28rem;color:var(--dust)}
+
+
+/*
+   wardrobe
+   Full-screen clothing shop that owns the camera. Rail on the left, garment list on the right, middle left empty so the character stays visible.
+*/
+
+/* Sits above the tracker. The tracker also hides itself while this screen is up (pushTracker in cl_main.lua); the z-index is a fallback for screens that forget to tell it. */
+#wardrobe { position: fixed; inset: 0; pointer-events: auto; cursor: grab; z-index: 40; }
+#wardrobe.hidden { display: none !important; }
+#wardrobe:active { cursor: grabbing; }
+
+#wdHead {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; gap: 1rem;
+    padding: .9rem 1.4rem;
+    background: linear-gradient(180deg, rgba(12,12,11,.92), transparent);
+}
+.wdtitle {
+    font-family: var(--mono); font-size: .95rem; letter-spacing: .18em;
+    text-transform: uppercase; flex: 1;
+}
+.wdcash {
+    display: flex; align-items: baseline; gap: .5rem;
+    background: rgba(224,140,70,.10); border: 1px solid rgba(224,140,70,.3);
+    border-radius: 3px; padding: .3rem .65rem;
+}
+.wdcash span { font-family: var(--mono); font-size: .58rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--faint); }
+.wdcash b { color: var(--amber); font-family: var(--mono); font-size: .9rem; }
+.wdbill {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .06em;
+    color: var(--dust); min-width: 150px; text-align: right;
+}
+.wdbill.is-over { color: var(--blood); }
+
+/* Left rail - body part categories. */
+#wdCats {
+    position: absolute; left: 1.4rem; top: calc(18vh / var(--ui-scale, 1)); bottom: calc(14vh / var(--ui-scale, 1));
+    width: 190px; display: flex; flex-direction: column; gap: .25rem;
+    overflow-y: auto; padding-right: .3rem;
+}
+.wdcat {
+    position: relative; text-align: left; cursor: pointer;
+    padding: .55rem .7rem; border-radius: 3px;
+    background: rgba(12,12,11,.72); border: 1px solid var(--line);
+    border-left: 2px solid transparent;
+    color: var(--dust); font-size: .78rem;
+}
+.wdcat:hover { border-color: var(--line2); color: var(--bone); }
+.wdcat.on { border-left-color: var(--amber); color: var(--amber);
+    background: rgba(224,140,70,.10); }
+/* Dot marks a category changed in this fitting. */
+.wdcat.changed::after {
+    content: ''; position: absolute; right: .55rem; top: 50%;
+    width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%;
+    background: var(--amber);
+}
+
+/* Right panel - garments. */
+#wdPanel {
+    position: absolute; right: 1.4rem; top: calc(18vh / var(--ui-scale, 1)); bottom: calc(14vh / var(--ui-scale, 1)); width: 340px;
+    display: flex; flex-direction: column;
+    background: rgba(12,12,11,.88); border: 1px solid var(--line2);
+    border-radius: 4px;
+}
+.wdpanelhead {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: .7rem .85rem; border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--dust);
+}
+.wdcount { font-size: .6rem; color: var(--faint); letter-spacing: .08em; }
+
+.wdlist { flex: 1; overflow-y: auto; padding: .5rem; display: flex;
+    flex-direction: column; gap: .22rem; }
+.wdlist::-webkit-scrollbar { width: 6px; }
+.wdlist::-webkit-scrollbar-thumb { background: rgba(240,235,221,.14); border-radius: 3px; }
+
+.wdrow {
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    padding: .45rem .6rem; border-radius: 3px; cursor: pointer;
+    background: rgba(240,235,221,.03); border: 1px solid transparent;
+}
+.wdrow:hover { border-color: var(--line2); background: rgba(240,235,221,.06); }
+.wdrow.on { border-color: var(--amber); background: rgba(224,140,70,.12); }
+.wdrow.hidden { display: none; }
+/* Locked rows stay visible but unclickable. */
+.wdrow.locked { opacity: .42; cursor: not-allowed; }
+.wdrow.locked:hover { border-color: transparent; background: rgba(240,235,221,.03); }
+
+.wdrow__name { flex: 1; font-size: .8rem; color: var(--bone); }
+.wdrow__tag { font-family: var(--mono); font-size: .66rem; color: var(--amber); }
+/* Raw drawable index next to the generated name, to cross-reference config lines. */
+.wdrow__idx { font-family: var(--mono); font-size: .56rem; color: var(--faint);
+    margin-left: .4rem; }
+.wdrow__tag.is-lock {
+    color: var(--faint); border: 1px solid var(--line2); border-radius: 2px;
+    padding: .05rem .35rem; font-size: .58rem; letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+/* Texture stepper, shown only on the worn row. */
+.wdtex { width: 100%; display: flex; align-items: center; gap: .35rem;
+    margin-top: .35rem; }
+.wdtex button {
+    width: 20px; height: 20px; cursor: pointer; border-radius: 2px;
+    background: rgba(240,235,221,.06); border: 1px solid var(--line2);
+    color: var(--dust); font-size: .75rem; line-height: 1;
+}
+.wdtex button:hover { border-color: var(--amber); color: var(--amber); }
+.wdtex span { font-family: var(--mono); font-size: .62rem; color: var(--faint); }
+
+/* Bottom bar. */
+#wdFoot {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: 1rem 1.4rem;
+    background: linear-gradient(0deg, rgba(12,12,11,.92), transparent);
+}
+.wdturn { display: flex; align-items: center; gap: .5rem; }
+.wdturnbtn {
+    width: 30px; height: 30px; cursor: pointer; border-radius: 3px;
+    background: rgba(240,235,221,.06); border: 1px solid var(--line2);
+    color: var(--dust); font-size: .9rem; line-height: 1;
+}
+.wdturnbtn:hover { border-color: var(--amber); color: var(--amber); }
+.wdhint { font-family: var(--mono); font-size: .58rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--faint); }
+
+.wdactions { display: flex; align-items: center; gap: .6rem; }
+.wdstatus { font-family: var(--mono); font-size: .66rem; color: var(--blood); }
+.wdbtn {
+    padding: .5rem 1.1rem; cursor: pointer; border-radius: 3px;
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .08em;
+}
+.wdbtn--ghost { background: none; border: 1px solid var(--line2); color: var(--faint); }
+.wdbtn--ghost:hover { border-color: var(--blood); color: var(--blood); }
+.wdbtn--buy {
+    background: rgba(224,140,70,.16); border: 1px solid var(--amber); color: var(--amber);
+}
+.wdbtn--buy:hover:not(:disabled) { background: var(--amber); color: var(--soot); }
+.wdbtn--buy:disabled { opacity: .4; cursor: not-allowed;
+    border-color: var(--line2); color: var(--faint); background: none; }
+
+/*
+   /traderdebug
+   Deliberately different look (cooler grey, red accent) so this staff tool is never mistaken for the player menu. Icons here are plain text.
+*/
+#dbgRoot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.35)}
+#dbgRoot.hidden{display:none}
+
+#dbgPanel{width:920px;max-width:calc(94vw / var(--ui-scale, 1));height:calc(80vh / var(--ui-scale, 1));display:flex;flex-direction:column;
+    background:rgba(18,19,22,.97);border:1px solid rgba(140,170,200,.22);
+    border-radius:4px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+
+#dbgPanel header{display:flex;align-items:center;gap:.7rem;padding:.7rem 1rem;
+    border-bottom:1px solid rgba(140,170,200,.16)}
+#dbgPanel header .title{font-family:var(--mono);font-size:.78rem;letter-spacing:.14em;
+    text-transform:uppercase;color:#9fc3e0;flex:1}
+#dbgStatus{font-family:var(--mono);font-size:.68rem;color:var(--faint)}
+#dbgClose{background:none;border:0;color:var(--faint);font-size:1.4rem;line-height:1;
+    cursor:pointer;padding:0 .2rem}
+#dbgClose:hover{color:var(--blood)}
+
+#dbgBody{flex:1;display:flex;min-height:0}
+
+#dbgSide{width:230px;flex:none;display:flex;flex-direction:column;
+    border-right:1px solid rgba(140,170,200,.14)}
+#dbgSideTabs{display:flex;border-bottom:1px solid rgba(140,170,200,.14)}
+.dbgSideTab{flex:1;background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--faint);font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;
+    text-transform:uppercase;padding:.55rem;cursor:pointer}
+.dbgSideTab.on{color:#9fc3e0;border-bottom-color:#9fc3e0}
+.dbgList{flex:1;overflow-y:auto;padding:.4rem}
+.dbgListItem{padding:.5rem .6rem;border-radius:3px;cursor:pointer;font-size:.8rem;
+    color:var(--dust);display:flex;justify-content:space-between;gap:.4rem;
+    align-items:center;margin-bottom:.15rem}
+.dbgListItem:hover{background:rgba(159,195,224,.08)}
+.dbgListItem.on{background:rgba(159,195,224,.14);color:#cfe3f4}
+.dbgListItem .tag{font-family:var(--mono);font-size:.6rem;color:var(--faint);
+    border:1px solid rgba(140,170,200,.2);border-radius:2px;padding:.05rem .3rem;
+    white-space:nowrap}
+.dbgListItem.disabled{opacity:.5}
+.dbgListItem.custom .tag{color:var(--good);border-color:var(--good)}
+.dbgNewBtn{margin:.4rem;padding:.5rem;border-radius:3px;cursor:pointer;
+    background:none;border:1px dashed rgba(140,170,200,.3);color:var(--faint);
+    font-size:.75rem}
+.dbgNewBtn:hover{border-color:#9fc3e0;color:#9fc3e0}
+
+#dbgMain{flex:1;overflow-y:auto;padding:1rem 1.2rem}
+.dbgEmpty{color:var(--faint);font-size:.85rem;text-align:center;padding:3rem 0}
+.dbgForm.hidden{display:none}
+
+.dbgFormHead{display:flex;align-items:center;gap:1rem;margin-bottom:.8rem}
+.dbgId{flex:1;background:rgba(159,195,224,.06);border:1px solid rgba(140,170,200,.22);
+    border-radius:3px;color:#cfe3f4;font-family:var(--mono);font-size:.85rem;
+    padding:.4rem .5rem}
+.dbgCheck{display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--dust);
+    white-space:nowrap}
+.dbgCheckInline{margin-top:1.3rem}
+
+.dbgGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem .9rem;margin-bottom:.7rem}
+.dbgGrid3{grid-template-columns:repeat(3,1fr)}
+.dbgGrid label,.dbgFull{display:flex;flex-direction:column;gap:.25rem;font-size:.68rem;
+    color:var(--faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.dbgFull{margin-bottom:.7rem}
+.dbgGrid input,.dbgGrid select,.dbgFull textarea,.dbgFull select{
+    background:rgba(159,195,224,.05);border:1px solid rgba(140,170,200,.2);
+    border-radius:3px;color:var(--bone);font-family:var(--sans);font-size:.8rem;
+    padding:.4rem .5rem;text-transform:none;letter-spacing:normal}
+.dbgFull textarea{resize:vertical;font-family:var(--sans)}
+
+.dbgSubhead{display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--faint);margin:.9rem 0 .4rem}
+.dbgMini{background:none;border:1px solid rgba(140,170,200,.25);color:#9fc3e0;
+    border-radius:2px;font-size:.65rem;padding:.2rem .5rem;cursor:pointer;
+    text-transform:none;letter-spacing:0}
+.dbgMini:hover{background:rgba(159,195,224,.12)}
+.dbgMini:disabled{opacity:.35;cursor:not-allowed}
+.dbgMini:disabled:hover{background:none}
+/* Two dbgMini buttons share one dbgSubhead, wrapped so space-between treats them as one group on the right. */
+.dbgSubBtns{display:flex;gap:.4rem}
+/* Model text input plus its preview button, on one line. */
+.dbgInline{display:flex;gap:.4rem;align-items:center}
+.dbgInline input{flex:1;min-width:0}
+.dbgAddRow{color:#9fc3e0;cursor:pointer;font-size:.65rem;text-transform:none;letter-spacing:0}
+.dbgAddRow:hover{text-decoration:underline}
+.dbgHint{font-size:.68rem;color:var(--faint);margin:-.2rem 0 .5rem;font-style:italic}
+
+.dbgRows{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.3rem}
+.dbgRow{display:flex;gap:.4rem;align-items:center}
+.dbgRow input{flex:1;background:rgba(159,195,224,.05);border:1px solid rgba(140,170,200,.2);
+    border-radius:3px;color:var(--bone);font-size:.78rem;padding:.35rem .5rem}
+.dbgRow .dPrice,.dbgRow .dStock{flex:0 0 78px}
+.dbgRow .dRestockAmt,.dbgRow .dRank{flex:0 0 70px}
+.dbgRow .dItem{flex:1 1 110px;min-width:0}
+.dbgRow .dCat,.dbgRow .cLabel{flex:0 0 100px;background:rgba(159,195,224,.05);border:1px solid rgba(140,170,200,.2);
+    border-radius:3px;color:var(--bone);font-size:.74rem;padding:.33rem .3rem}
+.dbgRow .cId{flex:0 0 110px}
+.dbgRow.bad input,.dbgRow.bad select{border-color:var(--blood)}
+.dbgRow.hideStock .dStock,.dbgRow.hideStock .dRestockAmt{display:none}
+.dRemove{flex:none;width:24px;height:24px;background:none;border:1px solid rgba(140,170,200,.2);
+    color:var(--faint);border-radius:2px;cursor:pointer}
+.dRemove:hover{border-color:var(--blood);color:var(--blood)}
+
+.dbgChecks{display:flex;flex-wrap:wrap;gap:.4rem .6rem;margin-bottom:.5rem}
+.dbgChecks label{display:flex;align-items:center;gap:.3rem;font-size:.76rem;color:var(--dust);
+    background:rgba(159,195,224,.04);border:1px solid rgba(140,170,200,.15);
+    border-radius:3px;padding:.3rem .5rem}
+
+.dbgActions{display:flex;gap:.6rem;margin-top:1.1rem;padding-top:.9rem;
+    border-top:1px solid rgba(140,170,200,.14)}
+.dbgBtn{flex:1;padding:.55rem;border-radius:3px;cursor:pointer;font-size:.8rem;
+    font-family:var(--mono);letter-spacing:.04em}
+.dbgBtn.primary{background:rgba(159,195,224,.14);border:1px solid #9fc3e0;color:#9fc3e0}
+.dbgBtn.primary:hover{background:#9fc3e0;color:#0c0c0b}
+.dbgBtn.danger{background:none;border:1px solid rgba(180,87,74,.4);color:var(--blood)}
+.dbgBtn.danger:hover{background:var(--blood);color:#0c0c0b}
+
+
+/*
+   wardrobe: additions
+   Outfits, arms toggle, save bar and ownership mark, all inside the existing panel.
+*/
+
+/* Outfits sits at the top of the rail and is marked as not a body part. */
+.wdcat--outfits {
+    border-left-color: rgba(224,140,70,.45);
+    text-transform: uppercase; font-family: var(--mono);
+    font-size: .68rem; letter-spacing: .14em;
+    margin-bottom: .45rem;
+}
+.wdcat__n {
+    margin-left: .45rem; font-size: .6rem; color: var(--faint);
+}
+
+/* "Owned" replaces the price on garments already paid for. */
+.wdrow__tag.is-owned {
+    color: var(--dust); border: 1px solid var(--line2); border-radius: 2px;
+    padding: .05rem .35rem; font-size: .58rem; letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+/* Remove row, kept quieter than a garment row. */
+.wdrow--none .wdrow__name { color: var(--faint); font-style: italic; }
+.wdrow--none.on .wdrow__name { color: var(--amber); font-style: normal; }
+
+.wdrow--outfit { align-items: center; }
+.wdx {
+    width: 20px; height: 20px; flex: none; cursor: pointer; border-radius: 2px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--faint); font-size: .9rem; line-height: 1;
+}
+.wdx:hover { border-color: var(--blood); color: var(--blood); }
+
+.wdempty {
+    padding: .8rem .6rem; font-size: .72rem; line-height: 1.5; color: var(--faint);
+}
+
+/* Arms mode strip and save bar: footers inside the panel so they do not move when the list scrolls. */
+.wdarms, .wdsave {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .55rem .7rem; border-top: 1px solid var(--line);
+}
+.wdarms.hidden { display: none !important; }
+.wdarms__state {
+    flex: 1; font-family: var(--mono); font-size: .62rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--faint);
+}
+.wdmini {
+    flex: none; cursor: pointer; padding: .3rem .6rem; border-radius: 2px;
+    background: rgba(224,140,70,.10); border: 1px solid rgba(224,140,70,.35);
+    color: var(--amber); font-family: var(--mono);
+    font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+}
+.wdmini:hover:not(:disabled) { background: rgba(224,140,70,.2); }
+.wdmini:disabled { opacity: .35; cursor: default; }
+
+.wdsave input {
+    flex: 1; min-width: 0; padding: .35rem .5rem; border-radius: 2px;
+    background: rgba(240,235,221,.04); border: 1px solid var(--line2);
+    color: var(--bone); font-size: .74rem; font-family: inherit;
+}
+.wdsave input::placeholder { color: var(--faint); }
+.wdsave input:focus { outline: none; border-color: var(--amber); }
+
+/* Camera-flip button is styled differently from the turn arrows so it does not read as a rotate control. */
+.wdturnbtn--flip { color: var(--amber); }
+.wdhint--dim {
+    font-size: .56rem; letter-spacing: .06em; color: var(--faint);
+    margin-left: .6rem; text-transform: uppercase;
+}
+
+/*
+   /traderdebug: additions
+   Clothing flag and duplicate field.
+*/
+
+/* A checkbox that is a grid field; it spans the grid so its long label is not squeezed into one column. */
+.dbgCheck--field {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .74rem; color: var(--dust);
+}
+.dbgCheck--field input { flex: none; }
+
+/* Duplicate target id, shown after the first click on "duplicate". */
+.dbgId--dup { max-width: 190px; }
+.dbgId--dup.hidden { display: none !important; }
+
+
+/*
+   wardrobe: poses
+   Toggle group in the footer, styled as chips so they read as latching toggles rather than nudge arrows.
+*/
+
+.wdposes { display: flex; align-items: center; gap: .35rem; }
+.wdpose {
+    cursor: pointer; padding: .32rem .62rem; border-radius: 2px;
+    background: rgba(12,12,11,.72); border: 1px solid var(--line);
+    color: var(--dust); font-family: var(--mono);
+    font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+}
+.wdpose:hover { border-color: var(--line2); color: var(--bone); }
+.wdpose.on {
+    border-color: var(--amber); color: var(--amber);
+    background: rgba(224,140,70,.12);
+}
+.wdturn--hint { flex: 1; }
+
+/* Tailor palette: rust, ash, bone, charcoal, blood red */
+#wardrobe {
+    --soot:#141210; --panel:rgba(24,21,18,.96); --line:rgba(214,203,184,.12); --line2:rgba(183,90,48,.35);
+    --bone:#e6dcc8; --dust:#9a9285; --faint:#6b645a;
+    --amber:#b75a30; --blood:#8e1b1b; --good:#9fb07a;
+}
+#wardrobe #wdHead, #wardrobe #wdPanel, #wardrobe #wdCats {
+    background: linear-gradient(180deg, rgba(34,29,25,.97), rgba(18,16,14,.97));
+    border-color: var(--line2);
+    box-shadow: 0 0 0 1px rgba(142,27,27,.18), 0 8px 28px rgba(0,0,0,.55);
+}
+#wardrobe .wdtitle { color: var(--amber); letter-spacing: .22em; text-transform: uppercase; }
+
+/* Trader editor: filters, inline errors, live preview */
+.dbgFilters{display:flex;flex-direction:column;gap:.3rem;padding:.4rem}
+.dbgFilters input,.dbgFilters select{background:rgba(159,195,224,.06);border:1px solid rgba(140,170,200,.22);
+    border-radius:3px;color:var(--bone);font-size:.74rem;padding:.3rem .4rem;min-width:0}
+.dbgErr{display:block;color:var(--blood);font-size:.66rem;font-style:normal;min-height:0;margin:.1rem 0}
+.dbgErr:empty{display:none}
+.dbgDirty{font-family:var(--mono);font-size:.62rem;color:#e0b25f;border:1px solid #e0b25f;border-radius:2px;padding:.05rem .35rem}
+.dbgDirty.hidden{display:none}
+.dbgGrid select{background:rgba(159,195,224,.05);border:1px solid rgba(140,170,200,.2);border-radius:3px;
+    color:var(--bone);font-size:.78rem;padding:.35rem .4rem}
+.dbgForm .bad{border-color:var(--blood)}
+.dbgPreview{border:1px dashed rgba(140,170,200,.25);border-radius:3px;padding:.5rem;margin-bottom:.4rem}
+.dbgPreview .pvTabs{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.4rem}
+.dbgPreview .pvTab{font-size:.66rem;padding:.12rem .45rem;border:1px solid rgba(140,170,200,.3);border-radius:10px;color:var(--dust)}
+.dbgPreview .pvRow{display:flex;justify-content:space-between;font-size:.74rem;color:var(--dust);padding:.12rem 0}
+.dbgPreview .pvMeta{font-size:.66rem;color:var(--faint);margin-bottom:.3rem}
+
+/* Player shop: category tabs */
+.cattabs{display:flex;flex-wrap:wrap;gap:.35rem;padding:.5rem .9rem 0}
+.cattabs.hidden{display:none}
+.cattab{background:none;border:1px solid var(--line);color:var(--dust);border-radius:12px;
+    padding:.18rem .7rem;font-size:.72rem;cursor:pointer}
+.cattab:hover{color:var(--bone)}
+.cattab.on{border-color:var(--bone);color:var(--bone)}
+.row.locked{opacity:.55}
+.rlock{font-size:.66rem;color:var(--blood);margin-left:.4rem}
+
+/* Shop: list left, selected item and cart right. Colours come from the palette variables so bs_ui palettes apply. */
+.shop{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:1.1rem}
+.shop-left{display:flex;flex-direction:column;min-height:0;min-width:0}
+.shop-left .cattabs{padding:.5rem 0 .2rem}
+
+.modebar{display:flex;gap:.4rem;padding-bottom:.55rem}
+.modebtn{flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;
+    background:rgba(240,235,221,.03);border:1px solid var(--line);color:var(--dust);
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;
+    padding:.5rem;border-radius:3px;cursor:pointer}
+.modebtn em{font-style:normal;font-size:.6rem;color:var(--faint);border:1px solid var(--line2);
+    border-radius:8px;padding:0 .35rem}
+.modebtn:hover{color:var(--bone)}
+.modebtn.on{color:var(--amber);border-color:var(--amber);background:rgba(224,140,70,.10)}
+.modebtn.on em{color:var(--amber);border-color:var(--amber)}
+
+.listhead{display:grid;grid-template-columns:44px minmax(0,1fr) 96px 56px;gap:.6rem;
+    padding:.35rem .6rem;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.listhead .lh-item{grid-column:1 / 3}
+.listhead .lh-price,.listhead .lh-stock{text-align:right}
+
+.shoplist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;
+    padding:.45rem .25rem .2rem 0}
+.shoplist::-webkit-scrollbar{width:6px}
+.shoplist::-webkit-scrollbar-thumb{background:rgba(240,235,221,.14);border-radius:3px}
+
+.shoprow{display:grid;grid-template-columns:44px minmax(0,1fr) 96px 56px;gap:.6rem;align-items:center;
+    padding:.4rem .6rem;background:rgba(240,235,221,.03);border:1px solid var(--line);
+    border-left:2px solid transparent;border-radius:3px;cursor:pointer;
+    transition:border-color .12s,background .12s}
+.shoprow:hover{background:rgba(240,235,221,.06);border-color:var(--line2)}
+.shoprow.on{border-color:var(--amber);background:rgba(224,140,70,.09)}
+.shoprow.locked{opacity:.6}
+.shoprow .ricon{width:40px;height:40px}
+.sr-name{font-size:.85rem;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-price{font-family:var(--mono);font-size:.78rem;color:var(--amber);text-align:right;white-space:nowrap}
+.ptag{display:block;font-size:.58rem;letter-spacing:.04em}
+.ptag.up{color:var(--blood)}
+.ptag.down{color:var(--good)}
+.sr-stock{font-family:var(--mono);font-size:.72rem;color:var(--dust);text-align:right}
+.sr-stock.low{color:var(--amber)}
+.sr-stock.out{color:var(--blood)}
+
+.shop-detail{min-width:0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;
+    background:rgba(240,235,221,.03);border:1px solid var(--line);border-radius:3px;padding:1rem}
+.d-empty{margin:auto;color:var(--faint);font-size:.8rem;font-style:italic;text-align:center}
+.d-body{display:flex;flex-direction:column;gap:.8rem;min-height:100%}
+.d-top{display:flex;align-items:center;gap:.8rem}
+.d-icon{width:64px;height:64px;flex:none;border-radius:3px;background:rgba(224,140,70,.10);
+    border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;
+    overflow:hidden;color:var(--amber)}
+.d-icon .bs-icon{width:42px;height:42px;display:block}
+.d-icon svg.bs-icon{fill:none;stroke:currentColor}
+.d-icon img.bs-icon--art{width:52px;height:52px;object-fit:contain}
+.d-icon .ico{width:34px;height:34px}
+.d-name{font-size:1.05rem;color:var(--bone);line-height:1.2}
+.d-cat{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);margin-top:.2rem}
+.d-lock{color:var(--blood);border:1px solid var(--blood);border-radius:2px;padding:.3rem .5rem;
+    font-family:var(--mono);font-size:.7rem}
+
+.d-prices{display:flex;flex-direction:column;gap:.25rem;border-top:1px solid var(--line);
+    padding-top:.7rem}
+.pl{display:flex;justify-content:space-between;gap:.6rem;font-size:.78rem;color:var(--dust)}
+.pl b{font-family:var(--mono);font-weight:400;color:var(--bone)}
+.pl.up b{color:var(--blood)}
+.pl.down b{color:var(--good)}
+.pl.main{margin-top:.2rem;padding-top:.4rem;border-top:1px dashed var(--line2);color:var(--bone)}
+.pl.main b{color:var(--amber);font-size:.95rem}
+.d-compare{font-size:.68rem;color:var(--faint);line-height:1.4}
+
+.d-cart{margin-top:auto;display:flex;flex-direction:column;gap:.5rem;border-top:1px solid var(--line);
+    padding-top:.8rem}
+.d-line{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.78rem;color:var(--dust)}
+.d-line b{font-family:var(--mono);font-weight:400;color:var(--bone)}
+.d-total b{color:var(--amber);font-size:1.1rem}
+.d-after b.down{color:var(--blood)}
+.d-after b.up{color:var(--good)}
+.d-cart .qbtn{width:26px;height:26px;font-size:.9rem}
+.d-cart .qval{width:48px;font-size:.85rem;padding:.25rem 0}
+.d-cart .qmax{padding:.3rem .4rem}
+
+.d-action{width:100%;padding:.7rem;margin-top:.2rem;font-family:var(--mono);font-size:.8rem;
+    letter-spacing:.08em;border-radius:2px;cursor:pointer;background:rgba(224,140,70,.14);
+    border:1px solid var(--amber);color:var(--amber)}
+.d-action:hover:not(:disabled){background:var(--amber);color:var(--soot)}
+.d-action:disabled{opacity:.4;cursor:not-allowed;border-color:var(--line2);color:var(--faint);background:none}
+
+@media (max-width:900px){.shop{grid-template-columns:1fr}}

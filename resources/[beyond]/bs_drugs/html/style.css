@@ -1,0 +1,35 @@
+/* Apocalyptic palette: rust / ash / bone / charcoal */
+:root {
+  --rust: #b0532a; --rust-hi: #d9763f; --ash: #6d6a64; --bone: #e4dccb;
+  --charcoal: #16140f; --char-2: #221f19; --blood: #8e2a1e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: transparent; overflow: hidden; font-family: 'Rajdhani', 'Segoe UI', sans-serif; }
+#hud {
+  position: absolute; right: calc(1.2vw / var(--ui-scale, 1)); top: calc(32vh / var(--ui-scale, 1)); width: 230px;
+  background: linear-gradient(135deg, rgba(22,20,15,.88), rgba(34,31,25,.78));
+  border: 1px solid rgba(176,83,42,.45); border-left: 3px solid var(--rust);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  padding: 8px 10px 10px; color: var(--bone);
+  transition: opacity .4s, transform .4s;
+}
+#hud.hidden { opacity: 0; transform: translateX(20px); }
+.head { font-size: 10px; letter-spacing: 3px; color: var(--ash); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 6px; height: 6px; background: var(--rust-hi); border-radius: 50%; animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.item { margin-top: 6px; animation: slide .35s ease-out; }
+@keyframes slide { from { opacity: 0; transform: translateX(14px); } }
+.row { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.row svg { width: 16px; height: 16px; stroke: var(--rust-hi); fill: none; stroke-width: 1.6; flex: none; }
+.name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q { font-size: 9px; color: var(--ash); margin-left: 4px; letter-spacing: 1px; }
+.q.bad { color: var(--blood); } .q.good { color: var(--bone); }
+.time { font-variant-numeric: tabular-nums; color: var(--bone); font-size: 12px; }
+.bar { position: relative; height: 3px; margin-top: 3px; background: rgba(109,106,100,.25); overflow: hidden; }
+.fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--rust), var(--rust-hi)); transition: width 1s linear; }
+.fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(228,220,203,.5), transparent); animation: scan 2.2s linear infinite; }
+@keyframes scan { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.item.low .time { color: var(--rust-hi); animation: blink 1s infinite; }
+.wd { margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(142,42,30,.6); font-size: 11px; letter-spacing: 2px; color: var(--blood); text-transform: uppercase; animation: jitter 3s infinite; }
+.wd.hidden { display: none; }
+@keyframes jitter { 0%,92%,100% { transform: none; } 94% { transform: translateX(-1px); } 96% { transform: translateX(1px); } }

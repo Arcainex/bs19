@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>Survivor</title>
+    <!-- v= is bumped by hand on every asset change, see bs_inventory/html/index.html -->
+    <link rel="stylesheet" href="css/style.css?v=20261013i" />
+    <link rel="stylesheet" href="css/faction-hub.css?v=20261013i" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <div class="veil"></div>
+
+    <main class="hub">
+        <header class="hub__head">
+            <h1 class="hub__name" id="name">-</h1>
+            <p class="hub__sub"><span id="class"></span> · <span id="levelLine"></span></p>
+        </header>
+
+        <div class="hub__cols">
+            <nav class="rail" id="rail"></nav>
+            <section class="stage" id="stage"></section>
+        </div>
+
+        <footer class="hub__foot">
+            <span data-i18n="ui.u_or_esc_to_close">U OR ESC TO CLOSE</span>
+        </footer>
+    </main>
+</div>
+<!-- Shared icon set, see bs_inventory/html/index.html. Craft rows use it. -->
+<script src="nui://bs_ui/html/js/icons.js?v=20260930h"></script>
+<script src="js/app.js?v=20261014c1"></script>
+</body>
+</html>

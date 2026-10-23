@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="shared/scale.js?v=20261016a"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BeyondSurvival UI</title>
+    <!-- v= is bumped by hand on every asset change, see bs_inventory/html/index.html -->
+    <link rel="stylesheet" href="css/root.css?v=20261013i" />
+    <link rel="stylesheet" href="css/filter.css?v=20261013i" />
+    <link rel="stylesheet" href="css/hud.css?v=20261017a" />
+    <link rel="stylesheet" href="css/notify.css?v=20261013i" />
+    <link rel="stylesheet" href="css/partyhud.css?v=20261013i" />
+    <link rel="stylesheet" href="css/announce.css?v=20261014a" />
+</head>
+<body>
+    <!-- XP strip: position is a player setting, so it sits outside the HUD -->
+    <div id="xpbar" class="xpbar hidden" data-position="top">
+        <div class="xpbar__level">
+            <svg class="xpbar__chev" viewBox="0 0 32 32" aria-hidden="true">
+                <polygon points="16,2 30,10 30,22 16,30 2,22 2,10"/>
+            </svg>
+            <span id="xp-level">1</span>
+        </div>
+
+        <div class="xpbar__body">
+            <div class="xpbar__track">
+                <div class="xpbar__fill" id="xp-fill"></div>
+                <div class="xpbar__surge" id="xp-gain"></div>
+                <div class="xpbar__edge" id="xp-edge"></div>
+                <div class="xpbar__ticks"></div>
+            </div>
+            <div class="xpbar__meta">
+                <span class="xpbar__value" id="xp-value">0 / 0</span>
+            </div>
+        </div>
+
+        <div class="xpbar__pops" id="xp-pops"></div>
+    </div>
+
+    <!-- Survival cluster -->
+    <div id="hud" class="hud hidden" data-anchor="bottom-left" data-mode="full">
+        <div class="hud__identity">
+            <span id="hud-name" class="hud__name"></span>
+            <span id="hud-class" class="hud__class"></span>
+        </div>
+        <div id="hud-bars" class="hud__bars"></div>
+        <!-- Medical condition icons (bs_medical) -->
+        <div id="hud-conds" class="hud__conds"></div>
+        <div class="hud__cash"><span id="hud-cash">$0</span></div>
+    </div>
+
+    <!-- Hotbar: five slots, driven by bs_inventory -->
+    <div id="hotbar" class="hotbar hidden"></div>
+
+    <!-- Dash HUD from bs_vehicles: speed, RPM, gear, heading, fuel and condition. Drawn on a canvas (see dashhud in hud.js). -->
+    <canvas id="dashhud" class="dashhud hidden" width="360" height="470"></canvas>
+    <!-- Throttle level from the scroll-wheel throttle (bs_vehicles cl_cruise.lua) -->
+    <div id="throttle" class="throttle hidden"><i class="throttle__fill"></i></div>
+
+    <!-- Map frame. The game draws the minimap and NUI cannot recolour it, so this overlays a worn-paper look: border, corner brackets, grain and a compass letter. -->
+    <div id="mapframe" class="mapframe hidden" aria-hidden="true">
+        <svg class="mapframe__grain" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <filter id="mapgrain">
+                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" />
+                <feColorMatrix type="saturate" values="0" />
+            </filter>
+            <rect width="100" height="100" filter="url(#mapgrain)" opacity="0.16" />
+        </svg>
+
+        <span class="mapframe__corner mapframe__corner--tl"></span>
+        <span class="mapframe__corner mapframe__corner--tr"></span>
+        <span class="mapframe__corner mapframe__corner--bl"></span>
+        <span class="mapframe__corner mapframe__corner--br"></span>
+
+        <span class="mapframe__compass">N</span>
+        <span class="mapframe__fold"></span>
+    </div>
+
+    <!-- Field map. cl_fieldmap.lua moves the game's bigmap radar behind #fieldmap__cutout; its RECT is hand-matched to the size and position below, so keep them in step. -->
+    <div id="fieldmap" class="fieldmap hidden" aria-hidden="true">
+        <svg class="fieldmap__grain" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <filter id="fieldmapgrain">
+                <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" />
+                <feColorMatrix type="saturate" values="0" />
+            </filter>
+            <rect width="100" height="100" filter="url(#fieldmapgrain)" opacity="0.14" />
+        </svg>
+
+        <span class="fieldmap__corner fieldmap__corner--tl"></span>
+        <span class="fieldmap__corner fieldmap__corner--tr"></span>
+        <span class="fieldmap__corner fieldmap__corner--bl"></span>
+        <span class="fieldmap__corner fieldmap__corner--br"></span>
+        <span class="fieldmap__compass">N</span>
+        <span class="fieldmap__fold"></span>
+
+        <h1 class="fieldmap__title" data-i18n="ui.field_map">FIELD MAP</h1>
+        <p class="fieldmap__hint" data-i18n="ui.scroll_to_zoom_m_or_esc_to_close">SCROLL TO ZOOM &middot; M OR ESC TO CLOSE</p>
+    </div>
+
+    <!-- Personal screen filter. First in the body so it composites under everything else (grain over the world is fine, over inventory text it hurts legibility). Four empty layers driven by js/filter.js, see css/filter.css. -->
+    <div id="filter">
+        <div class="filter__tint"></div>
+        <div class="filter__vignette"></div>
+        <div class="filter__grain"></div>
+        <div class="filter__scanlines"></div>
+    </div>
+
+    <!-- Party frames: squad then faction, driven by client/cl_partyhud.lua -->
+    <div id="partyhud" class="partyhud" aria-hidden="true"><div class="partyhud__list"></div></div>
+
+    <div id="notifications" class="notifications" data-position="top-right"></div>
+
+    <div id="levelup" class="levelup hidden">
+        <span class="levelup__label" data-i18n="ui.level">LEVEL</span>
+        <!-- Two numbers stacked in one cell so the old one leaves as the new one arrives. -->
+        <span class="levelup__stack">
+            <span class="levelup__value levelup__value--from" id="levelup-from">1</span>
+            <span class="levelup__value levelup__value--to" id="levelup-value">2</span>
+        </span>
+    </div>
+
+    <script src="js/filter.js?v=20261013i"></script>
+    <script src="js/icons.js?v=20261013i"></script>
+    <script src="js/nui.js?v=20261013i"></script>
+    <script src="js/hud.js?v=20261017a"></script>
+    <script src="js/notify.js?v=20261013i"></script>
+    <script src="js/sound.js?v=20261013i"></script>
+    <script src="js/partyhud.js?v=20261014c1"></script>
+    <script src="js/announce.js?v=20261014a"></script>
+    <script src="js/hudmove.js?v=20261017a"></script>
+</body>
+</html>

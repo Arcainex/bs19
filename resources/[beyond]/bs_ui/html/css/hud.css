@@ -1,0 +1,722 @@
+/*
+   No backdrop-filter anywhere. NUI is composited over the game, so there are no game pixels to blur and it renders an opaque black slab.
+   Use TriggerScreenblurFadeIn from the game side for real blur.
+*/
+
+/* BeyondSurvival - hud.css. Bone-on-soot palette, amber for world info, thin rules instead of boxes. Surfaces are translucent; opacity is a player setting. */
+
+/* survival */
+
+.hud {
+    position: absolute;
+    bottom: calc(2.4vh / var(--ui-scale, 1));
+    left: calc(1.8vw / var(--ui-scale, 1));
+    min-width: 208px;
+    padding: 0.2rem 0 0.2rem 0.7rem;
+    /* No panel or blur behind it: bars and text float over the world with their own shadows. The opacity setting scales those shadows. */
+    background: none;
+    border: none;
+    border-left: 2px solid rgba(110, 43, 33, 0.7);
+    transform: scale(var(--bs-scale, 1));
+    transform-origin: bottom left;
+    animation: bs-fade-up 260ms ease-out;
+}
+
+.hud[data-anchor='bottom-right'] {
+    left: auto;
+    right: calc(1.8vw / var(--ui-scale, 1));
+    transform-origin: bottom right;
+    border-left: none;
+    border-right: 2px solid rgba(110, 43, 33, 0.7);
+    padding: 0.2rem 0.7rem 0.2rem 0;
+    background: none;
+}
+
+/* Minimal: no panel, no chrome, just the bars. */
+.hud[data-mode='minimal'] {
+    min-width: 0;
+    padding: 0;
+    background: none;
+    border: none;
+}
+
+.hud[data-mode='minimal'] .hud__identity,
+.hud[data-mode='minimal'] .hud__cash { display: none; }
+
+.hud[data-mode='minimal'] .hud__bar-label,
+.hud[data-mode='minimal'] .hud__bar-value { display: none; }
+
+.hud[data-mode='minimal'] .hud__bar-track { width: 84px; }
+
+.hud__identity {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(216, 210, 194, 0.14);
+}
+
+.hud__name {
+    font-family: var(--bs-serif);
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    color: var(--bs-text);
+    text-shadow: 0 1px 3px #000, 0 0 10px rgba(0, 0, 0, 0.9);
+}
+
+.hud__class {
+    font-size: 0.73rem;
+    letter-spacing: 0.24em;
+    color: var(--bs-accent);
+}
+
+.hud__bars { display: flex; flex-direction: column; gap: 0.42rem; }
+
+.hud__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    transition: opacity 220ms ease;
+}
+
+.hud__bar.is-hidden { display: none; }
+
+.hud__bar-icon {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    opacity: 0.85;
+    filter: drop-shadow(0 1px 2px #000);
+}
+
+.hud__bar-label {
+    flex: 0 0 4.6rem;
+    font-size: 0.73rem;
+    letter-spacing: 0.2em;
+    color: var(--bs-text);
+    opacity: 0.75;
+    text-shadow: 0 1px 3px #000;
+}
+
+.hud__bar-track {
+    position: relative;
+    flex: 1;
+    min-width: 90px;
+    height: 3px;
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.9), inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.hud__bar-fill {
+    height: 100%;
+    width: 0;
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8));
+    transition: width 240ms ease-out;
+}
+
+/* Low (or, for infection, high) - the bar starts breathing. */
+.hud__bar.is-critical .hud__bar-fill { animation: bs-throb 1.15s ease-in-out infinite; }
+.hud__bar.is-critical .hud__bar-icon { opacity: 1; color: var(--bs-danger); }
+
+@keyframes bs-throb { 50% { opacity: 0.35; } }
+
+.hud__bar-value {
+    flex: 0 0 2.5rem;
+    text-align: right;
+    font-size: 0.803rem;
+    color: var(--bs-text);
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 3px #000;
+}
+
+.hud__cash {
+    margin-top: 0.6rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(216, 210, 194, 0.14);
+    text-align: right;
+    font-size: 0.889rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-text);
+    text-shadow: 0 1px 3px #000, 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+
+/* status HUD styles, picked in Settings (data-style on #hud) */
+
+/* slim: icon and thin bar, no labels */
+.hud[data-style='slim'] { min-width: 150px; }
+.hud[data-style='slim'] .hud__bar-label { display: none; }
+.hud[data-style='slim'] .hud__bar-track { height: 2px; min-width: 70px; }
+.hud[data-style='slim'] .hud__bar-value { flex-basis: 2.2rem; font-size: 0.72rem; }
+.hud[data-style='slim'] .hud__identity { margin-bottom: 0.4rem; }
+
+/* blocks: chunky notched bars */
+.hud[data-style='blocks'] .hud__bar-track {
+    height: 9px;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+}
+.hud[data-style='blocks'] .hud__bar-fill {
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
+            mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
+}
+.hud[data-style='blocks'] .hud__bars { gap: 0.5rem; }
+
+/* capsule: rounded tracks */
+.hud[data-style='capsule'] { border-left-color: transparent; border-right-color: transparent; }
+.hud[data-style='capsule'] .hud__bar-track {
+    height: 8px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(216, 210, 194, 0.18), 0 0 3px rgba(0, 0, 0, 0.8);
+}
+.hud[data-style='capsule'] .hud__bar-fill { border-radius: 8px; }
+.hud[data-style='capsule'] .hud__bar-label { letter-spacing: 0.12em; }
+
+/* glow (VIP): lit bars on dark glass */
+.hud[data-style='glow'] {
+    padding: 0.5rem 0.8rem;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+    border-left: 2px solid var(--bs-accent);
+}
+.hud[data-style='glow'] .hud__class,
+.hud[data-style='glow'] .hud__bar-icon { color: var(--bs-accent); }
+.hud[data-style='glow'] .hud__bar-track { height: 4px; background: rgba(0, 0, 0, 0.65); }
+.hud[data-style='glow'] .hud__bar-fill { box-shadow: 0 0 8px rgba(255, 255, 255, 0.4), inset 0 0 2px rgba(255, 255, 255, 0.7); filter: brightness(1.25) drop-shadow(0 0 4px rgba(0, 0, 0, 0.8)); }
+.hud[data-style='glow'] .hud__bar-value { color: var(--bs-accent); opacity: 1; }
+
+/* plate (VIP): framed panel with cut corners */
+.hud[data-style='plate'] {
+    padding: 0.55rem 0.8rem 0.5rem;
+    background: rgba(10, 10, 9, calc(var(--bs-hud-opacity, 0.72) * 0.7));
+    border: 1px solid var(--bs-accent);
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+.hud[data-style='plate'] .hud__identity { border-bottom-color: var(--bs-accent); }
+.hud[data-style='plate'] .hud__bar-track {
+    height: 6px;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.hud[data-style='plate'] .hud__cash { border-top-color: var(--bs-accent); }
+
+/*
+   xp bar
+   Hex level chevron, segmented track and a leading edge that surges when XP lands. Transparent, with hard shadows for readability.
+*/
+
+.xpbar {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: var(--bs-xp-width, 46%);
+    padding: 0.5rem 0.9rem 0.45rem;
+    /* No background: chevron, track and numbers carry their own shadows. */
+    background: none;
+    border: none;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    transition: opacity 400ms ease;
+}
+
+.xpbar[data-position='top']    { top: 0; }
+/* XP bar and quick bar share the bottom of the screen. The XP bar is lifted and the hotbar raised so they stack: quick bar above, progress bar under it. */
+.xpbar[data-position='bottom'] { bottom: calc(0.4vh / var(--ui-scale, 1)); }
+.xpbar.is-idle { opacity: 0.3; }
+
+/* level chevron */
+
+.xpbar__level {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+}
+
+.xpbar__chev {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    fill: rgba(10, 10, 9, calc(var(--bs-xp-opacity, 0.55) * 0.45));
+    stroke: var(--bs-accent);
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 5px rgba(200, 118, 58, 0.45));
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.xpbar__level span {
+    position: relative;
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--bs-text);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 3px #000, 0 0 10px rgba(0, 0, 0, 0.9);
+}
+
+.xpbar.is-levelup .xpbar__chev { transform: rotate(180deg) scale(1.18); }
+
+/* track */
+
+.xpbar__body { flex: 1; display: flex; flex-direction: column; gap: 0.28rem; }
+
+.xpbar__track {
+    position: relative;
+    height: 5px;
+    background: rgba(0, 0, 0, calc(var(--bs-xp-opacity, 0.55) * 0.5));
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+    overflow: hidden;
+}
+
+.xpbar__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    background: linear-gradient(90deg,
+        rgba(110, 43, 33, 0.9) 0%,
+        var(--bs-accent) 65%,
+        #e5a165 100%);
+    box-shadow: 0 0 10px rgba(200, 118, 58, 0.55);
+    transition: width 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* the slice just earned, flashed white then fading into the fill */
+.xpbar__surge {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255, 240, 220, 0.15), rgba(255, 240, 220, 0.95));
+    opacity: 0;
+    pointer-events: none;
+}
+
+.xpbar__surge.is-live { animation: bs-xp-surge 820ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+@keyframes bs-xp-surge {
+    0%   { opacity: 1; filter: blur(0); }
+    55%  { opacity: 0.75; }
+    100% { opacity: 0; filter: blur(3px); }
+}
+
+/* bright head of the bar, so the current value is always locatable */
+.xpbar__edge {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    width: 2px;
+    left: 0;
+    background: #fff3e2;
+    box-shadow: 0 0 8px 2px rgba(229, 161, 101, 0.85);
+    transition: left 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.xpbar__edge.is-pulsing { animation: bs-edge-pulse 820ms ease-out; }
+
+@keyframes bs-edge-pulse {
+    0%   { box-shadow: 0 0 16px 5px rgba(255, 243, 226, 0.95); }
+    100% { box-shadow: 0 0 8px 2px rgba(229, 161, 101, 0.85); }
+}
+
+/* segment ticks */
+.xpbar__ticks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0) 0 calc(10% - 1px),
+        rgba(0, 0, 0, 0.55) calc(10% - 1px) 10%);
+}
+
+/* readout */
+
+.xpbar__meta { display: flex; justify-content: flex-end; }
+
+.xpbar__value {
+    font-size: 0.818rem;
+    letter-spacing: 0.16em;
+    color: var(--bs-text);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 3px #000, 0 0 8px rgba(0, 0, 0, 0.95);
+}
+
+/* floating +XP */
+
+.xpbar__pops {
+    position: absolute;
+    right: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.xppop {
+    position: absolute;
+    right: 0;
+    white-space: nowrap;
+    font-size: 0.912rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #f0c493;
+    text-shadow: 0 1px 4px #000, 0 0 14px rgba(200, 118, 58, 0.8);
+    animation: bs-xp-pop 2200ms cubic-bezier(0.15, 0.9, 0.3, 1) forwards;
+}
+
+.xppop--big { color: #fff3e2; font-size: 1.12rem; }
+
+@keyframes bs-xp-pop {
+    0%   { opacity: 0; transform: translateY(10px) scale(0.9); }
+    14%  { opacity: 1; transform: translateY(-2px) scale(1.06); }
+    26%  { transform: translateY(-4px) scale(1); }
+    72%  { opacity: 1; transform: translateY(-20px); }
+    100% { opacity: 0; transform: translateY(-36px); }
+}
+
+/*
+   level up
+   Top centre, above the crosshair so it never hides what you shoot. The old level drops away as the new one rises. Both numbers share one grid cell so the card does not change width at 9 -> 10.
+*/
+
+.levelup {
+    position: absolute;
+    left: 50%;
+    top: 8%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    pointer-events: none;
+    animation: bs-levelup 5200ms ease-out forwards;
+}
+
+.levelup__label {
+    font-size: 1.05rem;
+    letter-spacing: 0.72em;
+    /* Letter tracking adds a trailing gap; pulling half of it back re-centres the word over the number. */
+    text-indent: 0.72em;
+    color: var(--bs-accent);
+    opacity: 0.92;
+}
+
+.levelup__stack {
+    display: grid;
+    place-items: center;
+}
+
+.levelup__value {
+    grid-area: 1 / 1;
+    font-family: var(--bs-serif);
+    font-size: 7.2rem;
+    line-height: 0.95;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-text);
+    text-shadow:
+        0 0 18px rgba(200, 118, 58, 0.55),
+        0 0 70px rgba(200, 118, 58, 0.30);
+}
+
+/* Outgoing level: falls and fades. */
+.levelup__value--from {
+    animation: bs-level-from 900ms cubic-bezier(.4, 0, .7, .2) 380ms forwards;
+}
+
+/* The new one, arriving on the beat of the boom. */
+.levelup__value--to {
+    opacity: 0;
+    animation: bs-level-to 1000ms cubic-bezier(.16, .9, .3, 1) 380ms forwards;
+}
+
+@keyframes bs-level-from {
+    0%   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    100% { opacity: 0; transform: translateY(0.42em) scale(0.82); filter: blur(6px); }
+}
+
+@keyframes bs-level-to {
+    0%   { opacity: 0; transform: translateY(-0.46em) scale(1.5); filter: blur(9px); }
+    55%  { opacity: 1; transform: translateY(0) scale(1.06); filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+/* The card only fades in and out; the numbers do the animation. Held long enough for the music to establish. */
+@keyframes bs-levelup {
+    0%   { opacity: 0; }
+    6%   { opacity: 1; }
+    86%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* A skill level is the same card, quieter: no music, so it should not claim the screen like a character level. */
+.levelup.is-skill .levelup__value { font-size: 4.6rem; }
+.levelup.is-skill { animation-duration: 3000ms; }
+.levelup.is-skill .levelup__label { font-size: 0.82rem; }
+
+/*
+   dash hud
+   Frame for the dash panel drawn on canvas (see dashhud() in hud.js): size, position and which bottom corner. bs_vehicles picks the corner the survival cluster is not using.
+*/
+.dashhud {
+    position: absolute;
+    bottom: calc(2vh / var(--ui-scale, 1));
+    /* Taller than wide: speed block on top, RPM bar and the fuel/engine/hull gauges under it. Aspect must match the canvas attributes in index.html (360 x 470). */
+    width: 148px; height: 193px;
+    /* --dash-op is the player's dash opacity slider (inventory Settings) */
+    opacity: calc(var(--bs-hud-opacity, 0.85) * var(--dash-op, 1));
+    pointer-events: none;
+    transition: opacity 200ms ease;
+}
+.dashhud[data-side="L"] { left: calc(1.6vw / var(--ui-scale, 1)); transform-origin: bottom left; }
+.dashhud[data-side="R"] { right: calc(1.6vw / var(--ui-scale, 1)); transform-origin: bottom right; }
+
+/*
+   hotbar
+   Five slots with no background; numbers and labels carry their own shadows.
+*/
+
+.hotbar {
+    position: absolute;
+    left: 50%; bottom: calc(2.2vh / var(--ui-scale, 1));
+    transform: translateX(-50%) scale(var(--bs-scale, 1));
+    transform-origin: bottom center;
+    display: flex; gap: 0.5rem;
+    opacity: var(--bs-hud-opacity, 0.72);
+    transition: opacity 250ms ease;
+}
+
+/* No label under the icon; the item name is in the native title tooltip so the square is free for the icon. */
+.hotbar__slot {
+    position: relative;
+    width: 3rem; height: 3rem;
+    display: grid; place-items: center;
+    background: linear-gradient(180deg, rgba(20, 18, 14, 0.55), rgba(10, 10, 8, 0.7));
+    border: 1px solid rgba(216, 210, 194, 0.18);
+    border-radius: var(--bs-radius, 2px);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 5px rgba(0, 0, 0, 0.6);
+    transition: border-color 160ms ease, transform 120ms ease, background 160ms ease;
+}
+
+.hotbar__slot.is-bound {
+    border-color: rgba(200, 118, 58, 0.55);
+    background: linear-gradient(180deg, rgba(32, 24, 14, 0.6), rgba(10, 10, 8, 0.72));
+}
+.hotbar__slot.is-empty  { opacity: 0.42; }
+.hotbar__slot.is-firing { transform: translateY(-3px); border-color: var(--bs-accent); }
+
+/* The slot number, tucked in the corner. */
+.hotbar__key {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 0.7rem; letter-spacing: 0.1em;
+    color: rgba(216, 210, 194, 0.5);
+    text-shadow: 0 1px 2px #000;
+}
+
+/* Fills almost the whole square since there is no label under it. */
+.hotbar__icon {
+    position: absolute;
+    inset: 14%;
+    display: grid; place-items: center;
+    color: var(--bs-text);
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.hotbar__icon svg { width: 100%; height: 100%; }
+.hotbar__icon img.bs-icon--art { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+.hotbar__slot.is-bound .hotbar__icon { opacity: 0.85; }
+
+.hotbar__count {
+    position: absolute; bottom: 2px; right: 4px;
+    font-size: 0.72rem; font-variant-numeric: tabular-nums;
+    color: var(--bs-accent);
+    text-shadow: 0 1px 3px #000;
+}
+
+.hotbar__slot.is-empty .hotbar__count { color: var(--bs-danger); }
+
+/* The quick bar only moves when the XP bar is also at the bottom. The extra offset leaves a visible gap over the XP strip. */
+.hotbar[data-xp='bottom'] { bottom: calc(6.6vh / var(--ui-scale, 1)); }
+
+/*
+   Map frame
+   Sized to sit over the game minimap (standard 16:9 rectangle). cl_hud.lua recomputes it for other aspect ratios and pushes it in as custom properties.
+   Border and overlay only: the middle is empty with pointer-events off.
+*/
+.mapframe {
+    position: absolute;
+    left:   var(--bs-map-left, calc(0.0117vw / var(--ui-scale, 1)));
+    bottom: var(--bs-map-bottom, calc(3.1vh / var(--ui-scale, 1)));
+    width:  var(--bs-map-width, calc(13.4vw / var(--ui-scale, 1)));
+    height: var(--bs-map-height, calc(18.4vh / var(--ui-scale, 1)));
+    pointer-events: none;
+    opacity: var(--bs-hud-opacity, 0.72);
+
+    /* Scratched edge: a hard hairline plus a soft dark inset so the map does not bleed into the background. */
+    box-shadow:
+        inset 0 0 0 1px rgba(216, 210, 194, 0.22),
+        inset 0 0 14px rgba(0, 0, 0, 0.75),
+        0 0 18px rgba(0, 0, 0, 0.6);
+}
+
+/* Paper grain over the whole thing. Generated, not downloaded. */
+.mapframe__grain {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    mix-blend-mode: overlay;
+    opacity: 0.5;
+}
+
+/* Corner brackets: the map has been cut out of something bigger. */
+.mapframe__corner {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 1px solid var(--bs-accent, #e08c46);
+    opacity: 0.75;
+}
+
+.mapframe__corner--tl { top: -1px; left: -1px;  border-right: 0; border-bottom: 0; }
+.mapframe__corner--tr { top: -1px; right: -1px; border-left: 0;  border-bottom: 0; }
+.mapframe__corner--bl { bottom: -1px; left: -1px;  border-right: 0; border-top: 0; }
+.mapframe__corner--br { bottom: -1px; right: -1px; border-left: 0;  border-top: 0; }
+
+/* North, because a map somebody drew has one. */
+.mapframe__compass {
+    position: absolute;
+    top: 3px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    color: var(--bs-text, #f0ebdd);
+    opacity: 0.65;
+    text-shadow: var(--bs-halo);
+}
+
+/* Fold crease down the middle. One faint line is enough. */
+.mapframe__fold {
+    position: absolute;
+    left: 38%; top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.07) 18%,
+        rgba(0, 0, 0, 0.28) 50%,
+        rgba(255, 255, 255, 0.05) 82%,
+        transparent 100%);
+}
+
+/*
+   Field map
+   Position and size are hand-matched to RECT in cl_fieldmap.lua, so change both together. No fill: the vanilla map sits behind this frame.
+*/
+.fieldmap {
+    position: fixed;
+    /* Wide enough to sit around GTA's own bigmap (cl_fieldmap.lua openMap), which draws at a fixed footprint. If the map pokes past this box in game, widen these numbers. */
+    left: calc(8vw / var(--ui-scale, 1)); top: calc(8vh / var(--ui-scale, 1));
+    width: calc(84vw / var(--ui-scale, 1)); height: calc(84vh / var(--ui-scale, 1));
+    pointer-events: none;
+    box-shadow:
+        inset 0 0 0 1px rgba(216, 210, 194, 0.24),
+        inset 0 0 40px rgba(0, 0, 0, 0.7),
+        0 0 60px rgba(0, 0, 0, 0.65);
+    /* Faint soot tint like the inventory panel; the map reads through it. */
+    background: rgba(10, 10, 8, 0.06);
+}
+
+.fieldmap__grain {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    mix-blend-mode: overlay;
+    opacity: 0.45;
+}
+
+.fieldmap__corner {
+    position: absolute;
+    width: 22px; height: 22px;
+    border: 1px solid var(--bs-accent, #e08c46);
+    opacity: 0.8;
+}
+.fieldmap__corner--tl { top: -1px; left: -1px;  border-right: 0; border-bottom: 0; }
+.fieldmap__corner--tr { top: -1px; right: -1px; border-left: 0;  border-bottom: 0; }
+.fieldmap__corner--bl { bottom: -1px; left: -1px;  border-right: 0; border-top: 0; }
+.fieldmap__corner--br { bottom: -1px; right: -1px; border-left: 0;  border-top: 0; }
+
+.fieldmap__compass {
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.85rem;
+    letter-spacing: 0.3em;
+    color: var(--bs-text, #f0ebdd);
+    opacity: 0.7;
+    text-shadow: var(--bs-halo);
+}
+
+.fieldmap__fold {
+    position: absolute;
+    left: 44%; top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.08) 15%,
+        rgba(0, 0, 0, 0.32) 50%,
+        rgba(255, 255, 255, 0.06) 85%,
+        transparent 100%);
+}
+
+.fieldmap__title {
+    position: absolute;
+    top: 10px; left: 26px;
+    font-family: var(--bs-font-serif, Georgia, serif);
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: 0.24em;
+    color: var(--bs-text, #f0ebdd);
+    text-shadow: var(--bs-halo);
+    opacity: 0.85;
+}
+
+.fieldmap__hint {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    color: var(--bs-text-muted, #a8a293);
+    text-shadow: var(--bs-halo);
+    opacity: 0.75;
+}
+
+/* Medical condition icons (bs_medical) */
+.hud__conds { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; margin-top: 0.45rem; }
+.hud__conds.is-empty { display: none; }
+.hud__cond { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--bs-warn, #e0a046); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; text-shadow: 0 1px 3px #000; }
+.hud__cond svg { width: 14px; height: 14px; filter: drop-shadow(0 1px 2px #000); }
+.hud__cond i { font-style: normal; opacity: 0.85; }
+.hud__cond[data-level="2"], .hud__cond[data-level="3"] { color: var(--bs-danger, #c0574a); }
+.hud__cond[data-level="3"] svg, .hud__cond[data-id="bleed"][data-level="2"] svg { animation: hudCondPulse 1.2s ease-in-out infinite; }
+#hud[data-mode="minimal"] .hud__cond i { display: none; }
+@keyframes hudCondPulse { 50% { opacity: 0.35; } }
+
+/* throttle slider (scroll-wheel throttle) */
+.throttle {
+    position: absolute; bottom: calc(2vh / var(--ui-scale, 1));
+    width: 7px; height: 120px; border-radius: 4px;
+    background: rgba(0, 0, 0, 0.45); border: 1px solid var(--bs-text-muted, rgba(214, 206, 168, 0.35));
+    opacity: var(--bs-hud-opacity, 0.85); pointer-events: none;
+}
+.throttle::after { content: ""; position: absolute; left: -3px; right: -3px; top: 50%; height: 1px; background: var(--bs-text-muted, #d6cea8); }
+.throttle__fill { position: absolute; left: 0; right: 0; background: var(--bs-accent, #c8763a); border-radius: 3px; transition: height 80ms linear, top 80ms linear; }
+.throttle__fill.is-brake { background: var(--bs-blood, #a8342c); }
+
+/* move HUD mode: dashed outline, cursor, hidden pieces shown as ghosts */
+body.hudmove .hudmovable { pointer-events: auto !important; cursor: move; outline: 1px dashed var(--bs-accent, #c8763a); outline-offset: 2px; }
+body.hudmove .hudmovable.hidden { display: block !important; opacity: 0.45 !important; min-width: 40px; min-height: 24px; }
+body.hudmove #hotbar.hidden, body.hudmove #xpbar.hidden { display: flex !important; }
+body.hudmove #throttle.hidden { width: 7px; height: 120px; }

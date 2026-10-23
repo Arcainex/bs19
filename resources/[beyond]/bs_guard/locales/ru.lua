@@ -1,0 +1,22 @@
+-- bs_guard strings (ru).
+return {
+    ['guard.spec_stopped'] = 'Наблюдение остановлено.',
+    ['guard.spec_nostream'] = 'Цель не загрузилась.',
+    ['guard.spec_on'] = 'Наблюдение за [{id}]. /guardspec для остановки.',
+    ['guard.err_denied'] = 'нет доступа',
+    ['guard.err_nopos'] = 'нет позиции',
+    ['guard.err_offline'] = 'игрок не в сети',
+    ['guard.err_self'] = 'это вы',
+    ['guard.kind.teleport'] = 'телепорт',
+    ['guard.kind.speed'] = 'скорость',
+    ['guard.kind.superjump'] = 'суперпрыжок',
+    ['guard.kind.noclip'] = 'ноклип',
+    ['guard.kind.godmode'] = 'режим бога',
+    ['guard.kind.weapon'] = 'оружие',
+    ['guard.kind.explosion'] = 'взрыв',
+    ['guard.kind.ptfx'] = 'частицы',
+    ['guard.kind.entity'] = 'объект',
+    ['guard.kind.money'] = 'деньги',
+    ['guard.kind.items'] = 'предметы',
+    ['guard.kind.eventspam'] = 'спам событий',
+}

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>Beyond Survival - Survivors</title>
+    <!-- v= is bumped by hand on every asset change, see bs_inventory/html/index.html -->
+    <link rel="stylesheet" href="css/style.css?v=20261016b" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <div class="vignette"></div>
+
+    <!-- select -->
+    <section id="select" class="panel">
+        <header class="panel__head">
+            <h1 class="panel__title" data-i18n="ui.survivors">SURVIVORS</h1>
+            <p class="panel__sub" id="slotCount">- / -</p>
+        </header>
+
+        <div class="slots" id="slots"></div>
+
+        <footer class="panel__foot">
+            <button class="btn btn--primary" id="btnPlay" disabled data-i18n="ui.enter_the_world">ENTER THE WORLD</button>
+
+            <!-- Escape hatch, kept on the character screen because it is the last point before spawn and a character in a crash loop can only be rescued from a screen you can still reach. Off by default and never remembered, see app.js. -->
+            <label class="safespawn" id="safeSpawnRow">
+                <input type="checkbox" id="safeSpawn" />
+                <span class="safespawn__box" aria-hidden="true"></span>
+                <span class="safespawn__text">
+                    <span data-i18n="ui.safe_spawn">SAFE SPAWN</span>
+                    <em data-i18n="ui.start_at_the_camp_instead_of_where_you_l">Start at the camp instead of where you logged out. Use this
+                    if entering the world crashes or hangs.</em>
+                </span>
+            </label>
+            <div class="btn-row">
+                <button class="btn" id="btnNew" data-i18n="ui.new_survivor">NEW SURVIVOR</button>
+                <button class="btn btn--danger" id="btnDelete" disabled data-i18n="ui.abandon">ABANDON</button>
+            </div>
+        </footer>
+    </section>
+
+    <!-- camera controls sit over the 3D view -->
+    <aside class="cam">
+        <button class="cam__btn is-active" data-focus="full" title="Full body" data-i18n-attr="title:ui.full_body" data-i18n="ui.full">FULL</button>
+        <button class="cam__btn" data-focus="body" title="Torso" data-i18n-attr="title:ui.torso" data-i18n="ui.body">BODY</button>
+        <button class="cam__btn" data-focus="face" title="Face" data-i18n-attr="title:ui.face" data-i18n="ui.face">FACE</button>
+        <button class="cam__btn cam__btn--hands hidden" id="btnHands">HANDS UP</button>
+        <div class="cam__turn">
+            <button class="cam__btn cam__btn--icon" id="turnLeft" title="Turn left" data-i18n-attr="title:ui.turn_left">&#8249;</button>
+            <button class="cam__btn cam__btn--icon" id="turnRight" title="Turn right" data-i18n-attr="title:ui.turn_right">&#8250;</button>
+        </div>
+        <p class="cam__hint" data-i18n="ui.drag_to_turn_a_d_wheel_to_zoom">DRAG TO TURN · A / D · WHEEL TO ZOOM</p>
+    </aside>
+
+    <!-- creator -->
+    <section id="creator" class="panel panel--wide hidden">
+        <header class="panel__head">
+            <h1 class="panel__title" data-i18n="ui.new_survivor">NEW SURVIVOR</h1>
+            <p class="panel__sub" data-i18n="ui.everyone_out_here_was_someone_before">Everyone out here was someone before.</p>
+        </header>
+
+        <!-- steps: numbered buttons built by app.js, the current one is named underneath -->
+        <nav class="steps" id="steps" aria-label="steps"></nav>
+        <p class="steps__name" id="stepName"></p>
+
+        <div class="tabpanes">
+            <div class="pane is-active" data-pane="identity">
+                <div class="field">
+                    <span class="field__label" data-i18n="ui.language">LANGUAGE</span>
+                    <select id="langSel" class="dob__part select" aria-label="Language"></select>
+                </div>
+                <div class="row2">
+                    <label class="field">
+                        <span class="field__label" data-i18n="ui.first_name">FIRST NAME</span>
+                        <input id="firstName" type="text" maxlength="24" autocomplete="off" />
+                    </label>
+                    <label class="field">
+                        <span class="field__label" data-i18n="ui.last_name">LAST NAME</span>
+                        <input id="lastName" type="text" maxlength="24" autocomplete="off" />
+                    </label>
+                </div>
+                <label class="field">
+                    <span class="field__label"><span data-i18n="ui.nickname">NICKNAME</span> <em class="opt" data-i18n="ui.optional">OPTIONAL</em></span>
+                    <input id="nickname" type="text" maxlength="20" autocomplete="off" />
+                </label>
+                <div class="field">
+                    <span class="field__label" data-i18n="ui.date_of_birth">DATE OF BIRTH</span>
+                    <div class="dob">
+                        <select id="dobDay"   class="dob__part" aria-label="Day"></select>
+                        <select id="dobMonth" class="dob__part dob__part--wide" aria-label="Month"></select>
+                        <select id="dobYear"  class="dob__part" aria-label="Year"></select>
+                    </div>
+                    <span class="field__hint" id="ageHint"></span>
+                </div>
+                <div class="field">
+                    <span class="field__label" data-i18n="ui.sex">SEX</span>
+                    <div class="choice" id="genderChoice">
+                        <button class="choice__btn is-active" data-gender="male" data-i18n="ui.male">MALE</button>
+                        <button class="choice__btn" data-gender="female" data-i18n="ui.female">FEMALE</button>
+                    </div>
+                </div>
+                <div class="field">
+                    <span class="field__label"><span data-i18n="ui.height">HEIGHT</span> <b class="field__val" id="heightVal"></b></span>
+                    <input id="height" type="range" class="range" />
+                </div>
+                <div class="field">
+                    <span class="field__label" data-i18n="ui.blood_type">BLOOD TYPE</span>
+                    <div class="chips" id="bloodChoice"></div>
+                </div>
+                <div class="field">
+                    <span class="field__label" data-i18n="ui.occupation">PREVIOUS OCCUPATION</span>
+                    <select id="occupation" class="dob__part select"></select>
+                </div>
+                <label class="field">
+                    <span class="field__label"><span data-i18n="ui.backstory">BACKSTORY</span> <b class="field__val" id="storyCount"></b></span>
+                    <textarea id="backstory" rows="3" maxlength="200"></textarea>
+                </label>
+            </div>
+
+            <div class="pane" data-pane="origin">
+                <div class="classes" id="classes"></div>
+            </div>
+
+            <div class="pane" data-pane="faction">
+                <p class="pane__note" data-i18n="ui.faction_sub">You start in its safezone.</p>
+                <div class="classes" id="factions"></div>
+            </div>
+
+            <div class="pane" data-pane="look">
+                <p class="pane__note" data-i18n="ui.look_note">Roll for a natural face, then fine-tune it.</p>
+                <div class="pane__tools">
+                    <button class="btn btn--ghost" id="btnRandom" data-i18n="ui.roll_a_face">ROLL A FACE</button>
+                </div>
+                <div class="sliders" id="sliders"></div>
+            </div>
+
+            <div class="pane" data-pane="clothing">
+                <p class="pane__note" data-i18n="cl.note">Everything here is free.</p>
+                <div class="pane__tools">
+                    <button class="btn btn--ghost" id="btnOutfitReset" data-i18n="cl.reset">RESET OUTFIT</button>
+                </div>
+                <div class="wardrobe" id="wardrobe"></div>
+            </div>
+
+            <div class="pane" data-pane="kit">
+                <p class="pane__note" data-i18n="kit.note">No firearms here.</p>
+                <div class="group__title" data-i18n="kit.melee">MELEE WEAPON</div>
+                <div class="opts" id="kitMelee"></div>
+                <div class="group__title"><span data-i18n="kit.goodies">SMALL GOODIES</span> <b class="field__val" id="kitCount"></b></div>
+                <div class="opts" id="kitGoodies"></div>
+            </div>
+
+            <div class="pane" data-pane="review">
+                <p class="pane__note" data-i18n="rv.note">Check everything before you begin.</p>
+                <div class="review" id="review"></div>
+            </div>
+        </div>
+
+        <footer class="panel__foot">
+            <p class="error" id="createError"></p>
+            <button class="btn btn--primary" id="btnCreate">NEXT</button>
+            <button class="btn" id="btnCancel">BACK</button>
+        </footer>
+    </section>
+
+    <!-- modal -->
+    <div id="confirm" class="modal hidden">
+        <div class="modal__box">
+            <h2 class="modal__title" data-i18n="ui.abandon_this_survivor">ABANDON THIS SURVIVOR?</h2>
+            <p class="modal__body" id="confirmBody"></p>
+            <p class="modal__hint" data-i18n="ui.type_their_first_name_to_confirm">Type their first name to confirm.</p>
+            <input id="confirmInput" type="text" autocomplete="off" />
+            <div class="modal__actions">
+                <button class="btn btn--danger" id="confirmYes" disabled data-i18n="ui.abandon">ABANDON</button>
+                <button class="btn" id="confirmNo" data-i18n="ui.keep">KEEP</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/app.js?v=20261016b"></script>
+</body>
+</html>

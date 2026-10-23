@@ -1,0 +1,35 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; background: transparent; font-family: 'Segoe UI', Arial, sans-serif; color: #e8e2d4; user-select: none; }
+.hide { display: none !important; }
+#side { position: fixed; right: 18px; top: 32%; width: 300px; display: flex; flex-direction: column; gap: 8px; }
+.panel { background: rgba(20, 18, 14, 0.55); backdrop-filter: blur(6px); border-left: 3px solid #d9a441; padding: 8px 12px; border-radius: 3px; }
+.panel h4 { margin: 0 0 4px; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #f0c060; }
+.panel .l { font-size: 12px; line-height: 1.5; }
+.panel .l.warn { color: #ff7b5c; }
+.panel .l.dim { opacity: 0.7; }
+.bar { height: 5px; background: rgba(255,255,255,0.15); margin: 3px 0 4px; }
+.bar i { display: block; height: 100%; background: #d9a441; }
+#track .tier { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
+#board { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); }
+#board .box { width: 720px; max-height: 80vh; overflow-y: auto; background: rgba(22, 20, 16, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(217,164,65,0.4); padding: 16px 20px; border-radius: 4px; }
+#board h2 { margin: 0 0 12px; font-size: 18px; letter-spacing: 2px; text-transform: uppercase; color: #f0c060; }
+.ch { border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 0; }
+.ch .t { font-weight: 600; font-size: 15px; }
+.ch .tg { font-size: 10px; padding: 1px 6px; border: 1px solid #d9a441; color: #d9a441; margin-left: 6px; text-transform: uppercase; }
+.ch .d { font-size: 12px; opacity: 0.85; margin: 4px 0; }
+.ch ol { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; opacity: 0.8; }
+.ch .row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.ch .lk { color: #ff8c6b; }
+button { background: rgba(217,164,65,0.18); color: #f0d9a8; border: 1px solid rgba(217,164,65,0.6); padding: 5px 14px; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+button:hover { background: rgba(217,164,65,0.35); }
+button:disabled { opacity: 0.4; cursor: default; }
+.foot { text-align: right; margin-top: 10px; }
+#puzzle { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); }
+#puzzle .box { width: 420px; background: rgba(22, 20, 16, 0.88); border: 1px solid rgba(217,164,65,0.4); padding: 16px; border-radius: 4px; }
+#puzzle h3 { margin: 0 0 4px; color: #f0c060; text-transform: uppercase; letter-spacing: 1px; font-size: 15px; }
+#puzzle p { margin: 0 0 12px; font-size: 12px; opacity: 0.8; }
+.wires { display: flex; justify-content: space-between; }
+.wires .col { display: flex; flex-direction: column; gap: 10px; }
+.w { width: 120px; height: 26px; border-radius: 3px; cursor: pointer; border: 2px solid transparent; opacity: 0.9; }
+.w.sel { border-color: #fff; }
+.w.ok { opacity: 0.25; cursor: default; }

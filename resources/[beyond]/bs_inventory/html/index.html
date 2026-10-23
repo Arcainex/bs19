@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>Inventory</title>
+    <!-- Bump v= by hand on every change to style.css/app.js. FiveM's CEF caches ui_page assets across resource restarts, so players can keep running an old bundle. -->
+    <link rel="stylesheet" href="css/style.css?v=20261016a" />
+    <link rel="stylesheet" href="css/medical.css?v=20261014m2" />
+    <link rel="stylesheet" href="css/craft.css?v=20261015c" />
+    <link rel="stylesheet" href="css/missions.css?v=20261016ml4" />
+</head>
+<body>
+<!--
+  Layout: one CSS grid (`.layout`) with three columns - character, carried, bag. Nothing inside is positioned against the viewport, so columns cannot drift.
+  The character appears twice on purpose: a dark silhouette in the left column anchors the equipment frames, while the live ped is shown large on the right by a scripted camera (see client/cl_pedcam.lua) through the transparent parts of this page.
+-->
+<div id="root" class="hidden">
+    <div class="scrim"></div>
+
+    <main class="wrap">
+
+        <header class="topbar">
+            <nav class="tabs">
+                <button class="tab is-active" data-tab="carry" data-i18n="ui.myself">MYSELF</button>
+                <button class="tab" data-tab="craft" data-i18n="ui.craft">CRAFT</button>
+                <button class="tab hidden" data-tab="medical" data-i18n="ui.medical">MEDICAL</button>
+                <button class="tab" data-tab="missions" data-i18n="ui.missions">MISSION LOG</button>
+                <button class="tab" data-tab="settings" data-i18n="ui.settings">SETTINGS</button>
+                <button class="tab" id="btnTrade" data-i18n="ui.trade">TRADE</button>
+            </nav>
+            <span class="topbar__title" data-i18n="ui.inventory">INVENTORY</span>
+            <button class="tab tab--close" id="btnClose" data-i18n="ui.close">CLOSE</button>
+        </header>
+
+        <section class="pane is-active" data-pane="carry">
+            <div class="layout">
+
+                <!-- ------------------------------------------ CHARACTER -->
+                <div class="col col--character">
+                    <!-- Field medical. The inventory does not dress the player; NPC wardrobes stay cosmetic and this panel is gameplay. -->
+                    <section class="fieldmed" id="medicalPanel" aria-label="Field medical assessment">
+    <header class="fieldmed__head">
+        <span class="fieldmed__title" data-i18n="ui.field_medical">FIELD MEDICAL</span>
+        <span class="fieldmed__state" id="medicalState" data-i18n="ui.assessing">ASSESSING</span>
+    </header>
+    <div class="fieldmed__body">
+        <!-- BODY STATUS: snapshots of your character (4 angles), or a silhouette -->
+        <div class="bodycard" id="bodyCard">
+            <span class="bodycard__label" data-i18n="ui.body_status">BODY STATUS</span>
+            <div class="bodycard__stage" id="bodyStage" title="Drag to turn" data-i18n-attr="title:ui.drag_to_turn">
+                <svg class="bodycard__sil" id="bodySil" viewBox="0 0 100 200" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="silFill" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stop-color="#3b3a35"/><stop offset=".55" stop-color="#23231f"/><stop offset="1" stop-color="#151513"/>
+                        </linearGradient>
+                    </defs>
+                    <g class="bodycard__silbody">
+                        <ellipse cx="50" cy="16" rx="8.6" ry="10.5"/>
+                        <path d="M46.5,25.5 h7 v6 h-7 z"/>
+                        <path d="M50,30 C58,30 66,31 71,35 C75,38 76,44 77,52 L80,78 C81,86 83,96 83,104 C83,109 79,110 78,106 L75,86 C74,80 72,70 70,62 C69,72 68,84 67,96 C69,104 70,112 69,120 L67,160 L66,188 C66,193 62,195 58,194 L57,188 L56,160 L53,124 L50,120 L47,124 L44,160 L43,188 L42,194 C38,195 34,193 34,188 L33,160 L31,120 C30,112 31,104 33,96 C32,84 31,72 30,62 C28,70 26,80 25,86 L22,106 C21,110 17,109 17,104 C17,96 19,86 20,78 L23,52 C24,44 25,38 29,35 C34,31 42,30 50,30 Z"/>
+                    </g>
+                    <path class="bodycard__siline" d="M50,40 V96 M38,44 C44,48 56,48 62,44 M40,98 C46,101 54,101 60,98"/>
+                </svg>
+                <img class="bodycard__img" id="bodyImgA" alt="" />
+                <img class="bodycard__img" id="bodyImgB" alt="" />
+                <div class="bodycard__marks" id="bodyMarks"></div>
+                <i class="bodycard__corner"></i><i class="bodycard__corner"></i><i class="bodycard__corner"></i><i class="bodycard__corner"></i>
+            </div>
+            <div class="bodycard__foot">
+                <span class="bodycard__angle" id="bodyAngle" data-i18n="ui.front">FRONT</span>
+                <span class="bodycard__dots" id="bodyDots"><b class="is-on"></b><b></b><b></b><b></b></span>
+                <span class="bodycard__hint" data-i18n="ui.drag_to_turn">&#8596; DRAG TO TURN</span>
+            </div>
+        </div>
+        <div class="fieldmed__side">
+            <div class="fxchips" id="fxChips"></div>
+            <div class="fieldmed__readout" id="medicalReadout"></div>
+        </div>
+    </div>
+    <footer class="fieldmed__foot"><span data-i18n="inv.severe_trauma">SEVERE TRAUMA AFFECTS PERFORMANCE</span> <span data-i18n="ui.medical_skill_improves_treatment">MEDICAL SKILL IMPROVES TREATMENT</span></footer>
+</section>
+
+
+                    <div class="bar">
+                        <span class="bar__label" data-i18n="ui.bar">BAR</span>
+                        <div class="bar__slots" id="hotbarStrip"></div>
+                    </div>
+
+                    <div class="gearrow">
+                    <!-- Gear: armour + backpack, real inventory slots (server validates). -->
+                    <section class="boosters gear" id="gearPanel">
+                        <header class="boosters__head">
+                            <span class="boosters__title" data-i18n="ui.gear">GEAR</span>
+                            <span class="boosters__hint" data-i18n="ui.right_click_to_remove">RIGHT-CLICK TO REMOVE</span>
+                        </header>
+                        <div class="gear__slots" id="gearSlots"></div>
+                    </section>
+
+                    <!-- Boosters: 3 single-use gadgets, fired with keys 5/6/7. -->
+                    <section class="boosters" id="boosterPanel">
+                        <header class="boosters__head">
+                            <span class="boosters__title" data-i18n="ui.boosters">BOOSTERS</span>
+                            <span class="boosters__hint" data-i18n="ui.drag_in_right_click_to_clear">DRAG IN &middot; RIGHT-CLICK TO CLEAR</span>
+                        </header>
+                        <div class="boosters__slots">
+                            <div class="booster" data-bidx="1"><span class="booster__key">5</span><span class="booster__empty" data-i18n="ui.empty">EMPTY</span></div>
+                            <div class="booster" data-bidx="2"><span class="booster__key">6</span><span class="booster__empty" data-i18n="ui.empty">EMPTY</span></div>
+                            <div class="booster" data-bidx="3"><span class="booster__key">7</span><span class="booster__empty" data-i18n="ui.empty">EMPTY</span></div>
+                        </div>
+                    </section>
+
+                    <!-- Gadgets: 2 deployables, fired with G / H. -->
+                    <section class="boosters gadgets" id="gadgetPanel">
+                        <header class="boosters__head">
+                            <span class="boosters__title" data-i18n="ui.gadgets">GADGETS</span>
+                            <span class="boosters__hint" data-i18n="ui.drag_in">DRAG IN</span>
+                        </header>
+                        <div class="boosters__slots gadgets__slots">
+                            <div class="booster gadget" data-gidx="1"><span class="booster__key">G</span><span class="booster__empty" data-i18n="ui.empty">EMPTY</span></div>
+                            <div class="booster gadget" data-gidx="2"><span class="booster__key">H</span><span class="booster__empty" data-i18n="ui.empty">EMPTY</span></div>
+                        </div>
+                    </section>
+                    </div>
+
+                    <!-- Space under the bag for things you would otherwise close the bag to read. -->
+                    <section class="stats" id="statsPanel">
+                        <header class="stats__head">
+                            <span class="stats__name" id="statName">&mdash;</span>
+                            <span class="stats__class" id="statClass"></span>
+                        </header>
+                        <div class="stats__rows" id="statRows"></div>
+                    </section>
+                </div>
+
+                <!-- --------------------------------------------- CARRIED -->
+                <div class="col col--stash">
+                    <section class="board">
+                        <header class="board__head">
+                            <h2 data-i18n="ui.carried">CARRIED</h2>
+                            <input class="invsearch" id="invSearch" type="text" placeholder="SEARCH" data-i18n-attr="placeholder:ui.search" spellcheck="false" autocomplete="off" />
+                            <select class="invsort" id="invSort" title="Sort (view only)" data-i18n-attr="title:ui.sort_view_only">
+                                <option value="grid" data-i18n="ui.grid">GRID</option>
+                                <option value="type" data-i18n="ui.by_type">BY TYPE</option>
+                                <option value="weight" data-i18n="ui.by_weight">BY WEIGHT</option>
+                                <option value="name" data-i18n="ui.by_name">BY NAME</option>
+                            </select>
+                            <div class="catfilter" id="catFilter">
+                                <button data-filter="all" class="is-active" data-i18n="ui.all">ALL</button>
+                                <button data-filter="weapon" data-i18n="ui.weapons">WEAPONS</button>
+                                <button data-filter="other" data-i18n="ui.items">ITEMS</button>
+                            </div>
+                        </header>
+
+                        <div class="grid" id="playerGrid"></div>
+                        <div class="invlist hidden" id="playerList"></div>
+
+                        <div class="quick" id="quickBar">
+                            <span class="quick__name" id="quickName" data-i18n="ui.select_an_item">SELECT AN ITEM</span>
+                            <button class="quick__btn" data-quick="use" disabled data-i18n="ui.use">USE</button>
+                            <button class="quick__btn" data-quick="split" disabled data-i18n="ui.split">SPLIT</button>
+                            <button class="quick__btn quick__btn--danger" data-quick="drop" disabled data-i18n="ui.drop">DROP</button>
+                        </div>
+
+                        <footer class="board__foot">
+                            <div class="weight__track"><div class="weight__fill" id="weightFill"></div></div>
+                            <span class="weight" id="weight">0.0 / 0.0 KG</span>
+                        </footer>
+                        <div class="wbreak" id="weightBreak"></div>
+
+                        <!-- Worn vest pockets and backpack: their own grids (bag containers on the server). Drawn by renderBags() in app.js. -->
+                        <div class="bags hidden" id="bagBoxes">
+                            <div class="bagbox hidden" id="vestBox">
+                                <header class="bagbox__head">
+                                    <span class="bagbox__title" id="vestTitle" data-i18n="ui.vest_pockets">VEST POCKETS</span>
+                                    <span class="bagbox__w" id="vestWeight"></span>
+                                </header>
+                                <div class="grid grid--bag" id="vestGrid"></div>
+                            </div>
+                            <div class="bagbox hidden" id="packBox">
+                                <header class="bagbox__head">
+                                    <span class="bagbox__title" id="packTitle" data-i18n="ui.backpack">BACKPACK</span>
+                                    <select class="bagbox__look" id="packLook" title="Look" data-i18n-attr="title:ui.pack_look"></select>
+                                    <button class="bagbox__btn" id="packHide" data-i18n="ui.pack_hide">HIDE</button>
+                                    <span class="bagbox__w" id="packWeight"></span>
+                                </header>
+                                <div class="grid grid--bag" id="packGrid"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Character sheet: levels and, more importantly, what they currently do for you (the modifiers). -->
+                    <section class="sheet" id="sheetPanel">
+                        <header class="sheet__head">
+                            <span class="sheet__title" data-i18n="ui.character">CHARACTER</span>
+                            <span class="sheet__points" id="sheetPoints"></span>
+                        </header>
+                        <div class="sheet__body">
+                            <div class="sheet__trees" id="sheetTrees"></div>
+                            <div class="sheet__mods">
+                                <span class="sheet__modhead" data-i18n="ui.modifiers">MODIFIERS</span>
+                                <div id="sheetMods"></div>
+
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ------------------------------------------------- BAG -->
+                    <div class="col col--bags">
+                    <section class="board board--bag">
+                        <header class="board__head">
+                            <h2 id="containerTitle" data-i18n="ui.nothing_open">NOTHING OPEN</h2>
+                        </header>
+
+                        <div class="grid" id="containerGrid"></div>
+
+                        <p class="hollow" id="containerHollow" data-i18n="ui.search_a_bin_a_locker_or_a_car_boot_to_o">
+                            Search a bin, a locker or a car boot to open it here.
+                        </p>
+
+                        <footer class="board__foot">
+                            <div class="weight__track"><div class="weight__fill" id="containerFill"></div></div>
+                            <span class="weight" id="containerWeight"></span>
+                        </footer>
+                    </section>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="foot">
+                <span class="foot__hint" data-i18n="ui.drag_to_any_cell_right_click_for_options">DRAG TO ANY CELL &middot; RIGHT-CLICK FOR OPTIONS &middot; SHIFT-DRAG TO SPLIT</span>
+            </footer>
+        </section>
+
+        <!-- Crafting, stations and machines. Drawn by js/craft.js, data comes from bs_crafting / bs_recycler. -->
+        <section class="pane" data-pane="craft">
+            <div class="craft" id="craftRoot"></div>
+        </section>
+
+        <!-- Mission Log (js/missions.js, server/sv_missions.lua). -->
+        <section class="pane" data-pane="missions">
+            <div class="mlog" id="missionsRoot"></div>
+        </section>
+
+        <section class="pane" data-pane="settings">
+            <div class="settings">
+                <div class="settings__bar">
+                    <input type="search" id="settingsSearch" class="settings__search" data-i18n-attr="placeholder:st.search" placeholder="Search settings..." autocomplete="off" />
+                </div>
+                <section class="sgroup" data-group="g_display">
+                    <h3 class="sgroup__title" data-i18n="st.g_display">Display & HUD</h3>
+                    <div class="sgroup__grid">
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.hud_layout">HUD LAYOUT</span>
+                    <div class="seg" data-setting="hudMode">
+                        <button data-value="full" data-i18n="ui.full_hud">FULL HUD</button>
+                        <button data-value="minimal" data-i18n="ui.minimal">MINIMAL</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.minimal_keeps_health_stamina_and_infecti">Minimal keeps health, stamina and infection only.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.hud_corner">HUD CORNER</span>
+                    <div class="seg" data-setting="hudAnchor">
+                        <button data-value="bottom-left" data-i18n="ui.left">LEFT</button>
+                        <button data-value="bottom-right" data-i18n="ui.right">RIGHT</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_hudAnchor">Which bottom corner holds the status bars.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.hud_transparency">HUD TRANSPARENCY</span>
+                    <input type="range" min="0" max="1" step="0.05" data-setting="hudOpacity" />
+                    <span class="setting__value" id="val-hudOpacity">0.72</span>
+                    <p class="setting__note" data-i18n="st.d_hudOpacity">How solid the status HUD is.</p>
+                </div>
+                <div class="setting setting--wide" data-key="hudStyle">
+                    <span class="setting__label" data-i18n="st.hud_style">HUD STYLE</span>
+                    <div class="seg seg--wrap" data-setting="hudStyle" id="hudStyleSeg"></div>
+                    <div class="hudprev" id="hudPrev" data-style="classic" aria-hidden="true">
+                        <div class="hudprev__id"><span data-i18n="trade.survivor">SURVIVOR</span> <i data-i18n="hudprev.scavenger">SCAVENGER</i></div>
+                        <div class="hudprev__row" style="--c:#b4574a;--w:86%"><b data-i18n="hudprev.health">HEALTH</b><span class="hudprev__track"><u></u></span><em>86%</em></div>
+                        <div class="hudprev__row" style="--c:#7fd4a2;--w:64%"><b data-i18n="hudprev.stamina">STAMINA</b><span class="hudprev__track"><u></u></span><em>64%</em></div>
+                        <div class="hudprev__row" style="--c:#d99b5b;--w:42%"><b data-i18n="hudprev.hunger">HUNGER</b><span class="hudprev__track"><u></u></span><em>42%</em></div>
+                        <div class="hudprev__row" style="--c:#5bc8d9;--w:73%"><b data-i18n="hudprev.thirst">THIRST</b><span class="hudprev__track"><u></u></span><em>73%</em></div>
+                    </div>
+                    <p class="setting__note" data-i18n="st.hud_style_note">Status bars look. Hover to preview. VIP styles need a VIP tier.</p>
+                </div>
+                <div class="setting setting--wide" data-key="menuPalette">
+                    <span class="setting__label" data-i18n="st.menu_palette">MENU COLOURS</span>
+                    <div class="seg seg--wrap" data-setting="menuPalette" id="paletteSeg"></div>
+                    <p class="setting__note" data-i18n="st.menu_palette_note">Applies to the inventory, pause menu and other menus. VIP palettes need a VIP tier.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.xp_bar">XP BAR</span>
+                    <div class="seg" data-setting="xpPosition">
+                        <button data-value="top" data-i18n="ui.top">TOP</button>
+                        <button data-value="bottom" data-i18n="ui.bottom">BOTTOM</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_xpPosition">Top or bottom edge of the screen.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.xp_bar_transparency">XP BAR TRANSPARENCY</span>
+                    <input type="range" min="0" max="1" step="0.05" data-setting="xpOpacity" />
+                    <span class="setting__value" id="val-xpOpacity">0.55</span>
+                    <p class="setting__note" data-i18n="st.d_xpOpacity">How solid the XP bar is.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.hide_full_bars">HIDE FULL BARS</span>
+                    <div class="seg" data-setting="hideWhenFull">
+                        <button data-value="true" data-i18n="ui.yes">YES</button>
+                        <button data-value="false" data-i18n="ui.no">NO</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.a_healthy_survivor_sees_almost_nothing_o">A healthy survivor sees almost nothing on screen.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.hotbar">HOTBAR</span>
+                    <div class="seg" data-setting="hotbarAlways">
+                        <button data-value="true" data-i18n="ui.always">ALWAYS</button>
+                        <button data-value="false" data-i18n="ui.hold_alt">HOLD ALT</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_hotbarAlways">Keep the quick bar on screen or only while holding ALT.</p>
+                </div>
+                <!-- Vehicle dash, owned by bs_vehicles. -->
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.vehicle_dash">VEHICLE DASH</span>
+                    <div class="seg" data-setting="carHud">
+                        <button data-value="true" data-i18n="ui.on">ON</button>
+                        <button data-value="false" data-i18n="ui.off">OFF</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_carHud">Speed, fuel and condition while driving.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.dash_speed_unit">DASH SPEED UNIT</span>
+                    <div class="seg" data-setting="carHudUnit">
+                        <button data-value="kmh" data-i18n="ui.km_h">KM/H</button>
+                        <button data-value="mph" data-i18n="ui.mph">MPH</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_carHudUnit">Speed unit on the dash.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.dash_side">DASH SIDE</span>
+                    <div class="seg" data-setting="carHudSide">
+                        <button data-value="auto" data-i18n="ui.auto">AUTO</button>
+                        <button data-value="L" data-i18n="ui.left">LEFT</button>
+                        <button data-value="R" data-i18n="ui.right">RIGHT</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.auto_keeps_it_opposite_your_hud_corner">Auto keeps it opposite your HUD corner.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.dash_size">DASH SIZE</span>
+                    <input type="range" min="0.6" max="2.4" step="0.05" data-setting="carHudScale" />
+                    <span class="setting__value" id="val-carHudScale">1.00</span>
+                    <p class="setting__note" data-i18n="st.d_carHudScale">Size of the vehicle dash.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.dash_style">DASH STYLE</span>
+                    <div class="seg seg--wrap" data-setting="carHudStyle">
+                        <button data-value="classic" data-i18n="ui.dash_style_classic">CLASSIC</button>
+                        <button data-value="field" data-i18n="ui.dash_style_field">FIELD</button>
+                        <button data-value="tactical" data-i18n="ui.dash_style_tactical">TACTICAL</button>
+                        <button data-value="scrap" data-vip="1" data-i18n="ui.dash_style_scrap">SCRAP</button>
+                        <button data-value="nightops" data-vip="1" data-i18n="ui.dash_style_nightops">NIGHT OPS</button>
+                        <button data-value="gauge" data-i18n="ui.dash_style_gauge">GAUGE</button>
+                        <button data-value="slate" data-i18n="ui.dash_style_slate">SLATE</button>
+                        <button data-value="cipher" data-vip="1" data-i18n="ui.dash_style_cipher">CIPHER</button>
+                        <button data-value="hologram" data-vip="1" data-i18n="ui.dash_style_hologram">HOLOGRAM</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.dash_style_note">Styles marked VIP need a VIP tier.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.wheel_throttle">WHEEL THROTTLE</span>
+                    <div class="seg" data-setting="wheelThrottle">
+                        <button data-value="true" data-i18n="ui.on">ON</button>
+                        <button data-value="false" data-i18n="ui.off">OFF</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_wheelThrottle">Mouse wheel sets a held throttle while driving. W/S override it.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.throttle_slider">THROTTLE SLIDER</span>
+                    <div class="seg" data-setting="throttleUi">
+                        <button data-value="true" data-i18n="ui.on">ON</button>
+                        <button data-value="false" data-i18n="ui.off">OFF</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_throttleUi">Slim level bar beside the speedometer.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.move_hud">MOVE HUD ELEMENTS</span>
+                    <div class="seg" data-setting="moveHud">
+                        <button data-value="true" data-i18n="ui.on">ON</button>
+                        <button data-value="false" data-i18n="ui.off">OFF</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_moveHud">Press CTRL to drag HUD pieces. Double-click one to reset it.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.dash_opacity">DASH OPACITY</span>
+                    <input type="range" min="10" max="100" step="5" data-unit="pct" data-setting="carHudOpacity" />
+                    <span class="setting__value" id="val-carHudOpacity">100%</span>
+                    <p class="setting__note" data-i18n="st.d_carHudOpacity">How solid the dash is.</p>
+                </div>
+                    </div>
+                </section>
+                <section class="sgroup" data-group="g_audio">
+                    <h3 class="sgroup__title" data-i18n="st.g_audio">Audio</h3>
+                    <div class="sgroup__grid">
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.zombie_voice_volume">ZOMBIE VOICE VOLUME</span>
+                    <input type="range" min="0" max="1" step="0.05" data-setting="zombieVoiceVolume" />
+                    <span class="setting__value" id="val-zombieVoiceVolume">1.00</span>
+                    <p class="setting__note" data-i18n="ui.changes_only_directional_zombie_sounds_a">Changes only directional zombie sounds and their distance fade.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.radio_volume">EMERGENCY BROADCAST VOLUME</span>
+                    <input type="range" min="0" max="100" step="5" data-unit="pct" data-setting="radioVolume" />
+                    <span class="setting__value" id="val-radioVolume">40%</span>
+                    <p class="setting__note" data-i18n="st.d_radioVolume">Volume of the vehicle radio.</p>
+                </div>
+                    </div>
+                </section>
+                <section class="sgroup" data-group="g_gameplay">
+                    <h3 class="sgroup__title" data-i18n="st.g_gameplay">Gameplay</h3>
+                    <div class="sgroup__grid">
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.dodge_roll">DODGE ROLL</span>
+                    <div class="seg" data-setting="dodge">
+                        <button data-value="true" data-i18n="ui.on">ON</button>
+                        <button data-value="false" data-i18n="ui.off">OFF</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.shift_double_tap_a_direction_needs_the_d">Shift + double-tap a direction. Needs the Dodge roll perk.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.objective_tracker">OBJECTIVE TRACKER</span>
+                    <div class="seg" data-setting="missionTracker">
+                        <button data-value="true" data-i18n="ui.show">SHOW</button>
+                        <button data-value="false" data-i18n="ui.hide">HIDE</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_missionTracker">Shows the current objective on screen.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.safe_zones_on_map">SAFE ZONES ON MAP</span>
+                    <div class="seg" data-setting="safeZoneMarkers">
+                        <button data-value="true" data-i18n="ui.show">SHOW</button>
+                        <button data-value="false" data-i18n="ui.hide">HIDE</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_safeZoneMarkers">Marks safe zones on the field map.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.damage_numbers">DAMAGE NUMBERS</span>
+                    <div class="seg" data-setting="damageNumbers">
+                        <button data-value="true" data-i18n="ui.show">SHOW</button>
+                        <button data-value="false" data-i18n="ui.hide">HIDE</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_damageNumbers">Shows floating damage numbers on zombies you hit.</p>
+                </div>
+                    </div>
+                </section>
+                <section class="sgroup" data-group="g_chat">
+                    <h3 class="sgroup__title" data-i18n="st.g_chat">Chat</h3>
+                    <div class="sgroup__grid">
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.chat_visibility">CHAT VISIBILITY</span>
+                    <div class="seg" data-setting="chatMode">
+                        <button data-value="fade" data-i18n="ui.fade">FADE</button>
+                        <button data-value="always" data-i18n="ui.always">ALWAYS</button>
+                        <button data-value="hidden" data-i18n="ui.hidden">HIDDEN</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.hidden_still_opens_with_t">Hidden still opens with T.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.chat_background">CHAT BACKGROUND</span>
+                    <div class="seg" data-setting="chatBackdrop">
+                        <button data-value="true" data-i18n="ui.on">ON</button>
+                        <button data-value="false" data-i18n="ui.off">OFF</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_chatBackdrop">Dark panel behind chat text.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.chat_bg_opacity">CHAT BACKGROUND OPACITY</span>
+                    <input type="range" min="0" max="100" step="5" data-unit="pct" data-setting="chatBgOpacity" />
+                    <span class="setting__value" id="val-chatBgOpacity">20%</span>
+                    <p class="setting__note" data-i18n="st.d_chatBgOpacity">Needs the chat background on.</p>
+                </div>
+                    </div>
+                </section>
+                <section class="sgroup" data-group="g_camera">
+                    <h3 class="sgroup__title" data-i18n="st.g_camera">Camera</h3>
+                    <div class="sgroup__grid">
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.cam_smooth">X</span>
+                    <div class="seg" data-setting="camSmooth">
+                        <button data-value="true" data-i18n="ui.on">A</button>
+                        <button data-value="false" data-i18n="ui.off">B</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_camSmooth">.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.cam_smooth_amount">LOOK SMOOTHING</span>
+                    <input type="range" min="0" max="100" step="5" data-unit="pct" data-setting="camSmoothAmount" />
+                    <span class="setting__value" id="val-camSmoothAmount">40%</span>
+                    <p class="setting__note" data-i18n="st.d_camSmoothAmount">0 is raw mouse, 100 is very floaty.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.cam_smooth_aim">X</span>
+                    <div class="seg" data-setting="camSmoothAim">
+                        <button data-value="reduced" data-i18n="ui.cam_reduced">A</button>
+                        <button data-value="off" data-i18n="ui.off">B</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_camSmoothAim">.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.cam_sway">X</span>
+                    <div class="seg" data-setting="camSway">
+                        <button data-value="true" data-i18n="ui.on">A</button>
+                        <button data-value="false" data-i18n="ui.off">B</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_camSway">.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.cam_fov">X</span>
+                    <div class="seg" data-setting="camFov">
+                        <button data-value="true" data-i18n="ui.on">A</button>
+                        <button data-value="false" data-i18n="ui.off">B</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_camFov">.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.cam_chase">X</span>
+                    <div class="seg" data-setting="camChase">
+                        <button data-value="true" data-i18n="ui.on">A</button>
+                        <button data-value="false" data-i18n="ui.off">B</button>
+                    </div>
+                    <p class="setting__note" data-i18n="st.d_camChase">.</p>
+                </div>
+                    </div>
+                </section>
+                <section class="sgroup" data-group="g_access">
+                    <h3 class="sgroup__title" data-i18n="st.g_access">Accessibility</h3>
+                    <div class="sgroup__grid">
+                <div class="setting">
+                    <span class="setting__label" data-i18n="settings.language">LANGUAGE</span>
+                    <div class="seg seg--wrap" data-setting="language">
+                        <button data-value="en">English</button>
+                        <button data-value="pt">Português</button>
+                        <button data-value="de">Deutsch</button>
+                        <button data-value="pl">Polski</button>
+                        <button data-value="tr">Türkçe</button>
+                        <button data-value="es">Español</button>
+                        <button data-value="fr">Français</button>
+                        <button data-value="it">Italiano</button>
+                        <button data-value="ru">Русский</button>
+                    </div>
+                    <p class="setting__note" data-i18n="settings.language_note">Saved on your account for every character.</p>
+                </div>
+                <!-- Interface and chat. These write through the owning resource, so /chat, /uiscale, /hotbar and the rest stay in sync. -->
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.interface_scale">INTERFACE SCALE</span>
+                    <div class="seg seg--wrap" data-setting="uiScale">
+                        <button data-value="0" data-i18n="ui.auto">AUTO</button>
+                        <button data-value="0.8">80%</button>
+                        <button data-value="0.9">90%</button>
+                        <button data-value="1">100%</button>
+                        <button data-value="1.1">110%</button>
+                        <button data-value="1.2">120%</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.auto_fits_the_menus_to_your_screen_same">Auto fits the menus to your screen. Same as /uiscale.</p>
+                </div>
+                <!-- Screen filter buttons are built at runtime from the list bs_ui sends (`filters` in cl_main.lua's open payload), so a preset added to config_ui.lua appears without editing markup here. -->
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.screen_filter">SCREEN FILTER</span>
+                    <div class="seg seg--wrap" data-setting="filter" id="filterSeg"></div>
+                    <p class="setting__note" id="filterNote" data-i18n="ui.only_you_see_it_nothing_here_changes_wha">Only you see it. Nothing here changes what you can see in the dark.</p>
+                </div>
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.filter_strength">FILTER STRENGTH</span>
+                    <input type="range" min="0" max="1" step="0.05" data-setting="filterStrength" />
+                    <span class="setting__value" id="val-filterStrength">0.80</span>
+                    <p class="setting__note" data-i18n="st.d_filterStrength">How strong the chosen filter is.</p>
+                </div>
+                    </div>
+                </section>
+                <section class="sgroup" data-group="g_controls">
+                    <h3 class="sgroup__title" data-i18n="st.g_controls">Controls & help</h3>
+                    <div class="sgroup__grid">
+                <!-- Troubleshooting, same as /refreshui and /unblur. -->
+                <div class="setting">
+                    <span class="setting__label" data-i18n="ui.troubleshooting">TROUBLESHOOTING</span>
+                    <div class="seg">
+                        <button data-action="refreshui" data-i18n="ui.refresh_ui">REFRESH UI</button>
+                        <button data-action="unblur" data-i18n="ui.fix_stuck_blur">FIX STUCK BLUR</button>
+                    </div>
+                    <p class="setting__note" data-i18n="ui.use_these_if_a_menu_or_the_screen_blur_g">Use these if a menu or the screen blur gets stuck.</p>
+                </div>
+                    </div>
+                </section>
+                <p class="hollow hidden" id="settingsNone" data-i18n="st.noresults">No settings match your search.</p>
+            </div>
+        </section>
+        <!-- Medical tab (js/medical.js, bs_medical). Its own body diagram; the Field Medical card above is left alone. -->
+        <section class="pane" data-pane="medical">
+            <p class="med__off hidden" id="medOff"></p>
+            <div class="med" id="medMain">
+                <div class="med__left">
+                    <header class="med__head">
+                        <span class="med__title" id="medTitle">MEDICAL</span>
+                        <span class="med__who" id="medWho"></span>
+                        <button class="med__back hidden" id="medBackSelf">&#8617;</button>
+                    </header>
+                    <div class="med__monitor">
+                        <span class="med__mtag" data-i18n="med.monitor">BIOMONITOR</span>
+                        <span class="med__mtag med__mtag--r" id="medClock"></span>
+                    </div>
+                    <div class="med__stage">
+                        <svg class="med__body" id="medBody" viewBox="-10 0 220 440" aria-hidden="true">
+                            <defs>
+                                <pattern id="medGrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10,0 L0,0 0,10" class="med__gridline"/></pattern>
+                                <linearGradient id="medSheen" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".07"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+                            </defs>
+                            <rect x="-10" y="0" width="220" height="440" fill="url(#medGrid)" class="med__grid"/>
+                            <g class="med__axis"><path d="M100,0 V440"/><path d="M-10,250 H210"/></g>
+                            <g class="med__parts">
+                                <path data-part="rarm" d="M60,84 C50,86 43,94 41,108 L37,150 C35,164 32,182 29,200 L25,238 C21,246 20,258 22,268 C24,276 30,280 34,276 C38,270 38,260 38,250 L41,240 L46,204 C48,190 49,178 50,166 L52,132 C53,120 55,110 58,104 Z"/>
+                                <path data-part="larm" d="M140,84 C150,86 157,94 159,108 L163,150 C165,164 168,182 171,200 L175,238 C179,246 180,258 178,268 C176,276 170,280 166,276 C162,270 162,260 162,250 L159,240 L154,204 C152,190 151,178 150,166 L148,132 C147,120 145,110 142,104 Z"/>
+                                <path data-part="rleg" d="M60,236 L99,251 C99,272 97,290 95,306 C93,322 93,338 93,354 C93,374 91,394 89,412 L91,424 C92,430 86,433 77,433 C69,433 65,430 68,424 L71,412 C71,394 69,374 67,356 C65,338 65,322 65,306 C62,286 59,262 60,236 Z"/>
+                                <path data-part="lleg" d="M140,236 L101,251 C101,272 103,290 105,306 C107,322 107,338 107,354 C107,374 109,394 111,412 L109,424 C108,430 114,433 123,433 C131,433 135,430 132,424 L129,412 C129,394 131,374 133,356 C135,338 135,322 135,306 C138,286 141,262 140,236 Z"/>
+                                <path data-part="torso" d="M89,70 C80,75 68,77 60,82 C53,87 52,96 54,106 L57,134 C58,152 61,168 63,186 C61,204 58,218 60,234 L100,250 L140,234 C142,218 139,204 137,186 C139,168 142,152 143,134 L146,106 C148,96 147,87 140,82 C132,77 120,75 111,70 Z"/>
+                                <path data-part="head" d="M100,8 C86,8 78,19 78,34 C78,46 82,55 88,61 L89,71 L111,71 L112,61 C118,55 122,46 122,34 C122,19 114,8 100,8 Z"/>
+                            </g>
+                            <g class="med__detail"><path d="M84,86 C92,90 98,90 100,88 C102,90 108,90 116,86"/><path d="M100,92 L100,226"/><path d="M70,112 C80,124 92,126 100,120 C108,126 120,124 130,112"/><path d="M86,150 L114,150"/><path d="M86,170 L114,170"/><path d="M88,190 L112,190"/><path d="M70,312 C74,316 84,316 90,312"/><path d="M130,312 C126,316 116,316 110,312"/><path d="M44,152 C40,156 38,160 37,166"/><path d="M156,152 C160,156 162,160 163,166"/><path d="M92,40 L94,42"/><path d="M108,40 L106,42"/><path d="M96,52 C99,54 101,54 104,52"/></g>
+                            <g id="medMarks" class="med__marks"></g>
+                            <text x="2" y="434" class="med__svgtxt">R</text><text x="190" y="434" class="med__svgtxt">L</text>
+                        </svg>
+                    </div>
+                    <div class="med__legend" id="medLegend"></div>
+                    <footer class="med__foot"><span id="medSkill"></span><span id="medHint2"></span></footer>
+                </div>
+                <div class="med__right">
+                    <div class="med__top">
+                        <div class="med__box">
+                            <div class="med__bhead" data-i18n="med.vitals">VITALS</div>
+                            <div class="med__vitals" id="medVitals"></div>
+                        </div>
+                        <div class="med__box">
+                            <div class="med__bhead" data-i18n="med.parts">BODY PARTS</div>
+                            <table class="med__table">
+                                <thead><tr><th data-i18n="med.col_part">PART</th><th data-i18n="med.col_status">STATUS</th><th data-i18n="med.col_pain">PAIN</th><th data-i18n="med.col_timer">TIMER</th></tr></thead>
+                                <tbody id="medParts"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="med__box med__box--tips">
+                        <div class="med__bhead" data-i18n="med.treatment">TREATMENT</div>
+                        <ul class="med__tips" id="medTips"></ul>
+                    </div>
+                    <div class="med__part">
+                        <span class="med__pname" id="medPartName"></span>
+                        <ul class="med__plist" id="medPartList"></ul>
+                    </div>
+                    <div class="med__items" id="medItems"></div>
+                    <div class="med__actions">
+                        <button class="med__apply" id="medApply" disabled>APPLY</button>
+                        <span class="med__err" id="medErr"></span>
+                        <span class="med__hint" id="medHint"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="ctx" class="ctx hidden">
+        <div class="ctx__head" id="ctxHead"></div>
+        <button class="ctx__item" data-act="use" data-i18n="ui.use">USE</button>
+        <button class="ctx__item hidden" data-act="equipslot" data-i18n="ui.equip_to_slot">EQUIP TO SLOT</button>
+        <button class="ctx__item hidden" data-act="split" data-i18n="ui.split">SPLIT</button>
+        <button class="ctx__item" data-act="give" data-i18n="ui.give">GIVE</button>
+        <button class="ctx__item" data-act="offer" data-i18n="ui.offer_in_trade">OFFER IN TRADE</button>
+        <button class="ctx__item ctx__item--danger" data-act="drop" data-i18n="ui.drop">DROP</button>
+        <div class="ctx__bind" id="ctxBind">
+            <span class="ctx__bindlabel" data-i18n="ui.bar">BAR</span>
+            <button class="ctx__slot" data-bind="1">1</button>
+            <button class="ctx__slot" data-bind="2">2</button>
+            <button class="ctx__slot" data-bind="3">3</button>
+            <button class="ctx__slot" data-bind="4">4</button>
+            <button class="ctx__slot" data-bind="5">5</button>
+        </div>
+    </div>
+
+    <div id="who" class="modal hidden">
+        <div class="modal__box">
+            <h3 data-i18n="ui.give_to">GIVE TO</h3>
+            <div class="who" id="whoList"></div>
+            <div class="modal__actions">
+                <button class="btn" id="whoCancel" data-i18n="ui.cancel">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="split" class="modal hidden">
+        <div class="modal__box">
+            <h3 data-i18n="ui.how_many">HOW MANY?</h3>
+            <input id="splitInput" type="number" min="1" value="1" />
+            <div class="modal__actions">
+                <button class="btn btn--primary" id="splitOk" data-i18n="ui.move">MOVE</button>
+                <button class="btn" id="splitCancel" data-i18n="ui.cancel">CANCEL</button>
+            </div>
+        </div>
+    </div>
+    <section id="tradePanel" class="trade-panel hidden" aria-label="Player trade">
+        <header class="trade-panel__head">
+            <div><span class="trade-panel__eyebrow" data-i18n="ui.survivor_exchange">SURVIVOR EXCHANGE</span><strong id="tradeTitle" data-i18n="ui.trade">TRADE</strong></div>
+            <button class="btn" id="tradeCancel" data-i18n="ui.cancel">CANCEL</button>
+        </header>
+        <p id="tradeStatus" class="trade-panel__status"></p>
+        <div id="tradeBagSection" class="trade-panel__bag hidden">
+            <h4><span data-i18n="inv.your_bag">YOUR BAG</span> <small data-i18n="ui.drag_items_into_your_offer">DRAG ITEMS INTO YOUR OFFER</small></h4>
+            <div id="tradeBag" class="trade-panel__bag-items"></div>
+        </div>
+        <div id="tradeOffers" class="trade-panel__offers">
+            <div id="tradeMineZone"><h4><span data-i18n="inv.your_offer">YOUR OFFER</span> <small data-i18n="ui.drop_here">DROP HERE</small></h4><div id="tradeMine"></div>
+                <div class="trade-panel__cash"><label for="tradeCash" data-i18n="inv.cash_offer">CASH OFFER ($)</label><input id="tradeCash" type="number" min="0" step="1" value="0"><button class="btn" id="tradeCashSet" data-i18n="ui.set">SET</button></div>
+                <span id="tradeCashAvailable" class="trade-panel__cash-note"></span>
+            </div>
+            <div><h4 data-i18n="ui.their_offer">THEIR OFFER</h4><div id="tradeTheirs"></div><div class="trade-panel__cash"><span data-i18n="inv.cash">CASH:</span> <strong id="tradePeerCash">$0</strong></div></div>
+        </div>
+        <div class="trade-panel__actions">
+            <button class="btn btn--primary hidden" id="tradeAccept" data-i18n="ui.accept_invite">ACCEPT INVITE</button>
+            <button class="btn btn--primary hidden" id="tradeConfirm" data-i18n="ui.confirm_offer">CONFIRM OFFER</button>
+        </div>
+    </section>
+    <div id="tradeNotice" class="trade-notice hidden"></div>
+    <div id="tip" class="tip hidden"></div>
+</div>
+<!-- opaque while the body snapshots are taken (the camera moves behind it) -->
+<div id="captureCover" class="capcover hidden"><span data-i18n="ui.preparing_survivor">PREPARING SURVIVOR&hellip;</span></div>
+<script src="nui://bs_ui/html/js/icons.js?v=20261015p1"></script>
+<script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+<script src="js/app.js?v=20261016a"></script>
+<script src="js/medical.js?v=20261014m2"></script>
+<script src="js/craft.js?v=20261014c2"></script>
+<script src="js/missions.js?v=20261016ml4"></script>
+</body>
+</html>

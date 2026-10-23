@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <meta charset="utf-8" />
+    <title>VIP</title>
+    <link rel="stylesheet" href="css/style.css?v=20261013i" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <div class="veil"></div>
+    <main class="vp">
+        <div class="vp__scan"></div>
+        <header class="vp__head">
+            <div class="vp__brand">
+                <span class="vp__glyph">&#9670;</span>
+                <div>
+                    <h1 class="vp__title" data-i18n="ui.supporter_terminal">SUPPORTER TERMINAL</h1>
+                    <p class="vp__sub" id="tierLine">-</p>
+                </div>
+            </div>
+            <button class="vp__x" id="btnClose" title="Close" data-i18n-attr="title:ui.close">&#10005;</button>
+        </header>
+        <nav class="vp__tabs" id="tabs">
+            <button data-tab="overview" class="on" data-i18n="ui.overview">OVERVIEW</button>
+            <button data-tab="custom" data-i18n="ui.customise">CUSTOMISE</button>
+            <button data-tab="appearance" data-i18n="ui.appearance">APPEARANCE</button>
+            <button data-tab="vehicles" data-i18n="ui.vehicles">VEHICLES</button>
+            <button data-tab="settings" data-i18n="ui.settings">SETTINGS</button>
+        </nav>
+        <section class="vp__body" id="body"></section>
+        <footer class="vp__foot">
+            <span data-i18n="ui.cosmetic_only_no_gameplay_advantage">COSMETIC ONLY · NO GAMEPLAY ADVANTAGE</span>
+            <span id="keyHint" data-i18n="ui.f7_esc_to_close">F7 / ESC TO CLOSE</span>
+        </footer>
+        <div class="toast" id="toast"></div>
+    </main>
+</div>
+<script src="js/app.js?v=20261013i"></script>
+</body>
+</html>

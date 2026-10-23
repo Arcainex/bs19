@@ -1,0 +1,132 @@
+/* Medical tab (js/medical.js). Same palette as style.css. Left: body monitor. Right: readout, treatment, items. */
+
+.med { display: flex; flex: 1 1 auto; min-height: 0; gap: calc(1.2vw / var(--ui-scale, 1)); }
+.med__off { margin: auto; color: var(--dust); letter-spacing: .2em; font-size: 13px; }
+
+.med__left, .med__right { background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.med__left { flex: 0 0 34%; padding: 12px 14px; gap: 8px; }
+.med__right { flex: 1 1 auto; padding: 12px 14px; gap: 10px; overflow-y: auto; }
+.med__right::-webkit-scrollbar, .med__items::-webkit-scrollbar { width: 6px; }
+.med__right::-webkit-scrollbar-thumb, .med__items::-webkit-scrollbar-thumb { background: rgba(224, 140, 70, .45); }
+
+.med__head { display: flex; align-items: baseline; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.med__title { font-size: 13px; letter-spacing: .28em; color: var(--amber); }
+.med__who { font-size: 12px; letter-spacing: .14em; color: var(--bone); flex: 1; text-align: right; }
+.med__back { background: none; border: 1px solid var(--line); color: var(--dust); font: inherit; font-size: 10px; letter-spacing: .14em; padding: 3px 8px; cursor: pointer; }
+.med__back:hover { color: var(--bone); border-color: var(--amber); }
+
+/* Monitor frame around the silhouette: grid, scanlines and a slow sweep. */
+.med__monitor { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: .18em; color: var(--good); opacity: .8; }
+.med__mtag::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; background: var(--good); border-radius: 50%; animation: medBlink 1.4s steps(2) infinite; }
+.med__mtag--r::before { display: none; }
+@keyframes medBlink { 50% { opacity: .2; } }
+.med__stage { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 45%, rgba(127, 212, 162, .06), rgba(0, 0, 0, .35) 75%); border: 1px solid rgba(127, 212, 162, .18); }
+.med__stage::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px); }
+.med__stage::after { content: ''; position: absolute; left: 0; right: 0; height: 18%; top: -18%; pointer-events: none; z-index: 2;
+    background: linear-gradient(180deg, transparent, rgba(127, 212, 162, .08), transparent); animation: medSweep 5s linear infinite; }
+@keyframes medSweep { to { top: 100%; } }
+.med__body { height: 100%; max-height: 560px; width: auto; position: relative; z-index: 1; }
+.med__gridline { fill: none; stroke: rgba(127, 212, 162, .07); stroke-width: .5; }
+.med__axis path { stroke: rgba(127, 212, 162, .14); stroke-width: .6; stroke-dasharray: 3 4; fill: none; }
+.med__svgtxt { fill: rgba(127, 212, 162, .5); font-family: var(--mono); font-size: 9px; }
+
+.med__body [data-part] { fill: rgba(240, 235, 221, .07); stroke: rgba(127, 212, 162, .55); stroke-width: 1.1; stroke-linejoin: round; cursor: pointer; transition: fill .15s, stroke .15s; }
+.med__body [data-part]:hover { fill: rgba(224, 140, 70, .18); stroke: var(--amber); }
+.med__body [data-part][data-level="4"] { fill: rgba(201, 162, 39, .16); stroke: #c9a227; }
+.med__body [data-part][data-level="1"] { fill: rgba(127, 212, 162, .18); stroke: var(--good); }
+.med__body [data-part][data-level="2"] { fill: rgba(224, 140, 70, .3); stroke: var(--amber); }
+.med__body [data-part][data-level="3"] { fill: rgba(180, 87, 74, .45); stroke: var(--danger); animation: medPulse 1.6s ease-in-out infinite; }
+.med__body [data-part].is-sel { stroke: var(--bone); stroke-width: 2.2; filter: drop-shadow(0 0 4px rgba(240, 235, 221, .45)); }
+@keyframes medPulse { 50% { fill: rgba(180, 87, 74, .2); } }
+.med__detail path { fill: none; stroke: rgba(240, 235, 221, .18); stroke-width: .7; stroke-linecap: round; pointer-events: none; }
+.med__marks { pointer-events: none; }
+.med__mk circle { stroke-width: 1.2; }
+.med__mk text { font-family: var(--mono); font-size: 8px; font-weight: 700; text-anchor: middle; fill: #0a0a09; }
+.med__mk--crit circle { fill: #e06a5a; stroke: #ffd2c8; }
+.med__mk--warn circle { fill: var(--amber); stroke: #ffe0c2; }
+.med__mk--ok circle { fill: var(--good); stroke: #dfffee; }
+.med__mk-pain { fill: none; stroke: #c9a227; stroke-width: 1; stroke-dasharray: 2 2; opacity: .8; }
+
+.med__legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 9px; letter-spacing: .12em; color: var(--dust); }
+.med__lg { display: inline-flex; align-items: center; gap: 5px; }
+.med__lgdot { display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; border-radius: 50%; font-style: normal; font-family: var(--mono); font-size: 8px; font-weight: 700; color: #0a0a09; }
+.med__lgdot--crit { background: #e06a5a; } .med__lgdot--warn { background: var(--amber); } .med__lgdot--ok { background: var(--good); }
+.med__foot { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .14em; color: var(--dust); border-top: 1px solid var(--line2); padding-top: 8px; }
+
+/* Readout boxes */
+.med__top { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 10px; }
+.med__box { border: 1px solid var(--line); background: rgba(0, 0, 0, .22); padding: 8px 10px; min-width: 0; }
+.med__bhead { font-size: 10px; letter-spacing: .24em; color: var(--amber); border-bottom: 1px solid var(--line2); padding-bottom: 5px; margin-bottom: 6px; }
+.med__vitals { display: grid; grid-template-columns: auto auto minmax(40px, 1fr) auto; gap: 5px 10px; align-items: center; font-size: 10px; letter-spacing: .1em; }
+.med__vlabel { color: var(--dust); white-space: nowrap; }
+.med__val { font-family: var(--mono); color: var(--bone); white-space: nowrap; font-size: 11px; }
+.med__val small { color: var(--dust); font-size: 10px; margin-left: 4px; }
+.med__val--ok { color: var(--good); } .med__val--warn { color: #f3c79c; } .med__val--crit { color: #f0948a; } .med__val--dim { color: var(--dust); }
+.med__vsub { font-family: var(--mono); font-size: 9px; color: var(--dust); white-space: nowrap; text-align: right; }
+.med__track { height: 5px; background: rgba(240, 235, 221, .08); position: relative; overflow: hidden; }
+.med__fill { position: absolute; inset: 0 auto 0 0; background: #b0453a; transition: width .3s; }
+.med__fill--hp { background: var(--good); }
+.med__fill--warn { background: var(--amber); }
+.med__fill--crit { background: var(--danger); animation: medPulseBar 1.2s infinite; }
+.med__fill--pain { background: #c9a227; }
+.med__fill--masked { background: rgba(201, 162, 39, .35); }
+.med__fill--inf { background: #d9c36a; }
+.med__fill--ok { background: var(--good); }
+@keyframes medPulseBar { 50% { opacity: .5; } }
+
+.med__table { width: 100%; border-collapse: collapse; font-size: 10px; letter-spacing: .08em; }
+.med__table th { text-align: left; color: var(--dust); font-weight: normal; padding: 2px 4px; border-bottom: 1px solid var(--line2); }
+.med__table td { padding: 4px; border-bottom: 1px solid var(--line2); color: var(--bone); font-family: var(--mono); white-space: nowrap; }
+.med__table td:nth-child(2) { white-space: normal; }
+.med__row { cursor: pointer; border-left: 2px solid transparent; }
+.med__row:hover td { background: rgba(240, 235, 221, .04); }
+.med__row.is-sel td { background: rgba(224, 140, 70, .12); }
+.med__row--l3 td:first-child { box-shadow: inset 2px 0 var(--danger); }
+.med__row--l2 td:first-child { box-shadow: inset 2px 0 var(--amber); }
+.med__row--l1 td:first-child { box-shadow: inset 2px 0 var(--good); }
+.med__row--l4 td:first-child { box-shadow: inset 2px 0 #c9a227; }
+.med__st { font-weight: normal; font-size: 9px; padding: 1px 4px; border: 1px solid var(--line); display: inline-block; margin: 1px 0; }
+.med__st--crit { color: #f0b0a6; border-color: var(--danger); } .med__st--warn { color: #f3c79c; border-color: var(--amber); }
+.med__st--ok { color: var(--good); border-color: rgba(127, 212, 162, .4); } .med__st--dim { color: var(--dust); border-color: transparent; }
+.med__pbar { display: inline-block; width: 26px; height: 4px; background: rgba(240, 235, 221, .08); margin-right: 5px; vertical-align: middle; }
+.med__pbar i { display: block; height: 100%; background: #c9a227; }
+
+.med__tips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.med__tip { display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: .08em; padding: 3px 6px; border-left: 2px solid var(--line); background: rgba(240, 235, 221, .03); }
+.med__tip--crit { border-left-color: var(--danger); } .med__tip--warn { border-left-color: var(--amber); } .med__tip--ok { border-left-color: var(--good); color: var(--good); }
+.med__tipw { flex: 0 0 40%; color: var(--bone); }
+.med__tipw small { color: var(--dust); margin-left: 4px; font-size: 9px; }
+.med__tipi { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+.med__tipi em { font-style: normal; font-size: 9px; color: var(--dust); border: 1px dashed var(--line); padding: 1px 5px; }
+.med__tipi em.is-have { color: var(--good); border: 1px solid rgba(127, 212, 162, .45); }
+
+.med__part { border-top: 1px solid var(--line); padding-top: 8px; }
+.med__pname { font-size: 12px; letter-spacing: .22em; color: var(--bone); }
+.med__plist { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.med__iss { font-size: 10px; letter-spacing: .12em; padding: 3px 8px; border: 1px solid var(--line); }
+.med__iss--crit { color: #f0b0a6; border-color: var(--danger); background: rgba(180, 87, 74, .18); }
+.med__iss--warn { color: #f3c79c; border-color: var(--amber); background: rgba(224, 140, 70, .12); }
+.med__iss--ok   { color: var(--good); border-color: rgba(127, 212, 162, .4); }
+
+.med__items { flex: 1 0 auto; min-height: 110px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; align-content: start; }
+.med__item { display: grid; grid-template-columns: 36px minmax(0, 1fr); grid-template-rows: auto auto; gap: 2px 10px; text-align: left;
+    background: var(--panel2); border: 1px solid var(--line); color: var(--bone); font: inherit; padding: 8px; cursor: pointer; }
+.med__item:hover { border-color: var(--amber); }
+.med__item.is-sel { border-color: var(--amber); background: rgba(224, 140, 70, .12); }
+.med__item.is-off { opacity: .35; cursor: default; }
+.med__icon { grid-row: 1 / 3; width: 36px; height: 36px; color: var(--dust); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.med__icon svg, .med__icon img { width: 32px; height: 32px; object-fit: contain; }
+.med__ilabel { font-size: 11px; letter-spacing: .1em; }
+.med__ilabel i { font-style: normal; color: var(--dust); margin-left: 6px; }
+.med__idesc { font-size: 10px; color: var(--dust); line-height: 1.35; }
+.med__idesc b { color: var(--amber); font-weight: normal; }
+.med__empty { color: var(--dust); font-size: 11px; letter-spacing: .1em; }
+
+.med__actions { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.med__apply { background: rgba(224, 140, 70, .16); border: 1px solid var(--amber); color: var(--bone); font: inherit; font-size: 11px; letter-spacing: .24em; padding: 8px 22px; cursor: pointer; }
+.med__apply:disabled { opacity: .35; cursor: default; }
+.med__apply:not(:disabled):hover { background: rgba(224, 140, 70, .3); }
+.med__err { color: #f0b0a6; font-size: 11px; letter-spacing: .08em; }
+.med__hint { margin-left: auto; color: var(--dust); font-size: 10px; letter-spacing: .1em; text-align: right; max-width: 45%; }

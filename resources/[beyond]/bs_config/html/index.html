@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+<meta charset="utf-8">
+<title>BS Config</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="hidden">
+  <div class="scan"></div>
+  <header class="top">
+    <div class="brand"><span class="glyph">&#9763;</span> BS<span class="sl">//</span>CONFIG <small data-i18n="cfg.brand_sub">server console</small></div>
+    <div class="mode" id="modeSw" title="Simple: plain questions for the common settings. Advanced: every tunable." data-i18n-attr="title:cfg.mode_title">
+      <button data-mode="simple" data-i18n="cfg.simple">Simple</button><button data-mode="advanced" data-i18n="cfg.advanced">Advanced</button>
+    </div>
+    <div class="search"><input id="search" type="text" placeholder="Search every setting...  ( / )" data-i18n-attr="placeholder:cfg.search_ph" autocomplete="off"></div>
+    <div class="prof">
+      <select id="profile"></select>
+      <span id="activeBadge" class="badge live" data-i18n="cfg.active">ACTIVE</span>
+      <button id="btnActivate" class="btn" data-i18n="cfg.set_active">Set active</button>
+      <div class="menu">
+        <button class="btn" id="btnMenu"><span data-i18n="cfg.profile">Profile</span> &#9662;</button>
+        <div class="drop" id="drop">
+          <button data-act="saveas" data-i18n="cfg.m.saveas">Save as...</button>
+          <button data-act="duplicate" data-i18n="cfg.m.duplicate">Duplicate</button>
+          <button data-act="rename" data-i18n="cfg.m.rename">Rename</button>
+          <button data-act="export" data-i18n="cfg.m.export">Export / share</button>
+          <button data-act="import" data-i18n="cfg.m.import">Import</button>
+          <button data-act="delete" class="danger" id="btnDelete" data-i18n="cfg.m.delete">Delete (owner)</button>
+        </div>
+      </div>
+      <button class="btn x" id="btnClose" title="Close (Esc)" data-i18n-attr="title:cfg.close_title">&#10005;</button>
+    </div>
+  </header>
+  <nav class="rail" id="rail"></nav>
+  <main class="main" id="main"></main>
+  <footer class="bar" id="bar">
+    <div class="pend" id="pendInfo"></div>
+    <div class="note" id="barNote"></div>
+    <button class="btn" id="btnDiscard" data-i18n="cfg.discard">Discard</button>
+    <button class="btn primary" id="btnApply" data-i18n="cfg.apply">Apply</button>
+  </footer>
+  <div class="modal hidden" id="modal"><div class="box"><h3 id="mTitle"></h3><div id="mBody"></div><div class="mBtns" id="mBtns"></div></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script src="simple.js"></script>
+<script src="ext_crafting.js"></script>
+<script src="ext_tutorial.js"></script>
+<script src="ext_pass.js"></script>
+<script src="ext_operations.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

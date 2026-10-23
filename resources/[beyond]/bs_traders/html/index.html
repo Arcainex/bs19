@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <script src="nui://bs_ui/html/shared/window.js?v=20261015"></script>
+<meta charset="utf-8" />
+<title>bs_traders</title>
+<link rel="stylesheet" href="css/style.css?v=20261016b" />
+</head>
+<body>
+
+<div id="root" class="hidden">
+    <div id="panel">
+
+        <header>
+            <div class="titlewrap">
+                <div class="title" id="npcLabel" data-i18n="ui.trader">Trader</div>
+                <div class="role" id="npcRole" data-i18n="ui.trader">Trader</div>
+            </div>
+            <div class="cashwrap" id="cashWrap">
+                <span class="cashlabel" data-i18n="ui.cash">Cash</span>
+                <b id="cashVal">$0</b>
+            </div>
+            <button id="close" title="Close (ESC)" data-i18n-attr="title:ui.close_esc">&times;</button>
+        </header>
+
+        <nav id="tabs">
+            <button class="tab on" data-tab="trade" data-i18n="ui.trade">Trade</button>
+            <button class="tab" data-tab="missions"><span data-i18n="ui.contracts">Contracts</span><span class="tabcount hidden"></span></button>
+        </nav>
+
+        <div class="outnote hidden" id="outsiderNote"></div>
+
+        <div class="toolbar" id="searchWrap">
+            <svg viewBox="0 0 24 24" class="searchico" aria-hidden="true">
+                <circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>
+            </svg>
+            <input id="search" type="text" placeholder="Filter items&hellip;" data-i18n-attr="placeholder:ui.filter_items" autocomplete="off" />
+        </div>
+
+        <main>
+            <!-- Trade: item list on the left, selected item and cart on the right -->
+            <section data-page="trade" class="on">
+                <div class="shop">
+                    <div class="shop-left">
+                        <div class="modebar" id="modeBar">
+                            <button type="button" class="modebtn on" data-mode="buy"><span data-i18n="ui.buy">Buy</span><em id="buyModeCount">0</em></button>
+                            <button type="button" class="modebtn" data-mode="sell"><span data-i18n="ui.sell">Sell</span><em id="sellModeCount">0</em></button>
+                        </div>
+                        <div id="catTabs" class="cattabs hidden"></div>
+                        <div class="listhead">
+                            <span class="lh-item" data-i18n="ui.col_item">Item</span>
+                            <span class="lh-price" data-i18n="ui.col_price">Price</span>
+                            <span class="lh-stock" id="lhStock" data-i18n="ui.col_stock">Stock</span>
+                        </div>
+                        <div id="shopList" class="shoplist"></div>
+                    </div>
+
+                    <aside class="shop-detail" id="detail">
+                        <div class="d-empty" id="dEmpty" data-i18n="ui.select_item">Select an item.</div>
+                        <div class="d-body hidden" id="dBody">
+                            <div class="d-top">
+                                <div class="d-icon" id="dIcon"></div>
+                                <div class="d-title">
+                                    <div class="d-name" id="dName"></div>
+                                    <div class="d-cat" id="dCat"></div>
+                                </div>
+                            </div>
+                            <div class="d-lock hidden" id="dLock"></div>
+                            <div class="d-prices" id="dPrices"></div>
+                            <div class="d-compare" id="dCompare"></div>
+                            <div class="d-cart">
+                                <div class="d-line">
+                                    <span data-i18n="ui.quantity">Quantity</span>
+                                    <div class="rqty">
+                                        <button class="qbtn minus" id="dMinus" type="button">&minus;</button>
+                                        <input class="qval" id="dQty" type="number" min="0" value="1" />
+                                        <button class="qbtn plus" id="dPlus" type="button">+</button>
+                                        <button class="qmax" id="dMax" type="button" title="Maximum you can afford / carry" data-i18n-attr="title:ui.maximum_you_can_afford_carry" data-i18n="ui.max">MAX</button>
+                                    </div>
+                                </div>
+                                <div class="d-line d-total"><span id="dTotalLbl">Total</span><b id="dTotal">$0</b></div>
+                                <div class="d-line d-after"><span data-i18n="ui.cash_after">Cash after</span><b id="dAfter">$0</b></div>
+                            </div>
+                            <button class="d-action" id="dAction" type="button"></button>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- Missions -->
+            <section data-page="missions">
+                <div id="missionList" class="rows missions"></div>
+                <div id="noMissions" class="empty hidden" data-i18n="ui.nothing_on_offer_right_now">Nothing on offer right now.</div>
+            </section>
+        </main>
+
+        <footer>
+            <span id="status" data-i18n="ui.ready">ready</span>
+            <span class="keyhint"><kbd data-i18n="ui.esc">ESC</kbd> <span data-i18n="ui.resize_hint">close &middot; drag corner to resize &middot; double-click grip to reset</span></span>
+        </footer>
+
+        <!-- Panel uses CSS `resize: both`; this is a visible grip over the native one. Double-click resets the size (see app.js). -->
+        <div id="grip" title="Drag to resize · double-click to reset" data-i18n-attr="title:ui.drag_to_resize_double_click_to_reset">
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M11 3 3 11M11 7l-4 4M11 11h0"/>
+            </svg>
+        </div>
+
+    </div>
+</div>
+
+<!-- Objective tracker. Outside #root on purpose: #root is the trader menu and is mostly hidden. pointer-events:none so it never eats clicks meant for the world. -->
+<div id="tracker" class="hidden">
+    <div class="tkhead">
+        <span class="tktitle" data-i18n="ui.contracts">Contracts</span>
+        <span class="tkhint" data-i18n="ui.missions">/missions</span>
+    </div>
+    <div id="tkList"></div>
+</div>
+
+<!-- Row template for a mission card. -->
+<template id="tplMission">
+    <div class="row mission">
+        <div class="mtop">
+            <div class="mname"></div>
+            <div class="mstatus"></div>
+        </div>
+        <div class="mdesc"></div>
+        <div class="mprogress">
+            <div class="mbar"><div class="mfill"></div></div>
+            <span class="mtext"></span>
+        </div>
+        <div class="mfoot">
+            <div class="mreward">
+                <span class="chip xp"><b class="mxp"></b></span>
+                <span class="chip cash"><b class="mcash"></b></span>
+            </div>
+            <div class="mbuttons"></div>
+        </div>
+    </div>
+</template>
+
+<!-- Wardrobe (clothing shop). Own root like /traderdebug, since it is a separate screen that owns the camera and freezes the player. -->
+<div id="wardrobe" class="hidden">
+    <header id="wdHead">
+        <div class="wdtitle" id="wdLabel" data-i18n="ui.clothing">Clothing</div>
+        <div class="wdcash"><span data-i18n="ui.cash">Cash</span><b id="wdCash">$0</b></div>
+        <div class="wdbill" id="wdBill" data-i18n="ui.no_changes">No changes</div>
+    </header>
+
+    <!-- Left rail: body part being dressed. -->
+    <nav id="wdCats"></nav>
+
+    <!-- Right panel: garments in the selected category. -->
+    <section id="wdPanel">
+        <div class="wdpanelhead">
+            <span id="wdCatLabel">-</span>
+            <span class="wdcount" id="wdCatCount"></span>
+        </div>
+        <div id="wdList" class="wdlist"></div>
+
+        <!-- Arms tab only. See renderArmsMode(): picking sleeves by hand stops the top dragging them along; this restores that. -->
+        <div id="wdArms" class="wdarms hidden">
+            <span class="wdarms__state" data-i18n="ui.following_your_top">Following your top</span>
+            <button id="wdArmsAuto" class="wdmini" data-i18n="ui.auto">Auto</button>
+        </div>
+
+        <!-- Always present: saving applies to the whole fitting, not just the Outfits tab. -->
+        <div id="wdOutfitBar" class="wdsave">
+            <input id="wdOutfitName" type="text" maxlength="24"
+                   placeholder="Save this look as..." data-i18n-attr="placeholder:ui.save_this_look_as" spellcheck="false">
+            <button id="wdOutfitSave" class="wdmini" data-i18n="ui.save">Save</button>
+        </div>
+    </section>
+
+    <!-- Bottom bar: turn the character, then confirm or cancel. -->
+    <footer id="wdFoot">
+        <div class="wdturn">
+            <button class="wdturnbtn" id="wdLeft" title="Turn the character left" data-i18n-attr="title:ui.turn_the_character_left">&#8592;</button>
+            <span class="wdhint" data-i18n="ui.turn">turn</span>
+            <button class="wdturnbtn" id="wdRight" title="Turn the character right" data-i18n-attr="title:ui.turn_the_character_right">&#8594;</button>
+            <!-- Arrows turn the character; this swings the camera to the other side. Drag empty space to orbit, wheel to zoom. -->
+            <button class="wdturnbtn wdturnbtn--flip" id="wdBack"
+                    title="Swing the camera round to their back" data-i18n-attr="title:ui.swing_the_camera_round_to_their_back">&#8635;</button>
+        </div>
+
+        <!-- Poses. Sleeve clipping only shows when arms are raised. Filled from Wardrobe.Poses; a pose whose clip does not resolve removes its own button. -->
+        <div class="wdposes" id="wdPoses"></div>
+
+        <div class="wdturn wdturn--hint">
+            <span class="wdhint wdhint--dim" data-i18n="ui.drag_to_orbit_wheel_to_zoom_select_colou">drag to orbit &middot; wheel to zoom &middot; &uarr;&darr; select &middot; &larr;&rarr; colour &middot; tab category</span>
+        </div>
+        <div class="wdactions">
+            <span class="wdstatus" id="wdStatus"></span>
+            <button class="wdbtn wdbtn--ghost" id="wdCancel" data-i18n="ui.cancel">Cancel</button>
+            <button class="wdbtn wdbtn--buy" id="wdConfirm" disabled data-i18n="ui.confirm">Confirm</button>
+        </div>
+    </footer>
+</div>
+
+<!-- /traderdebug. Separate root with a deliberate staff-tool look so it is not mistaken for the player panel. See client/cl_debug.lua and js/debug.js. -->
+<div id="dbgRoot" class="hidden">
+    <div id="dbgPanel">
+
+        <header>
+            <div class="title" data-i18n="ui.trader_debug">Trader Debug</div>
+            <div id="dbgStatus" data-i18n="ui.ready">ready</div>
+            <button id="dbgClose" title="Close (ESC)" data-i18n-attr="title:ui.close_esc">&times;</button>
+        </header>
+
+        <div id="dbgBody">
+            <aside id="dbgSide">
+                <nav id="dbgSideTabs">
+                    <button class="dbgSideTab on" data-list="npcs" data-i18n="ui.npcs">NPCs</button>
+                    <button class="dbgSideTab" data-list="missions" data-i18n="ui.missions_24">Missions</button>
+                </nav>
+                <div id="dbgFilters" class="dbgFilters">
+                    <input id="dbgSearch" type="text" placeholder="Search&hellip;" data-i18n-attr="placeholder:ui.dbg_search" autocomplete="off" />
+                    <select id="dbgFilterFaction"></select>
+                    <select id="dbgFilterZone"></select>
+                </div>
+                <div id="dbgList" class="dbgList"></div>
+                <button id="dbgNew" class="dbgNewBtn" data-i18n="ui.new">+ New</button>
+            </aside>
+
+            <main id="dbgMain">
+                <div id="dbgEmpty" class="dbgEmpty" data-i18n="ui.pick_something_on_the_left_or_make_somet">Pick something on the left, or make something new.</div>
+
+                <!-- NPC -->
+                <form id="dbgNpcForm" class="dbgForm hidden" autocomplete="off">
+                    <div class="dbgFormHead">
+                        <input id="fNpcId" class="dbgId" placeholder="npc_id" data-i18n-attr="placeholder:ui.npc_id" />
+                        <span class="dbgSubBtns">
+                            <!-- Copy/paste moves settings between two traders without saving either. Duplicate creates a new disabled trader at your feet. -->
+                            <button type="button" id="dbgCopy" class="dbgMini" data-i18n="ui.copy">copy</button>
+                            <button type="button" id="dbgPaste" class="dbgMini" disabled data-i18n="ui.paste">paste</button>
+                            <button type="button" id="dbgDuplicate" class="dbgMini" data-i18n="ui.duplicate">duplicate</button>
+                            <!-- Inline field instead of window.prompt(): CEF blocks JS dialogs and an open one freezes page events. -->
+                            <input id="dbgDupId" class="dbgId dbgId--dup hidden"
+                                   placeholder="new_id" data-i18n-attr="placeholder:ui.new_id" spellcheck="false" />
+                        </span>
+                        <label class="dbgCheck"><input type="checkbox" id="fNpcDisabled" /> <span data-i18n="ui.dbg_disabled">disabled</span></label>
+                        <span id="dbgDirty" class="dbgDirty hidden" data-i18n="ui.dbg_unsaved">unsaved</span>
+                    </div>
+                    <div class="dbgErr" data-err="id"></div>
+
+                    <div class="dbgGrid">
+                        <label><span data-i18n="ui.dbg_label">Label</span><input id="fLabel" type="text" maxlength="48" /><em class="dbgErr" data-err="label"></em></label>
+                        <label><span data-i18n="ui.dbg_role">Role</span>
+                            <select id="fRole">
+                                <option value="trader" data-i18n="ui.trader_30">trader</option>
+                                <option value="quest" data-i18n="ui.quest">quest</option>
+                                <option value="both" data-i18n="ui.both">both</option>
+                            </select>
+                        </label>
+                        <label><span data-i18n="ui.dbg_model">Model</span>
+                            <span class="dbgInline">
+                                <input id="fModel" type="text" />
+                                <button type="button" id="dbgPreviewModel" class="dbgMini" data-i18n="ui.preview">preview</button>
+                            </span>
+                            <em class="dbgErr" data-err="model"></em>
+                        </label>
+                        <label><span data-i18n="ui.dbg_scenario">Scenario</span><input id="fScenario" type="text" placeholder="(optional)" data-i18n-attr="placeholder:ui.optional" /></label>
+                        <label><span data-i18n="ui.dbg_heading">Heading</span><input id="fHeading" type="number" step="0.1" /><em class="dbgErr" data-err="heading"></em></label>
+                        <!-- A service, not a role: role says what the person is, this says what else they do. -->
+                        <label class="dbgCheck dbgCheck--field">
+                            <input type="checkbox" id="fNpcClothing" />
+                            <span data-i18n="ui.dbg_sells_clothes">sells clothes (adds "Change Clothes" to their ALT menu)</span>
+                        </label>
+                    </div>
+                    <!-- No HTML thumbnail on purpose; preview is a real ped next to you (see showPreview() in client/cl_debug.lua). -->
+                    <div class="dbgHint" id="fPreviewHint"></div>
+
+                    <div class="dbgSubhead"><span data-i18n="ui.dbg_access">Access and pricing</span></div>
+                    <div class="dbgGrid">
+                        <label><span data-i18n="ui.dbg_faction">Faction</span><select id="fFaction"></select><em class="dbgErr" data-err="faction"></em></label>
+                        <label><span data-i18n="ui.dbg_safezone">Safe zone</span><select id="fZone"></select><em class="dbgErr" data-err="safezone"></em></label>
+                        <label><span data-i18n="ui.dbg_open_from">Open from (game hour)</span><select id="fFrom"></select></label>
+                        <label><span data-i18n="ui.dbg_open_to">Open until (game hour)</span><select id="fTo"></select><em class="dbgErr" data-err="hours"></em></label>
+                        <label><span data-i18n="ui.dbg_price_mult">Price multiplier</span><input id="fMult" type="number" step="0.05" min="0.1" max="10" /><em class="dbgErr" data-err="priceMult"></em></label>
+                        <label><span data-i18n="ui.dbg_rank_disc">Rank discount (% per rank step)</span><input id="fRankDisc" type="number" step="0.5" min="0" max="15" /><em class="dbgErr" data-err="rankDiscount"></em></label>
+                        <label><span data-i18n="ui.dbg_restock">Restock interval (sec, 0 = default)</span><input id="fRestock" type="number" min="0" step="30" /><em class="dbgErr" data-err="restock"></em></label>
+                        <label class="dbgCheck dbgCheck--field"><input type="checkbox" id="fBlip" /> <span data-i18n="ui.dbg_blip">Map blip</span></label>
+                        <label><span data-i18n="ui.dbg_blip_sprite">Blip sprite</span><input id="fBlipSprite" type="number" min="1" max="900" /><em class="dbgErr" data-err="blipSprite"></em></label>
+                        <label><span data-i18n="ui.dbg_blip_color">Blip color</span><input id="fBlipColor" type="number" min="0" max="85" /><em class="dbgErr" data-err="blipColor"></em></label>
+                    </div>
+                    <label class="dbgFull"><span data-i18n="ui.dbg_notes">Notes</span><textarea id="fNotes" rows="2" maxlength="300"></textarea></label>
+
+                    <div class="dbgSubhead"><span data-i18n="ui.dbg_position">Position</span>
+                        <span class="dbgSubBtns">
+                            <button type="button" id="dbgUseHere" class="dbgMini" data-i18n="ui.use_my_position">use my position</button>
+                            <button type="button" id="dbgTeleport" class="dbgMini" data-i18n="ui.teleport_to_trader">teleport to trader</button>
+                        </span>
+                    </div>
+                    <div class="dbgGrid dbgGrid3">
+                        <label>X<input id="fX" type="number" step="0.01" /></label>
+                        <label>Y<input id="fY" type="number" step="0.01" /></label>
+                        <label>Z<input id="fZ" type="number" step="0.01" /></label>
+                    </div>
+                    <div class="dbgErr" data-err="xyz"></div>
+                    <div class="dbgHint" id="fZoneHint"></div>
+
+                    <div class="dbgSubhead"><span data-i18n="ui.dbg_categories">Item categories</span> <span class="dbgAddRow" data-add="cats" data-i18n="ui.row">+ row</span></div>
+                    <div id="fCats" class="dbgRows"></div>
+                    <div class="dbgErr" data-err="categories"></div>
+
+                    <div class="dbgSubhead"><span data-i18n="ui.dbg_sells_to_player">Sells to player</span> <span class="dbgAddRow" data-add="sells" data-i18n="ui.row">+ row</span></div>
+                    <div id="fSells" class="dbgRows"></div>
+                    <div class="dbgErr" data-err="sells"></div>
+
+                    <div class="dbgSubhead"><span data-i18n="ui.dbg_buys_from_player">Buys from player</span> <span class="dbgAddRow" data-add="buys" data-i18n="ui.row">+ row</span></div>
+                    <div id="fBuys" class="dbgRows"></div>
+                    <div class="dbgErr" data-err="buys"></div>
+
+                    <div class="dbgSubhead" data-i18n="ui.missions_offered">Missions offered</div>
+                    <div id="fMissionLinks" class="dbgChecks"></div>
+
+                    <div class="dbgSubhead"><span data-i18n="ui.dbg_live_preview">Live preview</span></div>
+                    <div id="fShopPreview" class="dbgPreview"></div>
+
+                    <div class="dbgActions">
+                        <button type="button" id="dbgSave" class="dbgBtn primary" data-i18n="ui.save">Save</button>
+                        <button type="button" id="dbgDiscard" class="dbgBtn" data-i18n="ui.dbg_discard">Discard</button>
+                        <button type="button" id="dbgResetOrDelete" class="dbgBtn danger"></button>
+                    </div>
+                </form>
+
+                <!-- Mission -->
+                <form id="dbgMissionForm" class="dbgForm hidden">
+                    <div class="dbgFormHead">
+                        <input id="mId" class="dbgId" placeholder="mission_id" data-i18n-attr="placeholder:ui.mission_id" />
+                    </div>
+
+                    <div class="dbgGrid">
+                        <label><span data-i18n="ui.dbg_label">Label</span><input id="mLabel" type="text" /></label>
+                        <label><span data-i18n="ui.dbg_giver">Giver</span>
+                            <select id="mGiver"></select>
+                        </label>
+                        <label><span data-i18n="ui.dbg_kind">Kind</span>
+                            <select id="mKind">
+                                <option value="kill" data-i18n="ui.kill">kill</option>
+                                <option value="gather" data-i18n="ui.gather">gather</option>
+                            </select>
+                        </label>
+                        <label><span data-i18n="ui.dbg_target_count">Target count</span><input id="mTarget" type="number" min="1" /></label>
+                    </div>
+
+                    <div id="mKindKill">
+                        <div class="dbgSubhead"><span data-i18n="ui.dbg_counts_these_action_ids">Counts these action ids</span> <span class="dbgAddRow" data-add="filter" data-i18n="ui.row">+ row</span></div>
+                        <div id="mFilter" class="dbgRows"></div>
+                    </div>
+
+                    <div id="mKindGather" class="hidden">
+                        <div class="dbgGrid">
+                            <label><span data-i18n="ui.dbg_item">Item</span><input id="mItem" type="text" /></label>
+                            <label class="dbgCheck dbgCheckInline"><input type="checkbox" id="mConsume" /> consume on turn-in</label>
+                        </div>
+                    </div>
+
+                    <label class="dbgFull"><span data-i18n="ui.dbg_description">Description</span><textarea id="mDesc" rows="2"></textarea></label>
+
+                    <div class="dbgGrid">
+                        <label><span data-i18n="ui.dbg_reward_xp">Reward XP</span><input id="mXp" type="number" min="0" /></label>
+                        <label><span data-i18n="ui.dbg_reward">Reward $</span><input id="mMoney" type="number" min="0" /></label>
+                        <label><span data-i18n="ui.dbg_cooldown_sec">Cooldown (sec)</span><input id="mCooldown" type="number" min="0" /></label>
+                    </div>
+
+                    <div class="dbgActions">
+                        <button type="button" id="dbgSaveMission" class="dbgBtn primary" data-i18n="ui.save">Save</button>
+                        <button type="button" id="dbgResetOrDeleteMission" class="dbgBtn danger"></button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+</div>
+
+<!-- Row templates for the debug menu's repeatable lists. -->
+<template id="dbgTplTradeRow">
+    <div class="dbgRow">
+        <input class="dItem" type="text" placeholder="item key" data-i18n-attr="placeholder:ui.item_key" />
+        <input class="dPrice" type="number" min="0" step="any" placeholder="price" data-i18n-attr="placeholder:ui.price" />
+        <input class="dStock" type="number" min="0" placeholder="stock (blank = ∞)" data-i18n-attr="placeholder:ui.stock_blank" />
+        <input class="dRestockAmt" type="number" min="0" placeholder="restock +" data-i18n-attr="placeholder:ui.dbg_restock_amt" />
+        <input class="dRank" type="number" min="0" max="10" placeholder="min rank" data-i18n-attr="placeholder:ui.dbg_min_rank" />
+        <select class="dCat"></select>
+        <button type="button" class="dRemove">&times;</button>
+    </div>
+</template>
+
+<template id="dbgTplCatRow">
+    <div class="dbgRow">
+        <input class="cId" type="text" maxlength="16" placeholder="id" readonly />
+        <input class="cLabel" type="text" maxlength="24" placeholder="label" data-i18n-attr="placeholder:ui.dbg_label_lc" />
+        <button type="button" class="dRemove">&times;</button>
+    </div>
+</template>
+
+<template id="dbgTplFilterRow">
+    <div class="dbgRow">
+        <input class="dFilter" type="text" placeholder="action id, e.g. zombie_kill" data-i18n-attr="placeholder:ui.action_id_e_g_zombie_kill" />
+        <button type="button" class="dRemove">&times;</button>
+    </div>
+</template>
+
+<!-- Shared item icon set from bs_ui, loaded cross-resource like bs_inventory/bs_menu/bs_admin. Must load before app.js, which reads window.BSIcons at render time. -->
+<script src="nui://bs_ui/html/js/icons.js?v=20260930h"></script>
+<script src="js/app.js?v=20261016b"></script>
+<!-- Garment names from the game data (generated; see the file's own header), loaded before the panel that reads them. -->
+<script src="js/clothingnames.js?v=20261015a"></script>
+<script src="js/wardrobe.js?v=20261015a"></script>
+<script src="js/debug.js?v=20261016a"></script>
+</body>
+</html>
