@@ -1,0 +1,50 @@
+name: Release
+
+# Builds the release zips (bs19-part1..N.zip) that the txAdmin recipe downloads
+# and attaches them to the release named in recipe.yaml.
+on:
+  push:
+    branches: [main]
+    paths:
+      - recipe.yaml
+      - .github/workflows/release.yml
+      - .github/scripts/make_release_zips.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: v
+        run: echo "tag=v$(grep -m1 '^version:' recipe.yaml | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Build zips
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          python3 .github/scripts/make_release_zips.py . "$RUNNER_TEMP/out"
+          ls -la "$RUNNER_TEMP/out"
+
+      - name: Check part count matches recipe
+        run: |
+          want=$(grep -c 'releases/download/${{ steps.v.outputs.tag }}/bs19-part' recipe.yaml)
+          have=$(ls "$RUNNER_TEMP"/out/bs19-part*.zip | wc -l)
+          echo "recipe: $want, built: $have"
+          test "$want" = "$have"
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$RUNNER_TEMP"/out/bs19-part*.zip --clobber
+          else
+            gh release create "$TAG" "$RUNNER_TEMP"/out/bs19-part*.zip \
+              --target "$GITHUB_SHA" --title "BS19 ${TAG#v}" --notes-file CHANGELOG.md
+          fi
