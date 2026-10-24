@@ -9,10 +9,38 @@ description: Zombie survival RPG framework. Fresh install with an empty world - 
 tasks:
   - action: connect_database
 
-  # Framework and server.cfg template
-  - action: download_github
-    src: https://github.com/Arcainex/bs19
-    ref: main
+  # Framework and server.cfg template, from the release zips.
+  # Split into parts because txAdmin gives each download 150 seconds.
+  - action: download_file
+    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part1.zip
+    path: ./tmp/bs19-part1.zip
+
+  - action: unzip
+    src: ./tmp/bs19-part1.zip
+    dest: ./tmp/bs
+
+  - action: download_file
+    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part2.zip
+    path: ./tmp/bs19-part2.zip
+
+  - action: unzip
+    src: ./tmp/bs19-part2.zip
+    dest: ./tmp/bs
+
+  - action: download_file
+    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part3.zip
+    path: ./tmp/bs19-part3.zip
+
+  - action: unzip
+    src: ./tmp/bs19-part3.zip
+    dest: ./tmp/bs
+
+  - action: download_file
+    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part4.zip
+    path: ./tmp/bs19-part4.zip
+
+  - action: unzip
+    src: ./tmp/bs19-part4.zip
     dest: ./tmp/bs
 
   - action: move_path
@@ -37,6 +65,7 @@ tasks:
     dest: ./resources
 
   # License key and database go straight into server.cfg
+  # (search is a regex in txAdmin, so special characters like ? are escaped)
   - action: replace_string
     file: ./server.cfg
     search: 'sv_licenseKey "CHANGEME"'
@@ -44,7 +73,7 @@ tasks:
 
   - action: replace_string
     file: ./server.cfg
-    search: 'set mysql_connection_string "mysql://CHANGEME_USER:CHANGEME_PASSWORD@127.0.0.1/beyondsurvival?charset=utf8mb4"'
+    search: 'set mysql_connection_string "mysql://CHANGEME_USER:CHANGEME_PASSWORD@127.0.0.1/beyondsurvival\?charset=utf8mb4"'
     replace: 'set mysql_connection_string "{{dbConnectionString}}"'
 
   - action: replace_string
