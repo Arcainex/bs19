@@ -224,6 +224,7 @@ RegisterNetEvent('bs:world:noise', function(kind, coords, radius)
         end
         -- src added: the sense ladder scores a point higher when the zombie can see its source
         pcall(ZPOI.Publish, nx, ny, tonumber(coords.z) or 0.0, carry, kind, src)
+        if ZStream and ZStream.HearNoise then ZStream.HearNoise(src, carry, kind) end
     end
 
     -- Stage 5: herds turn toward the noise
@@ -438,6 +439,7 @@ BSB.RegisterCallback('zombies:loot', function(src, id, lootTable)
     id = tostring(id)
     if Looted[id] then return { ok = false, error = Lp(src, 'zed.picked') } end
     Looted[id] = os.time()
+    if ZNet and ZNet.LootCorpse then ZNet.LootCorpse(id) end
 
     local tbl = exports.bs_economy:GetLootTable(lootTable)
         or exports.bs_economy:GetLootTable('walker')

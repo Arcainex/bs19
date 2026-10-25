@@ -1508,6 +1508,7 @@ exports.bs_core:RegisterModule('vehicles', { side = 'server', version = '1.0.0',
 
 -- Narrow globals for sv_world.lua, which adds world spawns, fitting, wrecks and lockpicking on top of the registry
 VehReg = {
+    forget = function(plate) Registry[plate], dirty[plate], lease[plate], driver[plate] = nil, nil, nil, nil end,
     get = get, save = save, touch = touch, clean = clean, payload = payload,
     charIdOf = charIdOf, hasKey = hasKey, nearPlate = nearPlate,
     registry = Registry, dirty = dirty, generatePlate = generatePlate, normalise = normalise,

@@ -8,6 +8,7 @@ local function close()
     open = nil
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'vendClose' })
+    TriggerEvent('bs:ui:closed', 'building_vend')
 end
 
 local function show(res)
@@ -84,4 +85,4 @@ CreateThread(function()
     end
 end)
 
-AddEventHandler('onResourceStop', function(name) if name == GetCurrentResourceName() and open then SetNuiFocus(false, false) end end)
+AddEventHandler('onResourceStop', function(name) if name == GetCurrentResourceName() then close() end end)

@@ -8,6 +8,7 @@ end
 
 function ZSpawnSrc.Ready()
     return ZSpawnSrc.Mode() == 'local' or (ZSim and ZSim.ready) == true
+        or (Zombies.Ambient and Zombies.Ambient.enabled ~= false)
 end
 
 function ZSpawnSrc.Mode()
@@ -41,6 +42,8 @@ function ZSpawnSrc.DensityFor(cluster)
     local perPlayer = math.floor(base * mult + 0.5)
 
     local want = (d.perPlayer ~= false) and (perPlayer * members) or perPlayer
+    local amb = tonumber((Zombies.Ambient or {}).density) or 1.0
+    want = math.floor(want * math.max(0.0, amb) + 0.5)
 
     local cap = d.clusterCap or 90
     if want > cap then want = cap end
@@ -129,6 +132,14 @@ function ZSpawnSrc.Nearby(cluster, radius)
         end
     end
     return list
+end
+
+-- Hidden ring points around a cluster, for the ambient floor in sv_streaming.lua
+function ZSpawnSrc.Ring(cluster, count)
+    if count <= 0 then return {} end
+    local lo = (Streaming and Streaming.spawnMin) or 110.0
+    local hi = (Streaming and Streaming.spawnMax) or 200.0
+    return makeSyntheticRing(cluster, (lo + hi) / 2.0, count)
 end
 
 -- Resolve a node the client has just reported against.

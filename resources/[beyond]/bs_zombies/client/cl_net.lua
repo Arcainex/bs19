@@ -143,7 +143,7 @@ local function configureOwned(entry)
     try(id, 'SetEntityCanBeDamaged', SetEntityCanBeDamaged, ped, true)
     -- The engine pool only drives the hit detector's range; real health lives in the registry
     if GetEntityMaxHealth(ped) < ENGINE_HP then
-        try(id, 'SetPedMaxHealth', SetPedMaxHealth, ped, ENGINE_HP)
+        try(id, 'SetEntityMaxHealth', SetEntityMaxHealth, ped, ENGINE_HP)
         try(id, 'SetEntityHealth', SetEntityHealth, ped, ENGINE_HP)
     end
     end

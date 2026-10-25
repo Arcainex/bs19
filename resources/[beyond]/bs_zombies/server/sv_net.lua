@@ -60,6 +60,10 @@ local function players()
     for _, s in ipairs(GetPlayers()) do
         local src = tonumber(s)
         local ped = src and GetPlayerPed(src)
+        if ZStream and ZStream.InGame and not ZStream.InGame(src, ped) then ped = nil end
+        -- Walkers live in bucket 0; a player in a private bucket cannot see them
+        local okB, bucket = pcall(GetPlayerRoutingBucket, src)
+        if okB and tonumber(bucket) and tonumber(bucket) ~= 0 then ped = nil end
         if ped and ped ~= 0 and DoesEntityExist(ped) then
             local at = GetEntityCoords(ped)
             if not (at.x == 0.0 and at.y == 0.0) then
@@ -157,6 +161,8 @@ local function demote(record, reason)
     clearRecordEnt(record)
     deleteEnt(ent, reason or 'demote')
     ZNet.stats.demoted = ZNet.stats.demoted + 1
+    ZNet.demotedBy = ZNet.demotedBy or {}
+    ZNet.demotedBy[reason or 'demote'] = (ZNet.demotedBy[reason or 'demote'] or 0) + 1
 end
 
 local function spawnEnt(record)
@@ -191,6 +197,7 @@ local function spawnEnt(record)
     if needsGround then FreezeEntityPosition(ent, true) end
 
     record.ent = ent
+    record.farSince = nil
     record.net = NetworkGetNetworkIdFromEntity(ent)
     record.materialisedAt = record.materialisedAt or GetGameTimer()
     ZNet.ents[ent] = record.id
@@ -276,7 +283,9 @@ local function computeCap(nPlayers)
         if ef < f then f = ef end
         why[#why + 1] = ('entities %d'):format(tot)
     end
-    return math.floor(base * f), (#why > 0 and table.concat(why, ', ') or 'ok')
+    local minimum = ZStream and ZStream.PresenceMin and ZStream.PresenceMin() or 0
+    local floor = math.min(num(n.hardCap, 160), minimum * nPlayers)
+    return math.max(floor, math.floor(base * f)), (#why > 0 and table.concat(why, ', ') or 'ok')
 end
 
 -- The pass
@@ -286,6 +295,12 @@ local lastCapWhy = 'ok'
 local function pass()
     local n = N()
     local list = players()
+    local now = GetGameTimer()
+    if #list > 0 then
+        ZNet.lastObserverAt = now
+    elseif #GetPlayers() > 0 and ZNet.lastObserverAt and now - ZNet.lastObserverAt < num(n.demoteGraceMs, 10000) then
+        return
+    end
     local promoteR = num(n.promoteRadius, 300.0)
     local keepR = promoteR + num(n.demoteHysteresis, 60.0)
     local cap, why = computeCap(#list)
@@ -293,7 +308,7 @@ local function pass()
     -- NPC load never takes more than 3/4 of the cap.
     if npcSum > 0 then cap = math.max(math.floor(cap * 0.25), cap - npcSum) end
     ZNet.cap, lastCapWhy = cap, why
-    local now = GetGameTimer()
+    ZNet.capWhy = why
 
     -- 1. SYNC every networked walker from its entity.
     local live = {}
@@ -326,8 +341,14 @@ local function pass()
             mirrorBags(record, ent, false)
             local d, who = nearest(list, record.x, record.y)
             if d > keepR and not record.event then
-                demote(record, 'far')
+                record.farSince = record.farSince or now
+                if now - record.farSince >= num(n.demoteGraceMs, 10000) then
+                    demote(record, 'far')
+                else
+                    live[#live + 1] = { record = record, d = d }
+                end
             else
+                record.farSince = nil
                 if who and d <= promoteR then who.near = who.near + 1 end
                 live[#live + 1] = { record = record, d = d }
             end
@@ -343,6 +364,8 @@ local function pass()
         over = math.max(over, num(n.shedPerTick, 6))
         ZNet.lastHardShedAt = GetGameTimer()
     end
+    local minimum = ZStream and ZStream.PresenceMin and ZStream.PresenceMin() or 0
+    over = math.min(over, math.max(0, #live - minimum * #list))
     if over > 0 then
         table.sort(live, function(a, b) return a.d > b.d end)
         local shed = math.min(over, num(n.shedPerTick, 6))
@@ -365,8 +388,6 @@ local function pass()
             local d, who = nearest(list, record.x, record.y)
             if d <= promoteR and who then cands[#cands + 1] = { record = record, d = d, who = who } end
         end
-        -- networked mode has no client "materialised" ack for far records; keep the registry's unmaterialised sweep from pruning them
-        if not record.materialisedAt then record.materialisedAt = now end
     end
     if #cands == 0 then return end
     if ZNet.count == 0 and now - (ZNet.lastWarnAt or 0) > 30000 then
@@ -374,12 +395,22 @@ local function pass()
         print(('^3[BS ZNET]^7 %d record(s) in range, 0 peds: cap=%d (%s) room=%d npcLoad=%d entities=%d')
             :format(#cands, cap, lastCapWhy, room, npcSum, ZNet.entities.total))
     end
-    table.sort(cands, function(a, b) return a.d < b.d end)
+    for _, p in ipairs(list) do
+        p.close = ZStream and ZStream.PedsNear
+            and ZStream.PedsNear(p.x,p.y,p.z,tonumber((Zombies.Ambient or {}).radius) or 200.0) or p.near
+    end
+    table.sort(cands, function(a, b)
+        local an, bn = a.who.close or 0, b.who.close or 0
+        if (an < minimum) ~= (bn < minimum) then return an < minimum end
+        if an < minimum and bn < minimum and an ~= bn then return an < bn end
+        return a.d < b.d
+    end)
     local perNear = math.floor(num(n.perPlayerNear, 34) * (ZDiff and ZDiff.Density() or 1.0) + 0.5)
     for _, c in ipairs(cands) do
         if room <= 0 then break end
         local fq = math.floor(perNear * fpsFactor(c.who.src))
         local quota = math.max(math.floor(fq * 0.25), fq - npcLoadOf(c.who.src))
+        quota = math.max(minimum, quota)
         if c.who.near < quota then
             if spawnEnt(c.record) then
                 c.who.near = c.who.near + 1
@@ -410,6 +441,38 @@ end)
 
 -- Registry hooks
 
+function ZNet.CorpseLifetime(playerCount, pedCount, looted)
+    local c = N().corpseRetention or {}
+    local soft, hard = num(c.poolSoft, 128), num(c.poolHard, 215)
+    local pool = math.max(0.0, math.min(1.0, (pedCount - soft) / math.max(1, hard - soft)))
+    local crowd = math.max(0.0, math.min(1.0, (playerCount - 1) / math.max(1, num(c.playersAtMinimum, 32) - 1)))
+    local pressure = math.max(pool, crowd)
+    local longest = looted and num(c.lootedSeconds, 60) or num(N().corpseSeconds, 300)
+    local shortest = looted and num(c.lootedMinSeconds, 15) or num(c.minSeconds, 45)
+    return math.max(5, longest + (math.min(longest, shortest) - longest) * pressure)
+end
+
+local function corpsePressure(ent, list)
+    local peds = 0
+    local count = #list
+    local at, now = GetEntityCoords(ent), GetGameTimer()
+    for _, p in ipairs(list) do
+        local t = ZStream and ZStream.telemetry and ZStream.telemetry[p.src]
+        if t and now - t.updatedAt <= 10000 and (p.x-at.x)^2 + (p.y-at.y)^2 <= 474.0^2 then
+            peds = math.max(peds, t.pedCount or 0)
+        end
+    end
+    if count <= 1 then peds = math.max(peds, ZNet.entities.peds or 0) end
+    return count, peds
+end
+
+function ZNet.LootCorpse(id)
+    for _, c in pairs(ZNet.corpses) do
+        if tostring(c.id) == tostring(id) then c.lootedAt = GetGameTimer(); return true end
+    end
+    return false
+end
+
 -- Called by sv_registry removeZombie() BEFORE the record is dropped.
 function ZNet.OnRemove(record, reason)
     local ent = record and record.ent
@@ -420,13 +483,14 @@ function ZNet.OnRemove(record, reason)
         bag(ent, 'zState', 'dead')
         ZNet.corpses[ent] = {
             id = record.id,
+            bornAt = GetGameTimer(),
             untilAt = GetGameTimer() + num(N().corpseSeconds, 120) * 1000,
             killCheckAt = GetGameTimer() + 3000,
             net = NetworkGetNetworkIdFromEntity(ent),
         }
         ZNet.stats.corpses = ZNet.stats.corpses + 1
         -- Corpses have their own cap (corpseCap) so dead bodies do not fill client ped pools
-        local capN = num(N().corpseCap, 40)
+        local capN = num(N().corpseCap, 96)
         -- A body someone is searching or skinning is never picked by the cap.
         local now = GetGameTimer()
         local n, oldestEnt, oldestAt = 0, nil, math.huge
@@ -474,10 +538,44 @@ CreateThread(function()
     while true do
         Wait(1000)
         local now = GetGameTimer()
+        local observers = players()
+        local trimmed = {}
+        local order = {}
+        for ent, c in pairs(ZNet.corpses) do order[#order + 1] = { ent = ent, c = c } end
+        table.sort(order, function(a, b)
+            if (a.c.lootedAt ~= nil) ~= (b.c.lootedAt ~= nil) then return a.c.lootedAt ~= nil end
+            return (a.c.bornAt or 0) < (b.c.bornAt or 0)
+        end)
+        for _, row in ipairs(order) do
+            local ent, c = row.ent, row.c
+            if DoesEntityExist(ent) and (c.heldUntil or 0) <= now then
+                local at = GetEntityCoords(ent)
+                for _, p in ipairs(observers) do
+                    local t = ZStream and ZStream.telemetry and ZStream.telemetry[p.src]
+                    if t and now-t.updatedAt <= 10000 and (p.x-at.x)^2+(p.y-at.y)^2 <= 474.0^2
+                       and t.pedCount >= num((N().corpseRetention or {}).poolHard, 215)
+                       and (trimmed[p.src] or 0) < t.pedCount - 190 then
+                        deleteEnt(ent, 'corpse-pressure')
+                        for _, observer in ipairs(observers) do
+                            if (observer.x-at.x)^2+(observer.y-at.y)^2 <= 474.0^2 then
+                                trimmed[observer.src] = (trimmed[observer.src] or 0) + 1
+                            end
+                        end
+                        break
+                    end
+                end
+            end
+        end
         for ent, c in pairs(ZNet.corpses) do
+            local deadline = c.untilAt
+            if DoesEntityExist(ent) and c.bornAt then
+                local count, peds = corpsePressure(ent, observers)
+                deadline = math.min(deadline, (c.lootedAt or c.bornAt)
+                    + ZNet.CorpseLifetime(count, peds, c.lootedAt ~= nil) * 1000)
+            end
             if not DoesEntityExist(ent) then
                 ZNet.corpses[ent] = nil
-            elseif now >= c.untilAt and (c.heldUntil or 0) <= now then
+            elseif now >= deadline and (c.heldUntil or 0) <= now then
                 deleteEnt(ent, 'corpse')
             elseif c.killCheckAt and now >= c.killCheckAt then
                 c.killCheckAt = nil
@@ -608,7 +706,31 @@ function ZNet.DiagLines(src)
         local r = ZNet.fps[src]
         out[#out + 1] = ('   you: %d networked walker(s) within 424m | fps %s (factor %.2f)')
             :format(ZNet.NearCount(src), r and tostring(math.floor(r.fps)) or '?', fpsFactor(src))
+        local ped = GetPlayerPed(src)
+        if ped and ped ~= 0 and DoesEntityExist(ped) then
+            local at = GetEntityCoords(ped)
+            local owned, low, high, grounding, zeroHealth, unreported = 0, 0, 0, 0, 0, 0
+            for ent, id in pairs(ZNet.ents) do
+                if DoesEntityExist(ent) then
+                    local p = GetEntityCoords(ent)
+                    if (p.x-at.x)^2 + (p.y-at.y)^2 <= 200.0^2 then
+                        if NetworkGetEntityOwner(ent) and NetworkGetEntityOwner(ent) > 0 then owned = owned + 1 end
+                        if p.z < at.z - 40.0 then low = low + 1 end
+                        if p.z > at.z + 40.0 then high = high + 1 end
+                        if Entity(ent).state.zGround then grounding = grounding + 1 end
+                        if GetEntityHealth(ent) <= 0 then zeroHealth = zeroHealth + 1 end
+                        if not (Registry.zombies[id] or {}).lastReport then unreported = unreported + 1 end
+                    end
+                end
+            end
+            local actual = ZStream and ZStream.PedsNear and ZStream.PedsNear(at.x,at.y,at.z,200.0) or 0
+            out[#out+1] = ('   encounter: %d grounded/alive within 200m | owned %d | below %d above %d grounding %d | bucket %s')
+                :format(actual,owned,low,high,grounding,tostring(GetPlayerRoutingBucket(src)))
+            out[#out+1] = ('   entity checks: server-health-zero=%d owner-never-reported=%d'):format(zeroHealth,unreported)
+        end
     end
+    local d = ZNet.demotedBy or {}
+    out[#out+1] = ('   demotions: far=%d cap=%d'):format(d.far or 0,d.cap or 0)
     return out
 end
 

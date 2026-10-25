@@ -28,12 +28,13 @@ Zombies.Net = {
     promoteRadius   = 260.0,
                               -- Beyond ~250m a remote client sees a low-LOD clone that catches up by running.
     demoteHysteresis = 60.0,  -- Ped removed when nobody is within radius + this.
+    demoteGraceMs   = 10000,
     spawnPerTick    = 4,      -- Max server CreatePed calls per tick.
     tickMs          = 500,    -- Promotion / sync pass interval.
     cullingRadius   = 0.0,
 
     -- Caps
-    baseCap         = 24,     -- networked walkers with one player online
+    baseCap         = 30,     -- networked walkers with one player online
     perPlayerCap    = 18,     -- added per additional online player
     hardCap         = 160,    -- never more than this, whatever else says
     perPlayerNear   = 34,     -- max networked walkers within promoteRadius of one player
@@ -54,14 +55,22 @@ Zombies.Net = {
     lowFpsFactor    = 0.5,
 
     -- Lifetime
-    corpseSeconds   = 120,    -- networked corpse stays this long, then server deletes it
+    corpseSeconds   = 300,
+    corpseRetention = {
+        minSeconds = 45,
+        lootedSeconds = 60,
+        lootedMinSeconds = 15,
+        poolSoft = 128,
+        poolHard = 215,       -- keep headroom below the 256-ped client pool
+        playersAtMinimum = 32,
+    },
     orphanSweepMs   = 10000,  -- sweep for bsZombie peds the registry does not know
     replaceOnUnexpectedDelete = true,  -- re-create a ped deleted without a server reason (if a player is near)
 
     -- Background simulation density while networked. Sim.population.target is multiplied by this at load.
     simDensityScale = 0.35,
 
-    corpseCap       = 40,     -- at most this many networked corpses at once; oldest deleted first
+    corpseCap       = 96,     -- quiet-server ceiling; local pool pressure clears bodies sooner
     grabMaxMs       = 1500,   -- the server ends every grab after this, whatever any client says
 
     -- Server-side chase target (sv_net_target.lua)

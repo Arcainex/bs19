@@ -79,8 +79,8 @@ local function findAimed(reqId, hash, tx, ty, tz, snap)
     local r = snap + 100.0
     local loaded = false
     for _ = 1, 60 do
-        RequestPathNodesInAreaThisFrame(tx - r, ty - r, tx + r, ty + r)
-        if ArePathNodesLoadedInArea(tx - r, ty - r, tx + r, ty + r) then loaded = true break end
+        Citizen.InvokeNative(0x07FB139B592FA687, tx - r, ty - r, tx + r, ty + r)
+        if Citizen.InvokeNative(0xF7B79A50B905A30D, tx - r, ty - r, tx + r, ty + r, Citizen.ResultAsInteger()) ~= 0 then loaded = true break end
         Wait(0)
     end
     if not loaded then return false end

@@ -9,17 +9,19 @@ ZSpawner = {
 
     -- Reset and sent to the server every work pass
     reasons = { seen = 0, rayClear = 0, tooClose = 0, noSafeCoord = 0, safeZone = 0, tooFar = 0, noNode = 0,
-                inView = 0, clumped = 0, nearPlayer = 0, queueDropped = 0 },
+                inView = 0, clumped = 0, nearPlayer = 0, queueDropped = 0, roof = 0, notReady = 0 },
     accepted = 0,
 
     -- The same counters, never reset. reasons and accepted are a per-pass window zeroed every workMs
     totals = { accepted = 0, attempts = 0, passes = 0,
                seen = 0, rayClear = 0, tooClose = 0, noSafeCoord = 0, safeZone = 0, tooFar = 0, noNode = 0,
-               inView = 0, clumped = 0, nearPlayer = 0, queueDropped = 0 },
+               inView = 0, clumped = 0, nearPlayer = 0, queueDropped = 0, roof = 0 },
 
     -- Where this client placed walkers recently: { x, y, at } per accepted candidate, swept by age
     recent = {},
     queuedSources = {},
+    -- Offers already used this plan; the server takes each offer once
+    usedSources = {},
 
     -- Stagger queue
     queue = {},
@@ -35,23 +37,51 @@ end
 
 -- True when nothing solid stands between from and to
 local function rayClear(fromX, fromY, fromZ, toX, toY, toZ, ignore)
-    local handle = StartShapeTestLosProbe(fromX, fromY, fromZ, toX, toY, toZ, 511, ignore or 0, 7)
+    local handle = StartShapeTestLosProbe(fromX, fromY, fromZ, toX, toY, toZ, 17, ignore or 0, 7)
     for _ = 1, Streaming.rayPollFrames do
         local status, hit = GetShapeTestResult(handle)
-        if status == 2 then return hit == 0 end
+        if status == 2 then return hit == false or hit == 0 end
         Wait(0)
     end
-    return false
+    return nil
 end
 
--- Somewhere a ped can stand near x,y
-local function safeCoord(x, y, z)
-    local found, coords = GetSafeCoordForPed(x, y, z, true, 16)
-    if found and coords then return coords end
-
-    local groundFound, groundZ = GetGroundZFor_3dCoord(x, y, z + 80.0, false)
-    if groundFound then return vector3(x, y, groundZ + 0.15) end
+-- Nearest road node within 70 m (path nodes stay loaded far beyond collision and navmesh)
+local function roadNear(x, y, z)
+    local ok, pos = GetClosestVehicleNode(x, y, z, 1, 3.0, 0)
+    if ok and pos and pos.x and ((pos.x - x) ^ 2 + (pos.y - y) ^ 2) <= 70.0 * 70.0 then return pos end
     return nil
+end
+
+-- A point well above the nearest road is a roof (slopes allowed for)
+local function aboveRoad(c, road)
+    if not road then return false end
+    local d = math.sqrt((c.x - road.x) ^ 2 + (c.y - road.y) ^ 2)
+    return c.z > road.z + 4.0 + d * 0.15
+end
+
+-- Somewhere a ped can stand near x,y: navmesh, then ground, then the road itself. Never a roof.
+-- Returns coords or nil plus the reason
+local function safeCoord(x, y, z)
+    local road = roadNear(x, y, z)
+    local baseZ = road and road.z or z
+    RequestCollisionAtCoord(x, y, baseZ)
+    local roofHit = false
+    for _, flags in ipairs({ 16, 0 }) do
+        local found, c = GetSafeCoordForPed(x, y, baseZ, true, flags)
+        if found and c and ((c.x - x) ^ 2 + (c.y - y) ^ 2) <= 30.0 * 30.0 then
+            if not aboveRoad(c, road) then return c end
+            roofHit = true
+        end
+    end
+    local found, gz = GetGroundZFor_3dCoord(x, y, baseZ + 50.0, false)
+    if found and gz and gz > -100.0 then
+        local c = vector3(x, y, gz + 0.15)
+        if not aboveRoad(c, road) then return c end
+        roofHit = true
+    end
+    if road then return vector3(road.x, road.y, road.z + 0.15) end
+    return nil, roofHit and 'roof' or 'noSafeCoord'
 end
 
 -- Same safe-zone rule as the server, reading Zones.Safe from config_zones.lua (a shared_script, so it exists on both sides)
@@ -141,13 +171,15 @@ local function hiddenFromEveryone(x, y, z, players, count)
     if distance2 > 0.01 and distance2 <= forwardRange * forwardRange then
         local yaw = math.rad(GetGameplayCamRot(2).z)
         local dot = (-dx * math.sin(yaw) + dy * math.cos(yaw)) / math.sqrt(distance2)
-        if dot >= math.cos(math.rad(cfg.localViewHalfAngle or 65.0)) then
+        if dot >= math.cos(math.rad(cfg.localViewHalfAngle or 65.0))
+           and rayClear(cam.x,cam.y,cam.z,x,y,z+(Streaming.targetHeight or 0.8),PlayerPedId()) ~= false then
             return false
         end
     end
 
     -- Test 1: exact and cheapest, so first.
-    if IsSphereVisible(x, y, z + (Streaming.targetHeight or 0.8), sphere) then
+    if IsSphereVisible(x, y, z + (Streaming.targetHeight or 0.8), sphere)
+       and rayClear(cam.x,cam.y,cam.z,x,y,z+(Streaming.targetHeight or 0.8),PlayerPedId()) ~= false then
         return false
     end
 
@@ -175,7 +207,9 @@ local function hiddenFromEveryone(x, y, z, players, count)
                     local d = math.sqrt(d2)
                     -- Both vectors flattened and normalised, then a dot product (cos of the angle between his view and the walker)
                     local dot = ((dx / d) * (forward.x / flen)) + ((dy / d) * (forward.y / flen))
-                    if dot >= cosLimit then return false end
+                    if dot >= cosLimit
+                       and rayClear(p.coords.x,p.coords.y,p.coords.z+(Streaming.eyeHeight or 0.75),
+                           x,y,z+(Streaming.targetHeight or 0.8),p.ped) ~= false then return false end
                 end
             end
         end
@@ -185,9 +219,9 @@ local function hiddenFromEveryone(x, y, z, players, count)
 end
 
 -- The whole gate, cheapest first. Returns true, or false and the reason key.
-local function placementAllows(x, y, z, players, count)
+local function placementAllows(x, y, z, players, count, reserved)
     if not farEnoughFromPlayers(x, y, players, count) then return false, 'nearPlayer' end
-    if not farEnoughFromRecent(x, y) then return false, 'clumped' end
+    if not reserved and not farEnoughFromRecent(x, y) then return false, 'clumped' end
     if not hiddenFromEveryone(x, y, z, players, count) then return false, 'inView' end
     return true
 end
@@ -198,15 +232,10 @@ local function candidateFor(node, attempt)
     local seed = (node.id * 73856093 + attempt * 19349663 + GetGameTimer()) % 2147483647
     local angle = (seed % 1000) / 1000 * math.pi * 2
     local x,y
-    if node.mode == 'simulation' then
-        local offset = 12.0 * ((seed % 977) / 977)
-        x,y = node.x + math.cos(angle)*offset, node.y + math.sin(angle)*offset
-    else
-        local radius = Streaming.spawnMin + (seed % 791)/791 * (Streaming.spawnMax-Streaming.spawnMin)
-        x,y = origin.x + math.cos(angle)*radius, origin.y + math.sin(angle)*radius
-    end
-    local coords = safeCoord(x,y,origin.z)
-    if not coords then return nil,'noSafeCoord' end
+    local offset = math.min(12.0, tonumber(node.radius) or 12.0) * ((seed % 977) / 977)
+    x,y = node.x + math.cos(angle)*offset, node.y + math.sin(angle)*offset
+    local coords, bad = safeCoord(x,y,node.z or origin.z)
+    if not coords then return nil, bad or 'noSafeCoord' end
     if node.mode == 'simulation' and (coords.x-node.x)^2+(coords.y-node.y)^2 > 60^2 then
         return nil,'tooFar'
     end
@@ -247,6 +276,8 @@ function ZSpawner.Observe()
     end
 end
 
+local spawnAllowedNow
+
 -- Work: turn the current plan into validated candidates. spawnPerPlan caps how many one pass may
 function ZSpawner.Work()
     local plan = ZSpawner.plan
@@ -256,9 +287,16 @@ function ZSpawner.Work()
     ZSpawner.totals.passes = ZSpawner.totals.passes + 1
 
     local sent = 0
+    -- Not ready or the pool is full: candidates would only age out in the queue
+    if not plan.dryRun and not spawnAllowedNow() then
+        ZSpawner.reasons.notReady = (ZSpawner.reasons.notReady or 0) + 1
+        return
+    end
+    local room = ((Streaming.Stagger or {}).maxQueued or 8) - #ZSpawner.queue
 
     for _, node in ipairs(plan.nodes or {}) do
-        if ZSpawner.queuedSources[node.id] then
+        if room <= 0 then return end
+        if ZSpawner.queuedSources[node.id] or ZSpawner.usedSources[node.id] then
             -- One local candidate per outstanding server offer.
         elseif not node.id then
             ZSpawner.reasons.noNode = ZSpawner.reasons.noNode + 1
@@ -295,6 +333,8 @@ function ZSpawner.Work()
                             ZSpawner.totals.queueDropped = (ZSpawner.totals.queueDropped or 0) + 1
                         else
                             ZSpawner.queuedSources[node.id] = true
+                            ZSpawner.usedSources[node.id] = true
+                            room = room - 1
                             ZSpawner.queue[#ZSpawner.queue + 1] = {
                                 nodeId = node.id,
                                 x = coords.x, y = coords.y, z = coords.z,
@@ -319,6 +359,7 @@ end
 RegisterNetEvent('bs:zs:plan', function(plan)
     if not Streaming.enabled then return end
     ZSpawner.plan = (type(plan) == 'table') and plan or { nodes = {}, canSpawn = false, dryRun = true }
+    ZSpawner.usedSources = {}
 end)
 
 AddEventHandler('onResourceStop', function(resource)
@@ -345,7 +386,7 @@ CreateThread(function()
 end)
 
 -- Stagger thread: one walker at a time with jitter
-local function spawnAllowedNow()
+function spawnAllowedNow()
     local PG = Streaming.PoolGuard or {}
     if not (Zed and Zed.ready and Zed.readyAt) then return false end
     if GetGameTimer() - Zed.readyAt < (PG.joinSyncMs or 6000) then return false end
@@ -378,9 +419,15 @@ CreateThread(function()
                 -- not synced yet, or ped pool / local cap too full
                 ZSpawner.totals.poolRefused = (ZSpawner.totals.poolRefused or 0) + 1
             else
-                TriggerServerEvent('bs:zs:spawn', entry.nodeId,
+                local players, count = visiblePlayers()
+                local allowed, why = placementAllows(entry.x,entry.y,entry.z,players,count,true)
+                if allowed then
+                    TriggerServerEvent('bs:zs:spawn', entry.nodeId,
                     { x = entry.x, y = entry.y, z = entry.z },
                     entry.heading, entry.mode)
+                else
+                    ZSpawner.reasons[why] = (ZSpawner.reasons[why] or 0) + 1
+                end
             end
         end
     end

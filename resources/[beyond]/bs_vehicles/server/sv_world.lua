@@ -8,6 +8,7 @@ local pending = {}       -- [reqId] = { src, category, model, at }
 local taken = {}         -- { {x, y}, ... } positions of saved vehicles, so spawns do not stack
 local nextReq = 0
 local deck = {}          -- shuffled anchor indexes; each anchor is used once per pass
+local worldPaused, managingWorld = false, false
 
 -- Next anchor from a shuffled deck, so N spawns cover N different anchors (no repeats until all are used)
 local function nextAnchor()
@@ -105,7 +106,7 @@ CreateThread(function()
         local spreading = W.spread and type(W.anchors) == 'table' and #W.anchors > 0
         Wait(math.max(spreading and 1500 or 5000, tonumber(spreading and W.spreadEvery or W.askEvery) or 20000))
 
-        if W.enabled and totalOwed() > 0 then
+        if W.enabled and not worldPaused and not managingWorld and totalOwed() > 0 then
             -- Expire unanswered requests.
             local t = GetGameTimer()
             for id, req in pairs(pending) do
@@ -144,6 +145,7 @@ end)
 
 RegisterNetEvent('bs:vehicles:spot', function(reqId, x, y, z, h)
     local src = source
+    if worldPaused or managingWorld then return end
     reqId = tonumber(reqId) or -1
     local req = pending[reqId]
     if not req or req.src ~= src then return end
@@ -206,6 +208,66 @@ RegisterNetEvent('bs:vehicles:spot', function(reqId, x, y, z, h)
 
     owed[req.category] = owed[req.category] - 1
     taken[#taken + 1] = { x, y }
+end)
+
+local WORLD_SCOPES = {
+    unclaimed = 'v.`owner_character_id` IS NULL AND NOT EXISTS (SELECT 1 FROM `bs_vehicle_keys` k WHERE k.`vehicle_id` = v.`id`)',
+    claimed = '(v.`owner_character_id` IS NOT NULL OR EXISTS (SELECT 1 FROM `bs_vehicle_keys` k WHERE k.`vehicle_id` = v.`id`))',
+    all = '1 = 1',
+}
+
+local function worldRows(scope)
+    local filter = WORLD_SCOPES[scope]
+    if not filter then return nil end
+    local rows = exports.oxmysql:query_async('SELECT v.`id`, v.`plate` FROM `bs_vehicles` v WHERE v.`stored` = 0 AND v.`scrapped` = 0 AND (' .. filter .. ')') or {}
+    if scope ~= 'claimed' then
+        local saved = {}
+        for _, row in ipairs(exports.oxmysql:query_async('SELECT `plate` FROM `bs_vehicles`') or {}) do saved[row.plate] = true end
+        for _, entity in ipairs(GetAllVehicles()) do
+            local plate = GetVehicleNumberPlateText(entity):gsub('^%s+', ''):gsub('%s+$', '')
+            if not saved[plate] and GetEntityRoutingBucket(entity) == 0 then
+                rows[#rows + 1] = { plate = plate, entity = entity }
+            end
+        end
+    end
+    return rows
+end
+
+exports('PreviewWorldCars', function(scope)
+    local rows = worldRows(scope)
+    return rows and #rows or nil
+end)
+
+exports('ManageWorldCars', function(scope, operation)
+    if not WORLD_SCOPES[scope] or (operation ~= 'wipe' and operation ~= 'repopulate') then return { ok = false, error = 'Invalid vehicle operation' } end
+    if managingWorld then return { ok = false, error = 'Another vehicle operation is running' } end
+    if operation == 'repopulate' and not W.enabled then return { ok = false, error = 'Enable world vehicle spawning first' } end
+    managingWorld = true
+    local ok, result = pcall(function()
+        pending = {}
+        local plates, selected = {}, {}
+        for _, row in ipairs(worldRows(scope)) do
+            -- Recheck ownership in the DELETE so a newly claimed car is not swept as unclaimed.
+            local changed = row.entity and 1 or exports.oxmysql:update_async('DELETE v FROM `bs_vehicles` v WHERE v.`id` = ? AND v.`stored` = 0 AND v.`scrapped` = 0 AND (' .. WORLD_SCOPES[scope] .. ')', { row.id })
+            if tonumber(changed) and changed > 0 then
+                if row.entity then DeleteEntity(row.entity)
+                elseif R.forget then R.forget(row.plate) else R.registry[row.plate], R.dirty[row.plate] = nil, nil end
+                plates[#plates + 1], selected[row.plate] = row.plate, true
+            end
+        end
+        for _, vehicle in ipairs(GetAllVehicles()) do
+            local plate = GetVehicleNumberPlateText(vehicle):gsub('^%s+', ''):gsub('%s+$', '')
+            if selected[plate] then DeleteEntity(vehicle) end
+        end
+        if #plates > 0 then TriggerClientEvent('bs:vehicles:removed', -1, plates) end
+        deck = {}
+        local missing = computeOwed()
+        worldPaused = operation == 'wipe'
+        return { ok = true, removed = #plates, queued = worldPaused and 0 or missing, paused = worldPaused }
+    end)
+    managingWorld = false
+    if not ok then error(result) end
+    return result
 end)
 
 -- Fitting a missing part

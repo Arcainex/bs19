@@ -104,7 +104,7 @@ local function cullCorpses(n)
 
     local order = {}
     for ped, record in pairs(corpses) do
-        if not isHeld(ped) then
+        if not isHeld(ped) and not NetworkGetEntityIsNetworked(ped) then
             order[#order + 1] = { ped = ped, at = record.diesAt }
         end
     end
@@ -132,7 +132,7 @@ local function registerCorpse(ped, id, loot)
     -- Apply the corpse ceiling immediately.
     local most = S.maxCorpses or 10
     local over = corpseCount() - most
-    if over > 0 then cullCorpses(over) end
+    if over > 0 and not NetworkGetEntityIsNetworked(ped) then cullCorpses(over) end
 
     if GetResourceState('bs_interactions') ~= 'started' then return end
 
@@ -228,7 +228,7 @@ CreateThread(function()
             if not DoesEntityExist(ped) then
                 -- Gone already (reclaimed by the engine or a resource restart)
                 releaseCorpse(ped)
-            elseif now >= record.diesAt then
+            elseif now >= record.diesAt and not NetworkGetEntityIsNetworked(ped) then
                 releaseCorpse(ped)
             end
         end

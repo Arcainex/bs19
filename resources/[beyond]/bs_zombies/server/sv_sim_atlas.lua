@@ -166,9 +166,11 @@ OPS.snapshot = function(actor, args)
 
     -- Individuals, capped at 1500. truncated is set when the cap hits.
     local agents, an, truncated = ZSim.AgentsInRect(x1, y1, x2, y2, Atlas.maxAgents)
-    local aout = {}
+    local aout, represented = {}, {}
     for i = 1, an do
         local a = agents[i]
+        local record = a.pedId and Registry and Registry.zombies[a.pedId]
+        if not record then
         aout[i] = {
             id = a.id,
             x = a.x, y = a.y,
@@ -182,6 +184,24 @@ OPS.snapshot = function(actor, args)
             ped = a.pedId or nil,
             h = a.h,
         }
+        else
+            represented[a.pedId] = true
+            aout[i] = { id = 'ped:' .. record.id, x = record.x, y = record.y,
+                state = record.state, ped = record.ent and DoesEntityExist(record.ent) and record.id or nil,
+                h = record.h }
+        end
+    end
+
+    -- Fallback-ring and staff walkers have no simulation agent. Include their real positions too.
+    for id, record in pairs((Registry and Registry.zombies) or {}) do
+        if not represented[id] and not record.dead and (record.hp or 1) > 0 then
+            local at = record.ent and DoesEntityExist(record.ent) and GetEntityCoords(record.ent) or record
+            if at.x >= x1 and at.x <= x2 and at.y >= y1 and at.y <= y2 then
+                aout[#aout + 1] = { id = 'ped:' .. id, x = at.x, y = at.y, h = record.h,
+                    state = record.state, ped = record.ent and DoesEntityExist(record.ent) and id or nil,
+                    target = record.poiX and { kind = 'point', x = record.poiX, y = record.poiY } or nil }
+            end
+        end
     end
 
     -- Observed herds inside the rectangle. Recomputed elsewhere; read here.

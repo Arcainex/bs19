@@ -53,7 +53,8 @@ local function playersNow()
     for _, s in ipairs(GetPlayers()) do
         local src = tonumber(s)
         local ped = GetPlayerPed(src)
-        if ped and ped ~= 0 and DoesEntityExist(ped) and GetEntityHealth(ped) > 0 then
+        if ped and ped ~= 0 and DoesEntityExist(ped) and GetEntityHealth(ped) > 0
+           and (not ZStream or not ZStream.InGame or ZStream.InGame(src, ped)) then
             local at = GetEntityCoords(ped)
             local info = ZSimSense and ZSimSense.players and ZSimSense.players[src] or {}
             if not info.muted then

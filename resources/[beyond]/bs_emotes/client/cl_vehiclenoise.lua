@@ -2,7 +2,7 @@
 -- Sends 'horn' and 'engine' noise (weights in bs_zombies config_sectors.lua).
 -- Gunfire and whistling are in cl_noise.lua and cl_actions.lua.
 -- An engine is continuous, so driving is turned into a pulse every PULSE_MS;
--- that single number sets what driving costs. Speed scales what each pulse is
+-- that single number sets what driving costs. Speed and RPM scale what each pulse is
 -- worth, not the rate.
 -- Louder vehicles are a different kind (motorbike = `engine_loud`, hatchback =
 -- `engine`) so both radius and weight can be priced in config.
@@ -15,8 +15,9 @@ local PULSE_MS  = 2600
 -- A horn is deliberate; this only stops one press becoming thirty events.
 local HORN_MS   = 1200
 
--- Below this it is idling or crawling and makes no noise. m/s, about 18 km/h.
+-- A slow engine can still be loud when the driver revs it.
 local MOVING    = 5.0
+local REV_RPM   = 0.45
 
 -- Loud vehicles are picked by GetVehicleClass, not model, so add-ons are covered.
 --   8 motorcycles, 9 off-road, 14 boats, 15 helicopters (own kind), 16 planes,
@@ -72,18 +73,18 @@ CreateThread(function()
             if not kind then goto continue end
 
             local speed = GetEntitySpeed(vehicle)
+            local rpm = math.max(0.0, math.min(1.0, GetVehicleCurrentRpm(vehicle)))
 
-            -- A helicopter is loud even when hovering. Everything else has to be moving.
-            if kind ~= 'heli' and speed < MOVING then goto continue end
+            if kind ~= 'heli' and speed < MOVING and rpm < REV_RPM then goto continue end
 
             local now = GetGameTimer()
             if now - Vehicle.lastPulse < PULSE_MS then goto continue end
             Vehicle.lastPulse = now
 
-            -- Speed scales the radius, not the rate, so driving slowly is a real tactic.
-            -- Capped at 1.0 so the configured radius is the ceiling.
+            -- RPM also carries stationary revving; idle stays quiet.
             local base = Emotes.Noise[kind] or 120.0
-            local scale = math.min(1.0, 0.45 + (speed / 40.0))
+            local rev = math.max(0.0, (rpm - 0.2) / 0.8)
+            local scale = math.min(1.0, math.max(speed >= MOVING and (0.45 + speed / 40.0) or 0.0, rev))
             if kind == 'heli' then scale = 1.0 end
 
             Noise.Make(kind, GetEntityCoords(vehicle), base * scale)

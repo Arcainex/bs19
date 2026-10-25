@@ -211,7 +211,11 @@ local function startTour(startId, forced)
     end
     overrides = res.overrides or overrides
     Tour.list = buildList()
-    if #Tour.list == 0 then BSB.Await('tutorial:end', 5000) return end
+    if #Tour.list == 0 then
+        BSB.Await('tutorial:end', 5000)
+        TriggerServerEvent('bs:tutorial:leave')
+        return
+    end
     Tour.done = type(res.done) == 'table' and res.done or {}
     Tour.on = true
     hintAt = nil
@@ -258,6 +262,7 @@ stopTour = function()
     StopAudioScene('CHARACTER_CHANGE_IN_SKY_SCENE')
     TutUtil.hidePlayer(false)
     BSB.Await('tutorial:end', 5000)
+    TriggerServerEvent('bs:tutorial:leave')
     TriggerEvent('bs:ui:closed', 'tutorial')
     if lastMission then TriggerEvent('bs:tutorial:mission', lastMission[1], lastMission[2], lastMission[3]) end
     Wait(200)

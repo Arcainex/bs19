@@ -1,5 +1,5 @@
 -- bs_zombies - noise migration model
--- Noise moves existing walkers toward the last heard sound; it never spawns new ones
+-- Noise draws existing walkers and accelerates hidden replacements nearby.
 
 Noise = Noise or {}
 
@@ -8,6 +8,14 @@ Noise = Noise or {}
 -- Master switch for the migration model. false restores the old behaviour (sector multiplier, herd relocation, noise-driven spawn budget).
 -- Other settings here are ignored while false
 Noise.enabled = true
+
+Noise.Repopulation = {
+    enabled = true,
+    windowSeconds = 12,
+    minCarry = 70.0,
+    extraNear = 4,
+    perPlan = 10,
+}
 
 -- May noise move a herd?
 -- If true, herds with an alert walk to the alert point, which skews the spawner that draws from the nearest herd. false: herds ignore noise.

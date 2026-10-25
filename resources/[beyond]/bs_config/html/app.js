@@ -348,6 +348,23 @@
   $('btnApply').onclick = doApply;
   $('btnDiscard').onclick = () => { S.pending = {}; render(); };
   $('btnClose').onclick = () => close();
+  $('btnWorldCars').onclick = () => {
+    modal('World vehicles', '<p>Manage vehicles currently out in the world, including unsaved cars. Garaged vehicles are kept.</p>' +
+      '<label>Vehicle group</label><select id="vehicleScope"><option value="unclaimed">Unclaimed vehicles</option><option value="claimed">Claimed vehicles (owner only)</option><option value="all">All vehicles (owner only)</option></select>' +
+      '<label>Action</label><select id="vehicleOperation"><option value="wipe">Wipe selected vehicles</option><option value="repopulate">Wipe and repopulate</option></select>' +
+      '<p>Wipe pauses automatic world spawns until repopulation or a resource restart. Repopulation removes the selected vehicles and fills the configured world targets with fresh unclaimed cars. Removed vehicles and their keys are permanently deleted.</p>', [
+      { label: 'Cancel', fn: closeModal },
+      { label: 'Preview', primary: true, fn: async () => {
+        const scope = $('vehicleScope').value, operation = $('vehicleOperation').value;
+        closeModal();
+        const preview = await rpc('vehiclePreview', scope, operation);
+        if (!preview.ok) return toast(preview.error || 'Preview failed', true);
+        if (!await confirmBox('Confirm vehicle operation', `${preview.count} ${scope} vehicle(s) will be permanently removed. ${operation === 'repopulate' ? 'Fresh unclaimed vehicles will fill the configured world targets.' : 'Automatic world spawns will pause.'} Continue?`)) return;
+        const result = await rpc('vehicleManage', scope, operation);
+        toast(result.ok ? `${result.removed} removed; ${result.queued} queued for repopulation.` : result.error || 'Vehicle operation failed', !result.ok);
+      } }
+    ]);
+  };
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { if (!$('modal').classList.contains('hidden')) closeModal(); else close(); }
     else if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); $('search').focus(); }

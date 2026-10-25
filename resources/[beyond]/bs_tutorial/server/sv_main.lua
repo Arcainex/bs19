@@ -120,7 +120,13 @@ end
 
 local function leaveBucket(src)
     local a = Active[src]
-    if not a then return end
+    if not a then
+        if GetPlayerName(src) and GetPlayerRoutingBucket(src) == (S.bucketBase or 30000) + src then
+            SetPlayerRoutingBucket(src, 0)
+            Player(src).state:set('bs_tutorial', false, true)
+        end
+        return
+    end
     Active[src] = nil
     if GetPlayerName(src) then
         SetPlayerRoutingBucket(src, a.bucket or 0)
@@ -328,8 +334,17 @@ BSB.RegisterCallback('tutorial:begin', function(src, forced)
 end)
 
 BSB.RegisterCallback('tutorial:end', function(src)
-    if Active[src] and Active[src].kind == 'tour' then leaveBucket(src) end
+    if not Active[src] or Active[src].kind == 'tour' then leaveBucket(src) end
     return { ok = true }
+end)
+
+RegisterNetEvent('bs:tutorial:leave', function()
+    local src = source
+    if Active[src] and Active[src].kind == 'tour' then
+        leaveBucket(src)
+    elseif not Active[src] and Player(src).state.bs_tutorial == 'tour' then
+        leaveBucket(src)
+    end
 end)
 
 BSB.RegisterCallback('tutorial:offer', function(src, accepted)

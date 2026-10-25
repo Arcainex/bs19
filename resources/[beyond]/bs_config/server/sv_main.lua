@@ -440,6 +440,34 @@ end
 
 -- RPC
 
+local vehicleConfirm = {}
+function A.vehiclePreview(src, scope, operation)
+    if scope ~= 'unclaimed' and scope ~= 'claimed' and scope ~= 'all' then return { ok = false, error = 'Choose a vehicle group' } end
+    if operation ~= 'wipe' and operation ~= 'repopulate' then return { ok = false, error = 'Choose wipe or repopulate' } end
+    if scope ~= 'unclaimed' and not isOwner(src) then return { ok = false, error = 'Only a server owner may remove claimed vehicles' } end
+    if GetResourceState('bs_vehicles') ~= 'started' then return { ok = false, error = 'bs_vehicles is not running' } end
+    local count = exports.bs_vehicles:PreviewWorldCars(scope)
+    if count == nil then return { ok = false, error = 'Vehicle preview failed' } end
+    vehicleConfirm[src] = { scope = scope, operation = operation, count = count, expires = GetGameTimer() + 30000 }
+    return { ok = true, count = count }
+end
+
+function A.vehicleManage(src, scope, operation)
+    local preview = vehicleConfirm[src]
+    vehicleConfirm[src] = nil
+    if not preview or preview.scope ~= scope or preview.operation ~= operation or preview.expires < GetGameTimer() then
+        return { ok = false, error = 'Preview the vehicle operation again before confirming' }
+    end
+    if scope ~= 'unclaimed' and not isOwner(src) then return { ok = false, error = 'Only a server owner may remove claimed vehicles' } end
+    if GetResourceState('bs_vehicles') ~= 'started' then return { ok = false, error = 'bs_vehicles is not running' } end
+    if exports.bs_vehicles:PreviewWorldCars(scope) ~= preview.count then return { ok = false, error = 'Vehicle count changed. Preview again.' } end
+    audit(src, 'vehicle_request', active, scope, nil, operation)
+    local result = exports.bs_vehicles:ManageWorldCars(scope, operation)
+    if result.ok then audit(src, 'vehicle_' .. operation, active, scope, result.removed, result.queued) end
+    return result
+end
+AddEventHandler('playerDropped', function() vehicleConfirm[source] = nil end)
+
 RegisterNetEvent('bs_config:rpc', function(reqId, action, a, b, c)
     local src = source
     local fn = A[action]

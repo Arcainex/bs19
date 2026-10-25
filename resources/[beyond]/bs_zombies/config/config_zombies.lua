@@ -1021,6 +1021,23 @@ Zombies.Difficulty = {
     },
 }
 
+-- Ambient floor: every player outside a safezone keeps at least minNear walkers within radius,
+-- whatever the simulation holds there (empty countryside, no map pack, fresh install)
+Zombies.Ambient = {
+    enabled = true,
+    minNear = 22,      -- walkers kept within radius of each player (0 = off)
+    radius  = 200.0,   -- metres counted around the player
+    density = 1.0,     -- multiplies the streamed target everywhere (F1 "Ambient density")
+    perPlan = 6,       -- top-up walkers asked for per planning pass
+
+    -- Drift: idle walkers near a player shamble toward him a few at a time, so they arrive from every side
+    drift        = true,
+    driftRadius  = 260.0,  -- metres; idle walkers inside this are pulled
+    driftPerPass = 3,      -- walkers sent per player every driftTickMs
+    driftTickMs  = 4000,
+    driftEveryMs = { 20000, 40000 },  -- a walker is re-pointed after this
+}
+
 -- Spawn mode and density.
 
 Zombies.Spawn = {

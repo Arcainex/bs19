@@ -68,6 +68,10 @@ local function playerPoints()
 
     for _, sid in ipairs(GetPlayers()) do
         local src = tonumber(sid)
+        if ZStream and ZStream.InGame and not ZStream.InGame(src, GetPlayerPed(src), true) then
+            lastKnownAt[src] = nil
+            goto nextPoint
+        end
         local ped = src and GetPlayerPed(src) or 0
         local ok = false
 
@@ -89,6 +93,7 @@ local function playerPoints()
                 blind = blind + 1
             end
         end
+        ::nextPoint::
     end
 
     pointCache, pointCacheAt, pointCacheBlind = out, now, blind

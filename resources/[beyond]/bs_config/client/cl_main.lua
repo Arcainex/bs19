@@ -37,7 +37,7 @@ local function rpc(action, a, b, c)
     local p = promise.new()
     pending[id] = p
     TriggerServerEvent('bs_config:rpc', id, action, a, b, c)
-    SetTimeout(10000, function()
+    SetTimeout(action == 'vehicleManage' and 120000 or 10000, function()
         if pending[id] then pending[id] = nil; p:resolve({ ok = false, error = L('cfg.e.noanswer') }) end
     end)
     return Citizen.Await(p)

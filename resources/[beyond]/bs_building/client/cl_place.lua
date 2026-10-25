@@ -249,6 +249,7 @@ local function closeWheel()
     wheelOpen = false
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'wheelClose' })
+    TriggerEvent('bs:ui:closed', 'building')
 end
 
 RegisterNUICallback('wheelPick', function(data, cb)

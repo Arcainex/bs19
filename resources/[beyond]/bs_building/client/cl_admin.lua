@@ -14,8 +14,11 @@ RegisterNetEvent('bs:building:admin:open', function()
 end)
 
 RegisterNUICallback('adminClose', function(_, cb)
-    open = false
-    SetNuiFocus(false, false)
+    if open then
+        open = false
+        SetNuiFocus(false, false)
+        TriggerEvent('bs:ui:closed', 'building')
+    end
     cb({ ok = true })
 end)
 
@@ -30,8 +33,11 @@ RegisterNUICallback('adminAct', function(data, cb)
             res.list = BSB.Await('build:admin:list', 8000)
         end
         if data.action == 'teleport' and res and res.ok then
-            open = false
-            SetNuiFocus(false, false)
+            if open then
+                open = false
+                SetNuiFocus(false, false)
+                TriggerEvent('bs:ui:closed', 'building')
+            end
             SendNUIMessage({ action = 'adminHide' })
         end
         cb(res or { ok = false })

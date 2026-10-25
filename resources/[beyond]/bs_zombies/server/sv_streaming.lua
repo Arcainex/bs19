@@ -27,7 +27,7 @@ ZStream.stats = {
     rejected = 0,         -- candidates a client refused, total
     -- Rejection breakdown, so a rule that refuses everything can be told apart from one that works
     reasons = { seen = 0, rayClear = 0, noSafeCoord = 0, safeZone = 0, tooFar = 0, noNode = 0,
-                tooClose = 0, inView = 0, clumped = 0, nearPlayer = 0, queueDropped = 0 },
+                tooClose = 0, inView = 0, clumped = 0, nearPlayer = 0, queueDropped = 0, roof = 0, notReady = 0 },
 }
 
 -- Last plan per cluster, for the readout.
@@ -61,12 +61,26 @@ local function inSafeZone(x, y)
     return false
 end
 
+-- In the world with a character (not at the character select scene) and in the main routing bucket,
+-- where the walkers live (the tutorial's faction pick and tour run in private buckets)
+local function inGame(src, ped, keepPosition)
+    if not keepPosition and (not ped or ped == 0 or not DoesEntityExist(ped)) then return false end
+    if GetResourceState('bs_core') == 'started' then
+        local ok, p = pcall(function() return exports.bs_core:GetPlayer(src) end)
+        if not ok or not p or not p.charId then return false end
+    end
+    local okB, bucket = pcall(GetPlayerRoutingBucket, src)
+    if okB and tonumber(bucket) and tonumber(bucket) ~= 0 then return false end
+    return true
+end
+ZStream.InGame = inGame
+
 local function playerRecords()
     local result = {}
     for _, source in ipairs(GetPlayers()) do
         local src = tonumber(source)
         local ped = src and GetPlayerPed(src)
-        if ped and ped ~= 0 then
+        if ped and ped ~= 0 and inGame(src, ped) then
             local at = GetEntityCoords(ped)
             result[#result + 1] = { source = src, x = at.x, y = at.y, z = at.z }
         end
@@ -169,8 +183,134 @@ local function activeNear(cluster)
 
     local n, radius2 = 0, Streaming.cleanupDistance * Streaming.cleanupDistance
     for _, record in pairs(reg.zombies) do
-        if record.x and distance2(record, cluster) <= radius2 then n = n + 1 end
+        if record.x and not record.dead and (record.hp or 1) > 0
+           and distance2(record, cluster) <= radius2 then n = n + 1 end
     end
+    return n
+end
+
+-- Ambient floor
+
+ZStream.ambient = { topped = 0, recycled = 0, short = {} }
+ZStream.noisyPlayers = {}
+
+function ZStream.HearNoise(src, carry, kind)
+    local cfg = Noise and Noise.Repopulation or {}
+    if cfg.enabled == false or kind == 'silenced' or kind == 'melee' or kind == 'body' then return end
+    carry = math.min(520.0, math.max(0.0, tonumber(carry) or 0.0))
+    if carry < (cfg.minCarry or 70.0) or not inGame(src, GetPlayerPed(src)) then return end
+    local now = GetGameTimer()
+    local previous = ZStream.noisyPlayers[src]
+    local strength = math.min(1.0, carry / 200.0)
+    if previous and previous.untilAt > now then strength = math.min(1.0, math.max(strength, previous.strength) + 0.15) end
+    ZStream.noisyPlayers[src] = { untilAt = now + (cfg.windowSeconds or 12) * 1000, strength = strength }
+end
+
+local function noiseAt(src)
+    local p = ZStream.noisyPlayers[src]
+    if p and p.untilAt > GetGameTimer() then return p end
+    ZStream.noisyPlayers[src] = nil
+end
+
+local function ambientCfg() return (Zombies and Zombies.Ambient) or {} end
+
+-- Effective floor, kept under the per-player pool guard so it can always be met
+function ZStream.AmbientMin()
+    local a = ambientCfg()
+    if a.enabled == false then return 0 end
+    local want = math.floor(tonumber(a.minNear) or 0)
+    local guard = ((Streaming.PoolGuard or {}).maxPerPlayer or 28) - 2
+    return math.max(0, math.min(want, guard))
+end
+
+function ZStream.PresenceMin()
+    return math.min(10, ZStream.AmbientMin())
+end
+
+function ZStream.PedsNear(x, y, z, radius)
+    local n, r2 = 0, radius * radius
+    for _, rec in pairs((Registry and Registry.zombies) or {}) do
+        if rec.ent and not rec.dead and (rec.hp or 1) > 0 and DoesEntityExist(rec.ent)
+           and not rec.needsGround and (GetEntityHealth(rec.ent) > 0
+                or (rec.lastReport and GetGameTimer() - rec.lastReport < 5000)) then
+            local at = GetEntityCoords(rec.ent)
+            local dx, dy = at.x - x, at.y - y
+            if dx * dx + dy * dy <= r2 and math.abs(at.z - z) <= 40.0
+               and not Entity(rec.ent).state.zGround then n = n + 1 end
+        end
+    end
+    return n
+end
+
+-- Live walker records within r of a point
+function ZStream.RecordsNear(x, y, r)
+    local reg = rawget(_G, 'Registry')
+    if type(reg) ~= 'table' or type(reg.zombies) ~= 'table' then return 0 end
+    local n, r2 = 0, r * r
+    for _, rec in pairs(reg.zombies) do
+        if rec.x and not rec.dead and (rec.hp or 1) > 0 then
+            local dx, dy = rec.x - x, rec.y - y
+            if dx * dx + dy * dy <= r2 then n = n + 1 end
+        end
+    end
+    return n
+end
+
+-- Biggest shortfall among the cluster's members; players inside a safezone are skipped
+local function ambientShortfall(cluster)
+    local want = ZStream.AmbientMin()
+    local worst = 0
+    if want <= 0 then return 0 end
+    local radius = tonumber(ambientCfg().radius) or 200.0
+    cluster.ambientTarget = nil
+    for _, m in ipairs(cluster.members) do
+        local stay = ZStream.areaPresence and ZStream.areaPresence[m.source]
+        local noisy = noiseAt(m.source)
+        if (noisy or (stay and GetGameTimer() - stay.since >= (Streaming.quietAreaMs or 15000)))
+           and not inSafeZone(m.x, m.y) then
+            local live = ZNet and ZNet.enabled and ZStream.PedsNear(m.x, m.y, m.z, radius)
+                or ZStream.RecordsNear(m.x, m.y, radius)
+            local target = noisy and math.min(((Streaming.PoolGuard or {}).maxPerPlayer or 28) - 2,
+                want + math.ceil(((Noise and Noise.Repopulation or {}).extraNear or 4) * noisy.strength)) or want
+            local short = target - live
+            ZStream.ambient.short[m.source] = math.max(0, short)
+            if short > worst then worst, cluster.ambientTarget = short, m end
+        end
+    end
+    return worst
+end
+
+-- Far records nobody can see clog the per-player cap; give the slots back to walkers near the player
+local IDLE = { idle = true, wander = true, lurk = true, feeding = true }
+local function recycleFar(cluster, want)
+    local reg = rawget(_G, 'Registry')
+    if type(reg) ~= 'table' or not reg.Remove then return 0 end
+    local perCap = (Streaming.PoolGuard or {}).maxPerPlayer or 28
+    local streamR = reg.StreamRadius or 380.0
+    local keep = tonumber(ambientCfg().radius) or 200.0
+    local around = ZStream.RecordsNear(cluster.x, cluster.y, streamR)
+    local over = around + want - perCap
+    if over <= 0 then return 0 end
+    local players = playerRecords()
+    local cands = {}
+    for id, rec in pairs(reg.zombies) do
+        local unseen = rec.ent and not rec.lastReport and GetGameTimer() - (rec.materialisedAt or GetGameTimer()) > 20000
+        if not rec.event and not rec.dead and (unseen or (IDLE[rec.state or 'idle']
+           and not (rec.lureUntil and rec.lureUntil > os.time()))) then
+            local best = math.huge
+            for _, p in ipairs(players) do best = math.min(best, distance2(rec, p)) end
+            if (unseen or best > keep * keep) and distance2(rec, cluster) <= streamR * streamR then
+                cands[#cands + 1] = { id = id, d = best }
+            end
+        end
+    end
+    table.sort(cands, function(a, b) return a.d > b.d end)
+    local n = 0
+    for i = 1, math.min(over, #cands) do
+        reg.Remove(cands[i].id, 'recycle')
+        n = n + 1
+    end
+    ZStream.ambient.recycled = ZStream.ambient.recycled + n
     return n
 end
 
@@ -182,12 +322,13 @@ function ZStream.Plan()
     ZStream.stats.plans = ZStream.stats.plans + 1
     ZStream.stats.lastPlanMs = now
     ZStream.lastClusters = {}
+    ZStream.ambient.short = {}
     if not Zombies.Settings.enabled or not Streaming.enabled or not ZSpawnSrc.Ready() then return end
     for id, offer in pairs(ZStream.offers) do
         if now >= offer.expires then ZStream.offers[id] = nil end
     end
     local records = playerRecords()
-    -- Quiet-world population starts after a survivor stays in the same area for thirty seconds
+    -- Quiet-world population starts after a survivor stays in the same area.
     ZStream.areaPresence = ZStream.areaPresence or {}
     local present = {}
     for _, player in ipairs(records) do
@@ -223,7 +364,7 @@ function ZStream.Plan()
         local settled = false
         for _, member in ipairs(cluster.members) do
             local stay = ZStream.areaPresence[member.source]
-            if stay and now - stay.since >= (Streaming.quietAreaMs or 30000) then
+            if stay and now - stay.since >= (Streaming.quietAreaMs or 15000) then
                 settled = true
                 break
             end
@@ -231,19 +372,55 @@ function ZStream.Plan()
         local recentNoise = ZPOI and ZPOI.LoudestNear
             and ZPOI.LoudestNear(cluster.x, cluster.y, 350.0)
         if not settled and not recentNoise then remaining = 0 end
+        -- Ambient floor counts real peds in networked mode, not dormant records.
+        local floorNeed = math.max(0, ambientShortfall(cluster) - pending)
+        local perPlan = math.max(1, math.floor(tonumber(ambientCfg().perPlan) or 6))
+        if cluster.ambientTarget and noiseAt(cluster.ambientTarget.source) then
+            perPlan = math.max(perPlan, (Noise and Noise.Repopulation or {}).perPlan or 10)
+        end
+        if floorNeed > 0 then
+            local targetPlayer = cluster.ambientTarget
+            local minimumNeed = targetPlayer and math.max(0, ZStream.PresenceMin()
+                - ZStream.PedsNear(targetPlayer.x, targetPlayer.y, targetPlayer.z, tonumber(ambientCfg().radius) or 200.0)) or 0
+            recycleFar(cluster, math.min(floorNeed, minimumNeed))
+            remaining = math.max(remaining, math.min(floorNeed, perPlan, worldRoom))
+            budget = math.max(budget, active + pending + floorNeed)
+        end
         local nodes = {}
         local nearby = ZSpawnSrc.Nearby(cluster, Streaming.fullDistance + 100.0)
         local cursor = ZStream.selectionCursor[cluster.coordinator] or 0
+        -- Ring points close to the player go first when the floor is short
+        -- Top-ups use the underserved player's ring before the wider simulation.
+        local ordered, used = {}, {}
+        local maxOffer2 = (math.min(Streaming.fullDistance + 100.0, ((Zombies.Net or {}).promoteRadius or 260.0) - 20.0)) ^ 2
+        if floorNeed > 0 then
+            local lo2 = (Streaming.spawnMin + 15.0) ^ 2
+            local hi2 = (tonumber(ambientCfg().radius) or 200.0) ^ 2
+            if ZSpawnSrc.Ring then
+                for _, node in ipairs(ZSpawnSrc.Ring(cluster.ambientTarget or cluster, math.min(floorNeed, perPlan) + 2)) do
+                    ordered[#ordered + 1] = node
+                end
+            end
+            for _, node in ipairs(nearby) do
+                local d = distance2(node, cluster)
+                if d >= lo2 and d <= hi2 then ordered[#ordered + 1] = node; used[node] = true end
+            end
+        end
         for i = 1, #nearby do
-            if remaining <= 0 then break end
             local node = nearby[((cursor + i - 1) % #nearby) + 1]
+            if not used[node] then ordered[#ordered + 1] = node end
+        end
+        for _, node in ipairs(ordered) do
+            if remaining <= 0 then break end
             local closest = math.huge
             for _, player in ipairs(records) do closest = math.min(closest, distance2(node, player)) end
+            -- Never offer past the ped promotion radius: a record out there is never seen and still fills the caps
             if not ZStream.offers[node.id] and node.population > 0
-               and closest >= (Streaming.spawnMin + 15.0)^2 and not inSafeZone(node.x,node.y) then
+               and closest >= (Streaming.spawnMin + 15.0)^2 and closest <= maxOffer2
+               and not inSafeZone(node.x,node.y) then
                 local mode = node.synthetic and 'hidden' or 'simulation'
                 ZStream.offers[node.id] = {
-                    src = cluster.coordinator, expires = now + 6500, mode = mode,
+                    src = cluster.coordinator, expires = now + 9000, mode = mode,
                     x = node.x, y = node.y, budget = budget, cluster = cluster,
                 }
                 nodes[#nodes+1] = { id=node.id, x=node.x, y=node.y, z=node.z,
@@ -253,6 +430,7 @@ function ZStream.Plan()
             end
         end
         ZStream.selectionCursor[cluster.coordinator] = cursor + math.max(1, #nodes)
+        if floorNeed > 0 then ZStream.ambient.topped = ZStream.ambient.topped + #nodes end
         ZStream.stats.offered = ZStream.stats.offered + #nodes
         ZStream.lastClusters[#ZStream.lastClusters+1] = {
             coordinator=cluster.coordinator, members=#cluster.members,
@@ -285,6 +463,8 @@ RegisterNetEvent('bs:zs:tele', function(data)
         liveZombies = ZPolicy.Finite(live) and math.max(0, math.min(1024, math.floor(live))) or nil,
     }
 end)
+
+AddEventHandler('playerDropped', function() ZStream.noisyPlayers[source] = nil end)
 
 -- Dry-run report
 RegisterNetEvent('bs:zs:report', function(report)
@@ -421,13 +601,14 @@ function ZStream.Spawn(src, nodeId, coords, heading, mode)
     local node = ZSpawnSrc.Get(nodeId)
     if not node then return refuse('noNode') end
     if node.population <= 0 then return refuse('empty') end
-    if mode == 'simulation' and ((x-offer.x)^2+(y-offer.y)^2 > 60.0^2) then
-        return refuse('range','placement left its simulation agent')
+    if (x-offer.x)^2+(y-offer.y)^2 > 60.0^2 then
+        return refuse('range','placement left its offered source')
     end
     if activeNear(offer.cluster) >= offer.budget then return refuse('cap','cluster allocation full') end
     if ZStream.LiveCount() >= (Streaming.globalHard or 200) then return refuse('cap','global pool full') end
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then return refuse('blind') end
+    if not inGame(src, ped) then return refuse('blind', 'player left the world') end
     local at = GetEntityCoords(ped)
     local maxRange = (Streaming.spawnMax or 200) + ((Sim and Sim.spawn and Sim.spawn.openPushMax) or 0) + 100
     if (x-at.x)^2+(y-at.y)^2 > maxRange^2 then return refuse('range') end
@@ -978,3 +1159,130 @@ RegisterNetEvent('bs:zs:diagreply', function(report)
 
     emit('^5' .. string.rep('-', 62) .. '^7')
 end)
+
+-- Drift: idle hosted walkers near a player are pointed at him a few at a time
+
+local DRIFTABLE = { idle = true, wander = true, lurk = true, drawn = true }
+ZStream.ambient.drifted = 0
+
+CreateThread(function()
+    while true do
+        local a = ambientCfg()
+        Wait(math.max(1000, math.floor(tonumber(a.driftTickMs) or 4000)))
+        local reg = rawget(_G, 'Registry')
+        if a.drift ~= false and Zombies.Settings.enabled and type(reg) == 'table' and type(reg.zombies) == 'table' then
+            local now = GetGameTimer()
+            local players = playerRecords()
+            local radius = tonumber(a.driftRadius) or 260.0
+            local every = type(a.driftEveryMs) == 'table' and a.driftEveryMs or { 20000, 40000 }
+            local perPass = math.max(1, math.floor(tonumber(a.driftPerPass) or 3))
+            local sent = {}
+            -- Shuffled so the walkers that start moving come from different sides
+            local list = {}
+            for _, rec in pairs(reg.zombies) do
+                if rec.host and rec.ent and not rec.event and not rec.dead and DRIFTABLE[rec.state or 'idle'] then
+                    if not rec.nextDriftAt then
+                        rec.nextDriftAt = now + math.random(2000, 10000)
+                    elseif now >= rec.nextDriftAt then
+                        list[#list + 1] = rec
+                    end
+                end
+            end
+            for i = #list, 2, -1 do
+                local j = math.random(i)
+                list[i], list[j] = list[j], list[i]
+            end
+            for _, rec in ipairs(list) do
+                local best, who = radius * radius, nil
+                for _, p in ipairs(players) do
+                    local d = distance2(rec, p)
+                    if d <= best then best, who = d, p end
+                end
+                if who and (sent[who.source] or 0) < perPass and not inSafeZone(who.x, who.y) then
+                    sent[who.source] = (sent[who.source] or 0) + 1
+                    rec.nextDriftAt = now + math.random(every[1] or 20000, every[2] or 40000)
+                    TriggerClientEvent('bs:z:draw', rec.host, rec.id, { x = who.x, y = who.y, z = who.z })
+                    ZStream.ambient.drifted = ZStream.ambient.drifted + 1
+                end
+            end
+        end
+    end
+end)
+
+-- /zpop - admin readout of the population around each player and why spawns are refused
+
+local function nonZero(map)
+    local out = {}
+    for k, v in pairs(map or {}) do
+        if (tonumber(v) or 0) > 0 then out[#out + 1] = ('%s=%d'):format(k, v) end
+    end
+    table.sort(out)
+    return #out > 0 and table.concat(out, ' ') or 'none'
+end
+
+RegisterCommand('zpop', function(src)
+    if src ~= 0 and not IsPlayerAceAllowed(src, 'bs.admin') then return end
+    local function say(line)
+        print(line)
+        if src ~= 0 then TriggerClientEvent('chat:addMessage', src, { args = { line } }) end
+    end
+    local reg = rawget(_G, 'Registry') or {}
+    local net = rawget(_G, 'ZNet')
+    local PG = Streaming.PoolGuard or {}
+    local amb = (Zombies and Zombies.Ambient) or {}
+    local radius = tonumber(amb.radius) or 200.0
+    local promoteR = ((Zombies.Net or {}).promoteRadius or 260.0)
+    local records = 0
+    for _ in pairs(reg.zombies or {}) do records = records + 1 end
+
+    say(('^5[zpop]^7 records=%d networked=%d net-cap=%d (%s) | world hard=%d pool max=%d per-player=%d | mode=%s sim=%s agents=%d')
+        :format(records, net and net.count or 0, net and net.cap or 0,
+                net and net.capWhy or (net and 'ok' or 'networked off'),
+                Streaming.globalHard or 200, PG.maxNetworked or 96, PG.maxPerPlayer or 28,
+                ZSpawnSrc.Mode(), tostring(ZSim and ZSim.ready or false), ZSim and ZSim.agentCount or 0))
+    say(('^5[zpop]^7 ambient floor %s: min %d within %.0fm, density x%.2f | topped %d, recycled %d, drifted %d | ring %.0f-%.0fm | zombies %s')
+        :format(amb.enabled == false and 'OFF' or 'on', ZStream.AmbientMin(), radius,
+                tonumber(amb.density) or 1.0, ZStream.ambient.topped, ZStream.ambient.recycled,
+                ZStream.ambient.drifted or 0, Streaming.spawnMin or 0, Streaming.spawnMax or 0,
+                Zombies.Settings.enabled and 'enabled' or 'DISABLED'))
+
+    local now = GetGameTimer()
+    for _, p in ipairs(playerRecords()) do
+        local peds = 0
+        if net then
+            for ent in pairs(net.ents) do
+                if DoesEntityExist(ent) then
+                    local c = GetEntityCoords(ent)
+                    if (c.x - p.x) ^ 2 + (c.y - p.y) ^ 2 <= promoteR * promoteR then peds = peds + 1 end
+                end
+            end
+        end
+        local agents = (ZSim and ZSim.AgentsNear) and select(2, ZSim.AgentsNear(p.x, p.y, 400.0)) or 0
+        local stay = ZStream.areaPresence and ZStream.areaPresence[p.source]
+        say(('   %s [%d] at %.0f %.0f: records %d<=%.0fm %d<=%.0fm %d<=%.0fm | peds %d | sim agents %d<=400m | settled %s | safezone %s | short %d')
+            :format(GetPlayerName(p.source) or '?', p.source, p.x, p.y,
+                    ZStream.RecordsNear(p.x, p.y, radius), radius,
+                    ZStream.RecordsNear(p.x, p.y, promoteR), promoteR,
+                    ZStream.RecordsNear(p.x, p.y, reg.StreamRadius or 380.0), reg.StreamRadius or 380.0,
+                    peds, agents,
+                    stay and ('%.0fs'):format((now - stay.since) / 1000.0) or 'no',
+                    inSafeZone(p.x, p.y) and 'YES' or 'no',
+                    ZStream.ambient.short[p.source] or 0))
+    end
+
+    say(('^5[zpop]^7 plans=%d offered=%d client-accepted=%d requests=%d spawned=%d')
+        :format(ZStream.stats.plans, ZStream.stats.offered, ZStream.stats.accepted,
+                ZStream.requests or 0, ZStream.spawned or 0))
+    say('   server refused: ' .. nonZero(ZStream.refused))
+    say('   client refused: ' .. nonZero(ZStream.stats.reasons))
+    say(('   registry refused: too-close=%d blind=%d player-cap=%d')
+        :format(reg.refusedTooClose or 0, reg.refusedBlind or 0, reg.refusedPlayerCap or 0))
+    if #ZStream.lastRefusals > 0 then say('   last: ' .. table.concat(ZStream.lastRefusals, ' | ')) end
+    say('   removed (total): ' .. nonZero(reg.removedTotal))
+    for i = 1, math.min(6, #(reg.recentRemovals or {})) do say('   gone: ' .. reg.recentRemovals[i]) end
+    if net then
+        local s = net.stats
+        say(('   peds: created %d failed %d demoted %d shed %d unexpected deletes %d orphans %d')
+            :format(s.created, s.failed, s.demoted, s.shed, s.unexpected, s.orphans))
+    end
+end, false)

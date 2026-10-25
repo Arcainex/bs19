@@ -28,14 +28,14 @@ Streaming.observeMs = 500
 
 -- Hidden-spawn ring around the player (m): candidates are drawn between spawnMin and spawnMax
 -- Keep spawnMin above spawnFloor and Noise.Materialise.hardFloor, or every spawn is refused
-Streaming.spawnMin = 80.0
-Streaming.spawnMax = 200.0
-Streaming.quietAreaMs = 30000
+Streaming.spawnMin = 70.0
+Streaming.spawnMax = 140.0
+Streaming.quietAreaMs = 15000
 Streaming.quietAreaRadius = 75.0
 
 -- Distance floor for this path (m)
 -- Lower than the sector system's spawnDistanceMin (180) because candidates here are ray-tested as unseen
-Streaming.spawnFloor = 80.0
+Streaming.spawnFloor = 70.0
 Streaming.arrivalFloor = 140.0
 
 -- A node closer than this (m) to a cluster is a candidate for real peds.
@@ -160,7 +160,7 @@ Streaming.safeZonePaddingFallback = 55.0
 Streaming.Placement = {
     -- Minimum distance (m) from every player, not just the one spawning
     -- Separate from spawnMin, which is the ring around the spawning player
-    minPlayerDistance = 80.0,
+    minPlayerDistance = 70.0,
     -- Refuse candidates in the local camera's forward arc even if the engine's frustum test reports them occluded at this instant
     localViewHalfAngle = 65.0,
     localViewRange = 300.0,
@@ -190,13 +190,13 @@ Streaming.Placement = {
 
 Streaming.Stagger = {
     -- Milliseconds between two dispatches, drawn uniformly from this range. The jitter avoids a fixed rhythm.
-    minGapMs = 400,
-    maxGapMs = 1400,
+    minGapMs = 250,
+    maxGapMs = 700,
 
     -- Max accepted candidates held in the queue
     -- Extras are dropped, not banked, since the view check would be stale
     maxQueued = 12,
 
     -- Max age in ms of a queued candidate. Older ones are discarded because the view check no longer holds.
-    maxAgeMs = 4000,
+    maxAgeMs = 6000,
 }
