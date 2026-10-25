@@ -899,6 +899,7 @@ setInterval(async () => {
 
 AtlasMap.init($('map'), {
     onCellClick: (cx, cy) => inspectCell(cx, cy),
+    onCarClick:  car => teleportTo(car.x + 4.0, car.y),
     onRect:      onRect,
     onPick:      (x, y, kind) => (kind === 'teleport' ? teleportTo(x, y) : registerObserver(x, y)),
     onCursor:    (x, y) => {

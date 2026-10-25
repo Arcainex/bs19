@@ -417,7 +417,10 @@ function Wear.Diagnose(vehicle)
     SetVehicleDoorShut(vehicle, 4, false)
 
     diagnosing = false
-    return state.parts
+    local result = {}
+    for id, value in pairs(state.parts or {}) do result[id] = value end
+    result.missing = state.missing or {}
+    return result
 end
 
 exports('Diagnose', function(vehicle) return Wear.Diagnose(vehicle) end)

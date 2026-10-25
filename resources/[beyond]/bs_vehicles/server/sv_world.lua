@@ -398,10 +398,9 @@ end, false)
 
 exports('GetWorldCars', function()
     local rows = exports.oxmysql:query_async([[
-        SELECT `id`, `plate`, `model`, `category`, `fuel`, `locked`, `stored`, `wrecked_at`, `position`, `world_spawn`
-        FROM `bs_vehicles`
-        WHERE `scrapped` = 0 AND `position` IS NOT NULL
-          AND (`world_spawn` = 1 OR (`owner_character_id` IS NULL AND `stored` = 0))
+        SELECT v.*, CONCAT_WS(' ', c.`first_name`, c.`last_name`) AS `owner_name`
+        FROM `bs_vehicles` v LEFT JOIN `bs_characters` c ON c.`id` = v.`owner_character_id`
+        WHERE v.`scrapped` = 0 AND v.`stored` = 0 AND v.`position` IS NOT NULL
         LIMIT 2000
     ]]) or {}
     local out = {}
@@ -410,10 +409,11 @@ exports('GetWorldCars', function()
         if ok and type(pos) == 'table' and pos.x and pos.y then
             local state = 'free'
             if r.wrecked_at then state = 'wrecked'
-            elseif r.stored == true or tonumber(r.stored) == 1 then state = 'stored'
+            elseif r.owner_character_id then state = 'claimed'
             elseif r.locked == true or tonumber(r.locked) == 1 then state = 'locked' end
             out[#out + 1] = { id = r.id, plate = r.plate, model = tostring(r.model or '?'),
                 origin = (r.world_spawn == true or tonumber(r.world_spawn) == 1) and 'system' or 'admin',
+                owner = r.owner_character_id, ownerName = r.owner_name,
                 category = r.category, fuel = tonumber(r.fuel) or 0,
                 x = pos.x, y = pos.y, z = pos.z, state = state }
         end

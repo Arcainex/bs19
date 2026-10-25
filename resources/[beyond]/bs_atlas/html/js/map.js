@@ -410,7 +410,11 @@ function drawCars() {
         const sx = w2sx(car.x), sy = w2sy(car.y);
         if (sx < -20 || sy < -20 || sx > S.w + 20 || sy > S.h + 20) continue;
         c.fillStyle = CAR_COLOURS[car.origin] || CAR_COLOURS.system;
-        c.fillRect(sx - 3, sy - 3, 6, 6);
+        c.fillRect(sx - 11, sy - 4, 22, 8);
+        c.fillRect(sx - 5, sy - 8, 11, 5);
+        c.fillStyle = '#101820';
+        c.beginPath(); c.arc(sx - 6, sy + 5, 3, 0, Math.PI * 2); c.arc(sx + 6, sy + 5, 3, 0, Math.PI * 2); c.fill();
+        c.fillStyle = CAR_COLOURS[car.origin] || CAR_COLOURS.system;
         if (car.state === 'wrecked') {
             c.strokeStyle = '#ff5f56'; c.lineWidth = 1.5;
             c.strokeRect(sx - 4.5, sy - 4.5, 9, 9);
@@ -418,7 +422,7 @@ function drawCars() {
         if (labels) {
             c.font = '10px Rajdhani, sans-serif';
             c.textAlign = 'left';
-            c.fillText(car.model + ' ' + AT('atlas.cars.' + car.state, car.state), sx + 7, sy + 3);
+            c.fillText(car.model + ' ' + (car.state === 'claimed' ? 'Claimed' : AT('atlas.cars.' + car.state, car.state)) + (car.owner ? ' — ' + (car.ownerName || '#' + car.owner) : ''), sx + 16, sy + 3);
         }
     }
 }
@@ -692,6 +696,10 @@ function bindPointer() {
             return;
         }
 
+        if (S.layers.cars && S.hooks.onCarClick) {
+            const car = (S.cars || []).find(car => Math.hypot(w2sx(car.x) - px, w2sy(car.y) - py) <= 15);
+            if (car) { S.hooks.onCarClick(car); return; }
+        }
         const cs = (S.cur && S.cur.cellSize) || 50;
         if (S.hooks.onCellClick) S.hooks.onCellClick(Math.floor(wx / cs), Math.floor(wy / cs), wx, wy);
     });

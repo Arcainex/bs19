@@ -1402,13 +1402,6 @@ local function adminRemove(plate)
     lease[plate] = nil
     driver[plate] = nil
 
-    if record.owner ~= nil and not record.wreckedAt then
-        record.stored = true
-        dirty[plate] = nil
-        save(record)
-        return 'stored'
-    end
-
     exports.oxmysql:execute_async('DELETE FROM `bs_vehicle_keys` WHERE `vehicle_id` = ?', { record.id })
     exports.oxmysql:execute_async('DELETE FROM `bs_vehicles` WHERE `id` = ?', { record.id })
     Registry[plate] = nil
