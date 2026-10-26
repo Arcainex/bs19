@@ -16,6 +16,7 @@ tasks:
     path: ./tmp/bs19-part1.zip
 
   - action: unzip
+    timeoutSeconds: 600
     src: ./tmp/bs19-part1.zip
     dest: ./tmp/bs
 
@@ -24,6 +25,7 @@ tasks:
     path: ./tmp/bs19-part2.zip
 
   - action: unzip
+    timeoutSeconds: 600
     src: ./tmp/bs19-part2.zip
     dest: ./tmp/bs
 
@@ -32,6 +34,7 @@ tasks:
     path: ./tmp/bs19-part3.zip
 
   - action: unzip
+    timeoutSeconds: 600
     src: ./tmp/bs19-part3.zip
     dest: ./tmp/bs
 
@@ -40,6 +43,7 @@ tasks:
     path: ./tmp/bs19-part4.zip
 
   - action: unzip
+    timeoutSeconds: 600
     src: ./tmp/bs19-part4.zip
     dest: ./tmp/bs
 
@@ -61,6 +65,7 @@ tasks:
     path: ./tmp/oxmysql.zip
 
   - action: unzip
+    timeoutSeconds: 600
     src: ./tmp/oxmysql.zip
     dest: ./resources
 
