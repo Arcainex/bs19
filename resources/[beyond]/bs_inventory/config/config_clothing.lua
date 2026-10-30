@@ -140,9 +140,9 @@ local function vest(label, w, h, weight, value, grid, stats, rarity)
     return def
 end
 
-Clothing.Items.pack_small    = pack('Small backpack',    1, 2, 2, 0.8, 120,  { width = 4, height = 3, maxWeight = 10.0 }, 6.0,  'common')
-Clothing.Items.pack_medium   = pack('Medium backpack',   2, 2, 3, 1.4, 260,  { width = 5, height = 4, maxWeight = 20.0 }, 12.0, 'common')
-Clothing.Items.pack_large    = pack('Large backpack',    3, 3, 3, 2.0, 520,  { width = 6, height = 5, maxWeight = 32.0 }, 13.0, 'good')
+Clothing.Items.pack_small    = pack('Small backpack',    1, 1, 2, 0.8, 120,  { width = 4, height = 3, maxWeight = 10.0 }, 6.0,  'common')
+Clothing.Items.pack_medium   = pack('Medium backpack',   2, 1, 2, 1.4, 260,  { width = 5, height = 4, maxWeight = 20.0 }, 12.0, 'common')
+Clothing.Items.pack_large    = pack('Large backpack',    3, 1, 2, 2.0, 520,  { width = 6, height = 5, maxWeight = 32.0 }, 13.0, 'good')
 Clothing.Items.pack_military = pack('Military backpack', 4, 3, 3, 2.6, 900,  { width = 7, height = 6, maxWeight = 45.0 }, 12.5, 'military')
 Clothing.Items.vest_tactical = vest('Tactical vest',     2, 2, 2.2, 380,  { width = 3, height = 2, maxWeight = 6.0 },  { carry = 3.0, armour = 6 },  'good')
 Clothing.Items.vest_plate    = vest('Plate carrier',     2, 2, 5.5, 1100, { width = 4, height = 2, maxWeight = 10.0 }, { carry = 3.0, armour = 15 }, 'military')

@@ -40,7 +40,7 @@ BS.on('settings', ({ settings = {}, theme = {}, bars = [], minimal = [], xp = {}
 
     hudEl.dataset.anchor = settings.hudAnchor || 'bottom-left';
     hudEl.dataset.mode   = settings.hudMode || 'full';
-    hudEl.dataset.style  = settings.hudStyle || 'classic';
+    hudEl.dataset.style  = settings.hudStyle || 'slim';
     xpEl.dataset.position = settings.xpPosition || 'top';
 
     // The quick bar and XP bar share the bottom of the screen; the bar lifts itself clear only when it has to.
@@ -84,7 +84,7 @@ function buildBars() {
         const row = document.createElement('div');
         row.className = 'hud__bar';
         row.innerHTML = `
-            ${BS.icon(bar.icon, 'hud__bar-icon')}
+            <span class="hud__bar-icon-wrap" style="color:${bar.color}">${BS.icon(bar.icon, 'hud__bar-icon')}</span>
             <span class="hud__bar-label">${barLabel(bar)}</span>
             <div class="hud__bar-track">
                 <div class="hud__bar-fill" style="background-color:${bar.color}"></div>
@@ -117,7 +117,7 @@ BS.on('hudData', ({ data }) => {
         const raw = Math.max(0, Math.min(100, Math.round(data[key] ?? 0)));
         node.fill.style.width = `${raw}%`;
         // Every bar reads as a percent so the columns line up; real HP (e.g. 190/190) lives in the tooltip.
-        node.value.textContent = `${raw}%`;
+        node.value.textContent = ''; // percentage hidden in HUD
         node.row.style.setProperty('--bs-fill', `${raw}%`);
         if (key === 'health' && data.healthMax > 0) {
             node.row.title = `${Math.round(data.healthNow)}/${Math.round(data.healthMax)} HP`;
@@ -136,11 +136,21 @@ BS.on('hudData', ({ data }) => {
         node.row.classList.toggle('is-hidden', !!hide);
     }
 
-    document.getElementById('hud-name').textContent = data.name || '';
-    document.getElementById('hud-class').textContent = data.class || '';
     document.getElementById('hud-cash').textContent = BS.money(data.cash);
 
     setXP(data.xp, data.xpToNext, data.level);
+});
+
+
+// YaCA microphone state + current proximity voice range.
+BS.on('yacaVoice', ({ muted = true, range = 0 }) => {
+    const voice = document.getElementById('hud-voice');
+    const rangeEl = document.getElementById('hud-voice-range');
+    if (voice) voice.dataset.muted = muted ? '1' : '0';
+    if (rangeEl) {
+        const metres = Number(range);
+        rangeEl.textContent = Number.isFinite(metres) && metres > 0 ? `${Math.round(metres)} m` : '-- m';
+    }
 });
 
 // XP bar
@@ -293,10 +303,10 @@ const dashCtx = dashEl && dashEl.getContext('2d');
 const DASH = {
     ink:    '#d6cea8',
     dim:    'rgba(214, 206, 168, 0.35)',
-    accent: '#c8763a',
+    accent: '#728c42',
     good:   '#a89e60',
-    worn:   '#d09e40',
-    poor:   '#c46c30',
+    worn:   '#93ab63',
+    poor:   '#728c42',
     gone:   '#a8342c',
 };
 const DASH_COLOR = { GOOD: DASH.good, WORN: DASH.worn, POOR: DASH.poor, GONE: DASH.gone };
@@ -609,7 +619,7 @@ function dashDrawClassic(data, W, H) {
 }
 
 // Scrap: rusty analog speedo with a swinging needle and a small fuel dial.
-const SCRAP = { plate: 'rgba(52, 34, 22, 0.78)', rim: '#7a4a2a', rust: '#a3592e', ink: '#e3cfa4', needle: '#d8452c', rivet: '#5c3a22' };
+const SCRAP = { plate: 'rgba(52, 34, 22, 0.78)', rim: '#4b573e', rust: '#4b5d2a', ink: '#e3cfa4', needle: '#d8452c', rivet: '#5c3a22' };
 function dashDrawScrap(data, W, H) {
     const cx = W / 2, cy = W * 0.5, R = W * 0.46;
     const mph = data.unit === 'mph';
@@ -623,7 +633,7 @@ function dashDrawScrap(data, W, H) {
     dashCtx.strokeStyle = SCRAP.rim; dashCtx.lineWidth = W * 0.03;
     dashCtx.beginPath(); dashCtx.arc(cx, cy, R - W * 0.015, 0, Math.PI * 2); dashCtx.stroke();
     // rust blotches on the rim, fixed spots so nothing flickers
-    dashCtx.fillStyle = 'rgba(163, 89, 46, 0.55)';
+    dashCtx.fillStyle = 'rgba(114, 140, 66, 0.55)';
     for (const a of [0.3, 1.9, 2.6, 4.1, 5.2]) {
         dashCtx.beginPath();
         dashCtx.arc(cx + Math.cos(a) * (R - W * 0.02), cy + Math.sin(a) * (R - W * 0.02), W * 0.025, 0, Math.PI * 2);

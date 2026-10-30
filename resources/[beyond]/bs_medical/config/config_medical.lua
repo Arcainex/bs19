@@ -134,7 +134,7 @@ Medical.Help = {
 -- Self-revive: a medkit used while down (R on the downed screen, or 'use' in
 -- the inventory) goes through the normal revive path.
 Medical.SelfRevive = {
-    enabled  = true,
+    enabled  = false,
     item     = 'medkit',
     control  = 45,         -- R (INPUT_RELOAD)
     label    = 'R',

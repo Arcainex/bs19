@@ -507,36 +507,18 @@ BSB.RegisterCallback('medical:revive', function(src, targetSrc)
     return { ok = true }
 end)
 
--- Getting yourself up with a medkit. Both the [R] key on the downed screen and inventory 'use' end here, and hand to finish(src, true), the same path as a medic's or staff revive, so the client stands up via the single standUp() in cl_downed.lua and the state bag is cleared.
-
+-- Self-revive is intentionally disabled on Alpha-Z.
+-- Only another player may revive a downed survivor. Keep the callback/export as
+-- hard server-side guards so a modified client or another resource cannot bypass it.
 local SR = Medical.SelfRevive or {}
 
--- Spends the item (unless `alreadyConsumed`) and revives. Returns ok, err.
-local function selfRevive(src, alreadyConsumed)
-    if not SR.enabled then return false, Lp(src, 'med.you_cannot_get_yourself_up') end
-    if not isDown(src) then return false, Lp(src, 'med.you_are_not_down') end
-    if Down[src].flat then return false, Lp(src, 'med.no_pulse') end
-    if not alreadyConsumed and SR.item then
-        if exports.bs_inventory:CountItem(src, SR.item) < 1 then
-            return false, Lp(src, 'med.you_have_no_medkit')
-        end
-        exports.bs_inventory:RemoveItem(src, SR.item, 1)
-    end
-    finish(src, true)
-    local record = deaths[src]
-    if record then record.wiped = true end
-    local player = exports.bs_core:GetPlayer(src)
-    print(('^2[BS MEDICAL]^7 %s patched themselves up'):format(player and player.name or src))
-    return true
-end
-
 BSB.RegisterCallback('medical:selfRevive', function(src)
-    local ok, err = selfRevive(src, false)
-    return { ok = ok, error = err }
+    return { ok = false, error = Lp(src, 'med.you_cannot_get_yourself_up') }
 end)
 
--- For bs_inventory: the medkit was already consumed by inventory:use.
-exports('SelfRevive', function(src) return (selfRevive(tonumber(src), true)) end)
+exports('SelfRevive', function(src)
+    return false, Lp(tonumber(src), 'med.you_cannot_get_yourself_up')
+end)
 
 -- What the downed HUD may offer: items in the bag and who can pick you up.
 BSB.RegisterCallback('medical:options', function(src)

@@ -9,6 +9,15 @@
 
     // Each entry is the inside of the svg, as raw path data.
     const ART = {
+        // BS19 book items (SVG fallback, no PNG required)
+        tourism_guide:
+            '<path d="M12 6c-2.5-1.5-5.5-1.5-9-1v14c3.5-.5 6.5-.5 9 1"/>' +
+            '<path d="M12 6c2.5-1.5 5.5-1.5 9-1v14c-3.5-.5-6.5-.5-9 1"/>' +
+            '<path d="M12 6v14M5.5 9h4M14.5 9h4M5.5 12h4M14.5 12h4"/>',
+        pacific_blueprints:
+            '<rect x="4" y="3" width="16" height="18" rx="1"/>' +
+            '<path d="M8 3v18M11 7h6M11 10h6M11 14h3"/>' +
+            '<path d="M14 14v4h4v-4z"/>',
         // boosters
         booster_drone:
             '<rect x="9" y="10" width="6" height="4" rx="1"/><path d="M9 11 5 8M15 11l4-3M9 13l-4 3M15 13l4 3"/>' +
@@ -301,6 +310,7 @@
 
         // items/ - SwisserDev fivem-inventory-icons (CC0-1.0)
         crowbar:        'items/crowbar.png',
+        flashlight:      'items/flashlight.png',
         armour_plate:   'items/armor.png',
         bandage:        'items/bandage.png',
         cloth:          'items/cloth.png',
@@ -319,7 +329,9 @@
         att_suppressor: 'items/suppressor_attachment.png',
         toolbox:        'items/toolbox.png',
         brake_pads:     'items/veh_brakes.png',
-        engine_part:    'items/veh_engine.png',
+        engine_part:    'items/motor.png',
+        bonnet:         'items/motorhaube.png',
+        rear_bumper:    'items/heckstossstange.png',
         tyre:           'items/veh_wheels.png',
         water_bottle:   'items/water_bottle.png',
         wood_plank:     'items/wood_plank.png',
@@ -327,6 +339,9 @@
 
 
     Object.assign(IMG, {
+        book: 'items/book.png',
+        tourism_guide: 'items/book.png',
+        pacific_blueprints: 'items/book.png',
         bandage: 'xanderp/items/bandage.png', medkit: 'xanderp/items/medkit.png',
         water_bottle: 'xanderp/items/water_bottle.png', canned_food: 'xanderp/items/canned_food.png',
         antiseptic: 'xanderp/items/antiseptic.png', antibiotics: 'xanderp/items/antibiotics.png',
@@ -346,6 +361,39 @@
         pack_large:'xanderp/clothing/hiking_pack.png', pack_military:'xanderp/clothing/hiking_pack.png',
         vest_tactical:'xanderp/clothing/plain_vest.png', vest_plate:'xanderp/clothing/armour_plate.png'
     });
+
+    // Dedicated item art supplied for loot / vehicle / clothing parts.
+    Object.assign(IMG, {
+        bicycle_handlebar: 'items/bicycle_handlebar.png',
+        bicycle_tyre: 'items/bicycle_tyre.png',
+        bicycle_frame: 'items/bicycle_frame.png',
+        bicycle_saddle: 'items/bicycle_saddle.png',
+        bicycle_chain: 'items/bicycle_chain.png',
+        bicycle_pedals: 'items/bicycle_pedals.png',
+        motorcycle_handlebar: 'items/motorcycle_handlebar.png',
+        motorcycle_tank: 'items/motorcycle_tank.png',
+        motorcycle_seat: 'items/motorcycle_seat.png',
+        motorcycle_brakes: 'items/motorcycle_brakes.png',
+        motorcycle_engine: 'items/motorcycle_engine.png',
+        motorcycle_chassis: 'items/motorcycle_chassis.png',
+        bonnet: 'items/bonnet.png',
+        car_door: 'items/car_door.png',
+        exhaust: 'items/exhaust.png',
+        gearbox: 'items/gearbox.png',
+        rear_bumper: 'items/rear_bumper.png',
+        pack_small: 'items/pack_small.png',
+        pack_medium: 'items/pack_medium.png',
+        pack_large: 'items/pack_large.png',
+        pack_military: 'items/pack_military.png',
+        vest_plate: 'items/vest_plate.png',
+        vest_tactical: 'items/vest_tactical.png',
+        wine: 'items/wine.png',
+        tequila: 'items/tequila.png',
+        moonshine: 'items/moonshine.png',
+        steel: 'items/steel.png',
+        stick: 'items/stick.png'
+    });
+
 
     Object.assign(IMG, {
         hunting_knife: 'xanderp/weapons/hunting_knife.png',
@@ -415,6 +463,13 @@
         bird_meat: 'xanderp/items/bird_meat.png',
         boar_hide: 'xanderp/items/boar_hide.png',
         boar_meat: 'xanderp/items/boar_meat.png',
+        paper: 'xanderp/items/paper.png',
+        poop: 'xanderp/items/poop.png',
+        toilet_paper: 'xanderp/items/toilet_paper.png',
+        banana: 'xanderp/items/banana.png',
+        apple: 'xanderp/items/apple.png',
+        expired_meat: 'xanderp/items/expired_meat.png',
+        cement: 'xanderp/items/cement.png',
         bone: 'xanderp/items/bone.png',
         boombox: 'xanderp/items/boombox.png',
         coyote_pelt: 'xanderp/items/coyote_pelt.png',

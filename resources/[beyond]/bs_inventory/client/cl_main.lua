@@ -955,11 +955,43 @@ end)
 RegisterNetEvent('bs:inventory:wiped', function()
     local ped = PlayerPedId()
     if DoesEntityExist(ped) then
+        -- Stop any draw/use task first, then force a completely clean hand state.
+        ClearPedTasks(ped)
+        SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
         RemoveAllPedWeapons(ped, true)
         SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
     end
+    LastBar = {}
+    usingItem = false
     TriggerEvent('bs:weapons:forgetAll')
 end)
 
 -- /hidehud from bs_ui: hide this page (hotbar, dash, mission tracker) too.
 AddEventHandler('bs:inventory:hideAll', function(state) SendNUIMessage({ action = 'bsHideAll', hidden = state == true }) end)
+
+-- Revive hand cleanup: a player who is revived from the downed/bleedout state does
+-- not go through the normal death-spawn wipe. GTA can therefore keep the last
+-- equipped weapon on the ped even though the revive flow has finished. Watch the
+-- replicated downed state and holster/remove ped weapons when it changes true -> false.
+-- Inventory rows are NOT touched; the player may equip the weapon again normally.
+CreateThread(function()
+    local wasDowned = LocalPlayer.state.bsDowned == true
+    while true do
+        Wait(200)
+        local downed = LocalPlayer.state.bsDowned == true
+        if wasDowned and not downed then
+            -- Give the medical resource a moment to finish resurrecting the ped.
+            Wait(300)
+            local ped = PlayerPedId()
+            if DoesEntityExist(ped) then
+                SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
+                RemoveAllPedWeapons(ped, true)
+                SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
+            end
+            usingItem = false
+            TriggerEvent('bs:weapons:forgetAll')
+            TriggerServerEvent('bs:inventory:reviveHandCleanup')
+        end
+        wasDowned = downed
+    end
+end)

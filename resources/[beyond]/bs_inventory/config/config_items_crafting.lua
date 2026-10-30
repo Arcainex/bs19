@@ -2,6 +2,24 @@
 -- Merged into Items.Definitions after config_items.lua. An id that already exists is left alone, so other files win.
 
 local add = {
+    -- Bicycle salvage parts (rare finds from searchable bicycles).
+    bicycle_handlebar = { label = 'Fahrradlenker', category = 'junk', weight = 1.0, w = 2, h = 1, stack = 2, usable = false, value = 18 },
+    bicycle_tyre      = { label = 'Fahrradreifen', category = 'junk', weight = 1.5, w = 2, h = 1, stack = 2, usable = false, value = 22 },
+    bicycle_frame     = { label = 'Fahrradrahmen', category = 'junk', weight = 4.0, w = 2, h = 1, stack = 1, usable = false, value = 35 },
+    bicycle_saddle    = { label = 'Fahrradsattel', category = 'junk', weight = 1.5, w = 2, h = 1, stack = 2, usable = false, value = 15 },
+    bicycle_chain     = { label = 'Fahrradkette', category = 'junk', weight = 2.0, w = 2, h = 1, stack = 3, usable = false, value = 14 },
+    bicycle_pedals    = { label = 'Fahrradpedale', category = 'junk', weight = 0.7, w = 2, h = 1, stack = 2, usable = false, value = 12 },
+    motorcycle_handlebar = { label = 'Motorrad Lenker', category = 'vehicle', weight = 2.0, w = 2, h = 1, stack = 1, usable = false, value = 35 },
+    motorcycle_tank      = { label = 'Motorrad Tank', category = 'vehicle', weight = 4.0, w = 2, h = 1, stack = 1, usable = false, value = 55 },
+    motorcycle_seat      = { label = 'Motorrad Sitz', category = 'vehicle', weight = 1.5, w = 2, h = 1, stack = 1, usable = false, value = 30 },
+    motorcycle_brakes    = { label = 'Motorrad Bremsen', category = 'vehicle', weight = 2.0, w = 2, h = 1, stack = 2, usable = false, value = 40 },
+    motorcycle_engine    = { label = 'Motorrad Motor', category = 'vehicle', weight = 10.0, w = 2, h = 1, stack = 1, usable = false, value = 100 },
+    motorcycle_chassis   = { label = 'Motorrad Chassi', category = 'vehicle', weight = 10.0, w = 2, h = 1, stack = 1, usable = false, value = 85 },
+    steel                 = { label = 'Stahl', category = 'material', weight = 0.8, w = 1, h = 1, stack = 30, usable = false, value = 15 },
+    wine                  = { label = 'Wein', category = 'drink', weight = 0.8, w = 1, h = 2, stack = 5, usable = true, value = 25, data = { thirst = 10 } },
+    tequila               = { label = 'Tequila', category = 'drink', weight = 0.8, w = 1, h = 2, stack = 5, usable = true, value = 35, data = { thirst = 8 } },
+    moonshine             = { label = 'Moonshine', category = 'drink', weight = 0.8, w = 1, h = 2, stack = 3, usable = true, value = 80, data = { thirst = 5 } },
+
     -- materials
     nails          = { label = 'Nails',            category = 'material', weight = 0.01, w = 1, h = 1, stack = 200, usable = false, value = 2 },
     screws         = { label = 'Screws',           category = 'material', weight = 0.01, w = 1, h = 1, stack = 200, usable = false, value = 2 },

@@ -655,6 +655,12 @@ function Inv.Wipe(src)
     end
 
     -- Also removes weapons from the ped, since GiveWeaponToPed weapons live on the ped and not in the inventory rows.
+    -- Clear the core's persisted lastWeapon too. Otherwise cl_spawn.lua can re-arm the
+    -- weapon after a death wipe even though the inventory is already empty.
+    if GetResourceState('bs_core') == 'started' then
+        pcall(function() exports.bs_core:SetPlayerMeta(src, 'lastWeapon', nil) end)
+        pcall(function() exports.bs_core:SavePlayer(src, true) end)
+    end
     TriggerClientEvent('bs:inventory:wiped', src)
 
     Inv.Push(src)
@@ -824,7 +830,10 @@ function serialise(inv)
         out.slots[tostring(slot)] = {
             slot = slot,
             item = entry.item,
-            label = def.label or entry.item,
+            -- Dynamic book titles are stored per copy; the underlying item remains 'book'.
+            label = (entry.item == 'book' and type(entry.metadata) == 'table'
+                and type(entry.metadata.bookTitle) == 'string' and entry.metadata.bookTitle ~= ''
+                and entry.metadata.bookTitle:sub(1, 100)) or def.label or entry.item,
             ongrid = isBagSlot(inv, slot),
 
             -- Where and how big, for the grid renderer. w/h are the natural size; `rot` tells the panel to swap them.
@@ -1263,6 +1272,16 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
     end
 
     local data = def.data or {}
+
+    -- Downed players may never use a revive-capable item on themselves.
+    -- This check happens before animation/effects/consumption, so a medkit is kept.
+    if data.revive and GetResourceState('bs_medical') == 'started' then
+        local okD, down = pcall(function() return exports.bs_medical:IsDowned(src) end)
+        if okD and down then
+            return { ok = false, error = 'Du kannst dich nicht selbst wiederbeleben.' }
+        end
+    end
+
     local consumed = true
 
     -- animKind says which use animation to play (eat, heal, ...), decided from the item data. The client (cl_main.lua) picks the actual anim/scenario.
@@ -1289,13 +1308,6 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
 
         TriggerClientEvent('bs:inventory:heal', src, heal)
         exports.bs_core:AwardAction(src, 'wound_treated')
-    end
-    -- A revive-capable item (medkit) used while down goes through bs_medical's revive path; a plain heal is pinned back by the downed loop and leaves the player stuck.
-    if data.revive and GetResourceState('bs_medical') == 'started' then
-        local okD, down = pcall(function() return exports.bs_medical:IsDowned(src) end)
-        if okD and down then
-            pcall(function() return exports.bs_medical:SelfRevive(src) end)
-        end
     end
     if data.cure then
         exports.bs_core:ChangeInfection(src, -math.abs(data.cure))
@@ -1919,6 +1931,15 @@ end)
 exports('GiveItem', function(src, item, amount, metadata)
     return Inv.Give(src, item, amount, type(metadata) == 'table' and metadata or nil)
 end)
+
+-- Same add logic as GiveItem, but without an immediate inventory sync.
+-- Used by container looting so several loot rolls can be inserted first and
+-- the complete inventory is pushed to the client only once at the end.
+exports('GiveItemSilent', function(src, item, amount, metadata)
+    local inv = playerInventory(src)
+    if not inv then return false, 'no character' end
+    return addToInv(inv, item, amount, type(metadata) == 'table' and metadata or nil)
+end)
 exports('RemoveItem', function(src, item, amount) return Inv.Remove(src, item, amount) end)
 
 -- Booster / gadget loadout: the item itself sits in a 901+ slot, off the grid.
@@ -2167,7 +2188,7 @@ BSB.RegisterCallback('inventory:pickup', function(src, dropId)
     drops[dropId] = nil
     dropMeta[dropId] = nil
     broadcastDrop(drop, true)
-    return { ok = true, label = label, amount = drop.amount }
+    return { ok = true, label = label, amount = drop.amount, item = drop.item }
 end)
 
 BSB.RegisterCallback('inventory:nearbyDrops', function(src)
@@ -2208,6 +2229,7 @@ BSB.RegisterCallback('inventory:give', function(src, slot, amount, targetSrc)
         message = Lp(targetSrc, 'inv.gave_you', {
             name = (exports.bs_core:GetPlayer(src) or {}).name or Lp(targetSrc, 'inv.someone'),
             n = amount, item = ItemLabel(item, targetSrc) }),
+        itemImage = item,
     })
     return { ok = true }
 end)
@@ -2486,4 +2508,13 @@ BSB.RegisterCallback('inventory:packLook', function(src, look, hidden)
     persistSlot(inv, slot)
     Inv.Push(src)
     return { ok = true }
+end)
+
+-- A revive from the downed/bleedout state bypasses the full death inventory wipe.
+-- Clear only the persisted equipped-weapon metadata; keep every inventory item.
+RegisterNetEvent('bs:inventory:reviveHandCleanup', function()
+    local src = source
+    if GetResourceState('bs_core') ~= 'started' then return end
+    pcall(function() exports.bs_core:SetPlayerMeta(src, 'lastWeapon', nil) end)
+    pcall(function() exports.bs_core:SavePlayer(src, true) end)
 end)

@@ -1,0 +1,288 @@
+{
+  // Enable the version check to get notified about new versions.
+  "versionCheck": true,
+  // Enable manual or automatic connecting to the voice channel when joining the server.
+  "autoConnectOnJoin": true,
+  // The build type of the plugin. 0 = release, 1 = develop (develop allows using all yaca plugin version)
+  "buildType": 0,
+  // The locale that should be used.
+  "locale": "de",
+  // The time before the teamspeak client is being unmuted after joining the ingame channel.
+  "unmuteDelay": 400,
+  // The range in which you can hear the phone speaker when active.
+  "maxPhoneSpeakerRange": 5,
+  /* Choose if players near other players that are in a call, should be heard by the players on the opposite side of the call.
+   *
+   * Following options are available:
+   * - false: Disable the feature completely
+   * - true: Enable the feature always
+   * - "PHONE_SPEAKER": Enable the feature only when the player on the phone has the phone speaker enabled.
+   */
+  "phoneHearPlayersNearby": false,
+  // Choose which notifications should be enabled.
+  "notifications": {
+    // Enable notifications from ox_lib
+    "oxLib": false,
+    // Enable notifications from okokNotify
+    "okoknotify": false,
+    // Enable notifications from GTA (FiveM only)
+    "gta": true,
+    // Enable notifications from Rdr 2 (RedM only)
+    "redm": false,
+    // Enable the option to implement a custom notification
+    "own": false
+  },
+  // Set the default key binds for the plugin, which can be then changed by the player.
+  "keyBinds": {
+    // The key to increase the voice range
+    "increaseVoiceRange": "ADD",
+    // The key to decrease the voice range
+    "decreaseVoiceRange": "SUBTRACT",
+    // The key to transmit on the primary radio
+    "primaryRadioTransmit": "CAPITAL",
+    // The key to transmit on the secondary radio
+    "secondaryRadioTransmit": false,
+    // The key to use the megaphone
+    "megaphone": false,
+    // The key to hold additional to change voice range via mousewheel by 1 meter, false to disable that feature
+    "voiceRangeWithMouseWheel": "LCONTROL"
+  },
+  "radioSettings": {
+    // Customize radio animation
+    "animation": {
+      "dictionary": "random@arrests",
+      "name": "generic_radio_chatter",
+      "flag": 49
+    },
+    "propWhileTalking": {
+      // Define how the prop is created
+      // - client - networked, spawned on client
+      // - stateBag - spawned on each client, not networked
+      "createMode": "stateBag",
+      // The prop that should be shown while talking on the radio.
+      "prop": false,
+      // The bone that the prop should be attached to.
+      "boneId": 28422,
+      // The position of the prop.
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      // The rotation of the prop.
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    // The maximum amount of radio channels that can be used.
+    "channelCount": 9,
+    /* Choose the mode of the radio system.
+     *
+     * Following options are available:
+     * - "Tower": The radio system is based on towers, which means that the range is limited by the distance to the next tower.
+     * - "Direct": The radio system is based on the distance between the players.
+     * - "None": The radio always works no matter the distance.
+     */
+    "mode": "Tower",
+    // The maximum distance between two players or to the tower to be able to hear each other.
+    "maxDistance": 5000
+  },
+  /* Visualization of the radio towers and the area they cover, to check how well the map is covered in the
+   * "Tower" radio mode. It can be toggled at any time with the `setTowerVisualization` export.
+   */
+  "towerVisualization": {
+    // Choose if the visualization should be shown right away, instead of only after enabling it via the export.
+    "enabled": false,
+    /* The coverage zones which are drawn around every tower. Each zone reaches up to the distance at which the
+     * signal of the tower drops to the given strength, calculated from the `maxDistance` of the radio settings,
+     * so the zones always show the signal the radio really has. A strength of 0 is the distance at which the
+     * radio stops working completely.
+     *
+     * Keep the zones tight: the zones of all towers stack on the map, so a zone which is big enough to overlap
+     * itself a few dozen times paints the whole map over, no matter how low its opacity is. Areas which are not
+     * covered by a zone are not out of range, they just have a worse signal than the outermost zone.
+     */
+    "zones": [
+      {
+        // The signal strength at the outer edge of the zone, from 0 (no signal) to 1 (perfect signal).
+        "signalStrength": 0.75,
+        // The color of the zone on the map, see https://docs.fivem.net/docs/game-references/blips/#blip-colors
+        "blipColor": 2,
+        // The opacity of the zone on the map, from 0 to 255.
+        "blipAlpha": 70,
+        // The color of the tower marker while standing inside the zone, r = red, g = green, b = blue
+        "r": 0,
+        "g": 255,
+        "b": 0
+      },
+      {
+        "signalStrength": 0.5,
+        "blipColor": 5,
+        "blipAlpha": 30,
+        "r": 255,
+        "g": 255,
+        "b": 0
+      }
+    ],
+    // The blips of the visualization. (FiveM only)
+    "blip": {
+      // Choose if a blip should be created at the position of every tower.
+      "enabled": true,
+      // Choose if the coverage zones should be drawn on the map.
+      "showZones": true,
+      // The sprite of the tower blip, see https://docs.fivem.net/docs/game-references/blips/
+      "sprite": 1,
+      // The color of the tower blip, see https://docs.fivem.net/docs/game-references/blips/#blip-colors
+      "color": 4,
+      // The scale of the tower blip.
+      "scale": 0.7
+    },
+    // The marker which is drawn in the world at the position of every tower.
+    "marker": {
+      // Choose if the marker should be enabled.
+      "enabled": true,
+      // The distance in which the towers are drawn.
+      "drawDistance": 500,
+      // The type of the marker, ignored in RedM.
+      "type": 1,
+      // The width of the marker.
+      "scale": 3.0,
+      // The height of the marker.
+      "height": 15.0,
+      // The opacity of the marker, from 0 to 255.
+      "alpha": 100
+    }
+  },
+  /* The airborne filter, applied to the crew of a helicopter or aircraft while they talk to each other inside it.
+   * The voice stays thin so it cuts through the rotor noise instead of sitting in it. It only applies between
+   * players sitting in the same aircraft, someone standing outside hears the normal voice.
+   */
+  "airborne": {
+    "enabled": false,
+    // Whether the radio carries it too: everyone on the frequency hears a sender in an aircraft with the airborne
+    // filter, not only his crew. Follows him while he transmits, so landing mid transmission switches back.
+    "radio": true,
+    // The vehicle classes that count as airborne. 15 = helicopters, 16 = planes. (FiveM only)
+    "vehicleClasses": [
+      15,
+      16
+    ]
+  },
+  /* Room reverb, applied to a voice from the interior room it travels through.
+   *
+   * Sitting in a vehicle normally keeps a voice out of that room, so two people in the same cabin hear each other
+   * dry. Vehicles without a cabin are the exception: their rider is acoustically standing in the room and keeps
+   * its reverb, both when speaking and when listening.
+   */
+  "reverb": {
+    // The vehicle classes that have no cabin. 8 = motorcycles, 13 = cycles. (FiveM only)
+    "openVehicleClasses": [
+      8,
+      13
+    ]
+  },
+  "voiceRange": {
+    // The default index which should be used for the voice range when a player joins the server.
+    "defaultIndex": 1,
+    // The ranges that should be available for the players.
+    "ranges": [
+      1,
+      3,
+      8,
+      15,
+      20,
+      25,
+      30,
+      40
+    ],
+    // Choose if a notification should be sent when the voice range is changed.
+    "sendNotification": false,
+    "markerColor": {
+      // Choose if the marker should be enabled.
+      "enabled": true,
+      // The color of the marker, r = red, g = green, b = blue, a = alpha
+      "r": 0,
+      "g": 255,
+      "b": 0,
+      "a": 50,
+      // The duration the marker should be shown.
+      "duration": 1000,
+      "type": 1,
+      "rotate": true,
+      "zOffset": 0
+    }
+  },
+  "megaphone": {
+    // The range of the megaphone.
+    "range": 30,
+    // Choose if the plugin should automatically detect if the player should be able to use the megaphone in the vehicle. (FiveM only)
+    "automaticVehicleDetection": true,
+    // The allowed vehicle classes for the megaphone. (FiveM only)
+    "allowedVehicleClasses": [
+      18,
+      19
+    ],
+    // The allowed vehicle models for the megaphone. (FiveM only)
+    "allowedVehicleModels": [
+      "polmav"
+    ]
+  },
+  // Choose if the saltyChatBridge should be enabled.
+  "saltyChatBridge": false,
+  "mufflingSettings": {
+    // If set to -1, the player voice range is used, all values >= 0 sets the muffling range before it gets completely cut off
+    "mufflingRange": -1,
+    "whitelistedRoomIds": [], // Whitelist of room ids that should not be muffled, even if the player is in a different room.
+    "vehicleMuffling": {
+      // If set to true, the vehicle muffling feature is enabled. (FiveM only)
+      "enabled": true,
+      // Whitelist of vehicles that should be not be affected by the vehicle muffling. (FiveM only)
+      "vehicleWhitelist": [
+        "gauntlet6",
+        "draugur",
+        "bodhi2",
+        "vagrant",
+        "outlaw",
+        "trophytruck",
+        "ratel",
+        "drifttampa",
+        "sm722",
+        "tornado4",
+        "swinger",
+        "locust",
+        "hotring",
+        "tampa2"
+      ],
+    },
+    // The intensities of the muffling. (0 = no muffling, 10 = full muffling)
+    "intensities": {
+      // The intensity when the players are in different rooms.
+      "differentRoom": 10,
+        // The intensity when both cars are closed. (FiveM only)
+      "bothCarsClosed": 10,
+        // The intensity when one car is closed. (FiveM only)
+      "oneCarClosed": 6,
+        // The intensity of muffling of the megaphone of a player in a different car. (FiveM only)
+      "megaPhoneInCar": 6
+    }
+  },
+  // Cooldown in milliseconds which the player has to wait to use the radio again, defaults to false which disables the feature.
+  "radioAntiSpamCooldown": false,
+  // When set to true the plugin syncs the talk state via the plugin, instead of the default way via statebags. This imitates the way how saltychat syncs the talk state, but has some drawbacks.
+  "useLocalLipSync": false,
+  /* Filters which should stay dry instead of being applied. The device itself keeps working, e.g. the radio still
+   * transmits and the range still applies, only the sound colouring is skipped.
+   *
+   * Following values are available:
+   * - Communication devices: "RADIO", "PHONE", "PHONE_SPEAKER", "PHONE_HISTORICAL", "MEGAPHONE", "INTERCOM",
+   *   "AIRBORNE", "MICROPHONE"
+   * - Effects without a device: "MUFFLE", "WATER", "REVERB", "LOUDSPEAKER"
+   *   ("LOUDSPEAKER" is the cabinet colouring of devices with speaker positions - disabling it keeps the PA
+   *   positioned in the world, the signal is just no longer coloured by the box)
+   *
+   * This list always describes the complete set, the plugin resets all filters before applying it.
+   */
+  "disabledFilters": []
+}

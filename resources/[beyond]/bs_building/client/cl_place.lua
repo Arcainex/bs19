@@ -82,6 +82,21 @@ local function aimPoint(ignore)
     return to
 end
 
+-- For small ground-only objects, use the surface directly below the aim point.
+-- This avoids floating when the camera ray misses and returns a point in mid-air.
+-- Other pieces retain their original placement (including elevated floors).
+local function groundPlacement(pieceId, aim)
+    local rule = Building.PlacementRule(pieceId)
+    if not rule.ground then return aim end
+    local startZ = aim.z + 1.5
+    local endZ = aim.z - 4.0
+    local probe = StartExpensiveSynchronousShapeTestLosProbe(
+        aim.x, aim.y, startZ, aim.x, aim.y, endZ, 1, PlayerPedId(), 4)
+    local _, hit, at = GetShapeTestResult(probe)
+    if hit == 1 then return vector3(aim.x, aim.y, at.z) end
+    return aim -- never force an unverified ground height
+end
+
 -- Lootable world props (bins, lockers...) from bs_interactions, read once.
 local lootModels
 local function loadLootModels()
@@ -162,10 +177,10 @@ function Building.StartPlacing(pieceId)
             if s then
                 pos = vector3(s.x, s.y, s.z); h = (s.h + rotOff) % 360
             else
-                pos = aim; h = (GetGameplayCamRot(2).z + rotOff) % 360
+                pos = groundPlacement(pieceId, aim); h = (GetGameplayCamRot(2).z + rotOff) % 360
             end
             heading = h
-            Building.Align(ghost, pos.x, pos.y, pos.z, h, d.pitch)
+            Building.Align(ghost, pos.x, pos.y, pos.z, h, d.pitch, pieceId)
 
             -- local checks every frame-ish, server rules a few times a second
             local me = GetEntityCoords(PlayerPedId())
@@ -255,7 +270,7 @@ end
 RegisterNUICallback('wheelPick', function(data, cb)
     closeWheel()
     cb({ ok = true })
-    if data and P[data.id] then Building.StartPlacing(data.id) end
+    if data and P[data.id] and not P[data.id].disabled then Building.StartPlacing(data.id) end
 end)
 RegisterNUICallback('wheelClose', function(_, cb) closeWheel(); cb({ ok = true }) end)
 AddEventHandler('bs:ui:opened', function(what) if what ~= 'building' then closeWheel() end end)

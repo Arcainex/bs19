@@ -64,6 +64,7 @@
     { id: 'resume', icon: '&#9654;', label: 'p.resume' },
     { id: 'map', icon: '&#9873;', label: 'p.map' },
     { id: 'settings', icon: '&#9881;', label: 'p.settings' },
+    { id: 'keyboard', icon: '&#9000;', label: 'p.keyboard' },
     { id: 'gfx', icon: '&#9681;', label: 'p.graphics' },
     { id: 'server', icon: '&#9776;', label: 'p.server' },
     { id: 'devlog', icon: '&#9998;', label: 'p.devlog' },
@@ -189,10 +190,63 @@
     setTimeout(() => { if (!done && $('dlMsg')) $('dlMsg').textContent = t('p.devlog_fail'); }, 10000);
   }
 
+
+  function viewKeyboard() {
+    // Vollstaendiges QWERTZ-Layout. Nur die Tasten selbst stehen oben auf der Tastatur;
+    // die Funktionsnamen stehen sauber in den Kategorien darunter.
+    const binds = [
+      ['F1', 'Emote-Menü', 'utility'], ['F5', 'Fraktionsmenü', 'utility'], ['F11', 'Admin-Menü', 'utility'],
+      ['TAB', 'Inventar', 'interaction'], ['ALT', 'Action Eye', 'interaction'], ['E', 'Interagieren', 'interaction'],
+      ['F', 'Ein-/Aussteigen', 'vehicle'], ['G', 'Als Beifahrer einsteigen', 'vehicle'], ['Z', 'Motor an/aus', 'vehicle'],
+      ['K', 'Kofferraum', 'vehicle'], ['.', 'Sicherheitsgurt', 'vehicle'], ['L', 'Fahrzeug auf/zu', 'vehicle'],
+      ['U', 'Baumenü', 'interaction'], ['H', 'Hände hoch', 'interaction'], ['X', 'Animation abbrechen', 'interaction'],
+      ['B', 'Mit Finger zeigen', 'interaction'], ['N', 'Verdauung', 'interaction'], ['1', 'Hotkey 1', 'hotbar'],
+      ['2', 'Hotkey 2', 'hotbar'], ['3', 'Hotkey 3', 'hotbar'], ['4', 'Hotkey 4', 'hotbar'], ['5', 'Hotkey 5', 'hotbar'],
+      ['↑', 'Handy öffnen', 'communication'], ['NUM 1–9', 'Animations-Shortcuts', 'communication'], ['NUM 0', 'Animation stoppen', 'communication'],
+      ['R', 'Nachladen (Pistol-Whip blockiert)', 'combat']
+    ];
+    const active = new Map(binds.map(([k,v,c]) => [k, {v,c}]));
+    const k = (label, cls='') => {
+      const a = active.get(label);
+      return `<div class="kb-key ${cls} ${a ? 'hot '+a.c : ''}"><b>${esc(label)}</b></div>`;
+    };
+    const spacer = (w='1') => `<div class="kb-space" style="--sp:${w}"></div>`;
+    const row = (html) => `<div class="kb-row">${html}</div>`;
+
+    const keyboard = [
+      row(k('ESC')+spacer('.45')+k('F1')+k('F2')+k('F3')+k('F4')+spacer('.25')+k('F5')+k('F6')+k('F7')+k('F8')+spacer('.25')+k('F9')+k('F10')+k('F11')+k('F12')+spacer('.45')+k('DRUCK','small')+k('ROLLEN','small')+k('PAUSE','small')),
+      row(k('^')+k('1')+k('2')+k('3')+k('4')+k('5')+k('6')+k('7')+k('8')+k('9')+k('0')+k('ß')+k('´')+k('←','backspace')+spacer('.45')+k('EINFG','small')+k('POS1','small')+k('BILD↑','small')),
+      row(k('TAB','tab')+k('Q')+k('W')+k('E')+k('R')+k('T')+k('Z')+k('U')+k('I')+k('O')+k('P')+k('Ü')+k('+')+k('ENTER','enter')+spacer('.45')+k('ENTF','small')+k('ENDE','small')+k('BILD↓','small')),
+      row(k('CAPS','caps')+k('A')+k('S')+k('D')+k('F')+k('G')+k('H')+k('J')+k('K')+k('L')+k('Ö')+k('Ä')+k('#')+k('ENTER','enter2')),
+      row(k('SHIFT','shift')+k('<')+k('Y')+k('X')+k('C')+k('V')+k('B')+k('N')+k('M')+k(',')+k('.')+k('-')+k('SHIFT','shift2')+spacer('1.45')+k('↑','arrow')),
+      row(k('STRG','ctrl')+k('WIN','win')+k('ALT','alt')+k('LEERTASTE','spacebar')+k('ALT GR','altgr')+k('WIN','win')+k('MENÜ','menu')+k('STRG','ctrl')+spacer('.45')+k('←','arrow')+k('↓','arrow')+k('→','arrow'))
+    ].join('');
+
+    const numpad = [
+      row(k('NUM','small')+k('/','small')+k('*','small')+k('-','small')),
+      row(k('7','small')+k('8','small')+k('9','small')+k('+','small')),
+      row(k('4','small')+k('5','small')+k('6','small')+k('+','small')),
+      row(k('1','small')+k('2','small')+k('3','small')+k('ENTER','small')),
+      row(k('NUM 0','numzero')+k(',','small')+k('ENTER','small'))
+    ].join('');
+
+    const groups = [
+      ['Server & Menüs', [['F1','Emote-Menü'],['F5','Fraktionsmenü'],['F11','Admin-Menü'],['U','Baumenü'],['TAB','Inventar']]],
+      ['Interaktion', [['ALT','Action Eye'],['E','Interagieren'],['H','Hände hoch'],['B','Mit Finger zeigen'],['X','Animation abbrechen'],['N','Verdauung']]],
+      ['Fahrzeug', [['F','Ein-/Aussteigen'],['G','Als Beifahrer einsteigen'],['Z','Motor an/aus'],['K','Kofferraum'],['.','Sicherheitsgurt'],['L','Fahrzeug auf/zu']]],
+      ['Hotkeys & Animationen', [['1–5','Inventar-Hotkeys'],['PFEIL ↑','Handy öffnen'],['NUM 1–9','Animations-Shortcuts'],['NUM 0','Animation stoppen'],['R','Nachladen / kein Pistol-Whip']]]
+    ];
+
+    return `<div class="keyboard-head"><div><h1>Tastaturbelegung</h1><div class="sub">ALPHA-Z · Server-Tastenbelegung</div></div><div class="kb-legend"><i></i> belegt</div></div>
+      <div class="keyboard-card full-layout"><div class="keyboard-wrap"><div class="keyboard-main">${keyboard}</div><div class="keyboard-numpad">${numpad}</div></div></div>
+      <div class="bind-sections">${groups.map(([title, entries]) => `<div class="bind-card"><h3>${esc(title)}</h3>${entries.map(([key,val]) => `<div class="bind"><kbd>${esc(key)}</kbd><span>${esc(val)}</span></div>`).join('')}</div>`).join('')}</div>`;
+  }
+
   function render() {
     nav();
     const m = $('main');
     if (S.view === 'settings') m.innerHTML = viewSettings();
+    else if (S.view === 'keyboard') m.innerHTML = viewKeyboard();
     else if (S.view === 'gfx') m.innerHTML = viewGfx();
     else if (S.view === 'server') m.innerHTML = viewServer();
     else if (S.view === 'devlog') { m.innerHTML = viewDevlog(); loadDevlog(); }

@@ -20,6 +20,15 @@ Containers.Settings = {
 }
 
 Containers.Types = {
+    -- Existing bush loot from your Git branch (numeric model hash).
+    bush = {
+        label     = 'Busch durchsuchen',
+        icon      = 'search',
+        time      = 4000,
+        lootTable = 'rural',
+        respawn   = 1800,
+        models    = { 1165271193 },
+    },
     trash = {
         label     = 'Search the bin',
         icon      = 'search',
@@ -34,7 +43,7 @@ Containers.Types = {
             'prop_bin_11b', 'prop_bin_12a', 'prop_bin_13a', 'prop_bin_14a',
             'prop_bin_14b', 'prop_dumpster_01a', 'prop_dumpster_02a',
             'prop_dumpster_02b', 'prop_dumpster_3a', 'prop_dumpster_4a',
-            'prop_dumpster_4b', 'prop_skip_01a', 'prop_skip_02a', 'prop_skip_03',
+            'prop_dumpster_4b', 'prop_skip_01a', 'prop_skip_03',
             'prop_skip_04a', 'prop_skip_05a', 'prop_skip_06a', 'prop_skip_08a',
 
             -- More bin models: the blue street, beach, recycling and wheelie bins are separate models from prop_bin_01a-14b.
@@ -219,6 +228,149 @@ Containers.Types = {
             maxHeight = 2.3,
         },
     },
+
+    -- BS19 additional searchable props (19 models)
+    plastic_bag = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'plastic_bag', respawn = 1800,
+        models = { 'prop_rub_binbag_03b' },
+    },
+    cement_pipes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'cement_pipes', respawn = 1800,
+        models = { 'prop_pipes_01a' },
+    },
+    plywood = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'plywood', respawn = 1800,
+        models = { 'prop_cons_ply01' },
+    },
+    portable_toilet = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'portable_toilet', respawn = 1800,
+        models = { 'prop_portaloo_01a' },
+    },
+    construction_skip = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'construction_skip', respawn = 1800,
+        models = { 'prop_skip_02a' },
+    },
+    wood_pallet = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'wood_pallet', respawn = 1800,
+        models = { 'prop_pallet_pile_02' },
+    },
+    fruit_boxes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'fruit_boxes', respawn = 1800,
+        models = { 'prop_rub_boxpile_04b' },
+    },
+    meat_crate = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'meat_crate', respawn = 1800,
+        models = { 'prop_crate_11b' },
+    },
+    general_boxes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 'prop_rub_boxpile_09' },
+    },
+    wood_pallet_mix = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'wood_pallet_mix', respawn = 1800,
+        models = { 'prop_pallet_pile_04' },
+    },
+    drink_boxes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'drink_boxes', respawn = 1800,
+        models = { 'prop_rub_boxpile_04' },
+    },
+    tyre_stack = {
+        label = 'Reifenstapel durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'tyre_stack', respawn = 1800,
+        models = { -1919073083, 2069078066 },
+    },
+    old_couch = {
+        label = 'Couch durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 2021659595, -1841495633, -2021659595 },
+    },
+    bicycle = {
+        label = 'Fahrrad durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'bicycle', respawn = 1800,
+        models = { 902408500 },
+    },
+    mailbox = {
+        label = 'Briefkasten durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'mailbox', respawn = 1800,
+        cash = { chance = 0.08, min = 1, max = 10 },
+        models = { -861422469, 354284193 },
+    },
+    crate_extra = {
+        label = 'Kiste durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { -1415300092 },
+    },
+    trash_bag_extra = {
+        label = 'Müllsack durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { -1681329307 },
+    },
+    phone_booth = {
+        label = 'Telefonzelle durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'phone_booth', respawn = 1800,
+        cash = { chance = 0.08, min = 1, max = 5 },
+        models = { 1281992692 },
+    },
+
+
+    -- Additional world props collected in Sandy Shores (2026-10-29).
+    trash_bag_sandy = {
+        label = 'Müllsack durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 600967813, 1098827230, 1388308576 },
+    },
+    shopping_cart = {
+        label = 'Einkaufswagen durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 1918323043 },
+    },
+    old_furniture = {
+        label = 'Alte Möbel durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 306579620, 603696143 },
+    },
+    sandy_crates = {
+        label = 'Kiste durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 1138027619, -2073573168, -1322592273, -52732303 },
+    },
+    motorcycle_salvage = {
+        label = 'Motorrad durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'motorcycle', respawn = 1800,
+        models = { 1347944675 },
+    },
+    locked_crate = {
+        label = 'Verschlossene Kiste öffnen', icon = 'crowbar', time = 6000,
+        lootTable = 'locked_crate', respawn = 2400,
+        requiredWeapon = 'WEAPON_CROWBAR',
+        requiredWeaponError = 'Du musst eine Brechstange in der Hand halten.',
+        cash = { chance = 0.10, min = 1, max = 20 },
+        models = { -1322183878 },
+    },
+    old_wood_barrel = {
+        label = 'Altes Holzfass öffnen', icon = 'crowbar', time = 6000,
+        lootTable = 'old_wood_barrel', respawn = 2400,
+        requiredWeapon = 'WEAPON_CROWBAR',
+        requiredWeaponError = 'Du musst eine Brechstange in der Hand halten.',
+        models = { 650320113 },
+    },
+
+    electrical_salvage = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'electrical_salvage', respawn = 1800,
+        models = { 'prop_aircon_m_04', 'prop_roofvent_06a', 'prop_aircon_m_07', 'prop_aircon_m_03', 'prop_roofvent_03a', 'prop_sub_trans_01a', 'prop_sub_trans_04a', 'prop_elecbox_25' },
+    },
 }
 
 -- Diesel: one rule shared by the barrel, siphon and pump - fuel goes into containers, never pockets. `chance` is per search, not per barrel.
@@ -233,6 +385,6 @@ Containers.Diesel = {
 Containers.ByModel = {}
 for typeId, def in pairs(Containers.Types) do
     for _, model in ipairs(def.models or {}) do
-        Containers.ByModel[GetHashKey(model)] = typeId
+        Containers.ByModel[type(model) == 'number' and model or GetHashKey(model)] = typeId
     end
 end

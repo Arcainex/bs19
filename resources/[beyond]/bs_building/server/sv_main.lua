@@ -308,9 +308,20 @@ end
 
 -- Admins with free build on (F10) or the F1 switch place finished pieces at no cost.
 Building.FreeBuild = Building.FreeBuild or {}
+Building.FreeBuildAll = Building.FreeBuildAll or false
+Building.FreeBuildGrants = Building.FreeBuildGrants or {}
+local function freeBuildIdentifier(src)
+    for _, identifier in ipairs(GetPlayerIdentifiers(src)) do
+        if identifier:sub(1, 8) == "license:" then return identifier end
+    end
+    return nil
+end
 local function freeBuild(src)
-    if not isAdmin(src) then return false end
-    return S.freeBuildAdmins == true or Building.FreeBuild[src] == true
+    if Building.FreeBuildAll == true then return true end
+    if Building.FreeBuild[src] == true then return true end
+    local identifier = freeBuildIdentifier(src)
+    if identifier and Building.FreeBuildGrants[identifier] then return true end
+    return isAdmin(src) and S.freeBuildAdmins == true
 end
 AddEventHandler('playerDropped', function() Building.FreeBuild[source] = nil end)
 
@@ -335,7 +346,7 @@ end
 
 local function canPlaceHere(src, pieceId, at)
     local d = P[pieceId]
-    if not d then return 'build.err.unknown' end
+    if not d or d.disabled then return 'build.err.unknown' end
     local fac = factionOf(src)
     if d.flag then
         if not fac then return 'build.err.no_faction' end
@@ -396,7 +407,7 @@ BSB.RegisterCallback('build:catalogue', function(src)
     local me = charOf(src)
     for id, d in pairs(P) do
         local hide = (vanilla and d.flag == 'safezone') or (d.flag and not fac) or (d.vending and not S.vendingEnabled)
-        if not d.hidden and not hide then
+        if not d.hidden and not d.disabled and not hide then
             local costs = costList(src, d, true, srcs)
             local afford = true
             for _, c in ipairs(costs) do if c.have < c.need and not free then afford = false end end
@@ -1012,7 +1023,12 @@ local function register(def)
     def.models = def.models or (def.model and { def.model }) or {}
     def.cost = def.cost or {}
     def.owner = GetInvokingResource()
+    -- Keep the pre-studio registration values for live reset.
+    if Building.RememberStudioOriginal then Building.RememberStudioOriginal(id, def) end
     P[id] = def
+    -- Registered station definitions must not replace saved Prop Studio adjustments.
+    if Building.ApplyStudioOverride then Building.ApplyStudioOverride(id) end
+    def = P[id]
     for _, r in ipairs(Store.waiting[id] or {}) do Store.add(r) end
     Store.waiting[id] = nil
     TriggerClientEvent('bs:building:def', -1, id, def)

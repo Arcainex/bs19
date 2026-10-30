@@ -111,7 +111,8 @@ function renderGrid(el, inv, which) {
         const node = document.createElement('div');
         node.className = 'slot has-item'
             + (which === 'player' && !matchesFilter(entry) ? ' is-filtered' : '')
-            + (entry.rot ? ' is-rot' : '');
+            + (entry.rot ? ' is-rot' : '')
+            + (w === 4 && h === 4 ? ' is-4x4' : '');
         node.dataset.slot = slot;
         node.dataset.inv = which;
         node.dataset.cat = entry.category || 'misc';
@@ -263,13 +264,35 @@ function renderAll() {
     const hasContainer = !!S.container;
     $('containerHollow').classList.toggle('hidden', hasContainer);
     $('containerGrid').classList.toggle('hidden', !hasContainer);
+    const containerColumn = $('containerGrid').closest('.col--bags');
+    if (containerColumn) containerColumn.classList.toggle('is-open', hasContainer);
 
     if (hasContainer) {
         renderGrid($('containerGrid'), S.container, 'container');
         renderWeight(S.container, $('containerWeight'), $('containerFill'));
+
+        // Anchor the opened storage to the right edge of the player inventory.
+        // Fixed viewport coordinates make the 10x14 personal storage visible even
+        // though the inventory column itself is deliberately compact.
+        if (containerColumn) {
+            const playerBoard = $('playerGrid').closest('.board');
+            if (playerBoard) {
+                const r = playerBoard.getBoundingClientRect();
+                const gap = Math.max(10, window.innerWidth * 0.014 / (Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1));
+                const k = uiK();
+                // Lift the storage a few screen pixels so its top border lines up exactly
+                // with the carried-inventory board.
+                containerColumn.style.setProperty('--container-top', `${(r.top - 6) / k}px`);
+                containerColumn.style.setProperty('--container-left', `${r.right / k + gap}px`);
+            }
+        }
     } else {
         $('containerWeight').textContent = '';
         $('containerFill').style.width = '0%';
+        if (containerColumn) {
+            containerColumn.style.removeProperty('--container-top');
+            containerColumn.style.removeProperty('--container-left');
+        }
     }
 
     renderHotbar();
@@ -1234,6 +1257,11 @@ window.addEventListener('message', (e) => {
         renderTrade(d.trade);
         if (d.grid) S.grid = { w: d.grid.w, h: d.grid.h };
         S.player = d.player || null;
+        // A normal TAB-open must never reuse the container from the previous session.
+        // Containers (including the personal storage) are only restored by an explicit
+        // server 'update' after the player actually opens one at its world interaction point.
+        S.container = null;
+        $('containerTitle').textContent = t('inv.nothing_open');
         renderStats(d.stats);
         renderMedical(d.stats, d.levels, S.player && S.player.equipStats);
         renderSheet(d.levels, d.effects, d.trees);
@@ -1394,13 +1422,19 @@ document.addEventListener('click', async (e) => {
     syncRefreshBtn();
 });
 function renderStats(d) {
+    const fieldmedTitle = document.getElementById('fieldmedTitle');
     const name = document.getElementById('statName');
     const klass = document.getElementById('statClass');
     const rows = document.getElementById('statRows');
     if (!rows) return;
 
-    if (!d) { rows.innerHTML = ''; return; }
+    if (!d) {
+        if (fieldmedTitle) fieldmedTitle.textContent = 'CHARAKTER';
+        rows.innerHTML = '';
+        return;
+    }
 
+    if (fieldmedTitle) fieldmedTitle.textContent = d.name || 'CHARAKTER';
     if (name) name.textContent = d.name || '-';
     if (klass) klass.textContent = d.className || d.classId || '';
 
@@ -1855,13 +1889,28 @@ window.addEventListener('message', async (e) => {
         if (shots) { Body.shots = shots; showAngle(Body.angle, true); }
         else console.warn('[bs_inventory] body snapshot could not be keyed; keeping silhouette');
     } else if (d.action === 'bodyGrab') {
-        // two painted frames so the game texture holds the posed clones
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        const frame = grabGameView();
-        post('bodyGrabbed', { ok: !!frame });   // lets Lua tear the set down
-        const shots = frame && keyCanvas(frame, d.marks);
-        if (shots) { Body.shots = shots; showAngle(Body.angle, true); }
-        else console.warn('[bs_inventory] game view grab/key failed; keeping silhouette');
+        // The game-view texture is occasionally not ready on slower clients even
+        // though the NUI has already painted. Retry a few frames before giving up.
+        let shots = null;
+        let frame = null;
+        for (let attempt = 0; attempt < 5 && !shots; attempt++) {
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            frame = grabGameView();
+            if (frame) shots = keyCanvas(frame, d.marks);
+            if (!shots && attempt < 4) await new Promise((r) => setTimeout(r, 75));
+        }
+
+        // ACK only after keying succeeded. Previously Lua received ok=true as soon
+        // as a raw frame existed and immediately destroyed the capture set, even
+        // when keyCanvas() had failed. That made the intermittent failure permanent.
+        post('bodyGrabbed', { ok: !!shots });
+
+        if (shots) {
+            Body.shots = shots;
+            showAngle(Body.angle, true);
+        } else {
+            console.warn('[bs_inventory] game view grab/key failed after retries; keeping silhouette');
+        }
     } else if (d.action === 'bodyRefreshDone') {
         BodyRefresh.busy = false; syncRefreshBtn();
     } else if (d.action === 'bodyMode') {

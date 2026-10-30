@@ -1,0 +1,1 @@
+-- Upstream version check disabled for BS19 fork (renamed resource).

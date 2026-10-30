@@ -5,12 +5,12 @@ Inventory = {}
 Inventory.Settings = {
     -- Player bag grid in cells (F1 editable). Item ids are not tied to these numbers, so changing
     -- them keeps every saved item where it was. Keep width * (height + backpack rows) under 139.
-    gridWidth       = 10,
-    gridHeight      = 7,
+    gridWidth       = 8,
+    gridHeight      = 6,
     hotbarSlots     = 5,
-    -- Open key (I, since TAB is the shoulder-zoom). Remappable in the FiveM keybind settings.
-    openKey         = 'I',
-    openCommand     = 'inventory',
+    -- Open inventory with TAB. The command id was changed so existing clients do not keep the old I key mapping.
+    openKey         = 'TAB',
+    openCommand     = 'bs_inventory_open',
     tradeDistance   = 3.0,
     -- Dropping items creates a world container that decays after this many seconds.
     dropLifetime    = 1800,
@@ -33,7 +33,7 @@ Inventory.Settings = {
 }
 
 Inventory.Containers = {
-    small_stash  = { label = 'Stash',   width = 8,  height = 5,  maxWeight = 120.0 },
+    small_stash  = { label = 'Persönliches Lager', width = 10, height = 14, maxWeight = 250.0 },
     vehicle_boot = { label = 'Trunk',   width = 10, height = 6,  maxWeight = 200.0 },
     corpse       = { label = 'Remains', width = 6,  height = 4,  maxWeight = 60.0 },
 }

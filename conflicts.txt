@@ -1,0 +1,47 @@
+ALPHA_Z / BS19 - ENTWICKLER-PRUEFBERICHT
+=======================================
+ACHTUNG: Dies sind potenzielle Konflikte / alte Abweichungen,
+NICHT zwingend von Git erkannte Merge-Konflikte.
+Die ausgewaehlten Alpha_Z-Dateiversionen wurden auf eine BS19-Basis gelegt.
+Es fand KEIN inhaltliches 3-Wege-Merge statt.
+Bitte alle markierten Dateien vor einer Uebernahme manuell pruefen.
+
+Alpha_Z HEAD: db6372c31af08976b6888bb2f0b02584d3bfd187
+BS19 Basis: a93ac20f73c6fb37be49034cba0d706b1fc3a99c
+Alpha_Z Referenz: bbae99a59e89143b12fc51cc0cb8ddc3858d8bdd
+BS19 Referenz: a93ac20f73c6fb37be49034cba0d706b1fc3a99c
+Markierte Dateien: 28
+
+BEWERTUNGEN:
+KONFLIKT = Datei seit Referenz auf beiden Seiten geaendert.
+ALT-ABWEICHUNG = Datei war bereits zum Referenzzeitpunkt unterschiedlich.
+
+ZU PRUEFENDE DATEIEN:
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_admin/client/cl_main.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_admin/fxmanifest.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_admin/html/css/style.css
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_admin/html/index.html
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_building/server/sv_admin.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_building/server/sv_main.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_economy/config/config_economy.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_economy/config/config_junk.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_interactions/client/cl_search.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_interactions/config/config_containers.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/client/cl_main.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/config/config_inventory.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/config/config_items.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/html/css/style.css
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/html/index.html
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/html/js/app.js
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_inventory/server/sv_main.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_loading/fxmanifest.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_loading/html/index.html
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_loading/html/style.css
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_pause/html/app.js
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_pause/html/index.html
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_pause/html/style.css
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_ui/client/cl_hud.lua
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_ui/html/css/hud.css
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_ui/html/js/hud.js
+[ALT-ABWEICHUNG] Geändert: resources/[beyond]/bs_ui/html/js/icons.js
+[ALT-ABWEICHUNG] Neu: resources/[beyond]/bs_vehicle_crafting/config/config.lua

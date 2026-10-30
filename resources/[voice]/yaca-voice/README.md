@@ -1,0 +1,1097 @@
+# [yaca.systems](https://yaca.systems/) for [FiveM](https://fivem.net/) & [RedM](https://redm.net/)
+
+This is a example implementation for [FiveM](https://fivem.net/) & [RedM](https://redm.net/).
+Feel free to report bugs via issues or contribute via pull requests.
+
+Join our [Discord](http://discord.yaca.systems/) to get help or make suggestions and start
+using [yaca.systems](https://yaca.systems/) today!
+
+# Setup Steps
+
+Before you start, make sure you have OneSync enabled and your server artifacts are up to date.
+
+1. Download and install the latest [release](https://github.com/yaca-systems/fivem-yaca-typescript/releases) of this
+   resource.
+2. Add `start yaca-voice` into your `server.cfg`.
+3. Open `config/server.json5` and adjust the variables to your needs.
+4. Open `config/shared.json5` and adjust the variables to your needs.
+5. Optional, only for custom MLOs: replace `config/room_acoustics.json` with the output of the `room-acoustics` tool,
+   run over the `*.dat151.rel.xml` of your MLOs. It tells the plugin how much reverb each of
+   your rooms has. The shipped file is empty on purpose — the plugin already knows the stock GTA rooms, and the entries
+   in this file are merged on top of them, so it can also override a stock room.
+
+# Exports
+
+<details>
+<summary style="font-size: x-large">Client</summary>
+
+### General
+
+#### `isEnabled(): boolean`
+
+Get the enabled status of the voice system as `boolean`.
+
+#### `getVoiceRange(serverId: number): int`
+
+Get the current voice range of the player as `int`.
+
+| Parameter | Type     | Description                                                                |
+|-----------|----------|----------------------------------------------------------------------------|
+| serverId  | `number` | The ID of the remote player, if not provided the local player will be used |
+
+#### `getVoiceRanges(): int[]`
+
+Get all voice ranges as `int[]`.
+
+#### `changeVoiceRange(increase: boolean): void`
+
+Change the voice range of the player to the next range.
+
+#### `setVoiceRange(range: number): void`
+
+Set the voice range of the player.
+
+#### `isPlayerTalking(serverId: number): boolean`
+
+Check if a player is currently talking.
+
+| Parameter | Type     | Description                          |
+|-----------|----------|--------------------------------------|
+| serverId  | `number` | The ID of the remote player to check |
+
+#### `setVoiceRangeChangeAllowedState(state: boolean): void`
+
+Enable or disable the possibility to change the voice range.
+
+| Parameter | Type      | Description                                                |
+|-----------|-----------|------------------------------------------------------------|
+| state     | `boolean` | `true` to allow the voice range change, `false` to disable |
+
+#### `getVoiceRangeChangeAllowedState(): boolean`
+
+Get the voice range change allowed state of the player as `boolean`.
+
+#### `setMaxVoiceRange(range: number): void`
+
+Set the maximum allowed voice range of the player in meters to limit the voice range temporarily.
+
+| Parameter | Type     | Description                                                       |
+|-----------|----------|-------------------------------------------------------------------|
+| range     | `number` | `-1` to disable the limit, or a number in meters to set the limit |
+
+#### `getMaxVoiceRange(): number`
+
+Get the maximum allowed voice range of the player in meters.
+
+#### `getMicrophoneMuteState(): boolean`
+
+Get the microphone mute state of the player as `boolean`.
+
+#### `getMicrophoneDisabledState(): boolean`
+
+Get the microphone disabled state of the player as `boolean`.
+
+#### `getSoundMuteState(): boolean`
+
+Get the sound mute state of the player as `boolean`.
+
+#### `getSoundDisabledState(): boolean`
+
+Get the sound disabled state of the player as `boolean`.
+
+#### `getPluginState(): string`
+
+Get the current plugin state as `string`.
+
+The state can be one of the following:
+
+- `"NOT_CONNECTED"`: The plugin is not connected
+- `"CONNECTED`: The plugin is connected
+- `"OUTDATED_VERSION"`: The plugin is not the version set in the dashboard
+- `"WRONG_TS_SERVER"`: The user is connected to the wrong Teamspeak server
+- `"IN_INGAME_CHANNEL"`: The user is in the ingame channel
+- `"IN_EXCLUDED_CHANNEL"`: The user is in an excluded channel
+
+#### `getGlobalErrorLevel(): number`
+
+Get the global error level as `number`.
+
+#### `setSpectatingPlayer(playerId: number | false)`
+
+Set the player to spectate. The local player then hears from that player instead of from his own ped, which is parked
+elsewhere during a spectate. Being heard is separate, see Spectate Voice (Ghosting) below.
+
+txAdmin calls this through its own events, cycling targets included. Any other spectate system has to call it itself.
+
+| Parameter | Type              | Description       |
+|-----------|-------------------|-------------------|
+| playerId  | `number \| false` | the player to set |
+
+#### `getSpectatingPlayer(): number`
+
+Get the player the user is spectating as `number`.
+
+#### `setVoiceRangeMarkerColor(red: number, green: number, blue: number, alpha: number)`
+
+Set the voice range marker color.
+
+#### `getVoiceRangeMarkerColor(): [number, number, number, number]`
+
+Get the voice range marker color as `[red, green, blue, alpha]`.
+
+#### `resetVoiceRangeMarkerColor()`
+
+Reset the voice range marker color to the default color defined in the config.
+
+#### `getTeamSpeakUniqueIdentifier(): string | undefined`
+
+Get the TeamSpeak client unique identifier (UID) of the local user, reported by the plugin when it joined.
+Returns `undefined` as long as the plugin has not joined yet.
+
+#### `setPlayerVolumeModifier(serverId: number, volumeModifier: number)`
+
+Set a temporary volume factor for a player, e.g. for a whisper or shout system. The value is clamped to `0.1` - `2.0`,
+`1.0` resets it.
+
+| Parameter      | Type     | Description                             |
+|----------------|----------|-----------------------------------------|
+| serverId       | `number` | The ID of the remote player             |
+| volumeModifier | `number` | The volume factor, between 0.1 and 2.0  |
+
+#### `getPlayerVolumeModifier(serverId: number): number`
+
+Get the temporary volume factor of a player as `number`, `1.0` if none is set.
+
+| Parameter | Type     | Description                 |
+|-----------|----------|-----------------------------|
+| serverId  | `number` | The ID of the remote player |
+
+### Radio
+
+#### `enableRadio(state: boolean)`
+
+Enables or disables the radio system.
+
+| Parameter | Type      | Description                                    |
+|-----------|-----------|------------------------------------------------|
+| state     | `boolean` | `true` to enable the radio, `false` to disable |
+
+#### `isRadioEnabled(): boolean`
+
+Returns whether the radio system is enabled as `boolean`.
+
+#### `changeRadioFrequency(frequency: string)`
+
+Changes the radio frequency of the active channel.
+
+| Parameter | Type     | Description                                |
+|-----------|----------|--------------------------------------------|
+| frequency | `string` | The frequency to set the active channel to |
+
+#### `changeRadioFrequencyRaw(channel: number, frequency: string)`
+
+Changes the radio frequency.
+
+| Parameter | Type     | Description                                                                           |
+|-----------|----------|---------------------------------------------------------------------------------------|
+| channel?  | `number` | the channel number. Defaults to the current active channel when no channel is passed. |
+| frequency | `string` | the frequency to set the channel to                                                   |
+
+#### `getRadioFrequency(channel: number): string`
+
+Returns the frequency of a radio channel as `string`.
+
+| Parameter | Type     | Description                                                                           |
+|-----------|----------|---------------------------------------------------------------------------------------|
+| channel?  | `number` | the channel number. Defaults to the current active channel when no channel is passed. |
+
+#### `muteRadioChannel(state?: boolean)`
+
+Mutes the current active radio channel.
+
+| Parameter | Type      | Description                                                                      |
+|-----------|-----------|----------------------------------------------------------------------------------|
+| state?    | `boolean` | `true` to mute the channel, `false` to unmute. Defaults to switch if not defined |
+
+#### `muteRadioChannelRaw(channel: number, state?: boolean)`
+
+Mutes a radio channel.
+
+| Parameter | Type      | Description                                                                            |
+|-----------|-----------|----------------------------------------------------------------------------------------|
+| channel?  | `number`  | the channel to mute. Defaults to the current active channel when no channel is passed. |
+| state?    | `boolean` | `true` to mute the channel, `false` to unmute. Defaults to switch if not defined       |
+
+#### `isRadioChannelMuted(channel: number): boolean`
+
+Returns whether a radio channel is muted as `boolean`.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| channel   | `number` | the channel number |
+
+#### `setActiveRadioChannel(channel: number): bool`
+
+Changes the active radio channel. Returns whether the operation was successful as `bool`.
+
+| Parameter | Type     | Description           |
+|-----------|----------|-----------------------|
+| channel   | `number` | the new radio channel |
+
+#### `getActiveRadioChannel(): number`
+
+Returns the active radio channel as `number`.
+
+#### `setSecondaryRadioChannel(channel: number): bool`
+
+Changes the secondary radio channel. Returns whether the operation was successful as `bool`.
+
+| Parameter | Type     | Description           |
+|-----------|----------|-----------------------|
+| channel   | `number` | the new radio channel |
+
+#### `getSecondaryRadioChannel(): number`
+
+Returns the secondary radio channel as `number`.
+
+#### `changeRadioChannelVolume(higher: boolean): bool`
+
+Changes the volume of the active radio channel. Returns whether the operation was successful as `bool`.
+
+| Parameter | Type      | Description                    |
+|-----------|-----------|--------------------------------|
+| higher    | `boolean` | whether to increase the volume |
+
+#### `changeRadioChannelVolumeRaw(channel: number, volume: number): bool`
+
+Changes the volume of a radio channel. Returns whether the operation was successful as `bool`.
+
+| Parameter | Type     | Description                                   |
+|-----------|----------|-----------------------------------------------|
+| channel   | `number` | the channel number                            |
+| volume    | `number` | the volume to set (float between 0.0 and 1.0) |
+
+#### `getRadioChannelVolume(channel: number): number`
+
+Returns the volume of a radio channel as `number`.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| channel   | `number` | the channel number |
+
+#### `changeRadioChannelStereo(): bool`
+
+Changes the stereo mode of the active radio channel. Returns whether the operation was successful as `bool`.
+
+#### `changeRadioChannelStereoRaw(channel: number, stereo: string): bool`
+
+Changes the stereo mode of a radio channel. Returns whether the operation was successful as `bool`.
+
+| Parameter | Type     | Description                                                   |
+|-----------|----------|---------------------------------------------------------------|
+| channel   | `number` | the channel number                                            |
+| stereo    | `string` | the stereo mode (`"MONO_LEFT"`, `"MONO_RIGHT"` or `"STEREO"`) |
+
+#### `getRadioChannelStereo(channel: number): string`
+
+Returns the stereo mode of a radio channel as `string`.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| channel   | `number` | the channel number |
+
+#### `radioTalkingStart(state: boolean, channel: number)`
+
+Starts or stops talking on the radio.
+
+| Parameter | Type      | Description                              |
+|-----------|-----------|------------------------------------------|
+| state     | `boolean` | `true` to start talking, `false` to stop |
+| channel   | `number`  | the channel to talk on                   |
+
+#### `setRadioMode(mode: string)`
+
+Sets the radio mode.
+
+| Parameter | Type     | Description                                                      |
+|-----------|----------|------------------------------------------------------------------|
+| mode      | `string` | the radio mode to set. Can be either `None`, `Direct` or `Tower` |
+
+#### `getRadioMode(): string`
+
+Returns the radio mode as `string`.
+
+#### `setRadioTowers(towers: number[][]): boolean`
+
+Overrides the radio towers from `config/towers.json5` for this player. Only used when the radio mode is `Tower`.
+Returns `false` if the given towers are invalid.
+
+| Parameter | Type         | Description                                  |
+|-----------|--------------|----------------------------------------------|
+| towers    | `number[][]` | the tower positions, each one as `[x, y, z]` |
+
+#### `resetRadioTowers()`
+
+Resets the radio towers to the ones from `config/towers.json5`.
+
+#### `getRadioTowers(): number[][]`
+
+Returns the radio towers which are currently in use as an array of `[x, y, z]` coordinates.
+
+#### `getRadioSignalStrength(serverId?: number): number`
+
+Returns the current radio signal strength as a `number` between `0` (no signal) and `1` (perfect signal). The global
+error level is included in the result.
+
+Depending on the radio mode the value is calculated differently:
+
+- `Tower`: based on the distance to the nearest radio tower
+- `Direct`: based on the distance to the player given via `serverId`. Returns `0` if no `serverId` is given or the
+  player is not in scope
+- `None`: only the global error level is taken into account
+
+| Parameter | Type     | Description                                                           |
+|-----------|----------|-----------------------------------------------------------------------|
+| serverId  | `number` | the player to calculate the signal strength to, only used in `Direct` |
+
+#### `setTowerVisualization(state: boolean): boolean`
+
+Shows or hides the visualization of the radio towers, which draws every tower and the area it covers on the map and
+in the world. The coverage zones are calculated from the same signal strength the radio uses, so they show the real
+coverage of the `Tower` radio mode. It is configured in `towerVisualization` in `config/shared.json5`.
+Returns the new state.
+
+| Parameter | Type      | Description                       |
+|-----------|-----------|-----------------------------------|
+| state     | `boolean` | `true` to show, `false` to hide   |
+
+#### `toggleTowerVisualization(): boolean`
+
+Toggles the visualization of the radio towers and returns the new state.
+
+#### `isTowerVisualizationEnabled(): boolean`
+
+Returns whether the visualization of the radio towers is currently shown as a `boolean`.
+
+### Phone
+
+#### `isInCall(): boolean`
+
+Returns whether the player is in a phone call as a `boolean`.
+
+### Megaphone
+
+#### `getCanUseMegaphone(): boolean`
+
+Returns whether the player can use the megaphone as a `boolean`.
+
+#### `getCurrentMegaphoneState(): boolean`
+
+Returns whether the player is using the megaphone as a `boolean`.
+
+#### `setCanUseMegaphone(state: boolean, force?: boolean)`
+
+Sets whether the player can use the megaphone.
+
+| Parameter | Type      | Description                                                                                         |
+|-----------|-----------|-----------------------------------------------------------------------------------------------------|
+| state     | `boolean` | `true` to allow using of megaphone, `false` to disallow                                             |
+| force     | `boolean` | `true` to also allow using the megaphone outside of a vehicle, ignoring `automaticVehicleDetection` |
+
+Use `force` for a megaphone item, which should work on foot. As long as it is set, the automatic vehicle
+detection will neither stop the megaphone nor revoke the permission when the player leaves a vehicle.
+Call `setCanUseMegaphone(false)` when the item is removed to stop a running megaphone and hand the
+control back to the automatic vehicle detection.
+
+### `useMegaphone(state: boolean)`
+
+Starts or stops using the megaphone.
+
+| Parameter | Type      | Description                            |
+|-----------|-----------|----------------------------------------|
+| state     | `boolean` | `true` to start using, `false` to stop |
+
+### Intercom
+
+#### `addRemovePlayerIntercomFilter(playerIDs: number | number[], state: boolean, speakerSettings?: object)`
+
+Adds or removes players from the intercom of the local player. The intercom is bidirectional, has no range and is
+not positional, so it is only heard by the players it is set for. It has to be set on every client which should
+take part, so run it on both sides of the connection.
+
+| Parameter       | Type                   | Description                                                     |
+|-----------------|------------------------|-----------------------------------------------------------------|
+| playerIDs       | `number \| number[]`   | The remote IDs of the players to add to or remove from the intercom |
+| state           | `boolean`              | `true` to add the players, `false` to remove them                |
+| speakerSettings | `object`               | The loudspeaker settings below, optional                         |
+
+| Key           | Type          | Description                                                                                            |
+|---------------|---------------|--------------------------------------------------------------------------------------------------------|
+| `positions`   | `[x, y, z][]` | The loudspeakers the intercom is radiated from, e.g. an intercom with several horns. Omitted means the intercom is heard from its owner |
+| `interiorKey` | `number`      | The interior the loudspeakers stand in, optional                                                        |
+| `roomKey`     | `number`      | The room the loudspeakers stand in, optional                                                            |
+
+The same can be done from the server by triggering `client:yaca:addRemovePlayerIntercomFilter` on a client with the
+same parameters.
+
+### Spectate Voice (Ghosting)
+
+Voice for spectators and invisible admins, enabled from the server with `setPlayerGhosting`. Everyone within reach
+hears the ghost as if he stood next to them: no distance falloff, no direction, no muffling, no walls. He hears them
+back at the same reach. It runs over the server, so the two clients do not have to stream each other in.
+
+The reach counts from where the ghost hears, not from his ped. While spectating that is the spectated player, which
+matters because txAdmin parks the spectator ped 15 metres under its target. Use `setSpectatingPlayer` if you spectate
+without txAdmin.
+
+Force muted players are skipped in both directions.
+
+#### `isGhosting(): boolean`
+
+Get whether the local player is ghosting as `boolean`.
+
+#### `getGhostingRange(): number`
+
+Get the reach of the local player while ghosting as `number`. Falls back to his voice range if no fixed reach is set.
+
+#### `getGhostedPlayers(): number[]`
+
+Get the remote IDs of the players currently in reach of the ghost as `number[]`.
+
+</details>
+
+<details>
+<summary style="font-size: x-large">Server</summary>
+
+### General
+
+#### `isEnabled(): boolean`
+
+Get the enabled status of the voice system as `boolean`.
+
+#### `connectToVoice(source: number)`
+Connects a player to the voice system.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `getPlayerAliveStatus(source: number): bool`
+
+Get the alive status of a player as `bool`.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `setPlayerAliveStatus(source: number, state: bool)`
+
+Set the alive status of a player.
+
+| Parameter | Type      | Description         |
+|-----------|-----------|---------------------|
+| source    | `number`  | the player source   |
+| state     | `boolean` | the new alive state |
+
+#### `getPlayerVoiceRange(source: number): number`
+
+Get the voice range of a player as `number`.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `setPlayerVoiceRange(source: number, range: number)`
+
+Set the voice range of a player.
+
+| Parameter | Type     | Description                                                               |
+|-----------|----------|---------------------------------------------------------------------------|
+| source    | `number` | the player source                                                         |
+| range     | `number` | The new voice range. Defaults to the default voice range if not provided. |
+
+### Radio
+
+#### `getPlayersInRadioFrequency(frequency: string): int[]`
+
+Returns all players in a radio frequency as `int[]`.
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| frequency | `string` | the frequency to get |
+
+#### `setPlayerRadioChannel(source: number, channel: number, frequency: string)`
+
+Sets the radio channel of a player.
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| source    | `number` | the player source    |
+| channel   | `number` | the channel to set   |
+| frequency | `string` | the frequency to set |
+
+#### `getPlayerHasLongRange(source: number): bool`
+
+Returns whether a player has long range enabled as `bool`.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `setPlayerHasLongRange(source: number, state: bool)`
+
+Sets the long range state of a player.
+
+| Parameter | Type      | Description          |
+|-----------|-----------|----------------------|
+| source    | `number`  | the player source    |
+| state     | `boolean` | the long range state |
+
+#### `setSecuredRadioFrequency(state: bool, start: string, end?: string): boolean`
+
+Sets a frequency or a range as secured.
+
+| Parameter | Type      | Description          |
+|-----------|-----------|----------------------|
+| state     | `boolean` | the secured state    |
+| start     | `string`  | the start frequency  |
+| end       | `string`  | the end frequency    |
+
+#### `getSecuredRadioFrequencies(): Array<{ start: string, end?: string }>`
+
+Returns all secured radio frequencies as an array of objects.
+
+#### `setPermitRadioFrequency(src: number, state: boolean, start: string, end?: string): boolean`
+
+Sets a frequency or a range as permitted for a specific player.
+
+| Parameter | Type      | Description          |
+|-----------|-----------|----------------------|
+| src       | `number`  | the player source    |
+| state     | `boolean` | the permitted state  |
+| start     | `string`  | the start frequency  |
+| end       | `string`  | the end frequency    |
+
+
+#### `getPermittedRadioFrequencies(src: number): Array<{ start: string, end?: string }>`
+
+Returns all permitted radio frequencies for a specific player as an array of objects.
+
+#### `setRadioTowers(towers: number[][]): boolean`
+
+Overrides the radio towers from `config/towers.json5` for all players, also for the ones joining afterwards.
+Only used when the radio mode is `Tower`. Returns `false` if the given towers are invalid.
+
+| Parameter | Type         | Description                                  |
+|-----------|--------------|----------------------------------------------|
+| towers    | `number[][]` | the tower positions, each one as `[x, y, z]` |
+
+#### `resetRadioTowers()`
+
+Resets the radio towers to the ones from `config/towers.json5` for all players.
+
+#### `getRadioTowers(): number[][]`
+
+Returns the radio towers which are currently in use as an array of `[x, y, z]` coordinates.
+
+### Phone
+
+#### `callPlayer(source: number, target: number, state: bool)`
+
+Creates a phone call between two players.
+
+| Parameter | Type      | Description              |
+|-----------|-----------|--------------------------|
+| source    | `number`  | the player source        |
+| target    | `number`  | the target player source |
+| state     | `boolean` | the state of the call    |
+
+#### `callPlayerOldEffect(source: number, target: number, state: bool)`
+
+Creates a phone call between two players with the old effect.
+
+| Parameter | Type      | Description              |
+|-----------|-----------|--------------------------|
+| source    | `number`  | the player source        |
+| target    | `number`  | the target player source |
+| state     | `boolean` | the state of the call    |
+
+#### `muteOnPhone(source: number, state: bool)`
+
+Mutes the player when using the phone.
+
+| Parameter | Type      | Description       |
+|-----------|-----------|-------------------|
+| source    | `number`  | the player source |
+| state     | `boolean` | the mute state    |
+
+#### `enablePhoneSpeaker(source: number, state: bool)`
+
+Enable or disable the phone speaker for a player.
+
+| Parameter | Type      | Description             |
+|-----------|-----------|-------------------------|
+| source    | `number`  | the player source       |
+| state     | `boolean` | the phone speaker state |
+
+#### `isPlayerInCall(source: number): [bool, number[]]`
+
+Returns whether a player is in a phone call as `[bool, number[]]`.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `setGlobalErrorLevel(level: number)`
+
+Sets the global error level.
+
+| Parameter | Type     | Description     |
+|-----------|----------|-----------------|
+| level     | `number` | the error level |
+
+#### `getGlobalErrorLevel(): number`
+
+Returns the global error level as `number`.
+
+#### `getPlayerIngameName(playerId: number): string`
+
+Returns the Teamspeak name of a player by their player ID. If the player or the name is not found, an empty string is returned and an error is logged in Console.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| playerId  | `number` | The player source  |
+
+#### `getPlayerTeamSpeakUniqueIdentifier(playerId: number): string`
+
+Returns the TeamSpeak client unique identifier (UID) of a player, reported by the plugin when it joined. Returns an
+empty string as long as it is not known. Use it to bind a player to their TeamSpeak identity server side.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| playerId  | `number` | The player source  |
+
+#### `setPlayerVolumeModifier(playerId: number, volumeModifier: number)`
+
+Set a temporary volume factor for a player on all clients, e.g. for a whisper or shout system. The value is clamped
+to `0.1` - `2.0`, `1.0` resets it. The factor is kept server side and replayed to players who connect later.
+
+| Parameter      | Type     | Description                             |
+|----------------|----------|-----------------------------------------|
+| playerId       | `number` | The player source                       |
+| volumeModifier | `number` | The volume factor, between 0.1 and 2.0  |
+
+#### `getPlayerVolumeModifier(playerId: number): number`
+
+Returns the temporary volume factor of a player as `number`, `1.0` if none is set.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| playerId  | `number` | The player source  |
+
+#### `setPlayerMicrophone(playerId: number, state: boolean, settings?: object)`
+
+Turn a microphone on or off for a player, e.g. when they step up to a PA microphone on a stage. With loudspeaker
+positions the voice is miked at the player and radiated from those loudspeakers, without them it is emitted from the
+player holding it. The player keeps their proximity voice, so someone next to them hears both the PA and the real
+voice. Calling again while on updates the loudspeakers and the range of a running microphone.
+
+| Parameter | Type      | Description                                |
+|-----------|-----------|--------------------------------------------|
+| playerId  | `number`  | The player at the microphone               |
+| state     | `boolean` | Whether the microphone is turned on or off |
+| settings  | `object`  | The microphone settings below, optional    |
+
+The `settings` object:
+
+| Key           | Type          | Description                                                                                                     |
+|---------------|---------------|-----------------------------------------------------------------------------------------------------------------|
+| `positions`   | `[x, y, z][]` | The loudspeakers the voice is radiated from. Omitted means it is emitted from the player holding the microphone |
+| `range`       | `number`      | How far it is heard, measured against the nearest loudspeaker. Omitted means it is not distance gated at all    |
+| `interiorKey` | `number`      | The room the loudspeakers stand in. Normally left out, see below                                                |
+| `roomKey`     | `number`      | See `interiorKey`, both halves are required together                                                            |
+
+You normally do not pass `interiorKey` / `roomKey` at all. The client resolves the room from the **loudspeaker
+position** itself: it looks up the interior at those coordinates and picks the room whose extents contain them. That
+is the honest answer, because the room of a loudspeaker is the room it hangs in, no matter where anybody stands.
+
+#### `getPlayerMicrophone(playerId: number): object | false`
+
+Returns the settings of the running microphone of a player, `false` if none is on.
+
+| Parameter | Type     | Description        |
+|-----------|----------|--------------------|
+| playerId  | `number` | The player source  |
+
+### Spectate Voice (Ghosting)
+
+Voice for spectators and invisible admins. This side makes them audible; the client export `setSpectatingPlayer` sets
+where they hear from.
+
+#### `setPlayerGhosting(source: number, state: boolean, range?: number | false)`
+
+Put a player into ghosting or take him out again. Everyone within reach hears him as if he stood next to them, and he
+hears them back.
+
+Leave `range` out and the reach follows his voice range live, so he sets it himself with the voice range keys. Pass a
+number to pin it instead, capped at the largest configured voice range.
+
+Only the server can enable this. The client reports which players are in reach, but that report is dropped unless the
+server enabled ghosting for him first.
+
+| Parameter | Type      | Description                                        |
+|-----------|-----------|----------------------------------------------------|
+| source    | `number`  | the player source                                  |
+| state     | `boolean` | the new ghosting state                             |
+| range     | `number \| false` | a fixed reach, optional - follows his voice range when left out |
+
+#### `isPlayerGhosting(source: number): boolean`
+
+Get whether a player is ghosting as `boolean`.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `setPlayerGhostingRange(source: number, range: number | false)`
+
+Change the reach of a ghost without touching his ghosting state. `false` hands it back to his voice range.
+
+Does nothing for a player who is not ghosting. Enable ghosting first, or pass the reach to `setPlayerGhosting`.
+
+| Parameter | Type              | Description                                         |
+|-----------|-------------------|-----------------------------------------------------|
+| source    | `number`          | the player source                                   |
+| range     | `number \| false` | a fixed reach, `false` to follow his voice range     |
+
+#### `getPlayerGhostingRange(source: number): number | false`
+
+Get the pinned reach of a ghost as `number`, `false` if it follows his voice range.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+#### `getGhostedPlayers(source: number): number[]`
+
+Get the sources of the players currently in reach of a ghost as `number[]`.
+
+| Parameter | Type     | Description       |
+|-----------|----------|-------------------|
+| source    | `number` | the player source |
+
+</details>
+
+# Events
+
+<details>
+<summary style="font-size: x-large">Client</summary>
+
+### yaca:external:pluginInitialized
+
+The event is triggered when the plugin is initialized.
+
+| Parameter                 | Type                  | Description                                       |
+|---------------------------|-----------------------|---------------------------------------------------|
+| clientId                  | `int`                 | the client id of the local user in teamspeak      |
+| teamSpeakUniqueIdentifier | `string \| undefined` | the teamspeak unique identifier of the local user |
+
+### yaca:external:pluginStateChanged
+
+The event is triggered when the plugin state changes.
+
+| Parameter | Type     | Description                                  |
+|-----------|----------|----------------------------------------------|
+| state     | `string` | the current plugin state, as explained below |
+
+The state can be one of the following:
+
+- `"NOT_CONNECTED"`: The plugin is not connected
+- `"CONNECTED`: The plugin is connected
+- `"OUTDATED_VERSION"`: The plugin is not the version set in the dashboard
+- `"WRONG_TS_SERVER"`: The user is connected to the wrong Teamspeak server
+- `"IN_INGAME_CHANNEL"`: The user is in the ingame channel
+- `"IN_EXCLUDED_CHANNEL"`: The user is in an excluded channel
+
+### yaca:external:voiceRangeUpdate
+
+This event is triggered when the voice range of a player is updated.
+
+| Parameter  | Type  | Description               |
+|------------|-------|---------------------------|
+| range      | `int` | the newly set voice range |
+| rangeIndex | `int` | the index of the range    |
+
+### yaca:external:muteStateChanged
+
+DEPRECATED: Use `yaca:external:microphoneMuteStateChanged` instead.
+The event is triggered when the mute state of a player changes.
+
+| Parameter | Type      | Description        |
+|-----------|-----------|--------------------|
+| state     | `boolean` | the new mute state |
+
+### yaca:external:microphoneMuteStateChanged
+
+The event is triggered when the microphone mute state of a player changes.
+
+| Parameter | Type      | Description        |
+|-----------|-----------|--------------------|
+| state     | `boolean` | the new mute state |
+
+### yaca:external:microphoneDisabledStateChanged
+
+The event is triggered when the microphone disabled state of a player changes.
+
+| Parameter | Type      | Description        |
+|-----------|-----------|--------------------|
+| state     | `boolean` | the new mute state |
+
+### yaca:external:soundMuteStateChanged
+
+The event is triggered when the sound mute state of a player changes.
+
+| Parameter | Type      | Description        |
+|-----------|-----------|--------------------|
+| state     | `boolean` | the new mute state |
+
+### yaca:external:soundDisabledStateChanged
+
+The event is triggered when the sound disabled state of a player changes.
+
+| Parameter | Type      | Description        |
+|-----------|-----------|--------------------|
+| state     | `boolean` | the new mute state |
+
+### yaca:external:isTalking
+
+The event is triggered when a player starts or stops talking.
+
+| Parameter | Type      | Description           |
+|-----------|-----------|-----------------------|
+| state     | `boolean` | the new talking state |
+
+### yaca:external:megaphoneState
+
+The event is triggered when the megaphone state of a player changes.
+
+| Parameter | Type      | Description             |
+|-----------|-----------|-------------------------|
+| state     | `boolean` | the new megaphone state |
+
+### yaca:external:microphoneState
+
+The event is triggered when the microphone (PA) state of the local player changes.
+
+| Parameter | Type      | Description              |
+|-----------|-----------|--------------------------|
+| state     | `boolean` | the new microphone state |
+
+### yaca:external:ghostingState
+
+The event is triggered when the ghosting state of the local player changes.
+
+| Parameter | Type      | Description                            |
+|-----------|-----------|----------------------------------------|
+| state     | `boolean` | the new ghosting state                 |
+| range     | `number`  | how far the ghost reaches              |
+
+### yaca:external:setRadioMuteState
+
+The event is triggered when the radio mute state of a player changes.
+
+| Parameter | Type      | Description                                 |
+|-----------|-----------|---------------------------------------------|
+| channel   | `number`  | the channel where the mute state is changed |
+| state     | `boolean` | the new mute state                          |
+
+### yaca:external:isRadioEnabled
+
+The event is triggered when the radio state of a player changes.
+
+| Parameter | Type      | Description                                                          |
+|-----------|-----------|----------------------------------------------------------------------|
+| state     | `boolean` | `true` when the radio is enabled, `false` when the radio is disabled |
+
+### yaca:external:changedActiveRadioChannel
+
+The event is triggered when the active radio channel of a player changes.
+
+| Parameter | Type     | Description                  |
+|-----------|----------|------------------------------|
+| channel   | `number` | the new active radio channel |
+
+### yaca:external:changedSecondaryRadioChannel
+
+The event is triggered when the secondary radio channel of a player changes.
+
+| Parameter | Type     | Description                                       |
+|-----------|----------|---------------------------------------------------|
+| channel   | `number` | the new active radio channel, or `-1` if disabled |
+
+### yaca:external:setRadioVolume
+
+The event is triggered when the radio volume of a player changes.
+
+| Parameter | Type     | Description           |
+|-----------|----------|-----------------------|
+| channel   | `number` | the channel to change |
+| volume    | `number` | the new volume to set |
+
+### yaca:external:setRadioChannelStereo
+
+The event is triggered when the stereo mode of a radio channel changes.
+
+| Parameter | Type     | Description                                                                                   |
+|-----------|----------|-----------------------------------------------------------------------------------------------|
+| channel   | `number` | the channel to change                                                                         |
+| stereo    | `string` | `"MONO_LEFT"` for the left ear, `"MONO_RIGHT"` for the right ear and `"STEREO"` for both ears |
+
+### yaca:external:setRadioFrequency
+
+The event is triggered when the radio frequency of a player changes.
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| channel   | `number` | the channel to set   |
+| frequency | `string` | the frequency to set |
+
+### yaca:external:isRadioTalking
+
+The event is triggered when a player starts or stops talking on the radio.
+
+| Parameter | Type      | Description                                |
+|-----------|-----------|--------------------------------------------|
+| state     | `boolean` | the new talking state                      |
+| channel   | `number`  | the channel where the player is talking at |
+
+### yaca:external:isRadioReceiving
+
+The event is triggered when a player starts or stops receiving on the radio.
+
+| Parameter | Type      | Description                                    |
+|-----------|-----------|------------------------------------------------|
+| state     | `boolean` | the new receiver state                         |
+| channel   | `number`  | the channel from which the player is receiving |
+| playerId  | `number`  | the server ID of the player who is talking     |
+
+### yaca:external:notification
+
+The event is triggered when a notification should be shown.
+
+| Parameter | Type     | Description                                                  |
+|-----------|----------|--------------------------------------------------------------|
+| message   | `string` | the message to show                                          |
+| type      | `string` | the type of the message (`"inform"`, `"error"`, `"success"`) |
+
+Example for custom notification:
+
+```lua
+AddEventHandler('yaca:external:notification', function (message, type)
+  -- Call your Notifications System here.
+end)
+```
+
+### yaca:external:channelChanged
+
+The event is triggered when the player changes the channel to the ingame or excluded channel.
+
+| Parameter   | Type     | Description                                                                                                      |
+|-------------|----------|------------------------------------------------------------------------------------------------------------------|
+| channelType | `string` | `INGAME_CHANNEL` when moving into the ingame channel and `EXCLUDED_CHANNEL` when moving into a excluded channel. |
+
+</details>
+<details>
+<summary style="font-size: x-large">Server</summary>
+
+### yaca:external:changeMegaphoneState
+
+The event is triggered when the megaphone state of a player changes.
+
+| Parametr | Type      | Description             |
+|----------|-----------|-------------------------|
+| source   | `int`     | the player source       |
+| state    | `boolean` | the new megaphone state |
+
+### yaca:external:phoneCall
+
+The event is triggered when a phone call is started or ended.
+
+| Parameter | Type             | Description                                                                     |
+|-----------|------------------|---------------------------------------------------------------------------------|
+| source    | `int`            | the player source                                                               |
+| target    | `int`            | the target player source                                                        |
+| state     | `boolean`        | the new phone call state                                                        |
+| filter    | `YacaFilterEnum` | the used filter for the phone call, can be either `PHONE` or `PHONE_HISTORICAL` |
+
+### yaca:external:phoneSpeaker
+
+The event is triggered when the phone speaker state of a player changes.
+
+| Parameter | Type      | Description                 |
+|-----------|-----------|-----------------------------|
+| source    | `int`     | the player source           |
+| state     | `boolean` | the new phone speaker state |
+
+### yaca:external:playerTeamSpeakIdentifier
+
+The event is triggered when the plugin of a player reported its TeamSpeak client unique identifier (UID) on join.
+Use it to bind the player to their TeamSpeak identity server side.
+
+| Parameter                 | Type     | Description                                   |
+|---------------------------|----------|-----------------------------------------------|
+| source                    | `int`    | the player source                             |
+| teamSpeakUniqueIdentifier | `string` | the teamspeak unique identifier of the player |
+
+### yaca:external:changedRadioFrequency
+
+The event is triggered when the radio frequency of a player changes.
+
+| Parameter | Type     | Description                                                      |
+|-----------|----------|------------------------------------------------------------------|
+| source    | `int`    | the player source                                                |
+| channel   | `int`    | the channel where the frequency was set                          |
+| frequency | `string` | the frequency to set, `"0"` when the player has left the channel |
+
+Like the client side `yaca:external:setRadioFrequency`, leaving a channel is reported as the frequency `"0"`. This
+covers all ways out of a channel: setting the frequency to `"0"`, switching to another frequency and losing the access
+to a secured frequency. Switching from one frequency to another emits the event once, with the new frequency.
+
+### yaca:external:changedRadioMuteState
+
+The event is triggered when the radio mute state of a player changes.
+
+| Parameter | Type      | Description                                  |
+|-----------|-----------|----------------------------------------------|
+| source    | `int`     | the player source                            |
+| channel   | `int`     | the channel where the mute state was changed |
+| state     | `boolean` | the new mute state                           |
+
+### yaca:external:ghostingState
+
+The event is triggered when the ghosting state of a player changes.
+
+| Parameter | Type                  | Description                                          |
+|-----------|-----------------------|------------------------------------------------------|
+| source    | `int`                 | the player source                                    |
+| state     | `boolean`             | the new ghosting state                               |
+| range     | `number \| undefined` | the ghosting range, undefined when it follows his voice range |
+
+</details>
+
+# Developers
+
+If you want to contribute to this project, feel free to do so. We are happy about every contribution. If you have any
+questions, feel free to ask in our [Discord](http://discord.yaca.systems/).
+
+## Building the resource
+
+To build the resource, you need to have [Node.js](https://nodejs.org/) installed. After that, you can run the following
+commands to build the resource:
+
+```bash
+pnpm install
+pnpm run build
+```
+
+The built resource will be located in the `resource` folder, which you can then use in your FiveM server.

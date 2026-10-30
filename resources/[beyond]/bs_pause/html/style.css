@@ -1,6 +1,6 @@
-:root { --acc: #c8a14a; --acc2: #e0c27a; --txt: #e8e2d4; --dim: #9a9384; --line: rgba(232,226,212,.12); --panel: rgba(14,13,11,.55); --danger: #c0533f; }
+:root { --acc: #728c42; --acc2: #9aaa68; --txt: #e8e2d4; --dim: #9a9384; --line: rgba(232,226,212,.12); --panel: rgba(14,13,11,.55); --danger: #c0533f; }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: var(--txt); user-select: none; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: 'Segoe UI Semibold', 'Segoe UI', Arial, sans-serif; color: var(--txt); user-select: none; }
 .hidden { display: none !important; }
 .pause { position: fixed; inset: 0; display: flex; animation: fade .25s ease; }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
@@ -12,8 +12,8 @@ html, body { margin: 0; height: 100%; background: transparent; overflow: hidden;
 .paused { margin: 26px 0 18px; font-size: 11px; letter-spacing: 4px; color: var(--dim); }
 nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 nav button { all: unset; cursor: pointer; padding: 11px 14px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--txt); border-left: 2px solid transparent; transition: background .15s, border-color .15s, padding .15s; display: flex; align-items: center; gap: 10px; }
-nav button:hover { background: rgba(200,161,74,.08); padding-left: 18px; }
-nav button.on { border-left-color: var(--acc); background: rgba(200,161,74,.14); color: var(--acc2); }
+nav button:hover { background: rgba(114,140,66,.08); padding-left: 18px; }
+nav button.on { border-left-color: var(--acc); background: rgba(114,140,66,.14); color: var(--acc2); }
 nav button .ic { flex: 0 0 18px; width: 18px; overflow: hidden; white-space: nowrap; text-align: center; opacity: .8; }
 nav button .badge { margin-left: auto; font-size: 10px; background: var(--acc); color: #111; padding: 1px 6px; border-radius: 2px; }
 nav hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100%; }
@@ -61,3 +61,54 @@ ol.rules { margin: 0; padding-left: 20px; } ol.rules li { margin: 6px 0; font-si
 .seg button.lock::after { content: 'VIP'; position: absolute; top: -7px; right: -4px; font-size: 9px; padding: 0 3px; color: #141210; background: var(--acc); letter-spacing: .05em; }
 .swatch { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -1px; }
 .swatch i { width: 8px; height: 8px; border: 1px solid rgba(255,255,255,.25); }
+
+/* BeyondSurvival final green/olive pause theme */
+:root {
+    --acc: #728c42 !important;
+    --acc2: #9aaa68 !important;
+}
+html, body, button, input, select, textarea {
+    font-family: "Segoe UI Semibold", "Segoe UI", Arial, sans-serif !important;
+}
+nav button.on {
+    border-left-color: #728c42 !important;
+    background: rgba(114, 140, 66, .14) !important;
+    color: #9aaa68 !important;
+}
+
+
+/* Tastaturbelegung - komplettes ALPHA-Z Layout */
+.keyboard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.keyboard-head .sub { margin-bottom:14px; }
+.kb-legend { display:flex; align-items:center; gap:7px; color:var(--dim); font-size:11px; letter-spacing:1px; text-transform:uppercase; padding-top:5px; }
+.kb-legend i { width:11px; height:11px; border:1px solid var(--acc); background:rgba(114,140,66,.28); box-shadow:0 0 9px rgba(114,140,66,.22); }
+.keyboard-card { background:rgba(8,9,8,.66); border:1px solid rgba(154,170,104,.25); padding:14px; margin-bottom:14px; backdrop-filter:blur(3px); }
+.keyboard-wrap { display:flex; align-items:flex-end; gap:14px; min-width:920px; }
+.keyboard-main { flex:1; display:flex; flex-direction:column; gap:5px; }
+.keyboard-numpad { width:205px; display:flex; flex-direction:column; gap:5px; }
+.kb-row { display:flex; gap:5px; align-items:center; min-height:40px; }
+.kb-space { flex:var(--sp); min-width:4px; }
+.kb-key { flex:0 0 43px; height:39px; border:1px solid rgba(232,226,212,.2); border-radius:4px; background:linear-gradient(180deg,rgba(38,41,39,.96),rgba(16,18,17,.96)); box-shadow:inset 0 1px rgba(255,255,255,.07),0 2px 4px rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center; text-align:center; color:#ddd9cf; }
+.kb-key b { font-size:11px; letter-spacing:.25px; font-weight:700; line-height:1; white-space:nowrap; }
+.kb-key.small { flex-basis:43px; }
+.kb-key.tab { flex-basis:65px; } .kb-key.caps { flex-basis:75px; } .kb-key.shift { flex-basis:76px; } .kb-key.shift2 { flex-basis:98px; }
+.kb-key.backspace { flex-basis:75px; } .kb-key.enter { flex-basis:67px; } .kb-key.enter2 { visibility:hidden; flex-basis:67px; }
+.kb-key.ctrl { flex-basis:58px; } .kb-key.win { flex-basis:48px; } .kb-key.alt,.kb-key.altgr { flex-basis:58px; } .kb-key.menu { flex-basis:48px; }
+.kb-key.spacebar { flex:1 1 230px; } .kb-key.arrow { flex-basis:43px; } .kb-key.numzero { flex-basis:91px; }
+.kb-key.hot { border-color:#839b50; color:#f1f3e9; background:linear-gradient(180deg,rgba(91,111,53,.68),rgba(42,54,29,.78)); box-shadow:inset 0 0 16px rgba(154,170,104,.15),0 0 8px rgba(114,140,66,.16); }
+.kb-key.hot.hotbar { border-color:#9d8b3d; background:linear-gradient(180deg,rgba(120,99,34,.62),rgba(57,47,22,.78)); }
+.kb-key.hot.vehicle { border-color:#628f85; background:linear-gradient(180deg,rgba(48,104,93,.58),rgba(26,52,47,.78)); }
+.kb-key.hot.communication { border-color:#76618d; background:linear-gradient(180deg,rgba(92,67,113,.58),rgba(45,33,55,.78)); }
+.kb-key.hot.combat { border-color:#8f664f; background:linear-gradient(180deg,rgba(111,69,49,.58),rgba(57,35,26,.78)); }
+.bind-sections { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding-bottom:24px; }
+.bind-card { background:var(--panel); border:1px solid var(--line); padding:14px 16px; }
+.bind-card h3 { margin:0 0 9px; color:var(--acc2); font-size:12px; letter-spacing:2px; text-transform:uppercase; }
+.bind { display:flex; align-items:center; gap:12px; min-height:35px; padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px; }
+.bind:last-child { border-bottom:0; }
+.bind kbd { min-width:58px; padding:5px 8px; font-size:11px; }
+.bind span { color:var(--txt); }
+@media (max-width:1350px) { .main { max-width:none; padding-right:28px; } .keyboard-wrap { transform:scale(.88); transform-origin:left bottom; width:113.6%; margin-bottom:-6px; } }
+
+.alpha-brand { display:flex; align-items:baseline; gap:0; font-size:26px; letter-spacing:6px; }
+.alpha-brand span { font-size:26px; letter-spacing:6px; color:var(--txt); }
+.alpha-brand b { display:inline; color:#728c42; font-size:30px; letter-spacing:2px; }

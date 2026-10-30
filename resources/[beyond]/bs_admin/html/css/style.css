@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Cinzel:wght@400;600&family=Kalam:wght@400;700&display=swap');
 /* Staff menu - same palette as the rest of the framework */
 
 :root {
@@ -630,3 +631,333 @@ hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
 .tsflag b { font-weight: 400; color: var(--amber); }
 .tsflag.off b { color: var(--dust); }
 .menu__foot { flex: 0 0 auto; }
+
+/* BS19 books editor */
+#bsBooksPane .bk-preview{display:flex;justify-content:center;padding:12px;background:#241912;border:1px solid #73543a;border-radius:6px}
+#bsBooksPane .bk-page{width:min(100%,340px);aspect-ratio:4/5;overflow:auto;padding:20px 18px;background:radial-gradient(ellipse at 35% 20%,#f0dfb8,#d2b686 95%);color:#352719;box-shadow:inset 8px 0 22px #50361b4d,0 4px 12px #0008;font:17px/1.48 Georgia,serif}
+#bsBooksPane .bk-page__text{white-space:pre-wrap;overflow-wrap:anywhere}
+#bsBooksPane .bk-page img{max-width:100%;max-height:48%;object-fit:contain;display:block;margin:12px auto}
+#bsBooksPane .bk-page img[hidden]{display:none}
+#bsBooksPane #bkList{height:90px;background:#251b16;color:#f0ddba}
+#bsBooksPane .split{flex-wrap:wrap;align-items:center}
+#bsBooksPane input[type=color]{height:30px;width:40px;vertical-align:middle}
+
+/* Books submenu directly in F10's left navigation */
+.bk-rail-sub { display:flex; flex-direction:column; padding: 3px 0 7px 13px; background:rgba(224,140,70,.035); border-left:2px solid rgba(224,140,70,.32); }
+.bk-rail-sub[hidden] { display:none !important; }
+.bk-rail-sub button { display:block; width:100%; text-align:left; padding:9px 5px; border:0; border-left:2px solid transparent; background:transparent; color:var(--dust); font: 10px var(--mono); letter-spacing:.04em; cursor:pointer; }
+.bk-rail-sub button:hover, .bk-rail-sub button.is-active { color:var(--amber); border-left-color:var(--amber); background:rgba(224,140,70,.08); }
+.menu.is-narrow .bk-rail-sub { display:none !important; }
+/* Only relevant controls appear for the selected sidebar action. */
+#bsBooksPane[data-bk-view="list"] .bk-heading #bkSave,
+#bsBooksPane[data-bk-view="give"] .bk-heading #bkSave,
+#bsBooksPane[data-bk-view="delete"] .bk-heading #bkSave {display:none;}
+#bsBooksPane[data-bk-view="list"] [data-bk-section="info"],
+#bsBooksPane[data-bk-view="list"] [data-bk-section="pages"],
+#bsBooksPane[data-bk-view="list"] [data-bk-section="preview"],
+#bsBooksPane[data-bk-view="list"] [data-bk-section="actions"],
+#bsBooksPane[data-bk-view="new"] [data-bk-section="list"],
+#bsBooksPane[data-bk-view="new"] [data-bk-section="actions"],
+#bsBooksPane[data-bk-view="edit"] [data-bk-section="actions"],
+#bsBooksPane[data-bk-view="give"] [data-bk-section="info"],
+#bsBooksPane[data-bk-view="give"] [data-bk-section="pages"],
+#bsBooksPane[data-bk-view="give"] [data-bk-section="preview"],
+#bsBooksPane[data-bk-view="delete"] [data-bk-section="info"],
+#bsBooksPane[data-bk-view="delete"] [data-bk-section="pages"],
+#bsBooksPane[data-bk-view="delete"] [data-bk-section="preview"] {display:none !important;}
+#bsBooksPane[data-bk-view="give"] .bk-danger-zone {display:none;}
+#bsBooksPane[data-bk-view="delete"] #bkGive,
+#bsBooksPane[data-bk-view="delete"] #bkPlayer {display:none;}
+#bsBooksPane[data-bk-view="list"] #bkNew,
+#bsBooksPane[data-bk-view="edit"] #bkNew,
+#bsBooksPane[data-bk-view="give"] #bkNew,
+#bsBooksPane[data-bk-view="delete"] #bkNew {display:none;}
+
+/* BS19 books: save after editor/preview, immediately before JS debug section. */
+#bsBooksPane .bk-save-footer { margin: 12px 0 8px; }
+#bsBooksPane .bk-save-footer #bkSave { width:100%; padding: 12px; }
+#bsBooksPane[data-bk-view="list"] .bk-save-footer,
+#bsBooksPane[data-bk-view="give"] .bk-save-footer,
+#bsBooksPane[data-bk-view="delete"] .bk-save-footer { display:none !important; }
+#bsBooksPane[data-bk-view="delete"] #bkRefreshPlayers {display:none;}
+#bsBooksPane #bkPlayer {width:100%;padding:10px;background:#251b16;color:#f0ddba;border:1px solid #73543a;}
+
+
+/* BS19 F10 / inventory-matched survival green redesign */
+:root { --amber:#4d8756; --blood:#345d3c; --mono:Arial,Helvetica,sans-serif; --serif:Arial,Helvetica,sans-serif; --dust:#b3c3b5; --bone:#eef4ee; }
+html, body, .menu, .menu *, .menu input, .menu select, .menu textarea, .menu button, .menu option {font-family:Arial,Helvetica,sans-serif;}
+.menu {background:rgba(12,24,16,.90);border-color:rgba(93,145,101,.28);border-left:2px solid #4d8756;}
+.rail {background:rgba(9,22,13,.5);border-right-color:rgba(94,145,101,.23);}
+.menu__head,.target,.menu__foot {background:rgba(8,19,12,.25);border-color:rgba(94,145,101,.23);}
+.menu__body {background:rgba(14,29,19,.28);}
+.mtab:hover,.railact:hover {background:rgba(77,135,86,.18);}
+.mtab.is-active {background:rgba(77,135,86,.24);color:#a4d6aa;border-left-color:#4d8756;}
+.bk-rail-sub {background:rgba(77,135,86,.1);border-left-color:rgba(77,135,86,.7);}
+.bk-rail-sub button:hover,.bk-rail-sub button.is-active {background:rgba(77,135,86,.2);color:#b8e5bd;border-left-color:#4d8756;}
+.row:hover,.chip:hover,.itab:hover,.itab.is-on {background:rgba(77,135,86,.16);border-color:#4d8756;}
+.row__state.on {background:rgba(77,135,86,.4);border-color:#4d8756;}
+.row__state.on::after {background:#9ad5a1;}
+.modebtn {border-color:rgba(77,135,86,.65);}
+.modebtn:hover {background:rgba(77,135,86,.18);}
+#bsBooksPane #bkList,#bsBooksPane #bkPlayer {background:#15271b;color:#ecf5ed;border-color:#416f48;}
+#bsBooksPane .bk-preview {background:#16251b;border-color:#416f48;}
+/* Only the actual paper preview uses a book font. */
+#bsBooksPane .bk-page,#bsBooksPane .bk-page * {font-family:Georgia,serif;}
+/* A visible plus/minus icon on the left BUECHER navigation tab. */
+.mtab[data-tab="books"] .bk-rail-indicator {flex:0 0 20px;width:20px;height:20px;display:grid;place-items:center;border:1px solid rgba(77,135,86,.8);background:rgba(77,135,86,.16);color:#a4d6aa;font:bold 17px/1 Arial,Helvetica,sans-serif;text-shadow:none;border-radius:3px;}
+.mtab[data-tab="books"][aria-expanded="true"] .bk-rail-indicator {background:#4d8756;color:#fff;}
+.mtab[data-tab="books"][aria-expanded="true"] .bk-rail-indicator::before {content:'−';}
+.mtab[data-tab="books"][aria-expanded="true"] .bk-rail-indicator {font-size:0;}
+.mtab[data-tab="books"][aria-expanded="true"] .bk-rail-indicator::before {font-size:19px;}
+.menu.is-narrow .bk-rail-indicator {display:none;}
+/* Books: tidy two-column metadata and compact editing toolbar. */
+#bsBooksPane [data-bk-section="info"] .bk-section__content {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;}
+#bsBooksPane [data-bk-section="info"] .bk-section__content > .bk-field:last-child {grid-column:1/-1;}
+#bsBooksPane .bk-field {display:flex;flex-direction:column;gap:5px;min-width:0;}
+#bsBooksPane .bk-field input,#bsBooksPane .bk-field textarea,#bsBooksPane .bk-field select {width:100%;min-width:0;}
+#bsBooksPane [data-bk-section="pages"] .bk-section__content {display:flex;flex-direction:column;gap:12px;}
+#bsBooksPane .bk-actions {display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;align-items:center;}
+#bsBooksPane .bk-actions .row {width:auto;min-width:130px;flex:1 1 135px;min-height:36px;padding:9px 12px;justify-content:center;text-align:center;letter-spacing:.02em;}
+#bsBooksPane .bk-pagination {display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;}
+#bsBooksPane .bk-pagination .row {width:46px;flex:0 0 46px;min-height:36px;justify-content:center;}
+#bsBooksPane #bkPageNum {min-width:90px;text-align:center;font-weight:bold;}
+#bsBooksPane #bkText {min-height:260px;resize:vertical;line-height:1.55;padding:14px;font-size:15px;user-select:text;}
+#bsBooksPane .bk-settings {display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;}
+#bsBooksPane .bk-settings select {min-height:36px;}
+#bsBooksPane .bk-save-footer {margin:16px 0 8px;}
+#bsBooksPane .bk-save-footer #bkSave {background:rgba(77,135,86,.35);border:1px solid #4d8756;font-weight:bold;min-height:46px;}
+#bsBooksPane .bk-save-footer #bkSave:hover {background:rgba(77,135,86,.58);}
+@media (max-width:850px) {#bsBooksPane [data-bk-section="info"] .bk-section__content {grid-template-columns:1fr;}#bsBooksPane .bk-settings {grid-template-columns:1fr 1fr;}}
+
+/* Resizable F10: draggable left/right divider and bottom-right window corner. */
+.menu {width: min(1320px, 96vw); height: min(890px, 95vh); max-width: 98vw; max-height: 98vh; min-width: min(520px, 96vw); min-height: min(380px, 90vh); position:fixed;}
+.menu__main {min-height:0; overflow:hidden;}
+.rail {flex:0 0 var(--f10-rail-width, 185px);width:var(--f10-rail-width, 185px);min-width:0;}
+.f10-splitter {flex:0 0 7px;width:7px;cursor:col-resize;touch-action:none;background:rgba(77,135,86,.09);border-left:1px solid rgba(77,135,86,.2);border-right:1px solid rgba(77,135,86,.2);z-index:4;}
+.f10-splitter:hover,.f10-splitter.is-dragging {background:rgba(77,135,86,.55);}
+.menu.is-narrow .f10-splitter,.menu.is-simple .f10-splitter {display:none;}
+.menu.is-narrow .rail {flex:0 0 46px;width:46px;}
+.f10-resize {position:absolute;right:0;bottom:0;width:20px;height:20px;cursor:nwse-resize;touch-action:none;z-index:8;background:linear-gradient(135deg,transparent 55%,rgba(110,180,119,.75) 56%,rgba(110,180,119,.75) 61%,transparent 62%,transparent 75%,rgba(110,180,119,.75) 76%,rgba(110,180,119,.75) 81%,transparent 82%);}
+.mtab[data-tab="books"] {gap: .45rem;}
+.mtab[data-tab="books"] .bk-rail-indicator {flex:0 0 18px;width:18px;height:18px;font-size:15px;}
+.mtab[data-tab="books"] .mtab__t {flex:1;}
+/* Only the right content area uses a slightly smaller type scale. */
+.menu__body {font-size:90%;}
+.menu__body button,.menu__body input,.menu__body select,.menu__body textarea,.menu__body label {font-size:inherit;}
+
+/* Book editor: preserve per-page font choice in preview. */
+#bsBooksPane .bk-page__text{display:block;min-height:1px;}
+
+/* FiveM-safe font chooser: no native OS dropdown required. */
+#bsBooksPane .bk-font-picker {position:relative;min-width:0;width:100%;}
+#bsBooksPane .bk-font-toggle {display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;cursor:pointer;resize:none;min-height:36px;}
+#bsBooksPane .bk-font-toggle span {color:#78b783;flex-shrink:0;}
+#bsBooksPane .bk-font-options {position:absolute;z-index:100;top:calc(100% + 3px);left:0;right:0;max-height:230px;overflow-y:auto;padding:5px;background:#171e19;border:1px solid #4d8756;box-shadow:0 12px 28px rgba(0,0,0,.55);}
+#bsBooksPane .bk-font-options[hidden] {display:none!important;}
+#bsBooksPane .bk-font-options button {display:block;width:100%;padding:10px 12px;text-align:left;background:transparent;color:#e4e5dc;border:0;cursor:pointer;font:inherit;}
+#bsBooksPane .bk-font-options button:hover,#bsBooksPane .bk-font-options button:focus {background:rgba(77,135,86,.35);outline:none;}
+
+/* BS19 book editor: compact controls and ink-like text, no browser chrome. */
+#bsBooksPane .bk-settings {grid-template-columns:minmax(180px,2fr) minmax(125px,1fr) minmax(120px,1fr) 76px;gap:10px;align-items:end;}
+#bsBooksPane .bk-color-field {width:76px;justify-self:end;}
+#bsBooksPane #bkColor {appearance:none;-webkit-appearance:none;width:64px!important;min-width:64px;height:36px;padding:3px;border:1px solid rgba(96,148,103,.5);border-radius:4px;background:#19271d;cursor:pointer;box-shadow:none;}
+#bsBooksPane #bkColor::-webkit-color-swatch-wrapper {padding:0;}
+#bsBooksPane #bkColor::-webkit-color-swatch {border:0;border-radius:2px;}
+#bsBooksPane #bkAlign {appearance:none;-webkit-appearance:none;background:#19271d;color:#e2e7df;border:1px solid rgba(96,148,103,.5);border-radius:3px;padding:8px 22px 8px 10px;}
+#bsBooksPane .bk-image-controls {display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+#bsBooksPane .bk-image-controls button {width:auto;flex:none;padding:9px 12px;}
+#bsBooksPane #bkImageInfo {font-size:12px;color:#a2b4a5;}
+#bsBooksPane .bk-page__text,#bsBooksPane .bk-page__text * {text-shadow:none!important;-webkit-text-stroke:0!important;filter:none!important;}
+@media(max-width:1050px){#bsBooksPane .bk-settings{grid-template-columns:minmax(170px,1fr) minmax(110px,1fr);}#bsBooksPane .bk-color-field{justify-self:start;}}
+
+/* Book page image: compact dual-source input */
+#bsBooksPane .bk-image-url-label{display:block;margin:8px 0 5px;font-size:11px;letter-spacing:.06em;color:#a2b4a5;}
+#bsBooksPane .bk-image-url{width:100%;box-sizing:border-box;min-height:35px;font-size:12px;}
+#bsBooksPane .bk-image-controls{margin-top:9px;}
+#bsBooksPane #bkPreviewImage{max-width:100%;max-height:55%;width:auto;height:auto;object-fit:contain;display:block;margin:10px auto;}
+#bsBooksPane #bkPreviewImage[hidden]{display:none!important;}
+
+/* Book design v2 */
+#bsBooksPane .bk-media{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid #385842;background:rgba(11,23,15,.65);border-radius:6px;margin:10px 0}
+#bsBooksPane .bk-media strong{color:#b9d8bd;font-size:12px;letter-spacing:.07em}
+#bsBooksPane .bk-media small,#bsBooksPane .bk-media-note{color:#a3b4a6;font-size:11px;line-height:1.5}
+#bsBooksPane .bk-cover-preview{display:flex;align-items:center;gap:12px;min-height:34px;color:#a3b4a6;font-size:12px}
+#bsBooksPane .bk-cover-preview img{width:84px;height:84px;object-fit:contain;border:1px solid #53775b;background:#1c271e}
+#bsBooksPane .bk-cover-preview img[hidden]{display:none}
+#bsBooksPane .bk-page{background-size:cover;background-position:center}
+#bsBooksPane .bk-page.bk-theme-clean{background-color:#f4eddb;background-image:linear-gradient(130deg,#f9f5e9,#e8dfc9);box-shadow:inset 0 0 18px #8c806522}
+#bsBooksPane .bk-page.bk-theme-rusty{background-color:#b69a6b;background-image:radial-gradient(ellipse at 10% 14%,#79492745,transparent 37%),radial-gradient(ellipse at 90% 88%,#653c2766,transparent 45%),repeating-linear-gradient(16deg,#d6c095 0 3px,#bda577 4px 7px)}
+#bsBooksPane .bk-page.bk-theme-torn{background-color:#b6a07b;background-image:radial-gradient(ellipse at 0 0,#493326bb,transparent 40%),radial-gradient(ellipse at 100% 100%,#3e2b20bb,transparent 42%),linear-gradient(125deg,#b39b74,#dbc69c 48%,#927757)}
+
+/* BS19: Editor preview matches DIN A4 portrait page (210 x 297 mm). */
+#bsBooksPane .bk-page {
+  width:min(100%,340px);
+  aspect-ratio:210 / 297;
+  height:auto;
+  min-height:0;
+  overflow-y:auto;
+}
+
+/* BS19: NUI-safe clickable book editor dropdowns. Scoped to books only. */
+#bsBooksPane .bk-nui-select { position:relative; width:100%; min-width:0; }
+#bsBooksPane .bk-nui-select__native { display:none!important; }
+#bsBooksPane .bk-nui-select__button { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:36px; padding:8px 12px; background:#19271d; border:1px solid #416f48; border-radius:3px; color:#ecf5ed; text-align:left; cursor:pointer; font:inherit; }
+#bsBooksPane .bk-nui-select__button:hover, #bsBooksPane .bk-nui-select__button[aria-expanded="true"] { border-color:#83bc8b; background:#223b29; }
+#bsBooksPane .bk-nui-select__options { position:absolute; z-index:1000; top:calc(100% + 3px); right:0; left:auto; width:100%; min-width:100%; max-height:230px; overflow-y:auto; padding:4px; background:#14251a; border:1px solid #4d8756; box-shadow:0 10px 26px #000a; }
+#bsBooksPane .bk-nui-select__options[hidden] { display:none!important; }
+#bsBooksPane .bk-nui-select__option { display:block; width:100%; padding:10px 12px; background:transparent; color:#eef4ee; border:0; text-align:left; cursor:pointer; white-space:normal; font:inherit; }
+#bsBooksPane .bk-nui-select__option:hover, #bsBooksPane .bk-nui-select__option[aria-selected="true"] { background:#305b38; color:#fff; }
+#bsBooksPane .bk-nui-select__option:disabled { opacity:.4; cursor:default; }
+
+/* BS19: symmetric book metadata. Cover, design and background share the right column. */
+#bsBooksPane [data-bk-section="info"] .bk-section__content > .bk-right-stack {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+#bsBooksPane [data-bk-section="info"] .bk-right-stack > .bk-media {
+    width: 100%;
+    margin: 0;
+}
+@media (max-width:850px) {
+    #bsBooksPane [data-bk-section="info"] .bk-section__content > .bk-right-stack {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}
+
+/* BS19 paper texture preview; existing custom backgrounds override this. */
+#bsBooksPane .bk-page.bk-theme-standard{background:#d7c39e url('../img/book_themes/standard_paper.png') center/100% 100% no-repeat}
+#bsBooksPane .bk-page.bk-theme-clean{background:#e8e0c8 url('../img/book_themes/clean_paper.png') center/100% 100% no-repeat}
+#bsBooksPane .bk-page.bk-theme-rusty{background:#b69268 url('../img/book_themes/rusty_paper.png') center/100% 100% no-repeat}
+#bsBooksPane .bk-page.bk-theme-torn{background:#bb9f7b url('../img/book_themes/torn_paper.png') center/100% 100% no-repeat}
+#bsBooksPane .bk-cover-preview{background-size:contain;background-position:left center;background-repeat:no-repeat;min-height:94px;padding-left:96px}
+
+/* Book previews: preserve paper aspect ratio and avoid distorted textures. */
+#bsBooksPane .bk-page {box-sizing:border-box;overflow:hidden;background-size:100% 100%;}
+#bsBooksPane .bk-cover-preview {background-size:88px 88px;background-position:4px center;}
+
+/* Gratisbauen: persistente Spielerliste */
+.freebuild-grants{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.freebuild-grant{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);border-radius:5px;gap:12px}
+.freebuild-remove{cursor:pointer;color:#ff8585;background:rgba(160,25,25,.2);border:1px solid rgba(255,100,100,.3);border-radius:4px;padding:4px 10px;font-weight:bold}
+.freebuild-remove:hover{background:rgba(160,25,25,.45)}
+
+/* Prop Studio — matches F10 dark interface */
+#psPane details{border:1px solid #384347;background:#111a1d;border-radius:7px;padding:12px;margin:12px 0;color:#dce6e4}
+#psPane summary{cursor:pointer;font-weight:700;letter-spacing:.06em;padding:5px 0}
+#psPane label{display:block;font-size:12px;color:#afbfbe;margin:10px 0}
+#psPane input,#psPane select{box-sizing:border-box;width:100%;min-width:0;background:#101719;color:#eaf2ee;border:1px solid #4b6260;border-radius:5px;padding:10px;outline:none}
+#psPane input:focus,#psPane select:focus{border-color:#83c0aa}
+#psPane .ps-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#psPane .ps-line{display:flex;gap:10px;align-items:center;margin:10px 0}
+#psPane .ps-line input{flex:1}
+#psPane .ps-line .row{flex:0 0 auto;width:auto;padding:10px}
+#psPane #psList{min-height:180px;max-height:260px}
+#psPane .row{cursor:pointer}
+#psPane .row:hover{border-color:#86c3af;filter:brightness(1.15)}
+#psPane #psStatus{min-height:22px}
+
+/* BS19 Prop Editor – grouped catalogue and category creation */
+#psPane .ps-category-list{max-height:350px;overflow-y:auto;scrollbar-color:#487e57 #101b16}
+#psPane .ps-category{margin:7px 0;padding:0;border:1px solid #355043;background:#0d1b16;border-radius:5px}
+#psPane .ps-category summary{padding:10px 12px;color:#bce1b9;display:flex;justify-content:space-between}
+#psPane .ps-category-count{font-size:11px;color:#9db3a2}
+#psPane .ps-prop{display:block;width:100%;text-align:left;border:0;border-top:1px solid #20372a;background:transparent;color:#d7e9dc;padding:9px 14px;cursor:pointer}
+#psPane .ps-prop:hover,#psPane .ps-prop.is-selected{background:#1a3a26;color:#caff9b}
+#psPane .ps-catline label{flex:1;margin:0}
+#psPane .ps-new-category{display:flex;gap:8px;align-items:center;margin:10px 0}
+#psPane .ps-new-category[hidden]{display:none}
+#psPane .ps-new-category input{flex:1}
+#psPane .ps-new-category .row{width:auto;white-space:nowrap}
+
+/* v5: preserve compact, functional v3 catalogue and category controls. */
+#psPane #psList{min-height:0;max-height:320px;overflow-y:auto}
+#psPane .ps-category-items{padding:4px 8px 8px}
+#psPane .ps-prop-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(140,190,155,.12)}
+#psPane .ps-prop-info{flex:1;min-width:0;text-align:left;background:transparent;border:0;color:#e0eee5;cursor:pointer;padding:6px}
+#psPane .ps-prop-info strong,#psPane .ps-prop-info small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#psPane .ps-prop-info small{font-size:11px;color:#95aa9c}
+#psPane .ps-prop-action{background:#15291c;border:1px solid #34533d;border-radius:4px;color:#b9d8bf;padding:8px 10px;cursor:pointer}
+#psPane .ps-prop-action:hover{border-color:#aaff66;color:#d9ffb3}
+#psPane .ps-prop-row.is-selected{background:#1a3826}
+#psPane .ps-count{font-size:11px;color:#a8c6ad}
+#psPane .ps-empty{padding:12px;color:#a8b8ad}
+#psPane .ps-catline{display:flex;align-items:end;gap:10px}
+#psPane .ps-catline label{flex:1;min-width:0}
+#psPane .ps-catline button{white-space:nowrap}
+
+/* v6: scoped five-tab editor, no global F10 changes */
+#psPane .ps-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:14px 0;border-bottom:1px solid #33543d;padding-bottom:6px}
+#psPane .ps-tab{background:#101c16;border:1px solid #36513d;border-radius:5px;color:#b6cdb9;padding:9px 11px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.03em}
+#psPane .ps-tab:hover,#psPane .ps-tab.active{background:#20402a;border-color:#aaff66;color:#e0ffd1}
+#psPane .ps-section{min-height:160px}#psPane .ps-section[hidden],#psPane .ps-selection[hidden],#psPane .ps-dialog[hidden]{display:none}
+#psPane .ps-filters{flex-wrap:wrap}#psPane .ps-filters button{border:1px solid #36513d;border-radius:4px;background:#14241a;color:#adc8b3;padding:7px 11px;cursor:pointer}#psPane .ps-filters button.active{border-color:#aaff66;color:#d8ffc0}
+#psPane .ps-selection{border:1px solid #4b6b4b;background:#13241a;border-radius:6px;padding:12px;margin:12px 0}
+#psPane .ps-selection strong,#psPane .ps-selection span{display:block;margin-bottom:6px}#psPane .ps-selection span{font-size:12px;color:#a5c2ac}
+#psPane .ps-primary{background:#244b2d;border-color:#8ecb65}#psPane .ps-danger{border-color:#7d4747!important;color:#ffc4bb!important;background:#2b1b1b!important}
+#psPane .ps-state{color:#98d2a5}#psPane .ps-state.is-untested{color:#ffce75}#psPane .ps-state.is-disabled{color:#ff9188}
+#psPane .ps-manage-row{display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid #2d4536;padding:10px 4px;flex-wrap:wrap}#psPane .ps-manage-row>div{flex:1;min-width:150px}
+#psPane .ps-check{display:flex;gap:10px;align-items:center}#psPane .ps-check input{width:auto}
+#psPane .ps-log{max-height:340px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#0d1711;color:#cce7ce;padding:12px;border:1px solid #36513d;border-radius:5px}
+#psPane .ps-dialog{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.78);display:grid;place-items:center;padding:20px}#psPane .ps-dialog-card{background:#111e16;border:1px solid #60865e;border-radius:8px;padding:22px;width:min(440px,90vw);box-shadow:0 20px 70px #000b;color:#e5f5e6}#psPane .ps-dialog-card h3{color:#c9f8bd;margin:0 0 12px}#psPane .ps-dialog-card .ps-line{justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:720px){#psPane .ps-tab{flex:1 1 28%}#psPane .ps-selection .ps-line{flex-wrap:wrap}#psPane .ps-line{flex-wrap:wrap}}
+
+/* Prop Studio: identical left-hand submenu interaction as Books */
+.ps-rail-sub {display:flex;flex-direction:column;padding:3px 0 7px 13px;background:rgba(77,135,86,.1);border-left:2px solid rgba(77,135,86,.7)}
+.ps-rail-sub[hidden],.menu.is-narrow .ps-rail-sub {display:none!important}
+.ps-rail-sub button {display:block;width:100%;text-align:left;padding:9px 5px;border:0;border-left:2px solid transparent;background:transparent;color:var(--dust);font:10px var(--mono);letter-spacing:.04em;cursor:pointer}
+.ps-rail-sub button:hover,.ps-rail-sub button.is-active {background:rgba(77,135,86,.2);color:#b8e5bd;border-left-color:#4d8756}
+.mtab[data-tab="propstudio"][aria-expanded="true"] {background:rgba(77,135,86,.12)}
+.ps-rail-sub #psErrorBadge {color:#ff9288;font-weight:700}
+/* Unified unobtrusive chevrons for Books and Prop Editor */
+.mtab[data-tab="books"] .rail-chevron,.mtab[data-tab="propstudio"] .rail-chevron{display:inline-block;flex:0 0 8px;width:8px;height:8px;border-right:1.5px solid #8dbd96;border-bottom:1.5px solid #8dbd96;transform:rotate(-45deg);transition:transform .16s ease,border-color .16s ease;margin:0 3px 0 2px;background:none;box-shadow:none}
+.mtab[data-tab="books"][aria-expanded="true"] .rail-chevron,.mtab[data-tab="propstudio"][aria-expanded="true"] .rail-chevron{transform:rotate(45deg)}
+.mtab[data-tab="books"]:hover .rail-chevron,.mtab[data-tab="propstudio"]:hover .rail-chevron{border-color:#c4f5c8}
+.menu.is-narrow .rail-chevron{display:none!important}
+#psPane .ps-inline-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+#psPane .ps-prop-row{flex-wrap:wrap;padding:9px 5px}
+#psPane .ps-prop-info{cursor:default}
+#psPane .ps-prop-row .ps-prop-action{white-space:nowrap}
+@media(max-width:850px){#psPane .ps-inline-actions{justify-content:flex-start;width:100%}}
+
+/* Prop Studio: entire category header is the accordion control. */
+#psPane .ps-category > summary{display:flex;align-items:center;justify-content:flex-start;gap:10px;cursor:pointer;user-select:none;list-style:none;min-height:38px;box-sizing:border-box;transition:background-color .15s ease}
+#psPane .ps-category > summary::-webkit-details-marker{display:none}
+#psPane .ps-category > summary::marker{content:''}
+#psPane .ps-category > summary:hover{background:#1a3426;color:#e0f6df}
+#psPane .ps-category > summary:focus-visible{outline:2px solid #88d96b;outline-offset:-2px}
+#psPane .ps-category-arrow{display:inline-block;width:7px;height:7px;flex:0 0 7px;border-right:1.5px solid #a5d8b1;border-bottom:1.5px solid #a5d8b1;transform:rotate(-45deg);transition:transform .15s ease}
+#psPane .ps-category[open] > summary .ps-category-arrow{transform:rotate(45deg)}
+
+/* V4: catalogue uses the available F10 height; overflow scrolls inside the list. */
+#psPane.is-active{height:100%;min-height:0;box-sizing:border-box}
+#psPane .ps-section[data-ps-section="existing"]:not([hidden]){display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden}
+#psPane .ps-section[data-ps-section="existing"] > .ps-line{flex:0 0 auto}
+#psPane #psList{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#527c60 #101b16;overscroll-behavior:contain}
+#psPane #psList::-webkit-scrollbar{width:7px}
+#psPane #psList::-webkit-scrollbar-thumb{background:#527c60;border-radius:6px}
+#psPane #psStatus{flex:0 0 auto;margin:6px 0 0}
+#psPane .ps-state.is-original{color:#85d6a1}
+#psPane .ps-state.is-custom{color:#ffbd70}
+#psPane .ps-state.is-new{color:#8cbfff}
+#psPane .ps-state.is-disabled{color:#ff9188}
+#psPane .ps-state.is-untested{color:#ffce75}
+
+/* Individual placed objects – matches the existing dark editor. */
+.ps-placed-panel{border:1px solid #34463f;background:#111c19;border-radius:8px;padding:12px;margin:12px 0 18px;max-height:360px;overflow:auto;scrollbar-width:thin}
+.ps-placed-panel .ps-line{justify-content:space-between;align-items:center}
+.ps-placed-panel #psPlacedList{display:grid;gap:7px}
+.ps-placed-panel .ps-prop-row{min-width:0}
+
+/* BS19 compact prop catalogue actions */
+#psPane .ps-prop-row .ps-prop-action{font-size:10px!important;padding:5px 8px!important;min-height:27px!important;line-height:1.15!important;letter-spacing:0!important;border-radius:4px!important}
+#psPane .ps-inline-actions{gap:5px!important}
+#psPane .ps-prop-row{padding:6px 5px!important}
+#psPane .ps-model-dialog{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+#psPane .ps-model-dialog label{font-size:11px;color:#b7d7b9;letter-spacing:.07em}
+#psPane .ps-model-dialog input{background:#0b1410;border:1px solid #4b7157;color:#e9f4e8;padding:10px;border-radius:4px;width:100%;box-sizing:border-box}
+#psPane .ps-model-dialog small{color:#a8bcae;font-size:11px;line-height:1.5}

@@ -5,10 +5,11 @@
     --ash:    #16150f;
     --bone:   #d8d2c2;
     --dust:   #6f6a5c;
-    --amber:  #c8763a;
-    --blood:  #6e2b21;
-    --mono:   'Courier New', 'Consolas', monospace;
-    --serif:  'Times New Roman', Georgia, serif;
+    --amber:  #4f8a51;  /* Dunkelgrün */
+    --blood:  #4b573e;   /* Olivgrün */
+    --font:   'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Neue Schriftart-Variable */
+    --mono:   var(--font);   /* Ersetzt den Terminal-Look durch Segoe UI */
+    --serif:  var(--font);   /* Ersetzt auch die Serif-Schrift durch Segoe UI, falls alles einheitlich sein soll */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -19,13 +20,41 @@ html, body {
     overflow: hidden;
     background: var(--soot);
     color: var(--bone);
-    font-family: var(--mono);
+    font-family: var(--font); /* Setzt Segoe UI als globale Standardschrift */
     cursor: none;
+}
+/* Alpha-Z background watermark. Kept separate from all existing atmosphere/effects. */
+.alpha-z-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    overflow: hidden;
+    background: #050605;
+}
+
+.alpha-z-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.24);
+}
+
+.alpha-z-background img {
+    width: min(86vw, 1800px);
+    max-height: 58vh;
+    object-fit: contain;
+    opacity: 0.18;
+    filter: brightness(0.66) contrast(1.12) saturate(0.88);
 }
 
 /* atmosphere */
 
 body::before {                       /* slow heat haze across the floor */
+    z-index: 1;
     content: '';
     position: fixed;
     inset: 0;
@@ -39,6 +68,7 @@ body::before {                       /* slow heat haze across the floor */
 
 .grain {
     position: fixed;
+    z-index: 1;
     inset: -50%;
     pointer-events: none;
     opacity: 0.05;
@@ -57,6 +87,7 @@ body::before {                       /* slow heat haze across the floor */
 
 .vignette {
     position: fixed;
+    z-index: 1;
     inset: 0;
     pointer-events: none;
     background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.82) 100%);
@@ -64,6 +95,7 @@ body::before {                       /* slow heat haze across the floor */
 
 #spores {
     position: fixed;
+    z-index: 1;
     inset: 0;
     pointer-events: none;
     opacity: 0.5;
@@ -212,3 +244,7 @@ body::before {                       /* slow heat haze across the floor */
     color: var(--amber);
     font-variant-numeric: tabular-nums;
 }
+
+/* Smooth handoff to the already-rendered character selection. */
+html { opacity: 1; transition: opacity 1000ms ease-in-out; }
+html.bs-fade-out { opacity: 0; pointer-events: none; }

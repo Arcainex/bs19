@@ -32,9 +32,41 @@ function Building.LoadModel(hash)
     return HasModelLoaded(hash)
 end
 
+-- Placement tuning is shared by the ghost preview and the finished world object.
+-- A model's configured size is a gameplay/placement box, not its GTA bounding box.
+-- Keep offsets at zero until an in-game measurement justifies a change.
+Building.PlacementTuning = {
+    campfire = { ground = true, zOffset = -0.08 },
+}
+
+function Building.PlacementRule(pieceId)
+    return Building.PlacementTuning[pieceId] or {}
+end
+
+-- Inspect the *selected* GTA model and its real bounds in the F8 console.
+RegisterCommand('buildbounds', function(_, args)
+    local id = args[1]
+    if not id or not P[id] then
+        print('[bs_building] Usage: /buildbounds campfire (or another piece ID)')
+        return
+    end
+    local hash = Building.ModelFor(id)
+    if not Building.LoadModel(hash) then
+        print(('[bs_building] Cannot load model for %s'):format(id))
+        return
+    end
+    local mn, mx = GetModelDimensions(hash)
+    local d = P[id]
+    print(('[bs_building] %s | hash=%s | model bounds X=%.3f Y=%.3f Z=%.3f | min=(%.3f,%.3f,%.3f) max=(%.3f,%.3f,%.3f) | config size=(%.3f,%.3f,%.3f)'):format(
+        id, tostring(hash), mx.x-mn.x, mx.y-mn.y, mx.z-mn.z,
+        mn.x,mn.y,mn.z,mx.x,mx.y,mx.z,d.size[1],d.size[2],d.size[3]))
+end, false)
+
 -- Put a prop so its bounding box bottom-centre sits on the piece origin, whatever its pivot.
-function Building.Align(obj, x, y, z, h, pitch)
-    SetEntityRotation(obj, pitch or 0.0, 0.0, h or 0.0, 2, true)
+function Building.Align(obj, x, y, z, h, pitch, pieceId)
+    local studio = (P[pieceId] and P[pieceId].studio) or {}
+    local rot = studio.rotation or {0,0,0}
+    SetEntityRotation(obj, (pitch or 0) + (rot[1] or 0), (rot[2] or 0), (h or 0) + (rot[3] or 0), 2, true)
     SetEntityCoordsNoOffset(obj, x, y, z, false, false, false)
     local mn, mx = GetModelDimensions(GetEntityModel(obj))
     local c = GetOffsetFromEntityInWorldCoords(obj, (mn.x + mx.x) / 2, (mn.y + mx.y) / 2, (mn.z + mx.z) / 2)
@@ -47,7 +79,9 @@ function Building.Align(obj, x, y, z, h, pitch)
             end
         end
     end
-    SetEntityCoordsNoOffset(obj, x + (x - c.x), y + (y - c.y), z + (z - low), false, false, false)
+    local rule = Building.PlacementRule(pieceId)
+    local off = studio.offset or {0,0,0}
+    SetEntityCoordsNoOffset(obj, x + (x - c.x) + (off[1] or 0), y + (y - c.y) + (off[2] or 0), z + (z - low) + (studio.offset and studio.offset[3] or rule.zOffset or 0), false, false, false)
 end
 
 -- Mine = I placed it or it belongs to my faction. Owner = I manage its lock and prices.
@@ -140,7 +174,7 @@ local function pose(obj, r)
         local nx, ny = rotate(d.size[1] / 2, 0, r.h + 90)
         x, y, h = r.x + hx + nx, r.y + hy + ny, r.h + 90
     end
-    Building.Align(obj, x, y, r.z, h, d.pitch)
+    Building.Align(obj, x, y, r.z, h, d.pitch, r.p)
     if r.o and r.p == 'hatch' then SetEntityCollision(obj, false, false); SetEntityAlpha(obj, 90, false)
     else SetEntityCollision(obj, true, true) end
     -- Frames are see-through until hammered.
@@ -198,7 +232,12 @@ RegisterNetEvent('bs:building:reset', function()
     World.pieces, World.cells = {}, {}
 end)
 
-RegisterNetEvent('bs:building:def', function(id, def) P[id] = def; modelCache[id] = nil end)
+RegisterNetEvent('bs:building:def', function(id, def)
+    P[id] = def; modelCache[id] = nil
+    for eid, r in pairs(World.pieces) do
+        if r.p == id then despawn(eid) end
+    end
+end)
 
 RegisterNetEvent('bs:building:rubble', function(id, rb) World.rubble[id] = rb end)
 
@@ -207,7 +246,7 @@ CreateThread(function()
     while not exports.bs_core:IsLoaded() do Wait(500) end
     local defs = BSB.Await('build:defs', 10000)
     if defs and defs.ok then
-        for id, d in pairs(defs.pieces or {}) do if not P[id] then P[id] = d end end
+        for id, d in pairs(defs.pieces or {}) do P[id] = d; modelCache[id] = nil end
         World.rubble = defs.rubble or {}
     end
     while true do

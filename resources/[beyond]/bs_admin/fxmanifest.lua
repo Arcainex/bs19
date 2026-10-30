@@ -38,10 +38,13 @@ server_scripts {
 ui_page 'html/index.html'
 
 files {
+    'html/img/book_themes/*.png',
     'html/index.html',
     'html/css/style.css',
     'html/js/app.js',
     'html/js/staff.js',   -- Simple view, player lists
+    'html/js/books.js',
+    'html/js/prop_studio.js',
     'locales/*.lua',
 }
 

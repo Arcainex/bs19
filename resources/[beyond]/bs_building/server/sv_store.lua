@@ -117,6 +117,14 @@ function Store.add(r)
     gridAdd(r)
 end
 
+function Store.reposition(r, x, y, z, h)
+    gridDel(r)
+    r.x, r.y, r.z, r.h = x, y, z, h
+    gridAdd(r)
+    Store.x('UPDATE `bs_build_pieces` SET `x`=?,`y`=?,`z`=?,`h`=? WHERE `id`=?', {x,y,z,h,r.id})
+    Store.push(r)
+end
+
 function Store.remove(r, how)
     gridDel(r)
     Store.pieces[r.id] = nil

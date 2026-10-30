@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <title>Inventory</title>
     <!-- Bump v= by hand on every change to style.css/app.js. FiveM's CEF caches ui_page assets across resource restarts, so players can keep running an old bundle. -->
-    <link rel="stylesheet" href="css/style.css?v=20261016a" />
+    <link rel="stylesheet" href="css/style.css?v=20261028-storage-point-align-v4" />
     <link rel="stylesheet" href="css/medical.css?v=20261014m2" />
     <link rel="stylesheet" href="css/craft.css?v=20261015c" />
     <link rel="stylesheet" href="css/missions.css?v=20261016ml4" />
@@ -41,7 +41,7 @@
                     <!-- Field medical. The inventory does not dress the player; NPC wardrobes stay cosmetic and this panel is gameplay. -->
                     <section class="fieldmed" id="medicalPanel" aria-label="Field medical assessment">
     <header class="fieldmed__head">
-        <span class="fieldmed__title" data-i18n="ui.field_medical">FIELD MEDICAL</span>
+        <span class="fieldmed__title" id="fieldmedTitle">CHARAKTER</span>
         <span class="fieldmed__state" id="medicalState" data-i18n="ui.assessing">ASSESSING</span>
     </header>
     <div class="fieldmed__body">
@@ -279,7 +279,7 @@
                         <div class="hudprev__id"><span data-i18n="trade.survivor">SURVIVOR</span> <i data-i18n="hudprev.scavenger">SCAVENGER</i></div>
                         <div class="hudprev__row" style="--c:#b4574a;--w:86%"><b data-i18n="hudprev.health">HEALTH</b><span class="hudprev__track"><u></u></span><em>86%</em></div>
                         <div class="hudprev__row" style="--c:#7fd4a2;--w:64%"><b data-i18n="hudprev.stamina">STAMINA</b><span class="hudprev__track"><u></u></span><em>64%</em></div>
-                        <div class="hudprev__row" style="--c:#d99b5b;--w:42%"><b data-i18n="hudprev.hunger">HUNGER</b><span class="hudprev__track"><u></u></span><em>42%</em></div>
+                        <div class="hudprev__row" style="--c:#93ab63;--w:42%"><b data-i18n="hudprev.hunger">HUNGER</b><span class="hudprev__track"><u></u></span><em>42%</em></div>
                         <div class="hudprev__row" style="--c:#5bc8d9;--w:73%"><b data-i18n="hudprev.thirst">THIRST</b><span class="hudprev__track"><u></u></span><em>73%</em></div>
                     </div>
                     <p class="setting__note" data-i18n="st.hud_style_note">Status bars look. Hover to preview. VIP styles need a VIP tier.</p>
@@ -730,9 +730,9 @@
 </div>
 <!-- opaque while the body snapshots are taken (the camera moves behind it) -->
 <div id="captureCover" class="capcover hidden"><span data-i18n="ui.preparing_survivor">PREPARING SURVIVOR&hellip;</span></div>
-<script src="nui://bs_ui/html/js/icons.js?v=20261015p1"></script>
+<script src="nui://bs_ui/html/js/icons.js?v=20261029-newloot-icons"></script>
 <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
-<script src="js/app.js?v=20261016a"></script>
+<script src="js/app.js?v=20261028-storage-point-align-v4"></script>
 <script src="js/medical.js?v=20261014m2"></script>
 <script src="js/craft.js?v=20261014c2"></script>
 <script src="js/missions.js?v=20261016ml4"></script>

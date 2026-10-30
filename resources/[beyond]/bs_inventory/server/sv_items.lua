@@ -32,9 +32,9 @@ CreateThread(function()
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 `label` = VALUES(`label`), `category` = VALUES(`category`),
-                `weight` = VALUES(`weight`), `stack_size` = VALUES(`stack_size`),
-                `usable` = VALUES(`usable`), `base_value` = VALUES(`base_value`),
-                `data` = VALUES(`data`)
+                `weight` = VALUES(`weight`), `grid_w` = VALUES(`grid_w`), `grid_h` = VALUES(`grid_h`),
+                `stack_size` = VALUES(`stack_size`), `usable` = VALUES(`usable`),
+                `base_value` = VALUES(`base_value`), `icon` = VALUES(`icon`), `data` = VALUES(`data`)
         ]], {
             name, def.label or name, def.category or 'misc', def.weight or 0.5,
             def.w or 1, def.h or 1, def.stack or 1, def.usable and 1 or 0,

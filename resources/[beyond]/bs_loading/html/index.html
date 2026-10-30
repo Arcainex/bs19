@@ -7,27 +7,34 @@
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+    <div class="alpha-z-background" aria-hidden="true">
+        <img src="alpha-z-logo.png" alt="" />
+    </div>
     <div class="grain"></div>
     <div class="vignette"></div>
     <canvas id="spores"></canvas>
 
+    <audio id="introSound" preload="auto" autoplay>
+        <source src="intro.mp3" type="audio/mpeg" />
+    </audio>
+
     <main class="stage">
         <header class="head">
-            <div class="head__day" id="day">DAY 1,412</div>
-            <div class="head__since">SINCE THE OUTBREAK</div>
+            <div class="head__day" id="day">Tag 420</div>
+            <div class="head__since">seit dem Ausbruch</div>
         </header>
 
         <section class="log" id="log" aria-live="polite"></section>
 
         <section class="tip">
-            <span class="tip__label">FIELD NOTE</span>
+            <span class="tip__label">Feldnotiz</span>
             <span class="tip__text" id="tip"></span>
         </section>
 
         <footer class="foot">
             <div class="bar"><div class="bar__fill" id="bar"></div></div>
             <div class="foot__row">
-                <span class="foot__status" id="status">ESTABLISHING UPLINK</span>
+                <span class="foot__status" id="status">Uplink herstellen</span>
                 <span class="foot__pct" id="pct">0%</span>
             </div>
         </footer>
@@ -35,5 +42,103 @@
 
     <script src="lang.js"></script>
     <script src="app.js"></script>
+
+<div id="bs-volume-control" aria-label="Lautstärke">
+    <button id="bs-volume-btn" type="button" title="Ton an/aus" aria-label="Ton an/aus">
+        <span id="bs-volume-icon">🔊</span>
+    </button>
+    <input id="bs-volume-slider" type="range" min="0" max="100" value="35" step="1" aria-label="Lautstärke">
+    <span id="bs-volume-value">35%</span>
+</div>
+<style>
+#bs-volume-control {
+    position: fixed;
+    left: 50%;
+    bottom: 2.2vw;
+    transform: translateX(-50%);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid rgba(135,155,85,.55);
+    border-radius: 8px;
+    background: rgba(12,15,10,.82);
+    box-shadow: 0 4px 18px rgba(0,0,0,.35);
+    font-family: 'Segoe UI Semibold','Segoe UI',sans-serif;
+    color: #e8eadf;
+    user-select: none;
+}
+#bs-volume-btn {
+    width: 34px;
+    height: 30px;
+    border: 1px solid rgba(135,155,85,.55);
+    border-radius: 6px;
+    background: rgba(120,140,74,.18);
+    color: #e8eadf;
+    cursor: pointer;
+    font: inherit;
+}
+#bs-volume-btn:hover { background: rgba(120,140,74,.35); }
+#bs-volume-slider {
+    width: 120px;
+    accent-color: #788c4a;
+    cursor: pointer;
+}
+#bs-volume-value {
+    min-width: 38px;
+    text-align: right;
+    font-size: 12px;
+    color: #a9b77a;
+}
+</style>
+<script>
+(() => {
+    const slider = document.getElementById('bs-volume-slider');
+    const button = document.getElementById('bs-volume-btn');
+    const icon = document.getElementById('bs-volume-icon');
+    const value = document.getElementById('bs-volume-value');
+    let lastVolume = 0.35;
+
+    function getAudio() {
+        return document.querySelector('audio');
+    }
+
+    function applyVolume(v) {
+        const audio = getAudio();
+        v = Math.max(0, Math.min(1, v));
+        if (audio) {
+            audio.volume = v;
+            audio.muted = v === 0;
+        }
+        slider.value = Math.round(v * 100);
+        value.textContent = Math.round(v * 100) + '%';
+        icon.textContent = v === 0 ? '🔇' : (v < 0.5 ? '🔉' : '🔊');
+        if (v > 0) lastVolume = v;
+    }
+
+    slider.addEventListener('input', () => applyVolume(Number(slider.value) / 100));
+    button.addEventListener('click', () => {
+        const audio = getAudio();
+        const current = audio ? (audio.muted ? 0 : audio.volume) : Number(slider.value) / 100;
+        applyVolume(current > 0 ? 0 : (lastVolume || 0.35));
+    });
+
+    // Apply to intro audio even if it is initialized by the existing loading JS shortly after page load.
+    const sync = () => {
+        const audio = getAudio();
+        if (audio) {
+            applyVolume(Number(slider.value) / 100);
+            return true;
+        }
+        return false;
+    };
+    if (!sync()) {
+        const timer = setInterval(() => { if (sync()) clearInterval(timer); }, 100);
+        setTimeout(() => clearInterval(timer), 10000);
+    }
+})();
+</script>
+
 </body>
 </html>

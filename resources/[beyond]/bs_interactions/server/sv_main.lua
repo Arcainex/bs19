@@ -117,6 +117,9 @@ local function rollLoot(tableId, src)
     local lootMult = BSConfigGet and tonumber(BSConfigGet('Global.lootMultiplier', 1.0)) or 1.0
     local rollMult = BSConfigGet and tonumber(BSConfigGet('Global.lootRollsMultiplier', 1.0)) or 1.0
     if rollMult ~= 1.0 then rolls = math.floor(rolls * rollMult + math.random()) end
+    -- A single searched world object may yield at most three weighted loot results.
+    -- Chances, weights and amounts stay unchanged; only extra perk/config rolls are capped.
+    rolls = math.min(3, math.max(0, rolls))
     local out = {}
 
     for _ = 1, rolls do
@@ -152,6 +155,13 @@ BSB.RegisterCallback('containers:check', function(src, typeId, key)
     if type(key) ~= 'string' or #key > 64 then return { ok = false, error = 'bad container' } end
     if not nearKey(src, key) then return { ok = false, error = Lp(src, 'search.too_far') } end
 
+    if def.requiredWeapon then
+        local ped = GetPlayerPed(src)
+        if ped == 0 or GetSelectedPedWeapon(ped) ~= GetHashKey(def.requiredWeapon) then
+            return { ok = false, error = def.requiredWeaponError or 'Benötigtes Werkzeug muss in der Hand sein.' }
+        end
+    end
+
     if typeId == 'car_boot' and bootIsOwned(key) then
         return { ok = false, error = Lp(src, 'search.owned') }
     end
@@ -160,7 +170,7 @@ BSB.RegisterCallback('containers:check', function(src, typeId, key)
 
     local left = cooldownLeft(typeId, key)
     if left > 0 then
-        return { ok = false, error = Lp(src, 'search.cooldown', { min = math.ceil(left / 60) }) }
+        return { ok = false, error = 'Vor kurzem durchsucht' }
     end
 
     inFlight[key] = src
@@ -178,8 +188,15 @@ BSB.RegisterCallback('containers:loot', function(src, typeId, key)
 
     local def = typeDef(typeId)
     if not def then return { ok = false, error = 'unknown container' } end
-    if cooldownLeft(typeId, key) > 0 then return { ok = false, error = Lp(src, 'search.emptied') } end
+    if cooldownLeft(typeId, key) > 0 then return { ok = false, error = 'Vor kurzem durchsucht' } end
     if not nearKey(src, key) then return { ok = false, error = Lp(src, 'search.too_far') } end
+
+    if def.requiredWeapon then
+        local ped = GetPlayerPed(src)
+        if ped == 0 or GetSelectedPedWeapon(ped) ~= GetHashKey(def.requiredWeapon) then
+            return { ok = false, error = def.requiredWeaponError or 'Benötigtes Werkzeug muss in der Hand sein.' }
+        end
+    end
 
     -- The client plays a def.time ms search animation between check and loot; require most of that to have passed so a direct loot call cannot skip it.
     local minWait = math.max(0, ((def.time or 0) / 1000) - 1.5)
@@ -192,12 +209,29 @@ BSB.RegisterCallback('containers:loot', function(src, typeId, key)
 
     local rolled = rollLoot(def.lootTable, src)
     local given = {}
+    local inventoryFull = false
 
     for _, entry in ipairs(rolled) do
-        local ok, label = exports.bs_inventory:GiveItem(src, entry.item, entry.amount)
+        local ok, label = exports.bs_inventory:GiveItemSilent(src, entry.item, entry.amount)
         if ok then
             given[#given + 1] = { item = entry.item, amount = entry.amount, label = label }
+        elseif label == 'too heavy' or label == 'no room' then
+            inventoryFull = true
         end
+    end
+
+    -- Sync once after all weighted loot has been inserted. Previously GiveItem pushed
+    -- the full inventory once per roll, delaying the callback/loot notification.
+    if #rolled > 0 then exports.bs_inventory:Refresh(src) end
+
+    -- Small cash finds are separate from weighted item rolls, just like barrel diesel is separate from item loot.
+    -- This keeps the original weighted loot algorithm untouched.
+    local cash = 0
+    if def.cash and math.random() <= (tonumber(def.cash.chance) or 0) then
+        local lo = math.max(0, math.floor(tonumber(def.cash.min) or 0))
+        local hi = math.max(lo, math.floor(tonumber(def.cash.max) or lo))
+        cash = (hi > lo) and math.random(lo, hi) or lo
+        if cash > 0 then exports.bs_core:AddMoney(src, 'cash', cash, 'container_loot') end
     end
 
     -- Diesel in the barrel. Not a loot-table entry, since diesel is a quantity poured into a container you brought (jerrycan or empty bottle). The roll happens with or without a can and the barrel is marked searched either way.
@@ -224,13 +258,13 @@ BSB.RegisterCallback('containers:loot', function(src, typeId, key)
     end
 
     -- Searching is a survival skill; doing it teaches you to do it faster.
-    if #given > 0 or (diesel and diesel.stored > 0) then
+    if #given > 0 or cash > 0 or (diesel and diesel.stored > 0) then
         exports.bs_core:AwardAction(src, 'resource_gathered')
     end
 
     BS_LogSearch(src, player, typeId, key, given)
     TriggerEvent('bs:tutorial:event', src, 'loot', typeId)
-    return { ok = true, items = given, diesel = diesel }
+    return { ok = true, items = given, diesel = diesel, cash = cash, inventoryFull = inventoryFull }
 end)
 
 function BS_LogSearch(src, player, typeId, key, given)

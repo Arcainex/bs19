@@ -201,6 +201,47 @@ exports('SetFreeBuild', function(src, on)
     return Building.FreeBuild[src] == true
 end)
 exports('FreeBuildOn', function(src) return Building.FreeBuild[tonumber(src)] == true end)
+-- These setters are restricted to bs_admin. Do not expose permission changes to clients.
+exports('SetFreeBuildPlayer', function(target, on)
+    if GetInvokingResource() ~= 'bs_admin' then return false end
+    target = tonumber(target)
+    if not target or not GetPlayerName(target) then return false end
+    local identifier
+    for _, id in ipairs(GetPlayerIdentifiers(target)) do
+        if id:sub(1, 8) == 'license:' then identifier = id break end
+    end
+    if not identifier then return false end
+    Building.FreeBuildGrants = Building.FreeBuildGrants or {}
+    Building.FreeBuildGrants[identifier] = on and { name = GetPlayerName(target) } or nil
+    return true
+end)
+exports('RemoveFreeBuildGrant', function(identifier)
+    if GetInvokingResource() ~= 'bs_admin' then return false end
+    if type(identifier) ~= 'string' or identifier:sub(1, 8) ~= 'license:' then return false end
+    Building.FreeBuildGrants[identifier] = nil
+    return true
+end)
+exports('FreeBuildGrants', function()
+    local list = {}
+    for identifier, entry in pairs(Building.FreeBuildGrants or {}) do
+        local onlineId = nil
+        for _, id in ipairs(GetPlayers()) do
+            for _, playerIdentifier in ipairs(GetPlayerIdentifiers(tonumber(id))) do
+                if playerIdentifier == identifier then onlineId = tonumber(id) break end
+            end
+            if onlineId then break end
+        end
+        list[#list + 1] = { identifier = identifier, name = entry.name, source = onlineId }
+    end
+    table.sort(list, function(a, b) return a.name < b.name end)
+    return list
+end)
+exports('SetFreeBuildAll', function(on)
+    if GetInvokingResource() ~= 'bs_admin' then return false end
+    Building.FreeBuildAll = on == true
+    return true
+end)
+exports('FreeBuildAllOn', function() return Building.FreeBuildAll == true end)
 
 -- Live only, same switch as F1 "Raids always open".
 exports('SetRaidAlways', function(on, by)
@@ -242,4 +283,44 @@ exports('FinishInRadius', function(x, y, z, radius, by)
     end
     Store.log(by, 'admin', ('finished %d frames in %.0fm'):format(n, tonumber(radius) or 20), { x = x, y = y, z = z })
     return n
+end)
+
+-- F10: individual placed-world objects (not catalogue definitions).
+BSB.RegisterCallback('build:admin:placedNearby', function(src)
+    if not isAdmin(src) then return {ok=false,error='Keine Berechtigung'} end
+    local ped=GetPlayerPed(src)
+    if ped == 0 then return {ok=false,error='Spieler nicht geladen'} end
+    local pos=GetEntityCoords(ped)
+    local list={}
+    for _,r in ipairs(Store.near(pos.x,pos.y,pos.z,75.0)) do
+        list[#list+1]={id=r.id,piece=r.piece,x=r.x,y=r.y,z=r.z,h=r.h,built=r.built}
+    end
+    table.sort(list,function(x,y)return x.id<y.id end)
+    return {ok=true,list=list}
+end)
+BSB.RegisterCallback('build:admin:placedAction', function(src, action, id, coords)
+    if not isAdmin(src) then return {ok=false,error='Keine Berechtigung'} end
+    local r=Store.pieces[tonumber(id)]
+    if not r then return {ok=false,error='Objekt nicht gefunden'} end
+    local ped=GetPlayerPed(src)
+    if ped==0 then return {ok=false,error='Spieler nicht geladen'} end
+    local pos=GetEntityCoords(ped)
+    if Store.dist(pos,r)>90.0 then return {ok=false,error='Objekt zu weit entfernt'} end
+    if action=='delete' then
+        Store.log(src,'admin',('deleted placed piece #%d %s'):format(r.id,r.piece),r)
+        Store.remove(r,'admin')
+        return {ok=true}
+    elseif action=='move' then
+        if type(coords)~='table' then return {ok=false,error='Position fehlt'} end
+        local x,y,z,h=tonumber(coords.x),tonumber(coords.y),tonumber(coords.z),tonumber(coords.h)
+        if not x or not y or not z or not h or x~=x or y~=y or z~=z or h~=h then return {ok=false,error='Ungueltige Koordinaten'} end
+        if math.abs(x)>10000 or math.abs(y)>10000 or z< -500 or z>2000 then return {ok=false,error='Position ausserhalb Karte'} end
+        if Store.dist(pos,{x=x,y=y,z=z})>90 then return {ok=false,error='Ziel zu weit entfernt'} end
+        -- Explicitly remove old stream entry before moving between cells.
+        Store.pushRemove(r,'admin_move')
+        Store.reposition(r,x,y,z,h%360)
+        Store.log(src,'admin',('moved placed piece #%d %s'):format(r.id,r.piece),r)
+        return {ok=true}
+    end
+    return {ok=false,error='Unbekannte Aktion'}
 end)

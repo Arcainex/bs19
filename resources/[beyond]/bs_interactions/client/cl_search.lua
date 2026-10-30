@@ -170,6 +170,17 @@ local function searchOption(typeId, def)
             local coords = payload.coords or GetEntityCoords(PlayerPedId())
             local key = containerKey(coords)
 
+            -- Some sealed props require a specific weapon/tool to be actively held.
+            if def.requiredWeapon then
+                local held = GetSelectedPedWeapon(PlayerPedId())
+                if held ~= GetHashKey(def.requiredWeapon) then
+                    return TriggerEvent('bs:ui:notify', {
+                        type = 'warn',
+                        message = def.requiredWeaponError or 'Benötigtes Werkzeug muss in der Hand sein.',
+                    })
+                end
+            end
+
             -- Ask first: no point playing a 5 second animation on an empty bin.
             local check = BSB.Await('containers:check', 6000, typeId, key)
             if not check or not check.ok then
@@ -208,8 +219,21 @@ local function searchOption(typeId, def)
                 Wait(140)
             end
 
+            local cash = tonumber(result.cash) or 0
+            if cash > 0 then
+                TriggerEvent('bs:ui:notify', {
+                    type = 'success',
+                    message = ('+$%d'):format(cash),
+                    duration = 2200,
+                })
+                Wait(120)
+            end
+
             if #(result.items or {}) == 0 then
-                if fuel then return end
+                if result.inventoryFull then
+                    return TriggerEvent('bs:ui:notify', { type = 'warn', message = 'Dein Inventar ist Voll.' })
+                end
+                if fuel or cash > 0 then return end
                 return TriggerEvent('bs:ui:notify', { type = 'info', message = L('search.empty') })
             end
 
@@ -219,9 +243,14 @@ local function searchOption(typeId, def)
                     type = 'success',
                     message = ('+%d %s'):format(tonumber(entry.amount) or 1,
                         itemLabel(entry)),
+                    itemImage = entry.item,
                     duration = 2200,
                 })
                 Wait(120)
+            end
+
+            if result.inventoryFull then
+                TriggerEvent('bs:ui:notify', { type = 'warn', message = 'Dein Inventar ist Voll.' })
             end
         end,
     }

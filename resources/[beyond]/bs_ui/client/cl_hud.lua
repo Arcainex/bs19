@@ -18,7 +18,7 @@ local function defaults()
         xpPosition   = UI.XPBar.position,
         xpOpacity    = UI.XPBar.opacity,
         xpPopups     = UI.XPBar.popups,
-        hudStyle     = 'classic',   -- status HUD look, see UI.HudStyles
+        hudStyle     = 'slim',   -- status HUD look, see UI.HudStyles
         menuPalette  = 'default',   -- menu colours, see UI.Palettes
         dodge        = true,   -- Shift + double-tap roll (bs_skills); a player can switch it off
 
@@ -65,7 +65,7 @@ local function pushSettings()
 
     local shown = {}
     for k, v in pairs(settings or {}) do shown[k] = v end
-    shown.hudStyle = effective(UI.HudStyles, shown.hudStyle, 'classic')
+    shown.hudStyle = effective(UI.HudStyles, shown.hudStyle, 'slim')
     local palId, palVars = HudEffectivePalette()
     shown.menuPalette = palId
 
@@ -438,3 +438,28 @@ RegisterCommand('hud', function(_, args)
             L('ui.hud_usage') } })
     end
 end, false)
+
+
+-- YaCA voice status for the survival HUD. The TS plugin owns the actual mute state;
+-- bs_ui only mirrors it into NUI. Kept isolated so the HUD still runs if YaCA is stopped.
+CreateThread(function()
+    local lastMuted, lastRange = nil, nil
+    while true do
+        Wait(200)
+
+        local muted, range = true, 0
+        if GetResourceState('yaca-voice') == 'started' then
+            local okMute, isMuted = pcall(function() return exports['yaca-voice']:getMicrophoneMuteState() end)
+            local okDisabled, isDisabled = pcall(function() return exports['yaca-voice']:getMicrophoneDisabledState() end)
+            local okRange, voiceRange = pcall(function() return exports['yaca-voice']:getVoiceRange() end)
+
+            muted = (not okMute) or isMuted == true or (okDisabled and isDisabled == true)
+            if okRange then range = tonumber(voiceRange) or 0 end
+        end
+
+        if muted ~= lastMuted or range ~= lastRange then
+            lastMuted, lastRange = muted, range
+            send({ action = 'yacaVoice', muted = muted, range = range })
+        end
+    end
+end)

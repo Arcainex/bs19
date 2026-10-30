@@ -1234,3 +1234,60 @@ TriggerEvent('chat:addSuggestion', '/ammo',
     'Add ammunition for the weapon in your hands (staff)', {
         { name = 'mags', help = 'full mags, 1-20 (default 3), or rounds like 45r' },
     })
+
+-- Books editor: the server callback in bs_books checks staff permissions again.
+RegisterNUICallback('booksAdmin', function(data, cb)
+    CreateThread(function()
+        local action = type(data) == 'table' and data.action or nil
+        local args = type(data) == 'table' and data.args or {}
+        cb(BSB.Await('books:admin', 15000, action, args) or {ok=false,error='Keine Antwort von bs_books'})
+    end)
+end)
+
+-- Prop Studio NUI bridge: every mutation is authorized by bs_building server.
+RegisterNUICallback('propStudio', function(data, cb)
+    CreateThread(function()
+        if not isAdmin then cb({ok=false,error='Keine Berechtigung'}); return end
+        local action = type(data) == 'table' and data.action or nil
+        if action == 'validateModel' then
+            local model = type(data.payload)=='table' and data.payload.model or nil
+            if type(model)~='string' or not model:match('^[%w_]+$') or #model>90 then cb({ok=false,error='Ungültiger Modellname'}); return end
+            local hash=GetHashKey(model)
+            cb(IsModelInCdimage(hash) and IsModelValid(hash) and {ok=true} or {ok=false,error='GTA-Modell nicht vorhanden: '..model})
+            return
+        end
+        local name = ({list='build:studio:list',save='build:studio:save',reset='build:studio:reset',categories='build:studio:categories',categoryCreate='build:studio:categoryCreate',categoryRename='build:studio:categoryRename',categoryDelete='build:studio:categoryDelete',remove='build:studio:remove',restore='build:studio:restore',placedNearby='build:admin:placedNearby'})[action or '']
+        if not name then cb({ok=false,error='Ungültige Aktion'}); return end
+        local arg = action == 'reset' and data.id or data.payload
+        cb(BSB.Await(name, 10000, arg) or {ok=false,error='Keine Antwort von bs_building'})
+    end)
+end)
+
+RegisterNUICallback('propStudioPreview', function(data, cb)
+    if not isAdmin or GetResourceState('bs_building') ~= 'started' then cb({ok=false,error='Nicht verfügbar'});return end
+    if type(data) ~= 'table' then cb({ok=false,error='Ungültige Daten'});return end
+    closeMenu()
+    TriggerEvent('bs:building:studio:edit', data)
+    cb({ok=true})
+end)
+
+-- Prop editor errors are retained in the F10 Debug / Fehlerprotokoll.
+AddEventHandler('bs:admin:propStudioError', function(message)
+    SendNUIMessage({ action = 'propStudioError', message = tostring(message or 'Unbekannter Fehler') })
+end)
+
+RegisterNUICallback('propPlacedAction', function(data, cb)
+    CreateThread(function()
+        if not isAdmin then cb({ok=false,error='Keine Berechtigung'});return end
+        local action=data and data.action
+        local id=tonumber(data and data.id)
+        if not id or (action~='delete' and action~='move') then cb({ok=false,error='Ungueltige Aktion'});return end
+        cb(BSB.Await('build:admin:placedAction',12000,action,id,data.coords) or {ok=false,error='Keine Antwort'})
+    end)
+end)
+RegisterNUICallback('propPlacedEdit', function(data,cb)
+    if not isAdmin or not data or not tonumber(data.id) then cb({ok=false,error='Keine Berechtigung'});return end
+    closeMenu()
+    TriggerEvent('bs:building:admin:editPlaced',tonumber(data.id))
+    cb({ok=true})
+end)

@@ -7,7 +7,7 @@
     <script src="nui://bs_ui/html/js/i18n.js"></script>
     <title>Staff</title>
     <!-- v= is bumped by hand on every asset change -->
-    <link rel="stylesheet" href="css/style.css?v=20261016b" />
+    <link rel="stylesheet" href="css/style.css?v=20261025resize1" />
 </head>
 <body>
 <div id="root" class="hidden">
@@ -28,8 +28,8 @@
         <nav class="menu__tabs rail">
             <button class="mtab" data-tab="quick" data-simple="1" title="Quick"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="mtab__t" data-i18n="admin.u.tab_quick">QUICK</span></button>
             <button class="mtab is-active" data-tab="self" title="Self"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"/></svg><span class="mtab__t" data-i18n="admin.h.self">SELF</span></button>
-            <button class="mtab" data-tab="manage" title="Player"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21a7 7 0 0114 0M16 11l2 2 4-4"/></svg><span class="mtab__t" data-i18n="admin.u.tab_player">PLAYER</span></button>
-            <button class="mtab" data-tab="players" title="Players"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6zM2 20a7 7 0 0114 0M17 11a3 3 0 100-6M18 20h4a6 6 0 00-4-5.5"/></svg><span class="mtab__t" data-i18n="admin.h.players">PLAYERS</span></button>
+            <button class="mtab" data-tab="manage" title="Spielerverwaltung"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21a7 7 0 0114 0M16 11l2 2 4-4"/></svg><span class="mtab__t">VERWALTUNG</span></button>
+            <button class="mtab" data-tab="players" title="Spielerliste"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6zM2 20a7 7 0 0114 0M17 11a3 3 0 100-6M18 20h4a6 6 0 00-4-5.5"/></svg><span class="mtab__t">SPIELERLISTE</span></button>
             <button class="mtab" data-tab="server" title="Server"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v6H3zM3 14h18v6H3zM7 7h.01M7 17h.01"/></svg><span class="mtab__t" data-i18n="admin.u.tab_server">SERVER</span></button>
             <button class="mtab" data-tab="skills" title="Skills"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span class="mtab__t" data-i18n="admin.h.skills">SKILLS</span></button>
             <span class="rail__sep" aria-hidden="true"></span>
@@ -39,7 +39,23 @@
             <button class="mtab" data-tab="items" title="Items"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/></svg><span class="mtab__t" data-i18n="admin.h.items">ITEMS</span></button>
             <button class="mtab" data-tab="weapons" title="Weapons"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 2v5M12 17v5M2 12h5M17 12h5"/></svg><span class="mtab__t" data-i18n="admin.h.weapons">WEAPONS</span></button>
             <button class="mtab" data-tab="clothing" title="Clothing"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3L3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 01-8 0z"/></svg><span class="mtab__t" data-i18n="admin.h.clothing">CLOTHING</span></button>
+            <button class="mtab" data-tab="books" title="Bücher"><span class="rail-chevron" aria-hidden="true"></span><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5C8 3 5 3 2 4v15c4-1 7-1 10 1 3-2 6-2 10-1V4c-3-1-6-1-10 1zm0 0v15"/></svg><span class="mtab__t">BÜCHER</span></button>
+            <div class="bk-rail-sub" id="bkRailSub" hidden>
+                <button type="button" data-bk-view="new">＋ NEUES BUCH</button>
+                <button type="button" data-bk-view="edit">✎ BEARBEITEN</button>
+                <button type="button" data-bk-view="list">▤ ÜBERSICHT</button>
+                <button type="button" data-bk-view="give">↗ VERGEBEN</button>
+                <button type="button" data-bk-view="delete">× LÖSCHEN</button>
+            </div>
             <button class="mtab" data-tab="build" title="Build"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l4 4-9 9H5v-4zM13 7l4 4"/></svg><span class="mtab__t" data-i18n="admin.tab_build">BUILD</span></button>
+            <button class="mtab" data-tab="propstudio" title="Prop Editor"><span class="rail-chevron" aria-hidden="true"></span><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l9-9m-2-7 9 9m-10-8 4-2 7 7-2 4-9-9z"/></svg><span class="mtab__t">PROP EDITOR</span></button>
+            <div class="ps-rail-sub" id="psRailSub" hidden>
+                <button type="button" data-ps-tab="existing">▤ VORHANDENE PROPS</button>
+                <button type="button" data-ps-tab="new">＋ NEUES PROP</button>
+                <button type="button" data-ps-tab="categories">◇ KATEGORIEN</button>
+                <button type="button" data-ps-tab="placed">▤ PLATZIERTE OBJEKTE</button>
+                <button type="button" data-ps-tab="debug">⚒ DEBUG <span id="psErrorBadge" hidden>!</span></button>
+            </div>
             <span class="rail__sep" aria-hidden="true"></span>
             <button class="mtab" data-tab="power" title="Power"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.3 6.3a8 8 0 1011.4 0"/></svg><span class="mtab__t" data-i18n="admin.tab_power">POWER</span></button>
             <button class="mtab" data-tab="debug" title="Debug"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8a3 3 0 016 0v1H9zM7 11h10v4a5 5 0 01-10 0zM3 12h4M17 12h4M4 7l3 2M20 7l-3 2M5 19l3-2M19 19l-3-2"/></svg><span class="mtab__t" data-i18n="admin.h.debug">DEBUG</span></button>
@@ -49,6 +65,7 @@
             <button class="mtab" data-tab="test" title="Test Server"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3M8 15h8"/></svg><span class="mtab__t" data-i18n="admin.tab_test">TEST SERVER</span></button>
         </nav>
 
+        <div class="f10-splitter" id="f10Splitter" role="separator" aria-orientation="vertical" aria-label="Breite der Navigation ändern" title="Ziehen: Navigation breiter oder schmaler"></div>
         <div class="menu__body">
             <!-- Simple view: the everyday actions only. Built by js/staff.js. -->
             <div class="mpane" data-pane="quick">
@@ -215,6 +232,174 @@
                 <div class="chips" id="items"></div>
             </div>
 
+            <!-- Books: compact accordion layout. Existing element IDs retained for books.js. -->
+            <div class="mpane" data-pane="books" id="bsBooksPane" data-bk-view="list">
+                <div class="bk-heading">
+                    <div><span class="bk-eyebrow">BEYOND SURVIVAL / ADMIN</span><h2>📚 BÜCHERVERWALTUNG</h2></div>
+                </div>
+                <div id="bkStatus" class="bk-status" role="status" aria-live="polite">Bücher werden geladen …</div>
+
+                <details class="bk-section" data-bk-section="list" open>
+                    <summary><span class="bk-section__num">01</span> BÜCHER AUSWÄHLEN <span class="bk-section__arrow">⌄</span></summary>
+                    <div class="bk-section__content">
+                        <div class="bk-actions">
+                            <button type="button" class="row row--inline bk-primary" id="bkNew">+ NEUES BUCH</button>
+                            <button type="button" class="row row--inline row--ghost" id="bkReload">↻ AKTUALISIEREN</button>
+                        </div>
+                        <label class="bk-field">GESPEICHERTE BÜCHER
+                            <select class="fld" id="bkList" size="4" aria-label="Bücherliste"></select>
+                        </label>
+                    </div>
+                </details>
+
+                <details class="bk-section" data-bk-section="info">
+                    <summary><span class="bk-section__num">02</span> BUCHINFORMATIONEN <span class="bk-section__arrow">⌄</span></summary>
+                    <div class="bk-section__content">
+                        <label class="bk-field">BUCH-ID <input id="bkId" class="fld" placeholder="z. B. tagebuch_01" maxlength="60"></label>
+                        <label class="bk-field">TITEL <input id="bkTitle" class="fld" placeholder="Buchtitel" maxlength="100"></label>
+                        <label class="bk-field">AUTOR <input id="bkAuthor" class="fld" placeholder="Autor" maxlength="100"></label>
+                        <div class="bk-right-stack">
+                        <div class="bk-field bk-media"><strong>BUCHCOVER · TITELBILD (OPTIONAL)</strong><small>Bild für den Buchumschlag. Empfohlen 512 × 512 px · max. 1024 × 1024 px.</small>
+<select id="bkCoverMode" class="fld"><option value="none">Kein Cover verwenden</option><option value="url">Bild über HTTPS-Link hinzufügen</option><option value="file">Bild vom Computer auswählen</option></select>
+<div id="bkCoverUrlWrap" hidden><input id="bkCoverUrl" class="fld" placeholder="https://beispiel.ch/cover.jpg"></div>
+<div id="bkCoverFileWrap" hidden><button type="button" id="bkCoverChoose" class="row row--inline">COVER VOM COMPUTER WÄHLEN</button><input type="file" id="bkCoverFile" accept="image/png,image/jpeg,image/webp" hidden></div>
+<div class="bk-cover-preview"><img id="bkCoverPreview" hidden alt="Cover-Vorschau"><span id="bkCoverInfo">Kein Cover ausgewählt</span></div>
+<input id="bkCover" type="hidden"></div>
+<div class="bk-field bk-media"><strong>BUCHGESTALTUNG</strong><small>Wähle den Stil für alle Seiten. Der Standard verwendet das bisherige Papier.</small>
+<select id="bkLayout" class="fld"><option value="standard">STANDARD · Bisheriges Buch</option><option value="clean">CLEAN · Sauberes Papier</option><option value="rusty">RUSTY · Verwittert & fleckig</option><option value="torn">ZERFETZT · Beschädigte Seiten</option></select>
+<label class="bk-field">SEITENHINTERGRUND <small>Optional: eigener Hintergrund statt des ausgewählten Buchlayouts.</small></label>
+<select id="bkBackgroundMode" class="fld"><option value="default">Standard des Buchlayouts verwenden</option><option value="url">Eigenes Hintergrundbild über HTTPS-Link</option><option value="file">Eigenes Hintergrundbild vom Computer</option></select>
+<div id="bkBackgroundUrlWrap" hidden><input id="bkBackgroundUrl" class="fld" placeholder="https://beispiel.ch/papier.jpg"></div>
+<div id="bkBackgroundFileWrap" hidden><button type="button" id="bkBackgroundChoose" class="row row--inline">HINTERGRUND VOM COMPUTER WÄHLEN</button><input id="bkBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></div>
+<span id="bkBackgroundInfo" class="bk-media-note">Hintergrund des Buchlayouts</span><input id="bkBackground" type="hidden"></div>
+                        </div>
+                        <label class="bk-field">BESCHREIBUNG <textarea id="bkDescription" class="fld" rows="3" maxlength="600" placeholder="Kurze Beschreibung"></textarea></label>
+                    </div>
+                </details>
+
+                <details class="bk-section" data-bk-section="pages" open>
+                    <summary><span class="bk-section__num">03</span> SEITEN SCHREIBEN <span class="bk-section__arrow">⌄</span></summary>
+                    <div class="bk-section__content">
+                        <div class="bk-actions">
+                            <button type="button" class="row row--inline bk-primary" id="bkAddPage">+ SEITE</button>
+                            <button type="button" class="row row--inline row--danger" id="bkRemovePage">SEITE LÖSCHEN</button>
+                        </div>
+                        <div class="bk-pagination">
+                            <button type="button" class="row row--inline" id="bkPagePrev" aria-label="Vorherige Seite">◀</button>
+                            <span id="bkPageNum">1 / 1</span>
+                            <button type="button" class="row row--inline" id="bkPageNext" aria-label="Nächste Seite">▶</button>
+                        </div>
+                        <div class="bk-actions">
+                            <button type="button" class="row row--inline row--ghost" id="bkMoveLeft">← VERSCHIEBEN</button>
+                            <button type="button" class="row row--inline row--ghost" id="bkMoveRight">VERSCHIEBEN →</button>
+                        </div>
+                        <label class="bk-field">SEITENTEXT
+                            <textarea id="bkText" class="fld bk-writing" rows="9" maxlength="360000" placeholder="Hier beginnt deine Geschichte …"></textarea>
+                        </label>
+                        <div class="bk-image-upload bk-field">
+                            <span>SEITENBILD · EMPFOHLEN 512 × 512 PX · MAX. 1024 × 1024 PX</span>
+                            <label class="bk-image-url-label" for="bkImageUrl">BILD-URL (HTTPS)</label>
+                            <input type="url" class="fld bk-image-url" id="bkImageUrl" placeholder="https://beispiel.ch/bild.png" autocomplete="off" spellcheck="false">
+                            <div class="bk-image-controls">
+                                <button type="button" class="row row--inline" id="bkChooseImage">BILD VOM DESKTOP WÄHLEN</button>
+                                <button type="button" class="row row--inline row--ghost" id="bkRemoveImage">ENTFERNEN</button>
+                                <span id="bkImageInfo">Kein Bild ausgewählt</span>
+                            </div>
+                            <input type="file" id="bkImageFile" accept="image/png,image/jpeg,image/webp" hidden>
+                            <input type="hidden" id="bkImage" value="">
+                        </div>
+                        <div class="bk-settings">
+                            <label class="bk-field">SCHRIFTART
+                                <div class="bk-font-picker" id="bkFontPicker">
+                                    <button type="button" id="bkFontToggle" class="fld bk-font-toggle" aria-expanded="false" aria-controls="bkFontOptions">Georgia · Buchdruck <span aria-hidden="true">▾</span></button>
+                                    <div id="bkFontOptions" class="bk-font-options" hidden>
+                                        <button type="button" data-bk-font="georgia">Georgia · Buchdruck</button>
+                                        <button type="button" data-bk-font="arial">Arial · Modern</button>
+                                        <button type="button" data-bk-font="courier">Courier New · Schreibmaschine</button>
+                                        <button type="button" data-bk-font="caveat">Caveat · Handschrift</button>
+                                        <button type="button" data-bk-font="kalam">Kalam · Notizen</button>
+                                        <button type="button" data-bk-font="cinzel">Cinzel · Historisch</button>
+                                    </div>
+                                    <select id="bkFontFamily" hidden aria-label="Schriftart"><option value="georgia">Georgia · Buchdruck</option><option value="arial">Arial · Modern</option><option value="courier">Courier New · Schreibmaschine</option><option value="caveat">Caveat · Handschrift</option><option value="kalam">Kalam · Notizen</option><option value="cinzel">Cinzel · Historisch</option></select>
+                                </div>
+                            </label>
+                            <label class="bk-field">SCHRIFTGRÖSSE (12–24 PX)
+                                <input id="bkFontSize" class="fld" type="number" min="12" max="24" step="1" value="17">
+                                <select id="bkFont" hidden aria-label="Alte Schriftgrößen-Kompatibilität"><option value="normal">Normal</option><option value="small">Klein</option><option value="large">Groß</option></select>
+                            </label>
+                            <label class="bk-field">AUSRICHTUNG
+                                <select id="bkAlign"><option value="left">Links</option><option value="center">Mitte</option><option value="right">Rechts</option></select>
+                            </label>
+                            <label class="bk-field bk-color-field">TEXTFARBE
+                                <input type="color" id="bkColor" value="#352719" title="Textfarbe wählen">
+                            </label>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="bk-section" data-bk-section="preview">
+                    <summary><span class="bk-section__num">04</span> LIVE-VORSCHAU <span class="bk-section__arrow">⌄</span></summary>
+                    <div class="bk-section__content">
+                        <p class="bk-note">Vorschau der aktuell ausgewählten Buchseite.</p>
+                        <div class="bk-preview"><div class="bk-page" id="bkPreview"><div class="bk-page__text" id="bkPreviewText"></div><img id="bkPreviewImage" hidden alt="Seitenbild"></div></div>
+                    </div>
+                </details>
+
+                <details class="bk-section" data-bk-section="actions">
+                    <summary><span class="bk-section__num">05</span> BUCH VERGEBEN / LÖSCHEN <span class="bk-section__arrow">⌄</span></summary>
+                    <div class="bk-section__content">
+                        <label class="bk-field">SPIELER AUSWÄHLEN
+                            <select id="bkPlayer" class="fld"><option value="">Spieler werden geladen …</option></select>
+                        </label>
+                        <button type="button" class="row row--ghost" id="bkRefreshPlayers">↻ SPIELERLISTE AKTUALISIEREN</button>
+                        <button type="button" class="row bk-primary" id="bkGive">🎁 BUCH VERGEBEN</button>
+                        <div class="bk-danger-zone">
+                            <p class="bk-note">Ein gespeichertes Buch endgültig entfernen:</p>
+                            <button type="button" class="row row--danger" id="bkDelete">BUCH LÖSCHEN</button>
+                        </div>
+                    </div>
+                </details>
+                <div class="bk-save-footer"><button type="button" class="row bk-primary" id="bkSave">💾 BUCH SPEICHERN</button></div>
+            </div>
+            <div class="mpane" data-pane="propstudio" id="psPane">
+              <h2>PROP EDITOR <small>BS19</small></h2>
+              <p class="hint">Props verwalten · Original-Modellgröße und Collision bleiben unverändert.</p>
+              <section class="ps-section" data-ps-section="placed" hidden>
+              <div class="ps-placed-panel"><div class="ps-line"><strong>PLATZIERTE OBJEKTE (75 m)</strong><button class="row" id="psPlacedReload">LADEN</button></div><p class="hint">Hier bearbeitest oder löschst du einzelne Objekte in der Welt, nicht die Prop-Definition.</p><div id="psPlacedList"></div></div>
+              </section>
+              <section class="ps-section" data-ps-section="existing">
+                <div class="ps-line"><input id="psSearch" placeholder="Prop-ID, Name oder Modell suchen"/><button class="row" id="psReload">AKTUALISIEREN</button></div>
+                <div class="ps-line ps-filters"><button data-ps-filter="all" class="active">ALLE</button><button data-ps-filter="original">ORIGINAL</button><button data-ps-filter="custom">EIGENE</button><button data-ps-filter="disabled">DEAKTIVIERTE</button></div>
+                <div id="psList" class="ps-categories"></div>
+              </section>
+              <section class="ps-section" data-ps-section="new" hidden>
+                <p class="hint">Neue Definition anlegen. Die ID wird automatisch vergeben.</p>
+                <label>Anzeigename<input id="psLabel" maxlength="80" placeholder="z. B. Werkbank"/></label>
+                <label>GTA-Modellname<input id="psModel" maxlength="90" placeholder="prop_beach_fire"/></label>
+                <label>Kategorie<select id="psCat" class="sx-select sel-full"></select></label>
+                <input id="psId" type="hidden"/>
+                <div class="ps-line"><button class="row ps-primary" id="psNew">3D-EDITOR ÖFFNEN</button><button class="row" id="psDirectSave">DIREKT SPEICHERN (NICHT GETESTET)</button></div>
+                <p class="hint">„Nicht getestet“ bezeichnet die noch nicht visuell geprüfte Ausrichtung.</p>
+              </section>
+              <section class="ps-section" data-ps-section="categories" hidden>
+                <div class="ps-line"><input id="psCatName" maxlength="40" placeholder="Neue Kategorie"/><button class="row" id="psCatConfirm">KATEGORIE ANLEGEN</button></div>
+                <div id="psCategoryList"></div>
+                <p class="hint">Standardkategorien sind geschützt. Beim Löschen einer eigenen Kategorie müssen Props vorher umgeordnet werden.</p>
+              </section>
+              <section class="ps-section" data-ps-section="settings" hidden aria-hidden="true">
+                <label class="ps-check"><input id="psShowBounds" type="checkbox" checked/> Bounding Box anzeigen</label>
+                <label>Bounding-Box-Farbe<select id="psBoundsColor"><option value="lime">Limegrün</option><option value="green">BS19-Grün</option><option value="white">Weiß</option></select></label>
+                <label>Gizmo-Größe <output id="psGizmoSizeValue">0.85</output><input type="range" id="psGizmoSize" min="0.5" max="1.5" step="0.05" value="0.85"/></label>
+                <label class="ps-check"><input id="psDefaultGrid" type="checkbox"/> Raster standardmäßig aktiv</label>
+                <p class="hint">Einstellungen gelten für diesen Client und werden beim nächsten 3D-Editor-Start verwendet.</p>
+              </section>
+              <section class="ps-section" data-ps-section="debug" hidden>
+                <div class="ps-line"><button type="button" class="row" id="psDebugClear">PROTOKOLL LEEREN</button><button type="button" class="row" id="psDebugCopy">KOPIEREN</button></div>
+                <pre id="psDebugLog" class="ps-log"></pre>
+              </section>
+              <p class="hint" id="psStatus" role="status"></p>
+              <div id="psDialog" class="ps-dialog" hidden role="dialog" aria-modal="true" aria-labelledby="psDialogTitle"><div class="ps-dialog-card"><h3 id="psDialogTitle"></h3><p id="psDialogText"></p><div id="psDialogExtra"></div><div class="ps-line"><button class="row" id="psDialogCancel">ABBRECHEN</button><button class="row ps-danger" id="psDialogConfirm">BESTÄTIGEN</button></div></div></div>
+            </div>
             <div class="mpane" data-pane="build">
                 <p class="mpane__label"><span data-i18n="admin.b_give">GIVE TO THE ACTING ON PLAYER</span></p>
                 <select id="abPiece" class="sx-select sel-full"></select>
@@ -233,6 +418,12 @@
 
                 <p class="mpane__label"><span data-i18n="admin.b_tools">QUICK TOOLS</span></p>
                 <button class="row" id="abFree"><span data-i18n="admin.b_free">FREE BUILD (ME)</span><span class="row__state" id="st-freebuild">OFF</span></button>
+                <p class="mpane__label">GRATIS BAUEN (SPIELER)</p>
+                <select id="abFreePlayerPick" class="sx-select sel-full"><option value="">Spieler auswählen ...</option></select>
+                <p class="mpane__label">SPIELER MIT GRATISBAURECHTEN</p>
+                <div id="abFreePlayerGrants" class="freebuild-grants"><p class="hint">Keine Freigaben</p></div>
+                <p class="hint" id="abFreePlayerCount">0 Spieler haben Gratisbaurechte</p>
+                <button class="row" id="abFreeAll"><span>GRATIS BAUEN (ALLE)</span><span class="row__state" id="st-freebuildall">OFF</span></button>
                 <button class="row" id="abRaid"><span data-i18n="admin.b_raid">RAIDS ALWAYS OPEN</span><span class="row__state" id="st-raidalways">OFF</span></button>
                 <button class="row" data-server="resetDecayAll" data-i18n="admin.b_decay">RESET DECAY ON EVERY BASE</button>
                 <div class="split">
@@ -402,6 +593,7 @@
         </div>
         </div>
 
+        <div class="f10-resize" id="f10Resize" title="Ziehen: F10-Fenster vergrößern oder verkleinern"></div>
         <footer class="menu__foot">
             <span class="msg" id="msg"></span>
             <span class="hint"><span data-i18n="admin.h.f10_esc_to_close">F10 / ESC TO CLOSE</span></span>
@@ -463,5 +655,8 @@
 <datalist id="itemNames"></datalist>
 <script src="js/app.js?v=20261016b"></script>
 <script src="js/staff.js?v=20261016b"></script>
+<script src="js/prop_studio.js?v=6"></script>
+<script src="js/books.js?v=20261027pagination1"></script>
+<script src="js/f10_resize.js?v=20261025resize1"></script>
 </body>
 </html>

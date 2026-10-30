@@ -316,7 +316,7 @@ Vehicles.World = {
         car     = 'emperor2:4,tornado3:3,tornado4:2,voodoo2:3',
         pickup  = 'ratloader:3,rebel:3',
         van     = 'surfer2:3,journey:2,flatbed:1',
-        bike    = 'ratbike:1',
+        bike    = 'ratbike:3,deathbike:1,bmx:3',
         offroad = 'bodhi2:3,dloader:3,wastelander:1',
     },
 
