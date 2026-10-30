@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'Novedades',
     ['p.keybinds'] = 'Controles',
     ['p.rebind_note'] = 'Cambia teclas en Ajustes de GTA > Controles > FiveM.',
+    ['p.refresh_textures'] = 'Recargar todas las texturas',
     ['p.troubleshoot'] = 'Solución de problemas',
     ['p.refresh_ui'] = 'Recargar interfaz',
     ['p.unblur'] = 'Quitar desenfoque atascado',

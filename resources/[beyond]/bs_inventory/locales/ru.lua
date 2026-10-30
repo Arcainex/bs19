@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Шкурка кролика',
     ['item.coyote_pelt'] = 'Шкура койота',
     ['item.mtlion_pelt'] = 'Шкура пумы',
+    ['inv.cant_sprint_heavy'] = 'Слишком тяжело, чтобы бежать. Сбросьте часть груза.',
 }

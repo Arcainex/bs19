@@ -312,6 +312,8 @@ end
 
 -- Loops
 
+local lastHud, lastHudAt = nil, 0
+
 CreateThread(function()
     settings = defaults()
     pushSettings()
@@ -333,7 +335,22 @@ CreateThread(function()
                 or panelSuppressed()
                 or (UI.Settings.hideInCutscene and IsCutsceneActive())
             setVisible(not hide)
-            if not hide then send({ action = 'hudData', data = collect() }) end
+            if not hide then
+                -- Same numbers as last tick: skip the message, but refresh once a second.
+                local d, now = collect(), GetGameTimer()
+                local same = lastHud ~= nil and now - lastHudAt < 1000
+                if same then
+                    for k, v in pairs(d) do
+                        if lastHud[k] ~= v then same = false break end
+                    end
+                end
+                if not same then
+                    lastHud, lastHudAt = d, now
+                    send({ action = 'hudData', data = d })
+                end
+            else
+                lastHud = nil
+            end
         end
     end
 end)

@@ -78,6 +78,8 @@ local function execute(entry)
     if now < nextExecute or not canTakedown() then return end
     Crumb('execute', 'id=%s', tostring(entry and entry.id))
     nextExecute = now + (E.cooldown or 1200)
+    -- The server judges the takedown now, not when the hit lands
+    TriggerServerEvent('bs:z:takedownStart', entry.id)
 
     local player = PlayerPedId()
     local _, weapon = GetCurrentPedWeapon(player, true)

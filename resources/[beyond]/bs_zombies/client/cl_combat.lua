@@ -80,6 +80,11 @@ local function releaseCorpse(ped)
         return
     end
 
+    -- A recycled corpse handle can now belong to a trader or another script.
+    if DoesEntityExist(ped)then
+        local state=Entity(ped).state
+        if IsPedAPlayer(ped)or (state and (state.bsProtected or state.bsConvoy))then return end
+    end
     -- Fallback for a load order where cl_sync has not defined it yet
     if GetResourceState('bs_interactions') == 'started' then
         pcall(function() exports.bs_interactions:RemoveEntity(ped) end)
@@ -268,7 +273,13 @@ CreateThread(function()
 
         for id, entry in pairs(Zed.live) do
             if entry.ped and DoesEntityExist(entry.ped) and not entry.dying then
-                if IsEntityDead(entry.ped) or GetEntityHealth(entry.ped) <= 0 then
+                local networked=NetworkGetEntityIsNetworked(entry.ped)
+                -- A remote clone can temporarily report zero health during scope/owner changes.
+                -- Only its current controller may decide that the physical ped died.
+                local authoritative=networked and NetworkHasControlOfEntity(entry.ped) or (not networked and entry.hosted)
+                if authoritative and (IsEntityDead(entry.ped) or GetEntityHealth(entry.ped) <= 0)
+                    and GetGameTimer()>=(entry.envDeathPending or 0) then
+                    entry.envDeathPending=GetGameTimer()+1000
                     -- Attribution is asked once here; a wrong answer only costs a kill credit.
                     local byVehicle = playerVeh ~= 0
                         and HasEntityBeenDamagedByEntity(entry.ped, playerVeh, true)
@@ -289,13 +300,12 @@ CreateThread(function()
                             goto continue
                         end
                         -- Resurrect keeps failing; treat as the world, no credit.
-                        entry.dying = true
+                        -- Wait for bs:z:dead. A lost/refused report must not strand a live registry entry.
                         TriggerServerEvent('bs:z:envdeath', id)
                         goto continue
                     end
 
-                    entry.dying = true
-
+                    -- The server's death event sets entry.dying after it accepts the report.
                     if byVehicle and entry.vehKillOk then
                         -- bs_vehicles damps roll/pitch on this, see cl_parts.lua (car flipping onto its side when hitting a walker)
                         TriggerEvent('bs:vehicles:roadkill')

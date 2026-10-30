@@ -252,21 +252,10 @@ RegisterNUICallback('teleport', function(data, cb)
         if type(res) ~= 'table' then return cb({ ok = false, error = L('atlas.no_answer') }) end
         if not res.ok then return cb(res) end
 
-        local ped = PlayerPedId()
-        local target = IsPedInAnyVehicle(ped, false) and GetVehiclePedIsIn(ped, false) or ped
-        FreezeEntityPosition(target, true)
-        SetEntityCoordsNoOffset(target, x + 0.0, y + 0.0, 900.0, false, false, false)
-
-        -- Probe downward until collision streams in; fall back to the server's last known ground or 60.
-        local gz
-        for i = 0, 40 do
-            RequestCollisionAtCoord(x + 0.0, y + 0.0, 900.0 - i * 20.0)
-            local found, z = GetGroundZFor_3dCoord(x + 0.0, y + 0.0, 1000.0, false)
-            if found then gz = z break end
-            Wait(100)
-        end
-        SetEntityCoordsNoOffset(target, x + 0.0, y + 0.0, (gz or 60.0) + 1.0, false, false, false)
-        FreezeEntityPosition(target, false)
+        -- Shared helper: collision, ground probes, vehicle aware
+        local tpOk, finalZ = exports.bs_core:SafeTeleport(x, y, nil)
+        res.z = finalZ and (finalZ - 1.0) or nil
+        if not tpOk then res.ok = false; res.error = 'No ground found there, held safely in the air' end
         res.z = gz
         cb(res)
     end)

@@ -117,7 +117,7 @@ local function walkerIdFor(entity)
     -- Networked peds must still carry the zombie marker (handles get reused; faction NPCs are never walkers)
     if NetworkGetEntityIsNetworked(entity) then
         local okS, st = pcall(function() return Entity(entity).state end)
-        if not okS or not st or st.fnpc or st.bsZombie == nil then return nil end
+        if not okS or not st or st.fnpc or st.bsFnpc or st.bsZombie == nil or st.bsZombieDead then return nil end
         -- Not adopted yet (another client owns it): fall back to the id in the state bag.
         if not id then id = tonumber(st.bsZombie) end
         if id and NetworkHasControlOfEntity(entity) then

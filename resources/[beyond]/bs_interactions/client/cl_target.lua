@@ -5,6 +5,7 @@ Target = { active = false, entity = nil, options = {}, index = 1, open = false }
 
 local S = Interactions.Settings
 local lastScan = 0
+local lastTargetSig = nil   -- last options pushed to the page
 local outlined = nil
 local lastHide = 0
 local lastScanError = 0
@@ -43,6 +44,8 @@ local function castFromCamera()
     if hit == 0 or hit == false then return nil end
     -- Map geometry hits return handles that are not entities; never pass those on.
     if not entity or entity == 0 or not DoesEntityExist(entity) then return nil, endCoords end
+    -- The camera can sit past a wall in tight rooms: the player must see it too
+    if not HasEntityClearLosToEntity(ped, entity, 17) then return nil, endCoords end
     return entity, endCoords
 end
 
@@ -99,7 +102,7 @@ local function setOutline(entity)
     -- moment, and an outline left on a removed ped took the client down.
     if S.useOutline and entity and entity ~= 0 and DoesEntityExist(entity)
        and not (flags and flags.noOutline)
-       and not (IsEntityAPed(entity) and IsEntityDead(entity)) then
+       and not IsEntityAPed(entity) then
         SetEntityDrawOutlineColor(S.outline.r, S.outline.g, S.outline.b, S.outline.a)
         SetEntityDrawOutline(entity, true)
         outlined = entity
@@ -241,6 +244,7 @@ local function clearTarget()
     Target.entity = nil
     Target.options = {}
     Target.index = 1
+    lastTargetSig = nil
     setOutline(nil)
     send({ action = 'target', state = 'idle' })
 end
@@ -278,12 +282,14 @@ CreateThread(function()
         -- Re-send "hidden" a few times a second while not aiming, so a dropped message can never leave the dot stuck on screen.
         if not aiming and GetGameTimer() - (lastHide or 0) > 400 then
             lastHide = GetGameTimer()
+            lastTargetSig = nil
             send({ action = 'dot', visible = false })
             send({ action = 'target', state = 'idle' })
         end
 
         if aiming then
-            Wait(S.scanInterval or 0)
+            -- Keys are read every frame; only the scan below is throttled by scanInterval.
+            Wait(0)
 
             if GetGameTimer() - lastScan >= (S.scanInterval or 0) then
                 lastScan = GetGameTimer()
@@ -386,18 +392,24 @@ CreateThread(function()
 
                     setOutline(hitEntity)
 
-                    send({
-                        action = 'target',
-                        state = 'live',
-                        options = (function()
-                            local list = {}
-                            for i, o in ipairs(options) do
-                                list[i] = { label = Registry.Label(o), icon = o.icon, hint = o.hint }
-                            end
-                            return list
-                        end)(),
-                        index = Target.index,
-                    })
+                    local list, sig = {}, {}
+                    for i, o in ipairs(options) do
+                        local label = Registry.Label(o)
+                        list[i] = { label = label, icon = o.icon, hint = o.hint }
+                        sig[i] = tostring(label) .. '|' .. tostring(o.icon) .. '|' .. tostring(o.hint)
+                    end
+                    sig = Target.index .. '#' .. table.concat(sig, ';')
+
+                    -- Same options as the last scan: the page already has them, skip the message.
+                    if sig ~= lastTargetSig then
+                        lastTargetSig = sig
+                        send({
+                            action = 'target',
+                            state = 'live',
+                            options = list,
+                            index = Target.index,
+                        })
+                    end
                 else
                     clearTarget()
                 end

@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Rabbit pelt',
     ['item.coyote_pelt'] = 'Coyote pelt',
     ['item.mtlion_pelt'] = 'Mountain lion pelt',
+    ['inv.cant_sprint_heavy'] = 'Carrying too much to run. Drop some weight.',
 }

@@ -117,8 +117,20 @@ local function cameraBasis()
     return GetGameplayCamCoord(), fx, fy, fz, ux, uy, uz
 end
 
+-- Skip the message when the camera has not moved; a refresh still goes out every 250 ms.
+local lastL, lastLAt = nil, 0
+
 local function pushListener()
     local at, fx, fy, fz, ux, uy, uz = cameraBasis()
+    local now = GetGameTimer()
+    local l = lastL
+    if l and now - lastLAt < 250
+       and math.abs(at.x - l[1]) < 0.01 and math.abs(at.y - l[2]) < 0.01 and math.abs(at.z - l[3]) < 0.01
+       and math.abs(fx - l[4]) < 0.0005 and math.abs(fy - l[5]) < 0.0005 and math.abs(fz - l[6]) < 0.0005
+       and math.abs(ux - l[7]) < 0.0005 and math.abs(uy - l[8]) < 0.0005 and math.abs(uz - l[9]) < 0.0005 then
+        return
+    end
+    lastL, lastLAt = { at.x, at.y, at.z, fx, fy, fz, ux, uy, uz }, now
     SendNUIMessage({
         action = 'soundlistener',
         x = at.x, y = at.y, z = at.z,
@@ -259,6 +271,7 @@ end)
 -- A page reload discards all audio sources, so drop our view of them instead of leaving phantom voices in the cap.
 RegisterNUICallback('soundReady', function(_, cb)
     active, activeCount = {}, 0
+    lastL = nil
     cb('ok')
 end)
 

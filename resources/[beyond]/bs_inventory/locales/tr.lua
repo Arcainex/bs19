@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Tavşan kürkü',
     ['item.coyote_pelt'] = 'Çakal kürkü',
     ['item.mtlion_pelt'] = 'Puma postu',
+    ['inv.cant_sprint_heavy'] = 'Koşmak için çok ağır yük taşıyorsun. Biraz bırak.',
 }

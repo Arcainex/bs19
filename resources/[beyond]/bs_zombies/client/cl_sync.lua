@@ -64,6 +64,13 @@ end
 -- Forget first, then delete, with no yield in between
 function Zed.DestroyPed(ped)
     if not ped or ped == 0 then return false end
+    if DoesEntityExist(ped)then
+        local state=Entity(ped).state
+        if IsPedAPlayer(ped)or (state and (state.bsProtected or state.bsConvoy))then
+            Zed.owned[ped]=nil
+            return false
+        end
+    end
 
     Zed.ForgetPed(ped)
 

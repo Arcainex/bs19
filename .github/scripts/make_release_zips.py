@@ -9,7 +9,7 @@ import os, subprocess, sys, zipfile
 REPO = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', 'bs19')
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.dirname(os.path.abspath(__file__))
 MAX_MB = 85
-PATHS = ['resources', 'server.cfg', 'myLogo.png']
+PATHS = ['resources', 'server.cfg', 'myLogo.png', 'How to update.txt', 'update-v1.05.json']
 
 def git(*args):
     return subprocess.run(['git', '-C', REPO, *args], check=True, capture_output=True, text=True).stdout

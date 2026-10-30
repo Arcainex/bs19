@@ -180,6 +180,11 @@ end)
 RegisterNUICallback('fix', function(data, cb)
     cb({})
     local name = type(data) == 'table' and data.name or nil
+    if name == 'refreshtextures' then
+        closeMenu()
+        pcall(function() exports.bs_core:RefreshTextures() end)
+        return
+    end
     if started('bs_inventory') then pcall(function() exports.bs_inventory:RunSettingsAction(name) end) end
 end)
 

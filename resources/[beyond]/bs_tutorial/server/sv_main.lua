@@ -196,6 +196,14 @@ BSB.RegisterCallback('tutorial:spawnState', function(src)
     local inFaction = GetResourceState('bs_factions') == 'started' and exports.bs_factions:GetFaction(src) or nil
     -- Faction chosen in the character creator: it is joined right after the first spawn, so no picker.
     local pl = exports.bs_core:GetPlayer(src)
+    -- Characters with more than 10 minutes played never get the picker, the offer or a tutorial bucket.
+    local row = q('SELECT `playtime` FROM `bs_characters` WHERE `id` = ? LIMIT 1', { cid })[1]
+    local played = (row and tonumber(row.playtime) or 0) + (pl and math.max(0, os.time() - (tonumber(pl.lastSavedAt or pl.loadedAt) or os.time())) or 0)
+    if played >= (S.veteranSeconds or 600) then
+        if r.needsPick or not r.offered then r.needsPick = false; r.offered = true; save(r) end
+        leaveBucket(src)
+        return { ok = true }
+    end
     local chosenAtCreation = pl and pl.metadata and type(pl.metadata.pendingFaction) == 'string'
     if r.needsPick and (inFaction or chosenAtCreation or not S.factionPicker or GetResourceState('bs_factions') ~= 'started') then
         r.needsPick = false; save(r)

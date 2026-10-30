@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Pele de coelho',
     ['item.coyote_pelt'] = 'Pele de coiote',
     ['item.mtlion_pelt'] = 'Pele de puma',
+    ['inv.cant_sprint_heavy'] = 'Levas peso a mais para correr. Larga alguma coisa.',
 }

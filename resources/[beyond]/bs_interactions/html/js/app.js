@@ -3,6 +3,7 @@
 const dotEl  = document.getElementById('dot');
 const optsEl = document.getElementById('options');
 const progEl = document.getElementById('progress');
+let progHideTimer = null;
 const fillEl = document.getElementById('progress-fill');
 
 const ICONS = {
@@ -87,6 +88,7 @@ window.addEventListener('message', (e) => {
     }
 
     if (d.action === 'progress') {
+        clearTimeout(progHideTimer);
         if (d.cancel) {
             progEl.classList.add('hidden');
             fillEl.style.transition = 'none';
@@ -103,5 +105,14 @@ window.addEventListener('message', (e) => {
         void fillEl.offsetWidth;
         fillEl.style.transition = `width ${d.duration || 4000}ms linear`;
         fillEl.style.width = '100%';
+
+        // A standalone bar has no owner to close it, so it hides itself shortly after it fills
+        if (d.auto) {
+            progHideTimer = setTimeout(() => {
+                progEl.classList.add('hidden');
+                fillEl.style.transition = 'none';
+                fillEl.style.width = '0%';
+            }, (d.duration || 4000) + 800);
+        }
     }
 });

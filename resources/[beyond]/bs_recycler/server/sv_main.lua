@@ -422,7 +422,10 @@ exports('ConfigExt', function(src, action, a)
         return adminState()
     elseif action == 'goto' then
         local p = points[tostring(a)]
-        if p and src > 0 then SetEntityCoords(GetPlayerPed(src), p.x, p.y, p.z + 1.0, false, false, false, false) end
+        if p and src > 0 then
+            if GetResourceState('bs_guard') == 'started' then pcall(function() exports.bs_guard:Allow(src, 'teleport', 20000) end) end
+            TriggerClientEvent('bs:core:safeTp', src, p.x + 0.0, p.y + 0.0, p.z + 0.0)
+        end
         return adminState()
     elseif action == 'blacklist' and type(a) == 'table' then
         blacklist = {}

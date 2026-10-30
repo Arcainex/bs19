@@ -123,12 +123,24 @@ let suggestions = [];      /* { name, help, params } from chat:addSuggestion */
 let shown = [];            /* the filtered subset currently on screen */
 let sel = 0;
 
+// Resolves true when Lua answered, false when the call failed.
 const post = (name, data) =>
     fetch(`https://${GetParentResourceName()}/${name}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify(data || {})
-    }).catch(() => {});
+    }).then(r => r.ok).catch(() => false);
+
+// Script errors go to F8 through Lua, at most one every 3 s.
+let lastErrAt = 0;
+function reportError(msg) {
+    const now = Date.now();
+    if (now - lastErrAt < 3000) return;
+    lastErrAt = now;
+    post('error', { msg: String(msg).slice(0, 300) });
+}
+window.addEventListener('error', (e) => reportError(`${e.message} (${e.filename || ''}:${e.lineno || 0})`));
+window.addEventListener('unhandledrejection', (e) => reportError('promise: ' + (e.reason && e.reason.message || e.reason)));
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
     c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -163,10 +175,12 @@ function syncBackdrop(){
 
 function addLine(msg) {
     const el = document.createElement('div');
-    el.className = 'line' + (msg.channel ? ' ' + msg.channel : '');
+    // channel becomes a class name: letters only, so odd input cannot break the markup
+    const channel = /^[a-z]{1,12}$/i.test(msg.channel || '') ? msg.channel : '';
+    el.className = 'line' + (channel ? ' ' + channel : '');
 
-    if (msg.colour) {
-        el.style.color = `rgb(${msg.colour[0]},${msg.colour[1]},${msg.colour[2]})`;
+    if (Array.isArray(msg.colour) && msg.colour.length >= 3 && msg.colour.slice(0, 3).every(n => Number.isFinite(Number(n)))) {
+        el.style.color = `rgb(${msg.colour.slice(0, 3).map(n => Math.max(0, Math.min(255, Number(n)))).join(',')})`;
     }
 
     // `args` is the stock shape: first element is a tag, the rest is the body. A single element is a bare line with no tag.
@@ -186,6 +200,11 @@ function addLine(msg) {
     html += colourise(args.join(' '));
 
     el.innerHTML = html;
+    appendLine(el);
+}
+
+// Adds the line, trims the scrollback and starts its fade.
+function appendLine(el) {
     log.appendChild(el);
 
     while (log.children.length > 120) log.removeChild(log.firstChild);
@@ -215,6 +234,21 @@ function scheduleFade(el) {
 function applyMode() {
     for (const el of log.children) scheduleFade(el);
     syncBackdrop();
+}
+
+// A message that cannot be rendered still shows up, as plain text, instead of being lost or breaking the handler.
+function addLineSafe(msg) {
+    try {
+        addLine(msg);
+    } catch (err) {
+        reportError('message render failed: ' + (err && err.message));
+        try {
+            const el = document.createElement('div');
+            el.className = 'line';
+            el.textContent = (Array.isArray(msg.args) ? msg.args.join(' ') : String(msg.args ?? '')).slice(0, 600);
+            appendLine(el);
+        } catch (_) { /* nothing more to do for this line */ }
+    }
 }
 
 function setOpen(state) {
@@ -277,6 +311,17 @@ function renderSuggestions() {
 
 // input
 
+// Asks Lua to close and drop NUI focus. If Lua does not answer or the box is still open a moment later, close locally and ask again, so the player is never stuck behind an open box.
+function closeBox() {
+    post('close', {}).then(ok => { if (!ok) setTimeout(() => post('close', {}), 500); });
+    setTimeout(() => { if (open) { setOpen(false); post('close', {}); } }, 800);
+}
+
+// Escape works even when the click landed on the log and not on the input.
+document.addEventListener('keydown', (e) => {
+    if (open && e.key === 'Escape' && e.target !== entry) { e.preventDefault(); closeBox(); }
+});
+
 entry.addEventListener('input', () => { sel = 0; renderSuggestions(); });
 
 entry.addEventListener('keydown', (e) => {
@@ -288,13 +333,13 @@ entry.addEventListener('keydown', (e) => {
             if (history.length > 40) history.shift();
             post('send', { text });
         }
-        post('close', {});
+        closeBox();
         return;
     }
 
     if (e.key === 'Escape') {
         e.preventDefault();
-        post('close', {});
+        closeBox();
         return;
     }
 
@@ -332,10 +377,17 @@ entry.addEventListener('keydown', (e) => {
 // from Lua
 
 window.addEventListener('message', (event) => {
-    const d = event.data || {};
+    try {
+        handleMessage(event.data || {});
+    } catch (err) {
+        reportError('handler ' + (event.data && event.data.action) + ': ' + (err && err.message));
+    }
+});
 
+function handleMessage(d) {
+    if (d.action === 'reload')   { location.reload(); return; }
     if (d.action === 'visible')  { wrap.classList.toggle('suppressed', !d.visible); return; }
-    if (d.action === 'message')  return addLine(d);
+    if (d.action === 'message')  return addLineSafe(d);
     if (d.action === 'open')     return setOpen(true);
     if (d.action === 'close')    return setOpen(false);
     if (d.action === 'clear')    { log.innerHTML = ''; syncBackdrop(); return; }
@@ -357,28 +409,22 @@ window.addEventListener('message', (event) => {
     }
 
     if (d.action === 'suggestions') {
-        suggestions = Array.isArray(d.list) ? d.list : [];
+        suggestions = Array.isArray(d.list) ? d.list.filter(s => s && typeof s.name === 'string') : [];
         renderSuggestions();
     }
-});
+}
 
 // Tell Lua the listener is up (handshake), so config/style messages are not sent before it exists and dropped.
-// The post swallows failures, so retry until Lua answers (six tries over about three seconds).
+// Retries every 500 ms until Lua answers, however long the client takes to load. After that the same loop is a heartbeat every 3 s: Lua reloads the page if it goes quiet.
 (function announce() {
-    let tries = 0;
-    const ping = () => {
-        if (window.__bsChatReady || tries >= 6) return;
-        tries++;
-        fetch(`https://${GetParentResourceName()}/ready`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-            body: '{}'
-        })
-            .then(r => { if (r.ok) window.__bsChatReady = true; })
-            .catch(() => {})
-            .finally(() => { if (!window.__bsChatReady) setTimeout(ping, 500); });
+    let ready = false;
+    const tick = async () => {
+        let ok = false;
+        try { ok = await post(ready ? 'alive' : 'ready', {}); } catch (_) { ok = false; }
+        if (ok) ready = true;
+        setTimeout(tick, ready ? 3000 : 500);
     };
-    ping();
+    tick();
 })();
 </script>
 </body>

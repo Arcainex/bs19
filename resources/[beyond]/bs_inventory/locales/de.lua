@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Kaninchenfell',
     ['item.coyote_pelt'] = 'Kojotenfell',
     ['item.mtlion_pelt'] = 'Pumafell',
+    ['inv.cant_sprint_heavy'] = 'Zu viel Gewicht zum Rennen. Leg etwas ab.',
 }

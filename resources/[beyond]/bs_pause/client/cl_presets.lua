@@ -40,6 +40,9 @@ function PausePresets.Set(patch)
     PausePresets.Apply()
 end
 
+-- After a texture refresh, put the player's own LOD scale and model budgets back.
+AddEventHandler('bs:streaming:refreshed', function() PausePresets.Apply() end)
+
 function PausePresets.Get()
     return { gfx = PausePresets.gfx, audio = PausePresets.audio, distantLights = PausePresets.distantLights }
 end

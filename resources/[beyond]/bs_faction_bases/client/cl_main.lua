@@ -4,6 +4,7 @@ local Flags = {}
 local Props = {}
 local Blips = {}
 local Inside = {}
+local Grounded = {}
 local S = FactionBases.Settings
 
 local function notify(kind, msg) TriggerEvent('bs:ui:notify', { type = kind, message = msg, duration = 5000 }) end
@@ -15,6 +16,7 @@ local function remove(id)
         DeleteEntity(p)
     end
     Props[id] = nil
+    Grounded[id] = nil
     for _, b in ipairs(Blips[id] or {}) do RemoveBlip(b) end
     Blips[id] = nil
 end
@@ -40,8 +42,13 @@ local function spawn(flag)
     local untilAt = GetGameTimer() + 5000
     while not HasModelLoaded(hash) and GetGameTimer() < untilAt do Wait(0) end
     if not HasModelLoaded(hash) then return end
-    local object = CreateObjectNoOffset(hash, flag.x, flag.y, flag.z, false, false, false)
-    SetEntityHeading(object, flag.heading or 0.0); PlaceObjectOnGroundProperly(object); FreezeEntityPosition(object, true)
+    local low = GetModelDimensions(hash)
+    local object = CreateObjectNoOffset(hash, flag.x, flag.y, flag.z-low.z, false, false, false)
+    if not object or object==0 or not DoesEntityExist(object) then SetModelAsNoLongerNeeded(hash);return end
+    SetEntityAsMissionEntity(object,true,true)
+    Entity(object).state:set('bsProtected',true,false)
+    SetEntityCollision(object,false,false)
+    SetEntityHeading(object, flag.heading or 0.0); FreezeEntityPosition(object, true)
     SetModelAsNoLongerNeeded(hash)
     Props[flag.id] = object
     if GetResourceState('bs_interactions') == 'started' then
@@ -128,4 +135,26 @@ end)
 
 AddEventHandler('onResourceStop', function(name)
     if name == GetCurrentResourceName() then for id in pairs(Props) do remove(id) end; for id in pairs(Blips) do remove(id) end end
+end)
+
+-- Seat the model foot once nearby map collision has streamed in.
+CreateThread(function()
+    while true do
+        Wait(2000)
+        local me=GetEntityCoords(PlayerPedId())
+        for _,flag in ipairs(Flags)do
+            local object=Props[flag.id]
+            if object and not Grounded[flag.id] and DoesEntityExist(object) and #(me-vector3(flag.x,flag.y,flag.z))<80.0 then
+                RequestCollisionAtCoord(flag.x,flag.y,flag.z)
+                if HasCollisionLoadedAroundEntity(object) then
+                    local found,z=GetGroundZFor_3dCoord(flag.x,flag.y,flag.z+2.0,false)
+                    if found and z<=flag.z+2.0 and z>=flag.z-20.0 then
+                        local low=GetModelDimensions(GetEntityModel(object))
+                        SetEntityCoordsNoOffset(object,flag.x,flag.y,z-low.z,false,false,false)
+                        Grounded[flag.id]=true
+                    end
+                end
+            end
+        end
+    end
 end)

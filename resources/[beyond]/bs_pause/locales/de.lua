@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'Neuigkeiten',
     ['p.keybinds'] = 'Tastenbelegung',
     ['p.rebind_note'] = 'Tasten ändern: GTA-Einstellungen > Tastenbelegung > FiveM.',
+    ['p.refresh_textures'] = 'Alle Spieltexturen neu laden',
     ['p.troubleshoot'] = 'Fehlerbehebung',
     ['p.refresh_ui'] = 'UI neu laden',
     ['p.unblur'] = 'Hängende Unschärfe beheben',

@@ -1,0 +1,135 @@
+BS19 v1.05 Hotfix — How to update
+
+This is a fixes-only update for the public framework. It does not include the
+new parkour, fighting, Survivor Link, voice/radio, weapon editor, themes or
+building systems being worked on for v1.1. No database migrations are added.
+
+1. Stop the server and back up its folder and database.
+2. Download v1.05 into a separate folder. Do not run the fresh-install recipe
+   against an existing server, and do not extract the download over your files.
+3. Use the list below to review the changed files. If you never edited a listed
+   file, take the v1.05 copy. If you edited it, compare your installed release,
+   your current copy and v1.05, then merge the fix into your copy. Keep a backup.
+4. Update related files together. In particular, take bs_core with the teleport
+   callers and bs_pause; take both client and server zombie changes; and take
+   both inventory capture files. Skipping one side can leave a fix incomplete.
+5. Keep your server.cfg, credentials, F1 profiles, custom resources and database.
+   Compare changed config files instead of replacing your settings blindly.
+6. Restart the full server. If a problem appears, stop it and restore the changed
+   files from your backup. Restore the database separately only if necessary.
+
+update-v1.05.json lists the same paths with before/after SHA-256 hashes. A hash
+mismatch means your file differs; it is a reason to review, not to overwrite it.
+Hashes use LF line endings (convert Windows CRLF to LF before comparing).
+There is no automatic updater bundled with this hotfix.
+
+Download: https://github.com/Arcainex/bs19/releases/tag/v1.05
+Guide: https://bs19.org/docs/owners/how-to-update/
+Changes: https://github.com/Arcainex/bs19/compare/a93ac20...v1.05
+
+Changed resources and files
+===========================
+
+bs_admin — Staff teleports wait for world collision.
+  REPLACE resources/[beyond]/bs_admin/client/cl_main.lua
+
+bs_atlas — Map teleports use the same collision-safe helper.
+  REPLACE resources/[beyond]/bs_atlas/client/cl_atlas.lua
+
+bs_chat — Recover lost focus, hidden chat and a stalled browser page.
+  REPLACE resources/[beyond]/bs_chat/client/cl_main.lua
+  REPLACE resources/[beyond]/bs_chat/html/index.html
+
+bs_core — Shared safe teleport and streaming-focus recovery.
+  REPLACE resources/[beyond]/bs_core/client/cl_streaming.lua
+  REPLACE resources/[beyond]/bs_core/client/cl_teleport.lua
+  REPLACE resources/[beyond]/bs_core/fxmanifest.lua
+  REPLACE resources/[beyond]/bs_core/locales/de.lua
+  REPLACE resources/[beyond]/bs_core/locales/en.lua
+  REPLACE resources/[beyond]/bs_core/locales/es.lua
+  REPLACE resources/[beyond]/bs_core/locales/fr.lua
+  REPLACE resources/[beyond]/bs_core/locales/it.lua
+  REPLACE resources/[beyond]/bs_core/locales/pl.lua
+  REPLACE resources/[beyond]/bs_core/locales/pt.lua
+  REPLACE resources/[beyond]/bs_core/locales/ru.lua
+  REPLACE resources/[beyond]/bs_core/locales/tr.lua
+
+bs_faction_bases — Seat flag poles after nearby collision loads.
+  REPLACE resources/[beyond]/bs_faction_bases/client/cl_main.lua
+
+bs_factions — Faction admin teleports use safe placement.
+  REPLACE resources/[beyond]/bs_factions/server/sv_admin.lua
+
+bs_interactions — Avoid NPC outline crashes, require line of sight and clear completed progress bars.
+  REPLACE resources/[beyond]/bs_interactions/client/cl_search.lua
+  REPLACE resources/[beyond]/bs_interactions/client/cl_target.lua
+  REPLACE resources/[beyond]/bs_interactions/config/config.lua
+  REPLACE resources/[beyond]/bs_interactions/html/js/app.js
+
+bs_inventory — Restore refused moves, retry character captures and explain overload sprint restrictions.
+  REPLACE resources/[beyond]/bs_inventory/client/cl_bodyrender.lua
+  REPLACE resources/[beyond]/bs_inventory/client/cl_equipment.lua
+  REPLACE resources/[beyond]/bs_inventory/html/js/app.js
+  REPLACE resources/[beyond]/bs_inventory/locales/de.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/en.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/es.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/fr.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/it.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/pl.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/pt.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/ru.lua
+  REPLACE resources/[beyond]/bs_inventory/locales/tr.lua
+  REPLACE resources/[beyond]/bs_inventory/server/sv_main.lua
+
+bs_medical — Keep hold-X give-up progress through brief input drops.
+  REPLACE resources/[beyond]/bs_medical/client/cl_downed.lua
+
+bs_multichar — Prevent selector fade/camera races and release streaming focus after spawn.
+  REPLACE resources/[beyond]/bs_multichar/client/cl_main.lua
+  REPLACE resources/[beyond]/bs_multichar/client/cl_scene.lua
+
+bs_operations — Existing admin teleports use safe placement.
+  REPLACE resources/[beyond]/bs_operations/server/sv_admin.lua
+
+bs_pause — Expose texture recovery in existing troubleshooting settings.
+  REPLACE resources/[beyond]/bs_pause/client/cl_main.lua
+  REPLACE resources/[beyond]/bs_pause/client/cl_presets.lua
+  REPLACE resources/[beyond]/bs_pause/html/app.js
+  REPLACE resources/[beyond]/bs_pause/locales/de.lua
+  REPLACE resources/[beyond]/bs_pause/locales/en.lua
+  REPLACE resources/[beyond]/bs_pause/locales/es.lua
+  REPLACE resources/[beyond]/bs_pause/locales/fr.lua
+  REPLACE resources/[beyond]/bs_pause/locales/it.lua
+  REPLACE resources/[beyond]/bs_pause/locales/pl.lua
+  REPLACE resources/[beyond]/bs_pause/locales/pt.lua
+  REPLACE resources/[beyond]/bs_pause/locales/ru.lua
+  REPLACE resources/[beyond]/bs_pause/locales/tr.lua
+
+bs_recycler — Place players safely after recycler travel.
+  REPLACE resources/[beyond]/bs_recycler/server/sv_main.lua
+
+bs_traders — Skip unavailable clothing, keep checkout reachable and fix debug teleports.
+  REPLACE resources/[beyond]/bs_traders/client/cl_debug.lua
+  REPLACE resources/[beyond]/bs_traders/client/cl_wardrobe.lua
+  REPLACE resources/[beyond]/bs_traders/html/css/style.css
+  REPLACE resources/[beyond]/bs_traders/html/js/wardrobe.js
+
+bs_tutorial — Do not repeat the picker/tutorial bucket for established characters.
+  REPLACE resources/[beyond]/bs_tutorial/server/sv_main.lua
+
+bs_ui — Avoid duplicate HUD/audio messages.
+  REPLACE resources/[beyond]/bs_ui/client/cl_hud.lua
+  REPLACE resources/[beyond]/bs_ui/client/cl_sound.lua
+
+bs_world — Keep service NPCs out of ambient cleanup and reduce repeated population work.
+  REPLACE resources/[beyond]/bs_world/client/cl_blackout.lua
+  REPLACE resources/[beyond]/bs_world/client/cl_population.lua
+
+bs_zombies — Validate hits against live positions, retry death reports, protect recycled NPC handles and correct takedown/get-up timing.
+  REPLACE resources/[beyond]/bs_zombies/client/cl_attack.lua
+  REPLACE resources/[beyond]/bs_zombies/client/cl_combat.lua
+  REPLACE resources/[beyond]/bs_zombies/client/cl_damage.lua
+  REPLACE resources/[beyond]/bs_zombies/client/cl_execute.lua
+  REPLACE resources/[beyond]/bs_zombies/client/cl_sync.lua
+  REPLACE resources/[beyond]/bs_zombies/config/config_zombies.lua
+  REPLACE resources/[beyond]/bs_zombies/server/sv_registry.lua

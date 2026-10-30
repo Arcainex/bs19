@@ -13,24 +13,59 @@ local function settings()
     return (Chat and Chat.Settings) or {}
 end
 
+-- One visible line in F8 when something goes wrong, at most one per cause every 5 s so a loop cannot flood the console.
+local lastLogged = {}
+local function chatLog(key, text)
+    local now = GetGameTimer()
+    if lastLogged[key] and now - lastLogged[key] < 5000 then return end
+    lastLogged[key] = now
+    print(('^1[bs_chat] %s^7'):format(text))
+end
+
+-- Sends to the page; a bad payload is logged instead of killing the calling handler.
 local function send(payload)
-    SendNUIMessage(payload)
+    local ok, err = pcall(SendNUIMessage, payload)
+    if not ok then chatLog('send', 'SendNUIMessage failed (' .. tostring(payload and payload.action) .. '): ' .. tostring(err)) end
+end
+
+-- Runs a handler so an error is logged with its name and never leaves the chat half-updated.
+local function safe(name, fn)
+    return function(...)
+        local ok, err = pcall(fn, ...)
+        if not ok then chatLog('handler:' .. name, name .. ' failed: ' .. tostring(err)) end
+    end
 end
 
 -- Opening and closing
 
-local function setOpen(state)
+-- keepFocus: another panel just opened and owns the focus now, so do not take it away from it.
+local function setOpen(state, keepFocus)
     if Box.open == state then return end
     Box.open = state
+    Box.openedAt = GetGameTimer()
 
-    SetNuiFocus(state, state)
+    if state or not keepFocus then SetNuiFocus(state, state) end
     send({ action = state and 'open' or 'close' })
 
     -- No screen blur on purpose: you type in chat while something may be walking toward you.
 end
 
 RegisterNUICallback('close', function(_, cb)
-    setOpen(false)
+    -- A page that thinks it is closed but Lua still open (or the reverse) must end up shut and unfocused either way.
+    if Box.open then setOpen(false) else SetNuiFocus(false, false) end
+    cb({ ok = true })
+end)
+
+-- The page reports its own script errors so F8 shows why a chat line or the box misbehaved.
+RegisterNUICallback('error', function(data, cb)
+    cb({ ok = true })
+    chatLog('js', 'page error: ' .. tostring(data and data.msg or '?'))
+end)
+
+-- Page heartbeat, see the watchdog below.
+local lastBeat = 0
+RegisterNUICallback('alive', function(_, cb)
+    lastBeat = GetGameTimer()
     cb({ ok = true })
 end)
 
@@ -43,7 +78,11 @@ RegisterNUICallback('send', function(data, cb)
 
     if text:sub(1, 1) == '/' then
         local command = text:sub(2)
-        if command ~= '' then ExecuteCommand(command) end
+        -- A failing command must not take the chat callback down with it.
+        if command ~= '' then
+            local ok, err = pcall(ExecuteCommand, command)
+            if not ok then chatLog('cmd', 'command failed: ' .. tostring(err)) end
+        end
         return
     end
 
@@ -64,24 +103,51 @@ RegisterKeyMapping('bs_chat_open', L('chat.key_open'), 'keyboard', 'T')
 
 -- Chat must not sit on top of a full interface. Menus publish bs:ui:opened / bs:ui:closed, so no per-menu list is needed.
 local blockingPanels = {}
+
+-- Full-screen states that never take NUI focus. Everything else that blocks chat is a menu and holds focus while open.
+local focusless = { drone = true, cinecam = true }
+local function allFocusless()
+    for panel in pairs(blockingPanels) do
+        if not focusless[panel] then return false end
+    end
+    return true
+end
+
 local function syncSuppressed()
     local blocked = next(blockingPanels) ~= nil
     if Box.suppressed == blocked then return end
     Box.suppressed = blocked
-    if blocked and Box.open then setOpen(false) end
+    -- The panel that just opened owns NUI focus, so chat only lets go of it when that panel takes none (drone, camera).
+    if blocked and Box.open then setOpen(false, not allFocusless()) end
     send({ action = 'visible', visible = not blocked })
 end
 
-AddEventHandler('bs:ui:opened', function(panel)
+AddEventHandler('bs:ui:opened', safe('ui:opened', function(panel)
     if panel and panel ~= 'chat' then
         blockingPanels[panel] = true
         syncSuppressed()
     end
-end)
+end))
 
-AddEventHandler('bs:ui:closed', function(panel)
+AddEventHandler('bs:ui:closed', safe('ui:closed', function(panel)
     if panel then blockingPanels[panel] = nil else blockingPanels = {} end
     syncSuppressed()
+end))
+
+-- A resource that stops or crashes never sends its bs:ui:closed, which left the chat hidden for good. Forget its panel.
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then return end
+    local stale = false
+    for panel in pairs(blockingPanels) do
+        if resource == panel or resource == 'bs_' .. panel then
+            blockingPanels[panel] = nil
+            stale = true
+        end
+    end
+    if stale then
+        chatLog('stop:' .. resource, resource .. ' stopped while its panel was open, chat restored')
+        syncSuppressed()
+    end
 end)
 
 -- Events other resources already use
@@ -105,12 +171,33 @@ end, false)
 
 local function hexOk(v) return type(v) == 'string' and v:match('^#%x%x%x%x%x%x$') ~= nil end
 
+-- Flood guard: a runaway loop elsewhere spamming chat:addMessage would jam the page. Past 40 lines in one second the rest are dropped.
+local floodAt, floodN = 0, 0
+
+local MAX_ARGS, MAX_ARG_LEN = 8, 600
+
 local function addMessage(payload)
     if type(payload) == 'string' then payload = { args = { payload } } end
     if type(payload) ~= 'table' then return end
 
+    local now = GetGameTimer()
+    if now - floodAt > 1000 then floodAt, floodN = now, 0 end
+    floodN = floodN + 1
+    if floodN > 40 then
+        chatLog('flood', 'more than 40 chat messages in one second, dropping the extra ones')
+        return
+    end
+
     local args = payload.args
     if type(args) ~= 'table' then args = { tostring(args or '') } end
+
+    -- Plain short strings only: a function or huge value in args would make the NUI message fail or stall.
+    local clean = {}
+    for i = 1, math.min(#args, MAX_ARGS) do
+        clean[i] = tostring(args[i]):sub(1, MAX_ARG_LEN)
+    end
+    if #clean == 0 then return end
+    args = clean
 
     local colour = payload.color or payload.colour
     if type(colour) ~= 'table' or #colour < 3 then colour = nil end
@@ -130,16 +217,16 @@ end
 
 -- RegisterNetEvent(name, handler) already registers the handler, so adding AddEventHandler(name, handler) runs it twice (duplicate messages). Use the declaration form plus a single AddEventHandler.
 RegisterNetEvent('chat:addMessage')
-AddEventHandler('chat:addMessage', addMessage)
+AddEventHandler('chat:addMessage', safe('chat:addMessage', addMessage))
 
 RegisterNetEvent('chat:clear')
-AddEventHandler('chat:clear', function() send({ action = 'clear' }) end)
+AddEventHandler('chat:clear', safe('chat:clear', function() send({ action = 'clear' }) end))
 
 -- Suggestion list events; resources register commands with these at start, so existing /commands keep showing up.
 local function pushSuggestions()
     local list = {}
     for name, entry in pairs(Box.suggestions) do
-        list[#list + 1] = { name = name, help = entry.help, params = entry.params }
+        list[#list + 1] = { name = name, help = type(entry.help) == 'string' and entry.help or nil, params = entry.params }
     end
     table.sort(list, function(a, b) return a.name < b.name end)
     send({ action = 'suggestions', list = list })
@@ -162,7 +249,7 @@ local function addSuggestion(name, help, params)
 end
 
 RegisterNetEvent('chat:addSuggestion')
-AddEventHandler('chat:addSuggestion', addSuggestion)
+AddEventHandler('chat:addSuggestion', safe('chat:addSuggestion', addSuggestion))
 
 local function removeSuggestion(name)
     if type(name) ~= 'string' then return end
@@ -172,7 +259,7 @@ local function removeSuggestion(name)
 end
 
 RegisterNetEvent('chat:removeSuggestion')
-AddEventHandler('chat:removeSuggestion', removeSuggestion)
+AddEventHandler('chat:removeSuggestion', safe('chat:removeSuggestion', removeSuggestion))
 
 -- Accepted and ignored (see addMessage).
 RegisterNetEvent('chat:addTemplate')
@@ -192,10 +279,10 @@ AddEventHandler('onResourceStop', function(resource)
     SetNuiFocus(false, false)
 end)
 
-AddEventHandler('bs:hook:player:unloaded', function()
+AddEventHandler('bs:hook:player:unloaded', safe('player:unloaded', function()
     setOpen(false)
     send({ action = 'clear' })
-end)
+end))
 
 -- Readability and visibility
 
@@ -225,8 +312,10 @@ end
 -- Pushed from here, below pushStyle's definition: pushStyle is a file-local and a call above it is a nil global at runtime.
 -- Both halves of the page setup are sent in answer to its own ready signal rather than on a timer.
 RegisterNUICallback('ready', function(_, cb)
+    lastBeat = GetGameTimer()
     pushConfig()
     pushStyle()
+    pushSuggestions() -- a reloaded page starts with an empty command list
 
     -- A fresh page means a shut box, whatever Lua thinks: the page can reload on its own while Box.open is still true, which would make T a no-op. Trust the page and drop focus too.
     if Box.open then
@@ -297,3 +386,40 @@ exports('ApplyDisplaySettings', function(patch)
 end)
 
 exports('IsOpen', function() return Box.open end)
+
+-- Watchdog
+-- Two things go wrong silently: Lua thinks the box is open but NUI focus is gone (another resource took it), and the page stops answering. Both are repaired here and logged.
+CreateThread(function()
+    local noFocusSince, noBeatLogged = nil, 0
+    while true do
+        Wait(500)
+        local now = GetGameTimer()
+
+        -- Box open but nobody holds focus: close it so T works again. Grace period covers the frame between SetNuiFocus and the engine reporting it.
+        if Box.open and not IsNuiFocused() and now - (Box.openedAt or 0) > 1500 then
+            chatLog('focus', 'NUI focus was lost while the chat was open (another resource took it), closing the box')
+            setOpen(false)
+        end
+
+        -- Suppressed by a panel that is no longer there: menus hold focus, so ten seconds with no focus and no focus-less panel means the bookkeeping drifted.
+        if Box.suppressed and not IsNuiFocused() and not Box.open and not allFocusless() then
+            noFocusSince = noFocusSince or now
+            if now - noFocusSince > 10000 then
+                chatLog('stale', 'chat was hidden by a panel that never closed, restoring it')
+                blockingPanels = {}
+                syncSuppressed()
+                noFocusSince = nil
+            end
+        else
+            noFocusSince = nil
+        end
+
+        -- Page silent for 12 s (it beats every 3 s): reload it. The page answers with `ready`, which restores settings and suggestions.
+        if lastBeat > 0 and now - lastBeat > 12000 and now - noBeatLogged > 12000 then
+            noBeatLogged = now
+            chatLog('beat', 'chat page stopped responding, reloading it')
+            if Box.open then setOpen(false) end
+            send({ action = 'reload' })
+        end
+    end
+end)

@@ -46,5 +46,5 @@ jobs:
             gh release upload "$TAG" "$RUNNER_TEMP"/out/bs19-part*.zip --clobber
           else
             gh release create "$TAG" "$RUNNER_TEMP"/out/bs19-part*.zip \
-              --target "$GITHUB_SHA" --title "BS19 ${TAG#v}" --notes-file CHANGELOG.md
+              --target "$GITHUB_SHA" --title "BS19 v1.05 Hotfix" --notes-file CHANGELOG.md
           fi

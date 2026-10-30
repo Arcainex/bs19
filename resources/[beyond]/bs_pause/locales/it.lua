@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'Novità',
     ['p.keybinds'] = 'Tasti',
     ['p.rebind_note'] = 'Cambia i tasti in Impostazioni GTA > Tasti > FiveM.',
+    ['p.refresh_textures'] = 'Ricarica tutte le texture',
     ['p.troubleshoot'] = 'Risoluzione problemi',
     ['p.refresh_ui'] = 'Ricarica UI',
     ['p.unblur'] = 'Togli sfocatura bloccata',

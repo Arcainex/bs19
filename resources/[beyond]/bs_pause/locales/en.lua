@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'News',
     ['p.keybinds'] = 'Key bindings',
     ['p.rebind_note'] = 'Change any key in GTA settings > Key Bindings > FiveM.',
+    ['p.refresh_textures'] = 'Refresh all game textures',
     ['p.troubleshoot'] = 'Troubleshooting',
     ['p.refresh_ui'] = 'Refresh UI',
     ['p.unblur'] = 'Fix stuck blur',

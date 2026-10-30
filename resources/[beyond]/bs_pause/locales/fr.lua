@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'Nouveautés',
     ['p.keybinds'] = 'Touches',
     ['p.rebind_note'] = 'Change les touches dans Paramètres GTA > Touches > FiveM.',
+    ['p.refresh_textures'] = 'Recharger toutes les textures',
     ['p.troubleshoot'] = 'Dépannage',
     ['p.refresh_ui'] = 'Recharger l\'UI',
     ['p.unblur'] = 'Corriger le flou bloqué',

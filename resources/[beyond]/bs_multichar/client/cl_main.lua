@@ -49,6 +49,8 @@ end
 function OpenSelect()
     if State.open then return end
     State.open = true
+    -- Close inspection/inventory cameras before taking ownership of the lineup scene.
+    TriggerEvent('bs:ui:opened','multichar')
 
     Scene.Build()
     DoScreenFadeIn(Multichar.Scene.fadeIn)
@@ -156,10 +158,8 @@ RegisterNUICallback('play', function(data, cb)
             return cb({ ok = false, error = (result and result.error) or 'no response' })
         end
 
-        DoScreenFadeOut(Multichar.Scene.fadeOut)
-        Wait(Multichar.Scene.fadeOut)
-        -- bs_core's player:loaded handler owns the player ped from here.
-        CloseSelect(true)
+        -- PlayerLoaded may precede this callback, even by several seconds. The core owns
+        -- the spawn fade; fading here can black out a spawn that has already completed.
         cb({ ok = true })
     end)
 end)

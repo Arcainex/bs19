@@ -72,8 +72,18 @@ local function enumerate(categories)
                 and GetNumberOfPedPropTextureVariations(p, cat.index, entry.current) or 0
         end
 
+        entry.available = {}
+        for drawable = 0, (entry.count or 0) - 1 do
+            local textures = cat.kind == 'component'
+                and GetNumberOfPedTextureVariations(p, cat.index, drawable)
+                or GetNumberOfPedPropTextureVariations(p, cat.index, drawable)
+            if textures and textures > 0 then
+                entry.available[#entry.available + 1] = drawable
+            end
+        end
+
         -- Categories the model has nothing for are hidden, since an empty tab looks broken.
-        if (entry.count or 0) > 0 then out[#out + 1] = entry end
+        if #entry.available > 0 then out[#out + 1] = entry end
     end
 
     return out
@@ -400,6 +410,18 @@ RegisterNUICallback('wardrobeWear', function(data, cb)
     local cat = Wardrobe.ByCategory[data and data.category]
     if not cat then return cb({ ok = false }) end
 
+    if not shop.open then return cb({ ok = false }) end
+    local drawable = math.floor(tonumber(data.drawable) or -1)
+    if not data.remove then
+        local count = cat.kind == 'component'
+            and GetNumberOfPedDrawableVariations(ped(), cat.index)
+            or GetNumberOfPedPropDrawableVariations(ped(), cat.index)
+        local textures = drawable >= 0 and drawable < count and (cat.kind == 'component'
+            and GetNumberOfPedTextureVariations(ped(), cat.index, drawable)
+            or GetNumberOfPedPropTextureVariations(ped(), cat.index, drawable)) or 0
+        if textures <= 0 then return cb({ ok = false, error = 'This garment is unavailable' }) end
+        data.texture = math.min(math.max(0, math.floor(tonumber(data.texture) or 0)), textures - 1)
+    end
     wear(cat, data.drawable, data.texture, data.remove)
 
     -- Return what the ped actually has so the panel's counters follow the clamping. If the top moved the arms too, the arms row is updated as well.

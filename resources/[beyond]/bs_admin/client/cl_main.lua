@@ -299,19 +299,10 @@ local localActions = {
         local blip = GetFirstBlipInfoId(8)
         if not DoesBlipExist(blip) then return { error = 'no waypoint set' } end
 
+        -- The blip has no real Z, so the shared helper finds the ground
         local coords = GetBlipInfoIdCoord(blip)
-        local ped = PlayerPedId()
-
-        -- Probe downwards for ground; the Z from a blip is always 0.
-        for z = 1000, 0, -25 do
-            SetEntityCoordsNoOffset(ped, coords.x, coords.y, z + 0.0, false, false, false)
-            Wait(20)
-            local found, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, z + 0.0, false)
-            if found then
-                SetEntityCoordsNoOffset(ped, coords.x, coords.y, groundZ + 1.0, false, false, false)
-                return { ok = true }
-            end
-        end
+        local ok = exports.bs_core:SafeTeleport(coords.x, coords.y, nil)
+        if ok then return { ok = true } end
         return { error = 'could not find ground there' }
     end,
 
@@ -324,21 +315,8 @@ local localActions = {
             return { error = 'invalid map destination' }
         end
 
-        local ped = PlayerPedId()
-        local entity = ped
-        local vehicle = GetVehiclePedIsIn(ped, false)
-        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == ped then entity = vehicle end
-
-        DoScreenFadeOut(180)
-        while not IsScreenFadedOut() do Wait(0) end
-        RequestCollisionAtCoord(x, y, z)
-        SetEntityCoordsNoOffset(entity, x + 0.0, y + 0.0, z + 1.5, false, false, false)
-        SetFocusPosAndVel(x + 0.0, y + 0.0, z + 1.5, 0.0, 0.0, 0.0)
-
-        local deadline = GetGameTimer() + 2500
-        while not HasCollisionLoadedAroundEntity(entity) and GetGameTimer() < deadline do Wait(50) end
-        ClearFocus()
-        DoScreenFadeIn(220)
+        local ok = exports.bs_core:SafeTeleport(x, y, z)
+        if not ok then return { error = 'could not find ground there' } end
         return { ok = true, note = 'map teleport complete' }
     end,
     invisible = function()
@@ -549,26 +527,10 @@ local localActions = {
         local ty = result.y + (dy / len) * 5.0
 
         -- The record's Z is 0.0 until a host reports real ground (the server has no collision)
-        if result.grounded then
-            SetEntityCoordsNoOffset(ped, tx, ty, result.z + 1.0, false, false, false)
-            Wait(150)
-        end
-
-        local found, groundZ = GetGroundZFor_3dCoord(tx, ty, (result.z or 0.0) + 3.0, false)
-        if not found then
-            for z = 1000, 0, -25 do
-                SetEntityCoordsNoOffset(ped, tx, ty, z + 0.0, false, false, false)
-                Wait(20)
-                found, groundZ = GetGroundZFor_3dCoord(tx, ty, z + 0.0, false)
-                if found then break end
-            end
-        end
-
-        if not found then
+        local tpOk = exports.bs_core:SafeTeleport(tx, ty, result.grounded and result.z or nil)
+        if not tpOk then
             return { error = ('found one %.0fm away but no ground under it'):format(result.distance or 0) }
         end
-
-        SetEntityCoordsNoOffset(ped, tx, ty, groundZ + 1.0, false, false, false)
 
         -- Face it, so it is on screen when the teleport lands.
         SetEntityHeading(ped, GetHeadingFromVector_2d(result.x - tx, result.y - ty))
@@ -1087,43 +1049,12 @@ end)
 RegisterNetEvent('bs:admin:tpCoords', function(x, y, z)
     if tpBusy then return end
     tpBusy = true
-    local ped = PlayerPedId()
-    local entity = ped
-    local vehicle = GetVehiclePedIsIn(ped, false)
-    if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == ped then entity = vehicle end
-
-    DoScreenFadeOut(180)
-    local fadeEnd = GetGameTimer() + 1000
-    while not IsScreenFadedOut() and GetGameTimer() < fadeEnd do Wait(0) end
-    FreezeEntityPosition(entity, true)
-
-    local targetZ = z
-    if not targetZ then
-        local found, groundZ = false, 0.0
-        for probe = 1000, -100, -25 do
-            RequestCollisionAtCoord(x, y, probe + 0.0)
-            SetEntityCoordsNoOffset(entity, x, y, probe + 0.0, false, false, false)
-            Wait(20)
-            found, groundZ = GetGroundZFor_3dCoord(x, y, probe + 0.0, false)
-            if found then break end
-        end
-        targetZ = found and groundZ or 100.0
-    end
-
-    RequestCollisionAtCoord(x, y, targetZ)
-    SetEntityCoordsNoOffset(entity, x, y, targetZ + 1.0, false, false, false)
-    local deadline = GetGameTimer() + 2500
-    while not HasCollisionLoadedAroundEntity(entity) and GetGameTimer() < deadline do Wait(50) end
-    if entity == vehicle then SetVehicleOnGroundProperly(vehicle) end
-
-    FreezeEntityPosition(entity, false)
-    DoScreenFadeIn(220)
+    exports.bs_core:SafeTeleport(x, y, z or nil)
     tpBusy = false
 end)
 
 RegisterNetEvent('bs:admin:teleportTo', function(x, y, z)
-    local ped = PlayerPedId()
-    SetEntityCoordsNoOffset(ped, x + 0.0, y + 0.0, z + 1.0, false, false, false)
+    CreateThread(function() exports.bs_core:SafeTeleport(x, y, z) end)
 end)
 
 -- Broadcast so /dv (and the menu's delete) removes the car for everyone watching

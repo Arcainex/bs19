@@ -801,6 +801,8 @@ Zombies.Crawl = {
 
 -- Attacks: a walker takes hold and bites. Mash the jump key to break free early.
 Zombies.Attack = {
+    -- No swing until a knocked-down walker has been back on its feet this long, ms
+    recoverMs = 600,
     -- Dodging (cl_attack.lua, evaded())
     -- The claw only lands on someone slower than evadeSpeed m/s
     evadeSpeed  = 1.8,

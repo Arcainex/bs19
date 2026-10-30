@@ -526,10 +526,11 @@ CreateThread(function()
             end
 
             -- Give up and die now. Held, never tapped (see GIVE_UP_HOLD_MS). Disarmed while a panel is open.
+            DisableControlAction(0, 73, true)
             if Downed.givingUp or Downed.flat or anyPanelOpen() then
                 Downed.holdFrom = 0
             elseif IsControlPressed(0, 73) or IsDisabledControlPressed(0, 73)
-                or (Downed.holdFrom > 0 and GetGameTimer() - (Downed.holdSeen or 0) < 250) then   -- X, held
+                or (Downed.holdFrom > 0 and GetGameTimer() - (Downed.holdSeen or 0) < 600) then   -- X, held
                 -- X is also a vehicle/emote key, so another script can disable it for a frame or two. Read the disabled state too and forgive short gaps, or the bar restarts from zero.
                 if IsControlPressed(0, 73) or IsDisabledControlPressed(0, 73) then Downed.holdSeen = GetGameTimer() end
                 if Downed.holdFrom == 0 then Downed.holdFrom = GetGameTimer() end

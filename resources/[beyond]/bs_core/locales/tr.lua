@@ -26,4 +26,7 @@ return {
     ['core.unstuck'] = 'Kurtuldun.',
     ['core.denied_title'] = 'Reddedildi',
     ['core.denied_msg'] = 'Bunu yapmak için iznin yok.',
+    ['core.tex_busy'] = 'Etrafındaki dünya zaten yeniden yükleniyor...',
+    ['core.tex_start'] = 'Etrafındaki dünya yeniden yükleniyor...',
+    ['core.tex_done'] = 'Dünya yeniden yüklendi.',
 }

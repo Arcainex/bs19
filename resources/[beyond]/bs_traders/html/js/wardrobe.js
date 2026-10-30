@@ -216,7 +216,7 @@
         if (!cat) { return; }
 
         document.getElementById('wdCatLabel').textContent = cat.label;
-        document.getElementById('wdCatCount').textContent = cat.count + ' available';
+        document.getElementById('wdCatCount').textContent = (Array.isArray(cat.available) ? cat.available.length : cat.count) + ' available';
 
         var cur = state.current[cat.id] || { drawable: 0, texture: 0 };
         var hasBare = cat.bare !== undefined && cat.bare !== null;
@@ -229,6 +229,7 @@
 
         var first = cat.kind === 'prop' ? 0 : 0;
         for (var d = first; d < cat.count; d++) {
+            if (Array.isArray(cat.available) && cat.available.indexOf(d) < 0) { continue; }
             if (hasBare && d === cat.bare) { continue; }
             list.appendChild(row(cat, d, cur, false));
         }

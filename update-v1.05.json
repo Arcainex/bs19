@@ -1,0 +1,577 @@
+{
+  "version": "1.05",
+  "title": "v1.05 Hotfix",
+  "baseCommit": "a93ac20f73c6fb37be49034cba0d706b1fc3a99c",
+  "databaseChanges": false,
+  "newResources": [],
+  "requiresFullRestart": true,
+  "resources": {
+    "bs_admin": {
+      "summary": "Staff teleports wait for world collision.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_admin/client/cl_main.lua",
+          "resource": "bs_admin",
+          "action": "replace",
+          "beforeSha256": "598bec04899b46839889712ebe2717a28a98fa139d1be4da90927494ba065bc4",
+          "afterSha256": "99d3de327a97ffd6d25f8638e3bc3276edac9a9f24cf90aee5e12e2260413479"
+        }
+      ]
+    },
+    "bs_atlas": {
+      "summary": "Map teleports use the same collision-safe helper.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_atlas/client/cl_atlas.lua",
+          "resource": "bs_atlas",
+          "action": "replace",
+          "beforeSha256": "5bb87afb76377b1ee27208a4354c94b1cbcfe89c40767649ebf6a3329b56df17",
+          "afterSha256": "0fd1f3b091e80523e71bf9b8d5898104af7ab05a577acf00e3fdfb52ec91f9a7"
+        }
+      ]
+    },
+    "bs_chat": {
+      "summary": "Recover lost focus, hidden chat and a stalled browser page.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_chat/client/cl_main.lua",
+          "resource": "bs_chat",
+          "action": "replace",
+          "beforeSha256": "d5c7e3e2199439fad0632f7916414a60af6e22580470f626eb948236c248dc0c",
+          "afterSha256": "c6eed46eb53e0ed6cf5af234afbceadc3051e88baf1b778747204647b0be5824"
+        },
+        {
+          "path": "resources/[beyond]/bs_chat/html/index.html",
+          "resource": "bs_chat",
+          "action": "replace",
+          "beforeSha256": "97514af7a0e4c660df588c4640a23e6d5f6f761d6bcd16f1897751ee077b3d18",
+          "afterSha256": "148f247909206141d3a866c3b6c1ee1a395ab227c0b2752185c5d952dc99653c"
+        }
+      ]
+    },
+    "bs_core": {
+      "summary": "Shared safe teleport and streaming-focus recovery.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_core/client/cl_streaming.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "afterSha256": "69d53088bdab3f92a6adbc83e118472221a0c0bed063172bc3373e321e591a65"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/client/cl_teleport.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "afterSha256": "8622d0a396da734bf50de4fb321abf07a0966c21368d2965d6499b189107fa19"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/fxmanifest.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "fccb5e541b408d022dee43ec5452d7e1903ae62d711a9c3a2d4842fefcca80cb",
+          "afterSha256": "230aa753e8ac02c154171e1b5594b142868a60e8bf62f488b7be1cb0811a8a5f"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/de.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "66ad55ecd3ad944886438bf4258bfeb1c6348215d7f41af264a26218c82a99b0",
+          "afterSha256": "11173ad33bf50f11a24dc52d731ba56d331b1262bc8cac12a8779748900467d3"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/en.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "99f153a131d47f2e579ecf1b8e53e289ec90c227514ecd80e5e82a49af510ed5",
+          "afterSha256": "fbe217602feb68ef010fab962ab9e0c0ddcfadd744804b283a10e9f5ab572cd0"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/es.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "3ec6b1f7a49af10474d3129d9aa61365da333fa3144e11a5449f0a23d5f860d2",
+          "afterSha256": "71e9c4b9a9470913e5642c03ad5f5a8d439f6612cc9895edff609e80e541b3c8"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/fr.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "3e21020b8d64f8be231c23aae16b4cec8482ff968d1147ce739171f2bc3c4439",
+          "afterSha256": "43d8f3a7722e667b241ac1d7b1b226c7dbcc997cbf37452e6ab160913edc77d6"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/it.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "66ffcaceb31421900905ef36efbc529ecd115b3418226e54b025a4a935cf50d0",
+          "afterSha256": "92f9a053478a1f6974cf82d08e0d48ba2148a24eae64257023527803e0bfcde7"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/pl.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "b11cc712e7d20f3de57deb6980cafc0ba57165679d13dcea3db0106485eb9cb6",
+          "afterSha256": "8127a76facc2b6ea1d581802a83f195900be39319848714ba2d97af67e5919a5"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/pt.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "94b0a9dc795c3c6b118d009ce56cdffe7ebe2db0d6e75fba246816a9bbb2201e",
+          "afterSha256": "d9f4ba99e239b009fb6490bf8671b0c8ca9ac4b54131a50127e1bddcfa276872"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/ru.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "1e17961d500b1f405157636bbed0205446fa6d3dd88c7efd7bfde1d318ec10dc",
+          "afterSha256": "eabc3bf62b12c786884f5a135d5a300257962a3a3290d5e2f541e23da5f6c77d"
+        },
+        {
+          "path": "resources/[beyond]/bs_core/locales/tr.lua",
+          "resource": "bs_core",
+          "action": "replace",
+          "beforeSha256": "d6d38b84172fefd761d95dee0061567ce7bd3355d6eb465130ea257f88d0442b",
+          "afterSha256": "358d1ec41e6332348f25615acc7e15f99b180178b36a685ddee3ffcf4788e0b7"
+        }
+      ]
+    },
+    "bs_faction_bases": {
+      "summary": "Seat flag poles after nearby collision loads.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_faction_bases/client/cl_main.lua",
+          "resource": "bs_faction_bases",
+          "action": "replace",
+          "beforeSha256": "c1f0fd6cf333f14c9e587a7d6dc41b62d4bcc97e203a20be5e36433b68bed796",
+          "afterSha256": "01b55fd9ae688a032d9c8dfbe045b4e326d8c77abdbbef5f06f3efc768c08152"
+        }
+      ]
+    },
+    "bs_factions": {
+      "summary": "Faction admin teleports use safe placement.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_factions/server/sv_admin.lua",
+          "resource": "bs_factions",
+          "action": "replace",
+          "beforeSha256": "edebabcfacdaedbcfead61eee1564b067543cf3167ab340b27d86e254234a288",
+          "afterSha256": "8eec2ea0b288123bc46db8ab9bbad24bb9d080084f705f8782228ae76b3d4c43"
+        }
+      ]
+    },
+    "bs_interactions": {
+      "summary": "Avoid NPC outline crashes, require line of sight and clear completed progress bars.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_interactions/client/cl_search.lua",
+          "resource": "bs_interactions",
+          "action": "replace",
+          "beforeSha256": "61fef2f50f47f7969adca7106ea2f5e0e32eb6cf7deb31afdbb906d39a7bf793",
+          "afterSha256": "243d1efa50672131fa7955b998ab210a383c7f046ee966333671a26a432185bf"
+        },
+        {
+          "path": "resources/[beyond]/bs_interactions/client/cl_target.lua",
+          "resource": "bs_interactions",
+          "action": "replace",
+          "beforeSha256": "2d58b9e72a7201bffd82ba396eefaf14d7bd59343a99e56c8d743f12c37b3a3a",
+          "afterSha256": "33a4c8f10c91e960df20923ecfc40bcafbd998d760cdbc32922069c0c7fb8537"
+        },
+        {
+          "path": "resources/[beyond]/bs_interactions/config/config.lua",
+          "resource": "bs_interactions",
+          "action": "replace",
+          "beforeSha256": "7262787a4f1378061546476e0420b0786b30fbf29a6a6a2525e47e5fa2ebf70e",
+          "afterSha256": "7094d3878434faf67893c024a8d64096e3b5827f1e1623e5e95e604ff9601b4d"
+        },
+        {
+          "path": "resources/[beyond]/bs_interactions/html/js/app.js",
+          "resource": "bs_interactions",
+          "action": "replace",
+          "beforeSha256": "de26f37fc097fbe65cc16bcbeb020ae1e82f4db7464e267d5f5bdc2d569b851b",
+          "afterSha256": "1b3983e0315d94320835f4c3661825ab8e1c314cecfdb3e4726ad2fc3ec274e5"
+        }
+      ]
+    },
+    "bs_inventory": {
+      "summary": "Restore refused moves, retry character captures and explain overload sprint restrictions.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_inventory/client/cl_bodyrender.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "c39f823f8cf933ed2f9456384fe6569004e9b26a289bfef2c8e72c121a109017",
+          "afterSha256": "5bbabfcaa89b9d13951a7af106b9b66808ca1c8ccb659f2be0adb6c508e78384"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/client/cl_equipment.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "298fe180a35e06e7f49dce8117cadb808f3c41c09807fa80dbe39ca8c9b04811",
+          "afterSha256": "c350681ede876a8a691a6313547f0c319a915cddb28b56dcd4e915443d2d74d3"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/html/js/app.js",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "9f8ee03e8780cb1bca8a5cd33b6ff26e25ec9870ab4c03de5f00ba0ee03fbd03",
+          "afterSha256": "84740b10e0fe31338cc7f0215efa07d3c3fa041ea3da490023bcdb4be1de20d6"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/de.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "10f2fffc616ccb8664349fa8e6d963281936928a562b058717d3dd3e2eef877a",
+          "afterSha256": "4b536cc5c3e7f94911188f3254d64cdfb5e3035991ddc2eab0d3308f6ea0e66c"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/en.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "789cbff780874b20d2ada84116fcf323e764739da62bc7eb3c3bb0b112098ec1",
+          "afterSha256": "a44baf6863e4880f31c1f844674446f1e899086b9817ace8d056e479f6c467b2"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/es.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "d0f1af6eee43fca725536743ddfab318f3ae4937908960928c4658e70f2bfc2f",
+          "afterSha256": "1c69608997679ce56c2dadd0e46d590751f59f4e3ced34433420c1dc9bcc0266"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/fr.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "77e7a584c2ef88fd8461025fbbea9c3494cd79858e90f36517518e4ea5eaa79f",
+          "afterSha256": "581fa3f827757bac232a651e8845bbb89daee74b543653915416db776a600c79"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/it.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "1939899d6ca5f1878f13aa67bb81d17141f0cfc6fb0f9592975d2b0712283a4c",
+          "afterSha256": "8dc5f66cdce07d587a671c1e7b8d82d716b5ffb974d66e9d7fefe2a7a66ec2ba"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/pl.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "249295c6bf396e28805c5bc8e5d48296ebc0dc95b550f8c2eb9883c6e8248b3a",
+          "afterSha256": "bb2d87789f8714ae60d9785f53c6d68f26c936107d779a15678b29b1d04c3e1b"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/pt.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "0671fa339bf0e53aa46d5f95b935f791743c1c5f06821892913efad323740830",
+          "afterSha256": "97215535dfe582da5a5f4c2712f15fa86f5bdfa1ce13637f61e4729e4fb63486"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/ru.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "348c28a877a0000fc1bac0d156867d07c6eca41af5ad3e2b400b6bbd8f3c735f",
+          "afterSha256": "2ce133b63305f555ecbd916043f53036072932158612e41196f9fc38b693a443"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/locales/tr.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "e198223e93322cc397f6f7966911079b57839d6374baa719caa6cd7db3221bb8",
+          "afterSha256": "c6416eb3021457f56fec1c5a7de2289ced38331691c070115d8d809eece04678"
+        },
+        {
+          "path": "resources/[beyond]/bs_inventory/server/sv_main.lua",
+          "resource": "bs_inventory",
+          "action": "replace",
+          "beforeSha256": "bfc8f57dab0d170b03384c7f0650d702232b25e0c9e6b21d24f533cf1b7e338d",
+          "afterSha256": "c87c6285514e45527b3fc1740fb3d56aed1440a1509745826e8ae276edce920f"
+        }
+      ]
+    },
+    "bs_medical": {
+      "summary": "Keep hold-X give-up progress through brief input drops.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_medical/client/cl_downed.lua",
+          "resource": "bs_medical",
+          "action": "replace",
+          "beforeSha256": "711e71b1c6daa14a806cf1cb08d9bf9d9500d0d16602513de8bd18315fa4abb3",
+          "afterSha256": "f966cdfc98320524353a3c380cf07ae5dab68cfeefd26e25807d724a9b925720"
+        }
+      ]
+    },
+    "bs_multichar": {
+      "summary": "Prevent selector fade/camera races and release streaming focus after spawn.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_multichar/client/cl_main.lua",
+          "resource": "bs_multichar",
+          "action": "replace",
+          "beforeSha256": "f13403a667d4996936dbae546446ef4e699563850485bc33f91d4ad17a3b70c8",
+          "afterSha256": "bd151fd94d6dfbf89a03033f5d741d2a5a528532c885db33454e584513727528"
+        },
+        {
+          "path": "resources/[beyond]/bs_multichar/client/cl_scene.lua",
+          "resource": "bs_multichar",
+          "action": "replace",
+          "beforeSha256": "ddf8b25aea900672af3131f85ef531833c9035a35157eba844a3710a8a1b387a",
+          "afterSha256": "0a3d34fb7e75af3b804322f45dae927bc7cfb84d6f848e7a5910f82b974f2a3c"
+        }
+      ]
+    },
+    "bs_operations": {
+      "summary": "Existing admin teleports use safe placement.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_operations/server/sv_admin.lua",
+          "resource": "bs_operations",
+          "action": "replace",
+          "beforeSha256": "1c638ff74d798c52b0515d767c4874723a870e28d8c14d43b3439e841578afb4",
+          "afterSha256": "ad297d73e106d20a5e58884aeceed96549d9d2ccb86a3cceb98bbb83c5486393"
+        }
+      ]
+    },
+    "bs_pause": {
+      "summary": "Expose texture recovery in existing troubleshooting settings.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_pause/client/cl_main.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "a0d67eaf6a6cac6d2702ebf102d3f45a3c135963a6da42a67fb5f25e17ee164d",
+          "afterSha256": "99ba8bf1817e70986e5d1f0db157bade110dfcd750362463baaf08cbc1b5daff"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/client/cl_presets.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "1f289e348cbcea117e1fc402826e66f41d53f9fb6f45f79cb8e7aabdef2fcee2",
+          "afterSha256": "84843f28e311017a4c50ec5fb1c511bed202595492e1867af89184c5c7b9f14d"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/html/app.js",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "4cb0108511ad0ad808c1307f99d369a1309c945962ff6c7ddbfa6cb138681131",
+          "afterSha256": "f140281442cc462af071c04f5c68a51766790532943ae59a62232f9cc1bd9a40"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/de.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "08dd2ff52e3c4f1563587b0137050a4fceec4e3143d73e30419e18d8489c4cb0",
+          "afterSha256": "0316ea0ec97359c0e70515b72d02a57dc815980d7464beaab599003e6e3a53a7"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/en.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "3ed258778dbce3fc7a9d0c81c4807b2ebab4b2e46571b8a4353c8bc3526ac7a8",
+          "afterSha256": "f5f2eaa98c9a6513af6a271f31f7bba2f3c5dda2fdb8ec390554401428463699"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/es.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "ee3bde71a5d95fd4543de6501e0ad5bdafba934c50ad482e2fa3b0eb413540ae",
+          "afterSha256": "cf63737e217638a0e70be695b87b5e82fceed4cd01606ef59865d8d8e4fc8c2d"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/fr.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "85ba7ea26b308c0d0961279a1ccd5addd624659a5f4532e8fffc68f3260c9b8c",
+          "afterSha256": "5539df238da49afb27cf05380677069d1bb0db70c576422c02cfae401b522e3d"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/it.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "9bf835d1db133623ab004daa9a57a4a4eefba3450589325dc40a421c3c2b769e",
+          "afterSha256": "f7506b70f0d54e5a14ac114d06a8683127934fc0d796d06e81f82c5feb145ceb"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/pl.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "997f5718c6527ce9519dd5146c3959d42593bceb04591baa563f9df6605d09db",
+          "afterSha256": "8d6c073942f8fc88d7d34dae99e15b789abd683039ebf1dbe8ef51b118774818"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/pt.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "b87985db443d4445ce4c13b4835e2efbfe4729c2a275b73a6efc9aae7a73b9de",
+          "afterSha256": "93c7f215a61d9a078ac0480f49e813c91e76d1ed8df706f79519ea6da8e8b2de"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/ru.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "5c6ef5578ccbd74e5fafb4d462a9436ad1cacd1fcd63196365cd23bb7a9236ea",
+          "afterSha256": "3facacf870d697493f803afdb50038994e2e2b57cb17e75ec6704647fc9fe0eb"
+        },
+        {
+          "path": "resources/[beyond]/bs_pause/locales/tr.lua",
+          "resource": "bs_pause",
+          "action": "replace",
+          "beforeSha256": "5490c01d5987e2d18781629ddce14de9ddf9560d0c8d1822202d0d1901469331",
+          "afterSha256": "0d8e0714cdccb418606f2e4cb8d2e619988ba0ae3192e6b6eb91c0d5785cdd62"
+        }
+      ]
+    },
+    "bs_recycler": {
+      "summary": "Place players safely after recycler travel.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_recycler/server/sv_main.lua",
+          "resource": "bs_recycler",
+          "action": "replace",
+          "beforeSha256": "7e3d105614f72274892b49886ad46e8505289c5e4805702a2aa25c03b0c99a9b",
+          "afterSha256": "85423aa31e2c202d09144990fc0b3ac936d258b80c53403414c3062008a6cb4d"
+        }
+      ]
+    },
+    "bs_traders": {
+      "summary": "Skip unavailable clothing, keep checkout reachable and fix debug teleports.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_traders/client/cl_debug.lua",
+          "resource": "bs_traders",
+          "action": "replace",
+          "beforeSha256": "19468671f07f88fd67eb1af87eff3a136f240d24280dd8b4d9f7f86272edf027",
+          "afterSha256": "3f9fbfd5c84fa4c72c0c821c4c4bf00b5b869b204d6d2aeec4748b1b2f3aeec9"
+        },
+        {
+          "path": "resources/[beyond]/bs_traders/client/cl_wardrobe.lua",
+          "resource": "bs_traders",
+          "action": "replace",
+          "beforeSha256": "a5102e0219ea0ed22dc6b846a5a5e305aa2f52e2210e1a6a3f245441f847010f",
+          "afterSha256": "9f225e42ea9a164e55a13f1a41fc40f142910a823351585e7c4b3ffb9acbbac7"
+        },
+        {
+          "path": "resources/[beyond]/bs_traders/html/css/style.css",
+          "resource": "bs_traders",
+          "action": "replace",
+          "beforeSha256": "5dec5b5b4895701f7cc474342aef1aa02147419a6a003da634f7a68658f8de0c",
+          "afterSha256": "c5fbb8d88d5d07775a7b410ea593639448564c4b87fd1e24aa51047060ab922e"
+        },
+        {
+          "path": "resources/[beyond]/bs_traders/html/js/wardrobe.js",
+          "resource": "bs_traders",
+          "action": "replace",
+          "beforeSha256": "1e7ef2e449a76d902345fbf8de6fb8940e300bebb0c81c27f149dde65670a692",
+          "afterSha256": "a4148db906a47c255e42c27555522b4d82b2f023afa49dd1d84a9e1894da1e15"
+        }
+      ]
+    },
+    "bs_tutorial": {
+      "summary": "Do not repeat the picker/tutorial bucket for established characters.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_tutorial/server/sv_main.lua",
+          "resource": "bs_tutorial",
+          "action": "replace",
+          "beforeSha256": "f09862c8839b91de56f7cd72d6ad5a1eae814e6b32e7a33531faf8925849edc5",
+          "afterSha256": "dc376fe063b866b08320b07a37b7a5aca2629977847d5b029851e0941e30ccc1"
+        }
+      ]
+    },
+    "bs_ui": {
+      "summary": "Avoid duplicate HUD/audio messages.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_ui/client/cl_hud.lua",
+          "resource": "bs_ui",
+          "action": "replace",
+          "beforeSha256": "b7885198c918e1a88f78104e97321aa6d6f72241703859c783a5e557589f5ac2",
+          "afterSha256": "a326f6154fdd4e0938029c2ad9388bfdeb3a15d1b6b9dd5711eeb911607ebb4f"
+        },
+        {
+          "path": "resources/[beyond]/bs_ui/client/cl_sound.lua",
+          "resource": "bs_ui",
+          "action": "replace",
+          "beforeSha256": "269312e154c43aa8c418d4e74368e43743d7f0a2efdf7ab154b4c5e3ad07a963",
+          "afterSha256": "f119d951a3f6f239dc8509a453114dccf56a20859be09bba83f0c29d8913bcae"
+        }
+      ]
+    },
+    "bs_world": {
+      "summary": "Keep service NPCs out of ambient cleanup and reduce repeated population work.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_world/client/cl_blackout.lua",
+          "resource": "bs_world",
+          "action": "replace",
+          "beforeSha256": "96076fd1275f5cbf6d297f367004a944c850bb98470085dfc08ab023bfd3f786",
+          "afterSha256": "67a0e31ad05f0f6053abc76a263ad68aa368215fde3c2b761a6f50534085227d"
+        },
+        {
+          "path": "resources/[beyond]/bs_world/client/cl_population.lua",
+          "resource": "bs_world",
+          "action": "replace",
+          "beforeSha256": "40229f81ce09b6c03be479b76e0372939cad53efbea2a45485ba80a0e1fc684d",
+          "afterSha256": "67886c395e3d2810e297d6d8421aebbebc486ddae34c066166b32aafe94b4ae9"
+        }
+      ]
+    },
+    "bs_zombies": {
+      "summary": "Validate hits against live positions, retry death reports, protect recycled NPC handles and correct takedown/get-up timing.",
+      "files": [
+        {
+          "path": "resources/[beyond]/bs_zombies/client/cl_attack.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "f1619d65456bd25b4baf9e3efa4caec016a98c4bb351cad370901965f89e50bd",
+          "afterSha256": "bb10725c9b43c608bcf2cba18f11599b22d768bf968ca80568f62dff81a07ad0"
+        },
+        {
+          "path": "resources/[beyond]/bs_zombies/client/cl_combat.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "2642da7250b6c0742fddc628c207c58be55f0b94f1deea69cc2ce7c2ef6167cc",
+          "afterSha256": "bae3b33dab7cb2500784f93ce399ff1bf0ca82bacf0755a66410ad346e412ad2"
+        },
+        {
+          "path": "resources/[beyond]/bs_zombies/client/cl_damage.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "bf682ec81462a1844010b55ad7fc23f54df2c9f40849161c24aec3bfaf0a5d13",
+          "afterSha256": "1551847378522a89f14b4850dd883677fc2d61c810e7839f90751f1b7fb82684"
+        },
+        {
+          "path": "resources/[beyond]/bs_zombies/client/cl_execute.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "87bf338f6ab0e84dfa3df62181a26c44b32e83783c8ec105c331013f3b08349f",
+          "afterSha256": "55d061306db10a77dcfadb21822f79c1c29934384953795408e566cdc8f8ce04"
+        },
+        {
+          "path": "resources/[beyond]/bs_zombies/client/cl_sync.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "0299d9d0b03885ac48da1ff08416639bd3edbfb42fe90bddf2f2220aa3e00836",
+          "afterSha256": "c62ca418765bd1d98d4aa12061f442af059b4c373e594643bb98cf1a8b33dfcc"
+        },
+        {
+          "path": "resources/[beyond]/bs_zombies/config/config_zombies.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "b6781974cf47f5a4ef95cffe520dad3252b264c0266c265507bd41ba5697496c",
+          "afterSha256": "26bc0dbcc4dd9bb017e96a98a555e6866b1640e9cc7263a001a2758a99b2826f"
+        },
+        {
+          "path": "resources/[beyond]/bs_zombies/server/sv_registry.lua",
+          "resource": "bs_zombies",
+          "action": "replace",
+          "beforeSha256": "4ca32e50fc5a4132b9d679bec41ed425662e2d5ecd6f94c2440fc713f9842938",
+          "afterSha256": "b24b73f2d6f9523a49d5ace4f03efcbe5a9505b2dd96d520c9a519dfaf2274e7"
+        }
+      ]
+    }
+  },
+  "hashNormalization": "Convert CRLF line endings to LF before computing SHA-256."
+}

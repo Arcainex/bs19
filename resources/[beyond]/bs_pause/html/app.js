@@ -131,7 +131,7 @@
       ${groups}
       <div class="card" data-grp data-keep><h3>${esc(t('st.g_controls'))}</h3>
         <div class="keys">${keys}</div><div class="note">${esc(t('p.rebind_note'))}</div>
-        <div class="set" data-q="${esc(t('p.troubleshoot').toLowerCase())}"><label>${esc(t('p.troubleshoot'))}</label><div><button class="btn" data-fix="refreshui">${esc(t('p.refresh_ui'))}</button> <button class="btn" data-fix="unblur">${esc(t('p.unblur'))}</button></div></div></div>
+        <div class="set" data-q="${esc(t('p.troubleshoot').toLowerCase())}"><label>${esc(t('p.troubleshoot'))}</label><div><button class="btn" data-fix="refreshui">${esc(t('p.refresh_ui'))}</button> <button class="btn" data-fix="unblur">${esc(t('p.unblur'))}</button> <button class="btn" data-fix="refreshtextures">${esc(t('p.refresh_textures'))}</button></div></div></div>
       <div class="note hidden" id="setNone">${esc(t('st.noresults'))}</div>`;
   }
   // Hides rows (and groups with no visible row) that miss the query. Pure DOM, so typing keeps focus.

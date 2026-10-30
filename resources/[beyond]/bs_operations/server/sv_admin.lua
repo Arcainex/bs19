@@ -36,7 +36,8 @@ local function handle(src, action, a)
     if action == 'goto' then
         local x, y, z = tonumber(a.x), tonumber(a.y), tonumber(a.z)
         if src <= 0 or not (x and y and z) then return { ok = false, error = 'No position.' } end
-        SetEntityCoords(GetPlayerPed(src), x, y, z + 1.0, false, false, false, false)
+        if GetResourceState('bs_guard') == 'started' then pcall(function() exports.bs_guard:Allow(src, 'teleport', 20000) end) end
+        TriggerClientEvent('bs:core:safeTp', src, x + 0.0, y + 0.0, z + 0.0)
         OpsU.log(src, ('teleport %.0f %.0f %.0f'):format(x, y, z))
         return { ok = true }
     end

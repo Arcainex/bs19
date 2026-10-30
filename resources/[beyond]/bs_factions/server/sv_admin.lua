@@ -299,7 +299,8 @@ admin('flagTeleport', false, function(src, a)
         if fl.id == int(a.flagId) then
             local ped = GetPlayerPed(src)
             if not ped or ped == 0 then return fail('fac.adm.noped') end
-            SetEntityCoords(ped, fl.x + 0.0, fl.y + 0.0, fl.z + 1.0, false, false, false, false)
+            if GetResourceState('bs_guard') == 'started' then pcall(function() exports.bs_guard:Allow(src, 'teleport', 20000) end) end
+            TriggerClientEvent('bs:core:safeTp', src, fl.x + 0.0, fl.y + 0.0, fl.z + 0.0)
             return { ok = true }
         end
     end

@@ -100,6 +100,8 @@ end)
 CreateThread(function()
     if not Power.Settings.enabled then return end
 
+    local near, nearAt = {}, 0
+
     while true do
         local ped = PlayerPedId()
 
@@ -108,11 +110,16 @@ CreateThread(function()
             goto continue
         end
 
-        local coords = GetEntityCoords(ped)
-        local near = Power.LightsNear(coords, Power.Settings.lightDraw or 120.0)
+        -- The lamp list only needs refreshing as the player moves; drawing is still per frame.
+        local nowT = GetGameTimer()
+        if nowT >= nearAt then
+            nearAt = nowT + 500
+            near = Power.LightsNear(GetEntityCoords(ped), Power.Settings.lightDraw or 120.0)
+        end
 
         if #near == 0 then
             -- Nothing lit in sight: sleep instead of spinning at frame rate.
+            nearAt = 0
             Wait(400)
             goto continue
         end

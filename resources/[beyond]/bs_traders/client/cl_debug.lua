@@ -149,14 +149,8 @@ RegisterNUICallback('debugTeleport', function(data, cb)
             return
         end
 
-        local ped = PlayerPedId()
-        -- Fade so the destination has time to load collision.
-        DoScreenFadeOut(250)
-        Wait(250)
-        SetEntityCoords(ped, r.x, r.y, r.z, false, false, false, true)
-        SetEntityHeading(ped, r.heading or 0.0)
-        Wait(100)
-        DoScreenFadeIn(300)
+        -- Shared helper fades, loads collision and finds the ground
+        exports.bs_core:SafeTeleport(r.x, r.y, r.z, { heading = r.heading or 0.0 })
 
         cb({ ok = true })
     end)

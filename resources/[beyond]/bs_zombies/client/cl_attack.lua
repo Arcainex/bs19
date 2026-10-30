@@ -21,6 +21,38 @@ local Swing = {
     stage    = 'idle',  -- where it got to, for the stranded message
 }
 
+-- Getting up (ragdoll, get-up clip, a fighting knockdown, takedown): no swings or reaching until it has
+-- been back on its feet for recoverMs. cl_execute also pushes recoverUntil on fighting staggers.
+local function recovering(entry, now)
+    local ped = entry.ped
+    if not ped or not DoesEntityExist(ped) then return true end
+    if IsPedRagdoll(ped) or IsPedGettingUp(ped) or IsPedFalling(ped) or (entry.takedownUntil or 0) > now then
+        entry.recoverUntil = math.max(entry.recoverUntil or 0, now + ((A and A.recoverMs) or 600))
+        return true
+    end
+    return now < (entry.recoverUntil or 0)
+end
+Zombies.Recovering = recovering
+
+-- Keeps recoverUntil fresh for walkers near us, so the stand-up is seen even out of swing range
+CreateThread(function()
+    while true do
+        local wait = 400
+        if Zed and Zed.live then
+            local at = GetEntityCoords(PlayerPedId())
+            local now = GetGameTimer()
+            for _, entry in pairs(Zed.live) do
+                local ped = entry.ped
+                if not entry.dying and ped and DoesEntityExist(ped) and #(GetEntityCoords(ped) - at) < 12.0 then
+                    wait = 100
+                    if recovering(entry, now) and entry.reaching then Zombies.SetReaching(entry, false) end
+                end
+            end
+        end
+        Wait(wait)
+    end
+end)
+
 -- Godmode lives in bs_admin and works through the engine's damage pipeline
 local function isGodmode()
     if GetResourceState('bs_admin') ~= 'started' then return false end
@@ -119,6 +151,7 @@ end
 -- Arms-out silhouette layered over the shamble
 function Zombies.SetReaching(entry, on)
     if not R.enabled or not entry.reacher then return end
+    if on and recovering(entry, GetGameTimer()) then on = false end
     if entry.reaching == on then return end
 
     local ped = entry.ped
@@ -211,8 +244,8 @@ function Zombies.TryStrike(entry)
     -- Zombie godmode, not plain godmode
     if isZombieGodmoded() then return false end
 
-    -- Walkers on the ground do not attack
-    if IsPedRagdoll(entry.ped) then return false end
+    -- Walkers on the ground, or still getting up, do not attack
+    if recovering(entry, now) then return false end
 
     -- Already on the floor bleeding out? Being chewed on adds nothing.
     if GetResourceState('bs_medical') == 'started' then

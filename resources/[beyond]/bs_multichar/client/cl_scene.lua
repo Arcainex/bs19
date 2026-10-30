@@ -156,6 +156,8 @@ end
 -- Spawns the preview ped and camera. Safe to call repeatedly.
 function Scene.Build()
     if Scene.active then return true end
+    -- Bumped by Destroy: a close during the waits below must not leave a live scene behind.
+    local gen = Scene.gen or 0
 
     local s = Multichar.Scene
 
@@ -196,6 +198,11 @@ function Scene.Build()
         Wait(50); waited = waited + 50
     end
     NewLoadSceneStop()
+
+    if gen ~= (Scene.gen or 0) then
+        ClearFocus()
+        return false
+    end
 
     Scene.rotation = 0.0
     Scene.zoom = 1.0
@@ -267,6 +274,8 @@ end
 
 function Scene.SpawnPed(gender, force)
     gender = gender or 'male'
+    -- A late preview after the scene closed would re-pin streaming to the stage with nothing to undo it.
+    if not Scene.active then return nil end
     lastGender = gender
 
     -- Re-dressing an existing ped is instant, respawning pops. Only rebuild when the model has to change.
@@ -282,6 +291,12 @@ function Scene.SpawnPed(gender, force)
     for _, candidate in ipairs({ modelFor(gender), 'mp_m_freemode_01', 'a_m_m_farmer_01' }) do
         hash = loadModel(candidate)
         if hash then model = candidate break end
+    end
+
+    -- The model load waits, the player may have spawned meanwhile.
+    if not Scene.active then
+        if hash then SetModelAsNoLongerNeeded(hash) end
+        return nil
     end
 
     if not hash then
@@ -503,7 +518,11 @@ end
 
 -- Pass true when bs_core is about to respawn the player (model swap, teleport, fade). Then do not touch the player ped: unfreezing mid-teleport drops people through the map. Only tear down the camera and preview ped.
 function Scene.Destroy(handoff)
-    if not Scene.active then return end
+    Scene.gen = (Scene.gen or 0) + 1
+    if not Scene.active then
+        ClearFocus()
+        return
+    end
 
     if Scene.ped and DoesEntityExist(Scene.ped) then DeleteEntity(Scene.ped) end
     Scene.ped = nil
@@ -577,6 +596,12 @@ CreateThread(function()
 
             -- Keep streaming pinned to the stage, not the player.
             SetFocusPosAndVel(s.x, s.y, s.z, 0.0, 0.0, 0.0)
+
+            if Scene.cam and DoesCamExist(Scene.cam) and GetRenderingCam()~=Scene.cam then
+                SetCamActive(Scene.cam,true)
+                RenderScriptCams(true,false,0,true,true)
+            end
+            if IsScreenFadedOut() then DoScreenFadeIn(250) end
 
             -- Re-aim. The head bone is not measurable on the frame the ped is created, so the first framing uses the default height; this corrects it once the skeleton exists and after a model swap.
             if Scene.ped and DoesEntityExist(Scene.ped) then applyCam() end

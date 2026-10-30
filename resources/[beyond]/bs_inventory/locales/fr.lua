@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Fourrure de lapin',
     ['item.coyote_pelt'] = 'Fourrure de coyote',
     ['item.mtlion_pelt'] = 'Fourrure de puma',
+    ['inv.cant_sprint_heavy'] = 'Trop chargé pour courir. Allège ton sac.',
 }

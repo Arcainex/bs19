@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'Haberler',
     ['p.keybinds'] = 'Tuş atamaları',
     ['p.rebind_note'] = 'Tuşları GTA ayarları > Tuş atamaları > FiveM\'den değiştir.',
+    ['p.refresh_textures'] = 'Tüm oyun dokularını yenile',
     ['p.troubleshoot'] = 'Sorun giderme',
     ['p.refresh_ui'] = 'Arayüzü yenile',
     ['p.unblur'] = 'Takılı bulanıklığı düzelt',

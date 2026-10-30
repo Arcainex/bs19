@@ -21,6 +21,7 @@ return {
     ['p.news'] = 'Nowości',
     ['p.keybinds'] = 'Klawisze',
     ['p.rebind_note'] = 'Zmień klawisze: Ustawienia GTA > Klawisze > FiveM.',
+    ['p.refresh_textures'] = 'Odśwież wszystkie tekstury',
     ['p.troubleshoot'] = 'Rozwiązywanie problemów',
     ['p.refresh_ui'] = 'Odśwież UI',
     ['p.unblur'] = 'Napraw rozmycie',

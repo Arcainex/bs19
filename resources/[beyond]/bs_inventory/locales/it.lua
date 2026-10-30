@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Pelliccia di coniglio',
     ['item.coyote_pelt'] = 'Pelliccia di coyote',
     ['item.mtlion_pelt'] = 'Pelliccia di puma',
+    ['inv.cant_sprint_heavy'] = 'Troppo carico per correre. Lascia qualcosa.',
 }

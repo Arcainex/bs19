@@ -131,7 +131,7 @@ exports('RunSearch', runSearch)
 -- Standalone progress bar, no animation and no movement cancel (for machines that run on their own).
 -- bs_recycler needs this here: SendNUIMessage reaches the calling resource's page, and a resource without a ui_page cannot show a bar.
 exports('Progress', function(label, duration)
-    SendNUIMessage({ action = 'progress', label = label, duration = duration })
+    SendNUIMessage({ action = 'progress', label = label, duration = duration, auto = true })
     return true
 end)
 

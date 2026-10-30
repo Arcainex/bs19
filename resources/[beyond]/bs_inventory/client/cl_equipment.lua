@@ -79,12 +79,18 @@ BSInvEquipment = Equip
 -- Heavy load: above heavyLoadAt of the carry limit sprinting drains stamina faster; over the limit you cannot sprint.
 -- Stamina, not move rate, so this never fights bs_core's winded move-rate override.
 CreateThread(function()
+    local toldAt = -60000
     while true do
         local ratio = (Equip.maxWeight and Equip.maxWeight > 0) and (Equip.weight or 0) / Equip.maxWeight or 0
         local from = Inventory.Settings.heavyLoadAt or 0.8
         if ratio >= 1.0 then
             Wait(0)
             DisableControlAction(0, 21, true)   -- sprint, must be every frame
+            -- Say why, otherwise it looks like a stuck sprint
+            if IsDisabledControlJustPressed(0, 21) and GetGameTimer() - toldAt > 15000 then
+                toldAt = GetGameTimer()
+                TriggerEvent('bs:ui:notify', { type = 'warn', message = L('inv.cant_sprint_heavy'), duration = 4000 })
+            end
         else
             Wait(250)
             if ratio >= from and IsPedSprinting(PlayerPedId()) then

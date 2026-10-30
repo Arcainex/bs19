@@ -26,4 +26,7 @@ return {
     ['core.unstuck'] = 'Te has soltado.',
     ['core.denied_title'] = 'Denegado',
     ['core.denied_msg'] = 'No tienes permiso para hacer eso.',
+    ['core.tex_busy'] = 'Ya se está recargando el mundo a tu alrededor...',
+    ['core.tex_start'] = 'Recargando el mundo a tu alrededor...',
+    ['core.tex_done'] = 'Mundo recargado.',
 }

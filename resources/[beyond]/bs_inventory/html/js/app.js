@@ -1724,7 +1724,7 @@ function keyPixels(d, w, h, marks) {
                         }
                     }
                 }
-                if (bx1 < 0 || (by1 - by0) < h * 0.15) return null;   // nothing usable
+                if (bx1 < 0 || (by1 - by0) < h * 0.15 || ((bx1-bx0)>=(x1-x0)*.95 && (by1-by0)>h*.9)) return null;   // nothing usable
                 boxes.push({ x: bx0, y: by0, w: bx1 - bx0 + 2, h: by1 - by0 + 2 });
             }
             return boxes;
@@ -1842,26 +1842,35 @@ function renderChips(list) {
 })();
 
 let coverTimer = null;
+let bodyCaptureEpoch=0,bodyCaptureId=0;
 window.addEventListener('message', async (e) => {
     const d = e.data || {};
+    if(d.action==='close'){bodyCaptureEpoch++;return;}
     if (d.action === 'captureCover') {
         const c = $('captureCover');
         c.classList.toggle('hidden', !d.on);
         c.querySelector('span').textContent = d.soft ? t('inv.updating_gear', { fallback: 'UPDATING GEAR...' }) : t('inv.preparing', { fallback: 'PREPARING SURVIVOR...' });
         clearTimeout(coverTimer);
         if (d.on) coverTimer = setTimeout(() => c.classList.add('hidden'), 5000);   // never stuck
-    } else if (d.action === 'bodyShots') {
-        const shots = await keyShots(d.image, d.marks);
-        if (shots) { Body.shots = shots; showAngle(Body.angle, true); }
-        else console.warn('[bs_inventory] body snapshot could not be keyed; keeping silhouette');
-    } else if (d.action === 'bodyGrab') {
-        // two painted frames so the game texture holds the posed clones
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        const frame = grabGameView();
-        post('bodyGrabbed', { ok: !!frame });   // lets Lua tear the set down
-        const shots = frame && keyCanvas(frame, d.marks);
-        if (shots) { Body.shots = shots; showAngle(Body.angle, true); }
-        else console.warn('[bs_inventory] game view grab/key failed; keeping silhouette');
+    } else if (d.action === 'bodyReset') {
+        bodyCaptureEpoch++;
+        Body.shots=null;showAngle(0,true);
+    } else if (d.action === 'bodyShots' || d.action === 'bodyGrab') {
+        if(d.id<bodyCaptureId)return;
+        bodyCaptureId=d.id;const epoch=++bodyCaptureEpoch;
+        let shots=null;
+        try {
+            for(let attempt=0;attempt<(d.action==='bodyGrab'?4:1);attempt++) {
+                await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+                if(d.action==='bodyShots')shots=await keyShots(d.image,d.marks);
+                else {const frame=grabGameView();shots=frame&&keyCanvas(frame,d.marks);}
+                if(shots)break;
+                await new Promise(r=>setTimeout(r,150));
+            }
+            if(epoch!==bodyCaptureEpoch)shots=null;
+            if(shots){Body.shots=shots;showAngle(Body.angle,true);}
+        } catch(err){console.warn('[bs_inventory] character render failed',err);}
+        finally{post('bodyGrabbed',{id:d.id,ok:!!shots});}
     } else if (d.action === 'bodyRefreshDone') {
         BodyRefresh.busy = false; syncRefreshBtn();
     } else if (d.action === 'bodyMode') {

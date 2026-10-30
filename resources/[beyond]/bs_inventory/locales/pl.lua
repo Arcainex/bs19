@@ -680,4 +680,5 @@ return {
     ['item.rabbit_pelt'] = 'Futro królika',
     ['item.coyote_pelt'] = 'Futro kojota',
     ['item.mtlion_pelt'] = 'Futro pumy',
+    ['inv.cant_sprint_heavy'] = 'Za duży ciężar, żeby biec. Zostaw coś.',
 }

@@ -2,7 +2,7 @@ $engine: 3
 $minFxVersion: 12913
 $onesync: on
 name: BeyondSurvival
-version: 1.0.0-beta
+version: 1.05
 author: XanderP
 description: Zombie survival RPG framework. Fresh install with an empty world - no characters or player data.
 
@@ -12,7 +12,7 @@ tasks:
   # Framework and server.cfg template, from the release zips.
   # Split into parts because txAdmin gives each download 150 seconds.
   - action: download_file
-    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part1.zip
+    url: https://github.com/Arcainex/bs19/releases/download/v1.05/bs19-part1.zip
     path: ./tmp/bs19-part1.zip
 
   - action: unzip
@@ -21,7 +21,7 @@ tasks:
     dest: ./tmp/bs
 
   - action: download_file
-    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part2.zip
+    url: https://github.com/Arcainex/bs19/releases/download/v1.05/bs19-part2.zip
     path: ./tmp/bs19-part2.zip
 
   - action: unzip
@@ -30,7 +30,7 @@ tasks:
     dest: ./tmp/bs
 
   - action: download_file
-    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part3.zip
+    url: https://github.com/Arcainex/bs19/releases/download/v1.05/bs19-part3.zip
     path: ./tmp/bs19-part3.zip
 
   - action: unzip
@@ -39,7 +39,7 @@ tasks:
     dest: ./tmp/bs
 
   - action: download_file
-    url: https://github.com/Arcainex/bs19/releases/download/v1.0.0-beta/bs19-part4.zip
+    url: https://github.com/Arcainex/bs19/releases/download/v1.05/bs19-part4.zip
     path: ./tmp/bs19-part4.zip
 
   - action: unzip

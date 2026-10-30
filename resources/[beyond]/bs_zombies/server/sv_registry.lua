@@ -1303,92 +1303,158 @@ local function applyHit(src, id, record, damage, headshot, weapon, noReward)
 end
 
 local executionGate = {}
-RegisterNetEvent('bs:z:hit', function(id, damage, headshot, weapon)
-    local src = source
-    id = tonumber(id)
-    -- Only cl_execute still sends this. Guns/melee use bs:z:dmg.
-    local finisher = weapon == 'finisher' and Zombies.Finisher and Zombies.Finisher.enabled
-    if weapon ~= 'execution' and not finisher then return end
-    if weapon == 'execution' and not Zombies.Execute.enabled then return end
-    if not known[src] or not known[src][id] then return end
-    if GetGameTimer() < (executionGate[src] or 0) then return end
-    -- Dead or downed players cannot take a walker down.
-    if Player(src).state.bsDowned then return end
-    local sped = GetPlayerPed(src)
-    if not sped or sped == 0 or GetEntityHealth(sped) <= 0 then return end
+-- Takedowns: the move is judged when it starts, the kill lands when the clip reaches the hit.
+-- Judging awareness at the hit refused nearly every takedown: standing behind a walker for a second wakes it up.
+local takedownPending = {}   -- [src] = { id = walker, untilAt = ms }
+local refuseLogAt = {}
 
-    Registry.hitStats.received = Registry.hitStats.received + 1
+local function refuseTakedown(src, id, why)
+    Registry.hitStats.takedownRefused = (Registry.hitStats.takedownRefused or 0) + 1
+    local key = tostring(src) .. ':' .. tostring(why)
+    local now = GetGameTimer()
+    if (refuseLogAt[key] or 0) > now then return end
+    refuseLogAt[key] = now + 5000
+    print(('[BS ZOMBIES] takedown refused (%s): walker %s, src %s'):format(tostring(why), tostring(id), tostring(src)))
+end
+
+-- Live entity position for networked walkers, the record otherwise (it can lag a second behind)
+local function walkerXY(record)
+    local live = record.ent and DoesEntityExist(record.ent) and record.ent or nil
+    if live then
+        local p = GetEntityCoords(live)
+        return p.x, p.y, live
+    end
+    return record.x, record.y, nil
+end
+
+-- Shared checks for the start and the hit. Returns record, live, ped or nil, reason.
+local function takedownCheck(src, id, kind)
+    if not id then return nil, 'bad id' end
+    if Player(src).state.bsDowned then return nil, 'player downed' end
+    local sped = GetPlayerPed(src)
+    if not sped or sped == 0 or GetEntityHealth(sped) <= 0 then return nil, 'player dead' end
 
     local record = Registry.zombies[id]
     if not record then
-        -- Reply so the client knows, see tellClientNoSuchWalker.
         Registry.hitStats.noRecord = Registry.hitStats.noRecord + 1
-        if id then tellClientNoSuchWalker(src, id) end
-        return
+        tellClientNoSuchWalker(src, id)
+        return nil, 'no record'
     end
 
-    -- Counts hits on records with a nodeId
+    local x, y, live = walkerXY(record)
+    if live and GetEntityRoutingBucket(live) ~= GetPlayerRoutingBucket(src) then return nil, 'other bucket' end
+    if not (known[src] and known[src][id]) then
+        -- Same fallback as bs:z:dmg: the state bag can beat the subscription snapshot
+        if not live or not record.net or NetworkGetNetworkIdFromEntity(live) ~= record.net then
+            return nil, 'not subscribed'
+        end
+    end
+
+    local at = GetEntityCoords(sped)
+    local dx, dy = x - at.x, y - at.y
+    local reach = kind == 'finisher' and (Zombies.Finisher.range or 1.6) or (Zombies.Execute.range or 2.0)
+    local maxR = math.min(reach + 1.0, Zombies.Settings.executeMaxRange or 3.0)
+    if (dx * dx + dy * dy) > maxR * maxR then
+        Registry.hitStats.outOfRange = Registry.hitStats.outOfRange + 1
+        return nil, ('range %.1fm'):format(math.sqrt(dx * dx + dy * dy))
+    end
+    return record, live, sped, x, y
+end
+
+-- Down, crawling, staggered by a fighting hit, or unaware with you behind it.
+local function takedownEligible(src, record, live, sped, x, y)
+    local def = Zombies.Types[record.typeId]
+    if record.crawler or (def and def.crawls) then return true end
+    if (record.staggerUntil or 0) > GetGameTimer() then return true end
+    local E = Zombies.Execute
+    if E.onlyUnaware and (record.state == 'hunting' or record.state == 'hunt' or record.state == 'grab') then
+        return false, 'aware (' .. tostring(record.state) .. ')'
+    end
+    if live then
+        local h = math.rad(GetEntityHeading(live))
+        local fx, fy = -math.sin(h), math.cos(h)
+        local p = GetEntityCoords(sped)
+        local tx, ty = p.x - x, p.y - y
+        local len = math.sqrt(tx * tx + ty * ty)
+        -- Loose on purpose: the server heading trails the client a little
+        if len > 0.05 and (fx * tx + fy * ty) / len > (E.behindDot or -0.1) + 0.35 then
+            return false, 'not behind'
+        end
+    end
+    return true
+end
+
+RegisterNetEvent('bs:z:takedownStart', function(id)
+    local src = source
+    id = tonumber(id)
+    if not Zombies.Execute.enabled then return end
+    local record, live, sped, x, y = takedownCheck(src, id, 'execution')
+    if not record then
+        refuseTakedown(src, id, live)
+        TriggerClientEvent('bs:z:takedownRefused', src, id)
+        return
+    end
+    local ok, why = takedownEligible(src, record, live, sped, x, y)
+    if not ok then
+        refuseTakedown(src, id, why)
+        TriggerClientEvent('bs:z:takedownRefused', src, id)
+        return
+    end
+    takedownPending[src] = { id = id, untilAt = GetGameTimer() + 4000 }
+end)
+
+-- A fighting hit staggered or floored this walker: it can be taken down for a few seconds
+RegisterNetEvent('bs:z:staggered', function(id)
+    local src = source
+    id = tonumber(id)
+    local record = id and Registry.zombies[id]
+    if not record then return end
+    local sped = GetPlayerPed(src)
+    if not sped or sped == 0 then return end
+    local x, y = walkerXY(record)
+    local at = GetEntityCoords(sped)
+    if (x - at.x) ^ 2 + (y - at.y) ^ 2 > 4.5 * 4.5 then return end
+    record.staggerUntil = GetGameTimer() + (Zombies.Execute.staggerWindow or 3000)
+end)
+
+RegisterNetEvent('bs:z:hit', function(id, damage, headshot, weapon)
+    local src = source
+    id = tonumber(id)
+    -- Only takedowns and finishers still send this. Guns/melee use bs:z:dmg.
+    local finisher = weapon == 'finisher' and Zombies.Finisher and Zombies.Finisher.enabled
+    if weapon ~= 'execution' and not finisher then return end
+    if weapon == 'execution' and not Zombies.Execute.enabled then return refuseTakedown(src, id, 'disabled') end
+    if GetGameTimer() < (executionGate[src] or 0) then return refuseTakedown(src, id, 'cooldown') end
+
+    Registry.hitStats.received = Registry.hitStats.received + 1
+
+    local record, live, sped, x, y = takedownCheck(src, id, finisher and 'finisher' or 'execution')
+    if not record then return refuseTakedown(src, id, live) end
+
     if record.nodeId then
         Registry.hitStats.withNode = Registry.hitStats.withNode + 1
     else
         Registry.hitStats.withoutNode = Registry.hitStats.withoutNode + 1
     end
 
-    local ped = GetPlayerPed(src)
-    if not ped or ped == 0 then return end
-
-    local at = GetEntityCoords(ped)
-    local dx, dy = at.x - record.x, at.y - record.y
-    local maxR = finisher and (Zombies.Finisher.range or 1.6) or (Zombies.Execute.range or 1.8)
-    if (dx * dx + dy * dy) > (maxR + 1.0)^2 then
-        Registry.hitStats.outOfRange = Registry.hitStats.outOfRange + 1
-        return
+    if not finisher then
+        local p = takedownPending[src]
+        if not (p and p.id == id and p.untilAt >= GetGameTimer()) then
+            -- No start on record (older client): judge it now
+            local ok, why = takedownEligible(src, record, live, sped, x, y)
+            if not ok then return refuseTakedown(src, id, why) end
+        end
+        takedownPending[src] = nil
     end
 
-    -- Damage is clamped to what the named weapon can plausibly do
-    if not finisher and Zombies.Execute.onlyUnaware and (record.state == 'hunting' or record.state == 'hunt' or record.state == 'grab') then return end
     executionGate[src] = GetGameTimer() + (finisher and (Zombies.Finisher.cooldown or 1500) or (Zombies.Execute.cooldown or 1200)) - 100
-    -- See maxPlausibleDamage above. The absolute zombie-HP ceiling stays as a backstop.
-    weapon = tostring(weapon or '')
-    local reported = math.max(0, tonumber(damage) or 0)
-
-    -- Executioner perk: a headshot is an instant kill
-    local executioner = false
-    if headshot and GetResourceState('bs_skills') == 'started' then
-        local ok, has = pcall(function() return exports.bs_skills:HasPerk(src, 'executioner') end)
-        executioner = ok and has == true
-    end
-
-    if executioner and weapon ~= 'vehicle' then
-        damage = math.min(reported, record.maxHp * 10)
-    elseif weapon == 'execution' or finisher then
-        -- E-takedown needs the attacker next to the zombie, so the range check is stricter than the general 150 unit hit range
-        if (dx * dx + dy * dy) > (Zombies.Settings.executeMaxRange or 3.0) ^ 2 then
-            return
-        end
-        damage = math.min(reported, record.maxHp * 10)
-    elseif weapon == 'vehicle' then
-        damage = math.min(reported, record.maxHp * 3)
-    else
-        local cap = maxPlausibleDamage(weapon, headshot and true or false)
-
-        -- Floor under the cap for unlisted weapons (addons, unmatched hashes)
-        if not weaponByHash[weapon] then
-            local floorCap = record.maxHp * (headshot and 0.25 or 0.085)
-            if floorCap > cap then cap = floorCap end
-        end
-
-        damage = math.min(reported, cap, record.maxHp * 2)
-    end
-
-    if damage <= 0 then
+    if (tonumber(damage) or 0) <= 0 then
         Registry.hitStats.zeroDamage = Registry.hitStats.zeroDamage + 1
-        return
+        return refuseTakedown(src, id, 'zero damage')
     end
 
-
-    -- Legacy door. cl_execute takedowns come through here: they name their own damage and are gated on being behind a walker.
-    applyHit(src, id, record, damage, headshot, weapon)
+    -- A valid takedown is a kill: exact hp, so the shared death path sees zero (loot, XP, death ack)
+    applyHit(src, id, record, math.max(1, record.hp or 1), true, tostring(weapon))
 end)
 
 -- bs:z:dmg: the client raycasts its own shot, reads the bone and reports WHERE it hit, not how much
@@ -1453,7 +1519,14 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then return end
     local at = GetEntityCoords(ped)
-    local dx, dy = record.x - at.x, record.y - at.y
+    local targetX, targetY = record.x, record.y
+    local live = record.ent and DoesEntityExist(record.ent) and record.ent or nil
+    if live then
+        if GetEntityRoutingBucket(live) ~= GetPlayerRoutingBucket(src) then return end
+        local position = GetEntityCoords(live)
+        targetX, targetY = position.x, position.y
+    end
+    local dx, dy = targetX - at.x, targetY - at.y
     local maxR = D.serverMaxRange or 300.0
     if (dx * dx + dy * dy) > (maxR * maxR) then
         Registry.hitStats.outOfRange = (Registry.hitStats.outOfRange or 0) + 1
@@ -1467,7 +1540,14 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
 
     region = tostring(region or 'torso')
     local headshot = (tonumber(headshotFlag) or 0) == 1
-    if not known[src] or not known[src][id] then return end
+    if not known[src] or not known[src][id] then
+        -- State bags can arrive before the periodic subscription snapshot.
+        -- Only a live, server-owned record in this bucket may use that fallback.
+        if not live or not record.net or NetworkGetNetworkIdFromEntity(live) ~= record.net then
+            Registry.hitStats.notSubscribed = (Registry.hitStats.notSubscribed or 0) + 1
+            return
+        end
+    end
     if region ~= 'head' and region ~= 'torso' and region ~= 'arm' and region ~= 'leg' then return end
     if headshot and region ~= 'head' then return end
 
@@ -1588,7 +1668,11 @@ RegisterNetEvent('bs:z:envdeath', function(id)
     if not id then return end
     local record = Registry.zombies[id]
     if not record then return end
-    if record.host ~= source then return end
+    if record.ent and DoesEntityExist(record.ent) then
+        -- Network ownership can migrate between registry host assignments. The current
+        -- controller, rather than the old host, is authoritative for native ped death.
+        if NetworkGetEntityOwner(record.ent) ~= source then return end
+    elseif record.host ~= source then return end
 
     Registry.hitStats.envDeath = (Registry.hitStats.envDeath or 0) + 1
     TriggerClientEvent('bs:z:dead', -1, id, { env = true })
@@ -1681,6 +1765,7 @@ AddEventHandler('playerDropped', function()
     known[src] = nil
     killRate[src] = nil
     executionGate[src] = nil
+    takedownPending[src] = nil
 end)
 
 CreateThread(function()

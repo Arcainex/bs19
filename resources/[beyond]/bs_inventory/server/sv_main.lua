@@ -1178,6 +1178,12 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         if not splitting then moving.x, moving.y, moving.rot = wantX, wantY, wantRot end
     end
 
+    -- A refused move must leave the item where it was, otherwise the next refresh shows it jumping back.
+    local function refuse(msg)
+        moving.x, moving.y, moving.rot = fromX, fromY, fromRot
+        return { ok = false, error = msg }
+    end
+
     amount = math.floor(tonumber(amount) or moving.amount)
     amount = math.max(1, math.min(amount, moving.amount))
 
@@ -1188,12 +1194,12 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     if srcInv ~= dstInv then
         local incoming = (def and def.weight or 0.5) * amount
         if Inv.Weight(dstInv) + incoming > dstInv.maxWeight then
-            return { ok = false, error = Lp(src, 'inv.e_heavy') }
+            return refuse(Lp(src, 'inv.e_heavy'))
         end
         -- Into your pack from outside you: the whole load counts, not just the pack.
         if dstInv.wornBy == inv and srcInv ~= inv and srcInv.wornBy ~= inv
             and carriedWeight(inv) + incoming > inv.maxWeight then
-            return { ok = false, error = Lp(src, 'inv.e_heavy') }
+            return refuse(Lp(src, 'inv.e_heavy'))
         end
     end
 
@@ -1203,7 +1209,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         -- Merge into the stack, up to its limit.
         local room = def.stack - target.amount
         local put = math.min(room, amount)
-        if put <= 0 then return { ok = false, error = Lp(src, 'inv.e_stack') } end
+        if put <= 0 then return refuse(Lp(src, 'inv.e_stack')) end
         target.amount = target.amount + put
         moving.amount = moving.amount - put
         if moving.amount <= 0 then
@@ -1214,7 +1220,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         end
     elseif target then
         -- Swap, but only when the whole stack is being moved.
-        if amount ~= moving.amount then return { ok = false, error = Lp(src, 'inv.e_split') } end
+        if amount ~= moving.amount then return refuse(Lp(src, 'inv.e_split')) end
         srcInv.slots[fromSlot], dstInv.slots[toSlot] = target, moving
         target.slot, moving.slot = fromSlot, toSlot
         target.id, moving.id = nil, nil       -- rows are rewritten below

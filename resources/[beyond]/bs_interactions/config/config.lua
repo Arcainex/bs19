@@ -15,7 +15,7 @@ Interactions.Settings = {
     -- Debug overlay reach. Separate from `maxDistance` (3.2m, interaction reach) so the overlay can inspect any prop in the game, ymap or not.
     debugDistance    = 250.0,
     -- Milliseconds between rays while aiming. 0 = every frame (smoothest).
-    scanInterval     = 0,
+    scanInterval     = 50,
 
     -- Fallback search numbers. The camera ray is one of four ways the dot finds a target; the other three are proximity based (see `fallbackWhenNoOptions` in cl_target.lua).
 

@@ -33,6 +33,8 @@ client_scripts {
     'client/cl_outfit.lua',
     'client/cl_spawn.lua',
     'client/cl_unstick.lua',
+    'client/cl_teleport.lua',   -- shared safe teleport (export SafeTeleport)
+    'client/cl_streaming.lua',  -- focus watchdog + /refreshtextures
 }
 
 server_scripts {
