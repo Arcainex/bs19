@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>BeyondSurvival - Node Atlas</title>
+<title data-i18n="atlas.web.title">BeyondSurvival - Node Atlas</title>
 <!-- Node Atlas - live view and config panel for the node simulation -->
 <script src="nui://bs_ui/html/js/i18n.js"></script>
 <link rel="stylesheet" href="css/style.css" />
@@ -55,17 +55,15 @@
 
             <!-- Web panel only (app.js hides it in game) -->
             <div data-host="web" hidden>
-                <h3 class="card__h card__h--warn">MAP CALIBRATION</h3>
-                <p class="note">The world rectangle the image's edges sit on.
-                   Saved to <code>nodes/calibration.json</code> - the one
-                   source of truth for this page AND the in-game /atlas.</p>
-                <div class="row"><label class="lbl" for="calMinX">MIN X</label><input class="num" type="number" step="1" id="calMinX" /></div>
-                <div class="row"><label class="lbl" for="calMaxX">MAX X</label><input class="num" type="number" step="1" id="calMaxX" /></div>
-                <div class="row"><label class="lbl" for="calMinY">MIN Y</label><input class="num" type="number" step="1" id="calMinY" /></div>
-                <div class="row"><label class="lbl" for="calMaxY">MAX Y</label><input class="num" type="number" step="1" id="calMaxY" /></div>
+                <h3 class="card__h card__h--warn" data-i18n="atlas.web.calibration">MAP CALIBRATION</h3>
+                <p class="note" data-i18n="atlas.web.calibration_note"></p>
+                <div class="row"><label class="lbl" for="calMinX" data-i18n="atlas.web.min_x">MIN X</label><input class="num" type="number" step="1" id="calMinX" /></div>
+                <div class="row"><label class="lbl" for="calMaxX" data-i18n="atlas.web.max_x">MAX X</label><input class="num" type="number" step="1" id="calMaxX" /></div>
+                <div class="row"><label class="lbl" for="calMinY" data-i18n="atlas.web.min_y">MIN Y</label><input class="num" type="number" step="1" id="calMinY" /></div>
+                <div class="row"><label class="lbl" for="calMaxY" data-i18n="atlas.web.max_y">MAX Y</label><input class="num" type="number" step="1" id="calMaxY" /></div>
                 <div class="btns">
-                    <button class="btn" id="btnCalPreview">PREVIEW</button>
-                    <button class="btn btn--warn" id="btnCalSave">SAVE MAP BOUNDS</button>
+                    <button class="btn" id="btnCalPreview" data-i18n="atlas.web.preview">PREVIEW</button>
+                    <button class="btn btn--warn" id="btnCalSave" data-i18n="atlas.web.save_bounds">SAVE MAP BOUNDS</button>
                 </div>
                 <p class="note" id="calState">-</p>
             </div>
@@ -185,12 +183,7 @@
             </div>
             <p class="note" id="obsState" data-i18n="atlas.obs_none">No observer registered.</p>
             <!-- Web panel only -->
-            <p class="note note--warn" data-host="web" hidden>
-                <b>WEB PANEL:</b> every browser tab holding the panel key shares
-                <b>one</b> web observer. Registering here moves it; it does not
-                add a second. It is refreshed while this tab is open and expires
-                on its own within 300s after the tab closes.
-            </p>
+            <p class="note note--warn" data-host="web" hidden data-i18n="atlas.web.observer_note"></p>
         </section>
 
         <!-- Survey -->
