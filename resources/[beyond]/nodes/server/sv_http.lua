@@ -82,6 +82,7 @@ local function query(path)
 end
 
 local function send(res, status, body, mime)
+    if mime and mime:find('text/plain', 1, true) then body = NodesLocale.Text(body) end
     res.writeHead(status, {
         ['Content-Type'] = mime or 'application/json; charset=utf-8',
         -- Nothing here is cacheable: the whole point is live state.
@@ -95,7 +96,7 @@ local function send(res, status, body, mime)
 end
 
 local function json_(res, status, tbl)
-    send(res, status, json.encode(tbl))
+    send(res, status, json.encode(NodesLocale.Response(tbl)))
 end
 
 -- The map image
@@ -205,29 +206,34 @@ local function atlasPage()
                          'html/js/map.js', 'html/js/app.js' }) do
         local body = LoadResourceFile('bs_atlas', f)
         if not body or body == '' then
-            return nil, ('The web atlas is built from bs_atlas/%s and that file could not be read.\n'
-                .. 'Is the bs_atlas resource in the resources folder?\n'):format(f)
+            return nil, NodesLocale.T('nodes.msg.missing_file', {file = 'bs_atlas/' .. f})
         end
         files[f] = body
     end
 
     local page, ok = files['html/index.html'], nil
+    local translator = LoadResourceFile('bs_ui', 'html/js/i18n.js')
+    if not translator then return nil, NodesLocale.T('nodes.msg.missing_file', {file = 'bs_ui/html/js/i18n.js'}) end
+    local initial = json.encode(NodesLocale.Current()):gsub('<', '\\u003c')
+    page, ok = replacePlain(page, '<script src="nui://bs_ui/html/js/i18n.js"></script>',
+        '<script>' .. scriptSafe(translator) .. '\nwindow.__BS_ATLAS_LOCALE__=' .. initial .. ';</script>')
+    if not ok then return nil, NodesLocale.T('nodes.msg.template', {part = 'i18n.js'}) end
 
     page, ok = replacePlain(page, '<link rel="stylesheet" href="css/style.css" />',
         '<style>\n/* inlined from bs_atlas/html/css/style.css by nodes/server/sv_http.lua */\n'
         .. files['html/css/style.css']
         -- A browser tab has no game under it: opaque background and the panel shown immediately.
         .. '\nhtml,body{background:#07090c;}\n</style>')
-    if not ok then return nil, 'bs_atlas/html/index.html no longer has the style.css <link> this handler replaces.' end
+    if not ok then return nil, NodesLocale.T('nodes.msg.template', {part = 'style.css <link>'}) end
 
     page, ok = replacePlain(page, '<script src="js/map.js"></script>',
         '<script>/* inlined from bs_atlas/html/js/host-web.js */\n' .. scriptSafe(files['html/js/host-web.js']) .. '\n</script>\n'
         .. '<script>/* inlined from bs_atlas/html/js/map.js */\n' .. scriptSafe(files['html/js/map.js']) .. '\n</script>')
-    if not ok then return nil, 'bs_atlas/html/index.html no longer has the map.js <script> this handler replaces.' end
+    if not ok then return nil, NodesLocale.T('nodes.msg.template', {part = 'map.js <script>'}) end
 
     page, ok = replacePlain(page, '<script src="js/app.js"></script>',
         '<script>/* inlined from bs_atlas/html/js/app.js */\n' .. scriptSafe(files['html/js/app.js']) .. '\n</script>')
-    if not ok then return nil, 'bs_atlas/html/index.html no longer has the app.js <script> this handler replaces.' end
+    if not ok then return nil, NodesLocale.T('nodes.msg.template', {part = 'app.js <script>'}) end
 
     return page
 end
@@ -280,6 +286,7 @@ local function atlasBoot()
 
     return {
         ok = true,
+        locale = NodesLocale.Current(),
         world = world,
         points = points,
         map = map,
@@ -303,16 +310,14 @@ end
 -- One-line bounded description of a mutation for the console.
 local function describe(op, a)
     if op == 'edit' then
-        return ('cell %s,%s patch=%s'):format(tostring(a.cx), tostring(a.cy),
-            (pcall(json.encode, a.patch) and json.encode(a.patch or {}) or '?'))
+        return NodesLocale.T('nodes.msg.cell', {x = tostring(a.cx), y = tostring(a.cy), patch = (pcall(json.encode, a.patch) and json.encode(a.patch or {}) or '?')})
     elseif op == 'repopulate' then
-        return ('+%s in rect %s,%s .. %s,%s'):format(tostring(a.amount), tostring(a.x1),
-            tostring(a.y1), tostring(a.x2), tostring(a.y2))
+        return NodesLocale.T('nodes.msg.repopulate', {amount = tostring(a.amount), x1 = tostring(a.x1), y1 = tostring(a.y1), x2 = tostring(a.x2), y2 = tostring(a.y2)})
     elseif op == 'observe' then
-        return (a.on == false) and 'clear web observer'
-            or ('web observer at %s,%s r=%s'):format(tostring(a.x), tostring(a.y), tostring(a.radius))
+        return (a.on == false) and NodesLocale.T('nodes.msg.observer_clear')
+            or NodesLocale.T('nodes.msg.observer', {x = tostring(a.x), y = tostring(a.y), radius = tostring(a.radius)})
     elseif op == 'config' then
-        return type(a.patch) == 'table' and ('patch=' .. json.encode(a.patch)) or 'read'
+        return type(a.patch) == 'table' and NodesLocale.T('nodes.msg.patch', {patch = json.encode(a.patch)}) or NodesLocale.T('nodes.msg.read')
     end
     return ''
 end
@@ -325,15 +330,15 @@ local function runOp(res, op, args, who)
     if not ok then
         -- Most likely bs_zombies is running an older sv_sim_atlas.lua without AtlasCall. Say that.
         return json_(res, 503, { ok = false,
-            error = 'bs_zombies has no AtlasCall export (is sv_sim_atlas.lua up to date?): ' .. tostring(out) })
+            error = NodesLocale.T('nodes.msg.missing_export', {error = tostring(out)}) })
     end
     if type(out) ~= 'table' then
         return json_(res, 502, { ok = false, error = 'AtlasCall returned nothing' })
     end
     -- Encoded under pcall: `config` returns live Sim tables, and a non-serialisable value must give an error, not a hanging request.
-    local encOk, body = pcall(json.encode, out)
+    local encOk, body = pcall(json.encode, NodesLocale.Response(out))
     if not encOk then
-        return json_(res, 500, { ok = false, error = 'could not encode the answer: ' .. tostring(body) })
+        return json_(res, 500, { ok = false, error = NodesLocale.T('nodes.msg.encode', {error = tostring(body)}) })
     end
     return send(res, 200, body)
 end
@@ -344,7 +349,7 @@ local function atlasApi(req, res, op)
 
     if method ~= 'POST' then
         if postOnly then
-            return json_(res, 405, { ok = false, error = op .. ' changes the world: POST only' })
+            return json_(res, 405, { ok = false, error = NodesLocale.T('nodes.msg.post_world', {operation = op}) })
         end
         -- Read-only op over GET: args may come as ?a=<json>, else none.
         local a = {}
@@ -369,8 +374,7 @@ local function atlasApi(req, res, op)
 
         if postOnly and not (op == 'config' and type(a.patch) ~= 'table') then
             -- Audit line, printed before the call so a change that throws half-way is still logged. Only the peer address is known; the panel key is shared.
-            print(('^3[nodes]^7 web atlas %s from %s (panel key holder - the key does not identify a person): %s')
-                :format(op, peer(req), describe(op, a)))
+            print('^3[nodes]^7 ' .. NodesLocale.T('nodes.msg.audit', {operation = op, peer = peer(req), details = describe(op, a)}))
         end
 
         return runOp(res, op, a, peer(req))
@@ -388,10 +392,7 @@ SetHttpHandler(function(req, res)
     -- A key always exists (token() generates one). This only fires if the resource cannot write its own folder.
     if not configured() then
         return send(res, 500,
-            'bs_sectormap could not create its access key.\n\n'
-            .. 'That usually means the resource folder is read-only. Give the\n'
-            .. 'server write access to it, or set one yourself in server.cfg:\n\n'
-            .. '    set bs_sectormap_key "your-long-random-token"\n',
+            NodesLocale.T('nodes.msg.key_failed'),
             'text/plain; charset=utf-8')
     end
 
@@ -399,17 +400,7 @@ SetHttpHandler(function(req, res)
         -- A wrong key gets a flat refusal. A missing key is usually the owner typing the address by hand, so that case gets directions on where to find the key (not the key itself).
         if args.key == nil then
             return send(res, 401,
-                'SECTOR MAP\n\n'
-                .. 'This page needs its access key, and the address you used has\n'
-                .. 'none on the end of it.\n\n'
-                .. 'The full link is printed in your SERVER CONSOLE at startup,\n'
-                .. 'in a framed box. It looks like:\n\n'
-                .. '    http://your-server:' .. GetConvar('netPort', '30120')
-                .. '/' .. RES .. '/?key=<32 characters>\n\n'
-                .. 'In game, an admin can type /sectormap to have it sent to chat.\n\n'
-                .. 'From the machine the server itself runs on, no key is needed -\n'
-                .. 'so if you meant to do that, check you are on localhost and not\n'
-                .. 'the LAN address.\n',
+                NodesLocale.T('nodes.msg.missing_key', {port = GetConvar('netPort', '30120'), resource = RES}),
                 'text/plain; charset=utf-8')
         end
 
@@ -430,6 +421,12 @@ SetHttpHandler(function(req, res)
         res.writeHead(200, { ['Content-Type'] = 'image/png', ['Cache-Control'] = 'max-age=3600',
                              ['X-Content-Type-Options'] = 'nosniff' })
         return res.send(data)
+    end
+
+    -- Same token/local-peer gate as the page and every existing API route.
+    if route == '/api/i18n' then
+        if (req.method or 'GET') ~= 'GET' then return json_(res, 405, {ok = false, error = 'GET only'}) end
+        return json_(res, 200, NodesLocale.Current())
     end
 
     -- Atlas: boot
@@ -545,8 +542,7 @@ SetHttpHandler(function(req, res)
             end
             if #bytes > MAX_MAP then
                 return json_(res, 413, { ok = false,
-                    error = ('too big - %dMB, limit is %dMB'):format(
-                        math.floor(#bytes / 1048576), math.floor(MAX_MAP / 1048576)) })
+                    error = NodesLocale.T('nodes.msg.too_big', {size = math.floor(#bytes / 1048576), limit = math.floor(MAX_MAP / 1048576)}) })
             end
 
             -- Trust the bytes, not the browser's claimed type. A file whose magic number is not one of these will not render.
@@ -563,8 +559,7 @@ SetHttpHandler(function(req, res)
 
             mapCache, mapMime, mapChecked = bytes, mime, true
 
-            print(('^2[BeyondSurvival]^7 (sectormap) new map image uploaded (%s, %dKB)')
-                :format(mime, math.floor(#bytes / 1024)))
+            print('^2[BeyondSurvival]^7 ' .. NodesLocale.T('nodes.msg.upload', {mime = mime, size = math.floor(#bytes / 1024)}))
 
             return json_(res, 200, { ok = true, bytes = #bytes })
         end)
@@ -622,15 +617,13 @@ CreateThread(function()
     Wait(4000)
 
     print('^2' .. string.rep('=', 74) .. '^7')
-    print('^2[BeyondSurvival]^7  SECTOR MAP PANEL')
+    print('^2[BeyondSurvival]^7  ' .. NodesLocale.T('nodes.msg.boot'))
     print('')
     print('   ^5' .. panelUrl() .. '^7')
     print('')
-    print('   ^5' .. nodeUrl() .. '^7   <- the NODE ATLAS (admin only - this key IS the gate)')
+    print('   ^5' .. nodeUrl() .. '^7   <- ' .. NodesLocale.T('nodes.msg.atlas_gate'))
     print('')
-    print('   Replace YOUR-SERVER-IP with the address you use for txAdmin.')
-    print('   Bookmark it. Drag a screenshot of the GTA V map onto the page to')
-    print('   put the real map behind the grid - no restart needed.')
+    print('   ' .. NodesLocale.T('nodes.msg.boot_hint'))
     print('^2' .. string.rep('=', 74) .. '^7')
 end)
 
@@ -676,8 +669,7 @@ RegisterCommand('nodemap', function(src)
     if not staff then
         TriggerClientEvent('chat:addMessage', src, {
             args = { '[NODE ATLAS]',
-                     'refused - needs the `bs.admin` ace or staff in bs_admin. '
-                     .. '(this reply means the command exists and bs_sectormap is running)' },
+                     NodesLocale.T('nodes.msg.refused') },
             color = { 200, 60, 40 },
         })
         return

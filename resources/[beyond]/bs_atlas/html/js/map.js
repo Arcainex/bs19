@@ -323,7 +323,7 @@ function drawNoise(snap) {
             c.globalAlpha = fade;
             c.font = '9px Consolas, monospace';
             c.textAlign = 'center';
-            c.fillText(`${nz.kind || AT('atlas.cv.noise', 'noise')} ${Math.round(nz.age || 0)}s`, sx, sy - r - 4);
+            c.fillText(`${nz.kind ? AT('atlas.stim.' + nz.kind, nz.kind) : AT('atlas.cv.noise', 'noise')} ${Math.round(nz.age || 0)}s`, sx, sy - r - 4);
         }
         c.globalAlpha = 1;
     }
@@ -422,7 +422,7 @@ function drawCars() {
         if (labels) {
             c.font = '10px Rajdhani, sans-serif';
             c.textAlign = 'left';
-            c.fillText(car.model + ' ' + (car.state === 'claimed' ? 'Claimed' : AT('atlas.cars.' + car.state, car.state)) + (car.owner ? ' — ' + (car.ownerName || '#' + car.owner) : ''), sx + 16, sy + 3);
+            c.fillText(car.model + ' ' + (AT('atlas.cars.' + car.state, car.state)) + (car.owner ? ' — ' + (car.ownerName || '#' + car.owner) : ''), sx + 16, sy + 3);
         }
     }
 }
@@ -475,7 +475,7 @@ function drawHeat(snap) {
         c.beginPath(); c.arc(sx, sy, r, 0, 6.2832); c.stroke();
         c.globalAlpha = 0.95; c.fillStyle = '#ffb4a3'; c.textAlign = 'center';
         c.font = '10px Consolas, monospace';
-        c.fillText(AT('atlas.cv.heat', '{id}  HEAT {h}/{m}', { id: String(z.id).toUpperCase(), h: Math.round(z.heat || 0), m: Math.round(z.heatMax || 100) }), sx, sy + r + 12);
+        c.fillText(AT('atlas.cv.heat', '{id}  HEAT {h}/{m}', { id: AT('atlas.zone.' + z.id, String(z.id).toUpperCase()), h: Math.round(z.heat || 0), m: Math.round(z.heatMax || 100) }), sx, sy + r + 12);
         c.globalAlpha = 1;
     }
 }

@@ -288,3 +288,8 @@ code{ font-family:'Consolas',ui-monospace,monospace; color:var(--ink); font-size
 
 /* [hidden] must win: a class rule like .btn{display:inline-flex} would otherwise beat the */
 [hidden]{ display:none !important; }
+
+/* Keep translated labels readable in the existing narrow side panels. */
+.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+.tab{min-width:0;white-space:normal;overflow-wrap:anywhere;}
+.pane,.cfg__k{min-width:0;overflow-wrap:anywhere;}

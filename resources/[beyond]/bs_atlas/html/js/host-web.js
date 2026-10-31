@@ -5,6 +5,13 @@
 (function () {
 
 const KEY = new URLSearchParams(location.search).get('key');
+const W = (key, vars) => window.BSI18n.t('atlas.web.' + key, vars);
+function useLocale(locale) {
+    if (!locale || !locale.dict) return;
+    window.dispatchEvent(new MessageEvent('message', {data: {action: 'bs_i18n', lang: locale.lang, dict: locale.dict}}));
+}
+function localTime() { return new Date().toLocaleTimeString(window.BSI18n.lang() || 'en'); }
+
 
 // Resource-relative base
 let BASE = location.pathname;
@@ -32,16 +39,16 @@ async function http(path, body, method) {
             signal: ctl ? ctl.signal : undefined,
         });
         if (r.status === 401 || r.status === 403) {
-            return { ok: false, error: `panel key rejected (HTTP ${r.status}) - reopen the panel from the link printed in the server console` };
+            return { ok: false, error: W('auth', {status: r.status}) };
         }
         let data = null;
         try { data = await r.json(); } catch (_) { /* not JSON */ }
         if (!data || typeof data !== 'object') {
-            return { ok: false, error: `HTTP ${r.status}: the server did not answer with JSON` };
+            return { ok: false, error: W('not_json', {status: r.status}) };
         }
         return data;
     } catch (e) {
-        return { ok: false, error: 'no answer from the server (' + (e && e.name === 'AbortError' ? 'timed out' : e) + ')', timedOut: true };
+        return { ok: false, error: W('no_answer', {error: e && e.name === 'AbortError' ? W('timeout') : String(e)}), timedOut: true };
     } finally {
         if (timer) clearTimeout(timer);
     }
@@ -71,7 +78,7 @@ async function post(endpoint, data) {
     switch (endpoint) {
         case 'call': {
             const op = String(data.name || '').replace(/^zombies:atlas:/, '');
-            if (!OPS[op]) return { ok: false, error: 'refused locally: not an atlas operation' };
+            if (!OPS[op]) return { ok: false, error: W('invalid_op') };
             return http('api/' + op, data.args || {}, 'POST');
         }
         case 'observer': {
@@ -90,9 +97,9 @@ async function post(endpoint, data) {
             return res;
         }
         case 'close':    return { ok: true };
-        case 'waypoint': return { ok: false, error: 'no player body on the web panel - waypoints are in-game only' };
+        case 'waypoint': return { ok: false, error: W('no_waypoint') };
     }
-    return { ok: false, error: 'unknown endpoint ' + endpoint };
+    return { ok: false, error: W('unknown_endpoint', {endpoint}) };
 }
 
 // Best-effort clear when the tab goes away
@@ -137,32 +144,33 @@ function fillCalInputs(c) {
 function wireCalibration() {
     $('btnCalPreview').addEventListener('click', () => {
         const c = readCalInputs();
-        if (!c) { $('calState').textContent = 'All four numbers are required.'; return; }
-        mapMessage(c, 'PREVIEW - not saved.');
-        $('calState').textContent = 'Previewing. Nothing is saved until SAVE MAP BOUNDS.';
+        if (!c) { $('calState').textContent = W('four_numbers'); return; }
+        mapMessage(c, W('preview_note'));
+        $('calState').textContent = W('preview_state');
     });
     $('btnCalSave').addEventListener('click', async () => {
         const c = readCalInputs();
-        if (!c) { $('calState').textContent = 'All four numbers are required.'; return; }
-        if (!window.confirm('Save these map bounds to nodes/calibration.json?\n\n'
-            + 'This realigns the map image on this panel AND on the in-game /atlas (next time it is opened).')) return;
+        if (!c) { $('calState').textContent = W('four_numbers'); return; }
+        if (!window.confirm(W('save_confirm'))) return;
         const res = await http('api/calibration', c, 'POST');
-        if (!res.ok) { $('calState').textContent = 'SAVE FAILED: ' + (res.error || 'no answer'); return; }
+        if (!res.ok) { $('calState').textContent = W('save_failed', {error: res.error || window.BSI18n.t('atlas.no_answer')}); return; }
         fillCalInputs(res.calib);
         mapMessage(res.calib, '');
-        $('calState').textContent = 'Saved to calibration.json at ' + new Date().toLocaleTimeString('en-GB') + '.';
+        $('calState').textContent = W('saved', {time: localTime()});
     });
 }
 
 async function boot() {
+    useLocale(window.__BS_ATLAS_LOCALE__);
     const b = await http('api/boot', null, 'GET');
+    if (b.locale) useLocale(b.locale);
     if (!b.ok) {
         // Open anyway with a guessed world box
         window.postMessage({
             action: 'open',
             world: { minX: -4000, maxX: 5000, minY: -4000, maxY: 8000 },
             points: [], me: null, cfg: {},
-            map: { error: 'boot failed: ' + (b.error || 'no answer') },
+            map: { error: W('boot_failed', {error: b.error || window.BSI18n.t('atlas.no_answer')}) },
         }, '*');
         return;
     }
@@ -171,7 +179,7 @@ async function boot() {
     refreshSeconds = cfg.observerRefreshSeconds || 100;
     mapPath = b.map && b.map.path;
     fillCalInputs(b.map && b.map.calib);
-    $('calState').textContent = (b.map && b.map.note) || 'Loaded from calibration.json.';
+    $('calState').textContent = (b.map && b.map.note) || W('loaded');
     wireCalibration();
 
     window.postMessage({
@@ -182,7 +190,7 @@ async function boot() {
         cfg,
         map: mapPath
             ? { url: url(mapPath), calib: b.map.calib, note: b.map.note || '' }
-            : { error: (b.map && b.map.error) || 'no map image on the server' },
+            : { error: (b.map && b.map.error) || W('no_map') },
     }, '*');
 }
 
