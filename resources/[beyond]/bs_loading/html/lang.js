@@ -1,5 +1,39 @@
-// Loading screen text per language. The game language is not known yet, so the PC's language picks it.
+// Loading-screen catalogs. Server language arrives with the connection handover.
 const LANGS = {
+en: {
+  "day": "DAY",
+  "since": "SINCE THE OUTBREAK",
+  "note": "FIELD NOTE",
+  "uplink": "ESTABLISHING UPLINK",
+  "init": "initialising {x}",
+  "systems": "systems",
+  "reading": "reading {n} data files",
+  "mounting": "mounting {x}",
+  "archive": "archive",
+  "rebuild": "rebuilding the world",
+  "loading": "loading {x}",
+  "welcome": "welcome to what is left",
+  "log": [
+    "Relay is live. If anyone is receiving this, you are not the last.",
+    "Blaine County shelter is past capacity. They are turning people away at the fence.",
+    "Do not follow the highway south. Whatever came through it is still there.",
+    "Water at the reservoir tested clean. Boil it anyway.",
+    "We lost the eastern checkpoint overnight. No survivors accounted for.",
+    "They move slow until they hear you. Then they do not.",
+    "Trading post at the camp is still standing. Bring something worth having.",
+    "Four of us left from a group of twenty. We keep going anyway."
+  ],
+  "notes": [
+    "Sound carries further than you think. A gunshot brings the whole street.",
+    "A crowded room is a dead end. Always know where the second door is.",
+    "Bandages before bullets. You cannot shoot what you cannot stand up for.",
+    "Scrap is worth more than money. Money stopped meaning anything years ago.",
+    "Night doubles their numbers. Whatever you need, get it before dark.",
+    "Nobody survives alone out here. Not for long.",
+    "Check the bodies. Check them again. People hide things.",
+    "If it is quiet, something already cleared the area. Ask yourself what."
+  ]
+},
 pt: { day: 'DIA', since: 'DESDE O SURTO', note: 'NOTA DE CAMPO', uplink: 'A ESTABELECER LIGAÇÃO',
   init: 'a iniciar {x}', systems: 'sistemas', reading: 'a ler {n} ficheiros de dados', mounting: 'a montar {x}', archive: 'arquivo',
   rebuild: 'a reconstruir o mundo', loading: 'a carregar {x}', welcome: 'bem-vindo ao que resta',
@@ -41,9 +75,24 @@ ru: { day: 'ДЕНЬ', since: 'С НАЧАЛА ЭПИДЕМИИ', note: 'ПОЛ�
   log: ['Ретранслятор работает. Если кто-то это слышит, ты не последний.','Убежище в Блейн Каунти переполнено. У забора людей разворачивают.','Не идите по шоссе на юг. То, что прошло по нему, всё ещё там.','Вода в водохранилище чистая. Всё равно кипятите.','Ночью мы потеряли восточный пост. Выживших нет.','Они медленные, пока тебя не услышат. Потом нет.','Торговая точка в лагере ещё стоит. Приносите что-то ценное.','Из двадцати нас осталось четверо. Мы всё равно идём дальше.'],
   notes: ['Звук разносится дальше, чем кажется. Один выстрел собирает всю улицу.','Людная комната - тупик. Всегда знай, где вторая дверь.','Бинты важнее патронов. Не выстрелишь, если не стоишь на ногах.','Хлам ценнее денег. Деньги давно ничего не значат.','Ночью их вдвое больше. Всё нужное добудь до темноты.','В одиночку здесь никто не выживает. Не долго.','Обыщи тела. Потом ещё раз. Люди прячут вещи.','Если тихо, что-то уже зачистило район. Подумай, что именно.'] },
 };
-const LANG = LANGS[(navigator.language || 'en').slice(0, 2).toLowerCase()] || null;
+let LANG_CODE = 'en';
+let LANG = LANGS.en;
+function selectLoadingLanguage() {
+  const data = window.nuiHandoverData;
+  const code = data && data.bsLoading && data.bsLoading.language;
+  LANG_CODE = typeof code === 'string' && Object.prototype.hasOwnProperty.call(LANGS, code) ? code : 'en';
+  LANG = LANGS[LANG_CODE];
+  document.documentElement.lang = LANG_CODE;
+  return LANG_CODE;
+}
 function LT(key, vars, fallback) {
-  let s = (LANG && LANG[key]) || fallback;
-  for (const k in (vars || {})) s = s.replace('{' + k + '}', vars[k]);
-  return s;
+  const candidate = LANG[key];
+  const text = typeof candidate === 'string' && candidate.length ? candidate : (LANGS.en[key] || fallback || key);
+  return String(text).replace(/\{([\w_]+)\}/g, (match, name) =>
+    vars && Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
+}
+function loadingTexts(key) {
+  const base = LANGS.en[key] || [];
+  const translated = Array.isArray(LANG[key]) ? LANG[key] : [];
+  return base.map((text, index) => typeof translated[index] === 'string' && translated[index].length ? translated[index] : text);
 }

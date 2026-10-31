@@ -1,31 +1,54 @@
-// BeyondSurvival loading screen. Driven by real FiveM load events, so the bar shows actual progress.
+// Only the small set of UI events is buffered; no client exports, HTTP or language polling.
+const earlyLoadingMessages = new Map();
+let handleLoadingMessage = null;
+const loadingEvents = new Set(['loadProgress', 'startInitFunction', 'startDataFileEntries', 'onDataFileEntry', 'performMapLoadFunction', 'onLogLine', 'startInitFunctionOrder', 'initFunctionInvoking', 'endLoadingScreen']);
+window.addEventListener('message', event => {
+  const data = event.data || {};
+  if (!loadingEvents.has(data.eventName)) return;
+  if (handleLoadingMessage) { handleLoadingMessage(data); return; }
+  if (data.eventName === 'onLogLine') return;
+  if (data.eventName === 'loadProgress') {
+    const prior = earlyLoadingMessages.get('loadProgress');
+    if (prior && Number(prior.loadFraction) > Number(data.loadFraction)) return;
+  }
+  earlyLoadingMessages.delete(data.eventName);
+  earlyLoadingMessages.set(data.eventName, data);
+});
 
-// log
+// BeyondSurvival loading screen: language is resolved before any visible text.
 
+function startLoadingScreen() {
+selectLoadingLanguage();
+const broadcastText = loadingTexts('log');
 const BROADCAST = [
-    { stamp: '04:12', text: 'Relay is live. If anyone is receiving this, you are not the last.' },
-    { stamp: '04:19', text: 'Blaine County shelter is past capacity. They are turning people away at the fence.' },
-    { stamp: '05:02', text: 'Do not follow the highway south. Whatever came through it is still there.', alert: true },
-    { stamp: '05:44', text: 'Water at the reservoir tested clean. Boil it anyway.' },
-    { stamp: '06:30', text: 'We lost the eastern checkpoint overnight. No survivors accounted for.' },
-    { stamp: '07:15', text: 'They move slow until they hear you. Then they do not.', alert: true },
-    { stamp: '08:03', text: 'Trading post at the camp is still standing. Bring something worth having.' },
-    { stamp: '09:21', text: 'Four of us left from a group of twenty. We keep going anyway.' },
-];
-
-const NOTES_EN = [
-    'Sound carries further than you think. A gunshot brings the whole street.',
-    'A crowded room is a dead end. Always know where the second door is.',
-    'Bandages before bullets. You cannot shoot what you cannot stand up for.',
-    'Scrap is worth more than money. Money stopped meaning anything years ago.',
-    'Night doubles their numbers. Whatever you need, get it before dark.',
-    'Nobody survives alone out here. Not for long.',
-    'Check the bodies. Check them again. People hide things.',
-    'If it is quiet, something already cleared the area. Ask yourself what.',
-];
-const NOTES = (LANG && LANG.notes) || NOTES_EN;
-if (LANG && LANG.log) BROADCAST.forEach((b, i) => { if (LANG.log[i]) b.text = LANG.log[i]; });
-
+  {
+    "stamp": "04:12"
+  },
+  {
+    "stamp": "04:19"
+  },
+  {
+    "stamp": "05:02",
+    "alert": true
+  },
+  {
+    "stamp": "05:44"
+  },
+  {
+    "stamp": "06:30"
+  },
+  {
+    "stamp": "07:15",
+    "alert": true
+  },
+  {
+    "stamp": "08:03"
+  },
+  {
+    "stamp": "09:21"
+  }
+].map((entry, index) => ({...entry, text: broadcastText[index]}));
+const NOTES = loadingTexts('notes');
 
 const logEl    = document.getElementById('log');
 const tipEl    = document.getElementById('tip');
@@ -35,7 +58,7 @@ const statusEl = document.getElementById('status');
 const dayEl    = document.getElementById('day');
 
 // Day counter drifts so the world feels like it kept going.
-dayEl.textContent = LT('day', null, 'DAY') + ' ' + (1380 + Math.floor(Math.random() * 90)).toLocaleString('en-US');
+dayEl.textContent = LT('day', null, 'DAY') + ' ' + (1380 + Math.floor(Math.random() * 90)).toLocaleString(LANG_CODE);
 
 // Types one broadcast line out character by character.
 function typeLine({ stamp, text, alert }, done) {
@@ -104,18 +127,17 @@ function setProgress(fraction) {
 
 function setStatus(text) {
     if (!text) return;
-    statusEl.textContent = String(text).toUpperCase().slice(0, 90);
+    statusEl.textContent = String(text).toLocaleUpperCase(LANG_CODE).slice(0, 90);
 }
 
 // FiveM loading-screen events.
-window.addEventListener('message', (event) => {
-    const d = event.data || {};
+handleLoadingMessage = (d) => {
     switch (d.eventName) {
         case 'loadProgress':
             setProgress(d.loadFraction ?? 0);
             break;
         case 'startInitFunction':
-            setStatus(LT('init', { x: d.type || LT('systems', null, 'systems') }, 'initialising {x}'));
+            setStatus(LT('init', { x: LT('systems') }, 'initialising {x}'));
             break;
         case 'startDataFileEntries':
             setStatus(LT('reading', { n: d.count || 0 }, 'reading {n} data files'));
@@ -127,18 +149,20 @@ window.addEventListener('message', (event) => {
             setStatus(LT('rebuild', null, 'rebuilding the world'));
             break;
         case 'onLogLine':
-            setStatus(d.message);
+            // Raw engine log lines have no translation contract; keep the localized phase.
             break;
         case 'startInitFunctionOrder':
         case 'initFunctionInvoking':
-            setStatus(LT('loading', { x: d.type || '' }, 'loading {x}'));
+            setStatus(LT('loading', { x: LT('systems') }));
             break;
         case 'endLoadingScreen':
             setProgress(1);
             setStatus(LT('welcome', null, 'welcome to what is left'));
             break;
     }
-});
+};
+for (const data of earlyLoadingMessages.values()) handleLoadingMessage(data);
+earlyLoadingMessages.clear();
 
 // Nothing reported yet - creep forward so it never looks frozen.
 let idle = 0;
@@ -195,3 +219,9 @@ draw();
 document.querySelector('.head__since').textContent = LT('since', null, 'SINCE THE OUTBREAK');
 document.querySelector('.tip__label').textContent = LT('note', null, 'FIELD NOTE');
 if (statusEl.textContent === 'ESTABLISHING UPLINK') statusEl.textContent = LT('uplink', null, 'ESTABLISHING UPLINK');
+
+document.documentElement.removeAttribute('data-loading-locale-pending');
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startLoadingScreen, {once: true});
+else startLoadingScreen();
