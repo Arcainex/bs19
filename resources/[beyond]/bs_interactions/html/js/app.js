@@ -3,6 +3,25 @@
 const dotEl  = document.getElementById('dot');
 const optsEl = document.getElementById('options');
 const progEl = document.getElementById('progress');
+let progressId = 0;
+let lastProgressReport = '';
+function reportProgress() {
+    // Read the owner's real CSS placement; pickup visuals do not copy its layout constants.
+    const bottom = getComputedStyle(progEl).bottom;
+    const state = { id: progressId, active: !progEl.classList.contains('hidden'), bottom };
+    const encoded = JSON.stringify(state);
+    if (encoded === lastProgressReport) return;
+    lastProgressReport = encoded;
+    if (typeof GetParentResourceName === 'function') {
+        fetch(`https://${GetParentResourceName()}/progressState`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: encoded,
+        }).catch(() => {});
+    }
+}
+window.addEventListener('resize', reportProgress);
+if (window.BSScale) window.BSScale.onChange(reportProgress);
+reportProgress();
 let progHideTimer = null;
 const fillEl = document.getElementById('progress-fill');
 
@@ -88,16 +107,20 @@ window.addEventListener('message', (e) => {
     }
 
     if (d.action === 'progress') {
+        if (d.cancel && d.id != null && d.id !== progressId) return;
         clearTimeout(progHideTimer);
         if (d.cancel) {
             progEl.classList.add('hidden');
             fillEl.style.transition = 'none';
             fillEl.style.width = '0%';
+            reportProgress();
             return;
         }
         document.getElementById('progress-label').textContent =
             String(d.label || t('ui.searching')).toUpperCase();
+        progressId = d.id ?? progressId + 1;
         progEl.classList.remove('hidden');
+        reportProgress();
 
         // Restart the progress bar transition by forcing a reflow between the two width changes; requestAnimationFrame alone can coalesce them and the bar never moves.
         fillEl.style.transition = 'none';
@@ -112,6 +135,7 @@ window.addEventListener('message', (e) => {
                 progEl.classList.add('hidden');
                 fillEl.style.transition = 'none';
                 fillEl.style.width = '0%';
+                reportProgress();
             }, (d.duration || 4000) + 800);
         }
     }

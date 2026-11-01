@@ -76,18 +76,7 @@ function renderGrid(el, inv, which) {
     el.innerHTML = '';
 
     // Layer 1: the cells.
-    for (let y = 1; y <= H; y++) {
-        for (let x = 1; x <= W; x++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.style.gridColumn = x;
-            cell.style.gridRow = y;
-            cell.dataset.inv = which;
-            cell.dataset.x = x;
-            cell.dataset.y = y;
-            el.appendChild(cell);
-        }
-    }
+    BSInventorySlots.cells(el, W, H, which);
 
     if (!inv || !inv.slots) return;
 
@@ -108,7 +97,7 @@ function renderGrid(el, inv, which) {
         const w = entry.rot ? (entry.h || 1) : (entry.w || 1);
         const h = entry.rot ? (entry.w || 1) : (entry.h || 1);
 
-        const node = document.createElement('div');
+        const node = BSInventorySlots.create(entry);
         node.className = 'slot has-item'
             + (which === 'player' && !matchesFilter(entry) ? ' is-filtered' : '')
             + (entry.rot ? ' is-rot' : '');
@@ -118,14 +107,6 @@ function renderGrid(el, inv, which) {
         if (entry.rarity) node.dataset.rarity = entry.rarity;
         node.style.gridColumn = `${entry.x} / span ${w}`;
         node.style.gridRow = `${entry.y} / span ${h}`;
-
-        const icon = (typeof BSIcons !== 'undefined')
-            ? BSIcons.get(entry.item, entry.category) : '';
-
-        node.innerHTML = `
-            <span class="slot__icon">${icon}</span>
-            <span class="slot__name">${esc(entry.label)}</span>
-            <span class="slot__foot">${slotBadge(entry)}</span>${fillBar(entry)}`;
 
         wireSlot(node, entry, which, slot);
         el.appendChild(node);
@@ -156,23 +137,17 @@ function renderOverflow(gridEl, entry, which, slot) {
 
 // Corner badge. A count gets the `x` prefix that `.slot__amount` paints; a fill level must not ("x87%" is meaningless).
 function slotBadge(entry) {
-    if (entry.capacity || entry.battery != null) return `<span>${slotCountLabel(entry)}</span>`;
-    return `<span class="slot__amount">${slotCountLabel(entry)}</span>`;
+    return BSInventorySlots.badge(entry);
 }
 
 // A measured container (jerrycan) shows its level, not its count. The server sends `fill` and `capacity`, turned into a percentage here.
 function slotCountLabel(entry) {
-    if (entry.battery != null) return `${Math.round(entry.battery)}%`;
-    if (!entry.capacity) return entry.amount;
-    return `${Math.round(((entry.fill || 0) / entry.capacity) * 100)}%`;
+    return BSInventorySlots.count(entry);
 }
 
 // Plus a bar across the bottom, easier to read than a number.
 function fillBar(entry) {
-    if (!entry.capacity) return '';
-    const pct = Math.max(0, Math.min(100,
-        Math.round(((entry.fill || 0) / entry.capacity) * 100)));
-    return `<span class="slot__fill"><i style="width:${pct}%"></i></span>`;
+    return BSInventorySlots.fill(entry);
 }
 
 function wireSlot(node, entry, which, index) {

@@ -32,6 +32,17 @@ Inventory.Settings = {
     heavySprintDrain = 1.5,
 }
 
+-- Confirmed item receipts, using the inventory's own slot renderer and dimensions.
+Inventory.PickupVisuals = {
+    enabled = true,
+    duration = 2500,
+    mergeWindow = 400,
+    maxQueue = 20,
+    showReceived = true,
+    showRemoved = false,
+    showAmount = true,
+}
+
 Inventory.Containers = {
     small_stash  = { label = 'Stash',   width = 8,  height = 5,  maxWeight = 120.0 },
     vehicle_boot = { label = 'Trunk',   width = 10, height = 6,  maxWeight = 200.0 },

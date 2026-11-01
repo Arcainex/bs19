@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <title>Inventory</title>
     <!-- Bump v= by hand on every change to style.css/app.js. FiveM's CEF caches ui_page assets across resource restarts, so players can keep running an old bundle. -->
-    <link rel="stylesheet" href="css/style.css?v=20261016a" />
+    <link rel="stylesheet" href="css/style.css?v=pickup1" />
     <link rel="stylesheet" href="css/medical.css?v=20261014m2" />
     <link rel="stylesheet" href="css/craft.css?v=20261015c" />
     <link rel="stylesheet" href="css/missions.css?v=20261016ml4" />
@@ -728,11 +728,14 @@
     <div id="tradeNotice" class="trade-notice hidden"></div>
     <div id="tip" class="tip hidden"></div>
 </div>
+<div id="pickupVisual" class="pickup-visual" hidden aria-live="polite"><div id="pickupGrid" class="grid"></div></div>
 <!-- opaque while the body snapshots are taken (the camera moves behind it) -->
 <div id="captureCover" class="capcover hidden"><span data-i18n="ui.preparing_survivor">PREPARING SURVIVOR&hellip;</span></div>
 <script src="nui://bs_ui/html/js/icons.js?v=20261015p1"></script>
 <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
-<script src="js/app.js?v=20261016a"></script>
+<script src="js/slots.js?v=pickup1"></script>
+<script src="js/app.js?v=pickup1"></script>
+<script src="js/pickups.js?v=pickup1"></script>
 <script src="js/medical.js?v=20261014m2"></script>
 <script src="js/craft.js?v=20261014c2"></script>
 <script src="js/missions.js?v=20261016ml4"></script>

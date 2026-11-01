@@ -2,6 +2,25 @@
 -- Every model in config_containers.lua is registered with the target registry at boot. The client plays the animation and progress bar; the server decides what comes out.
 
 local searching = false
+local progressId = 0
+local progressState = { active = false }
+local function showProgress(data)
+    progressId = progressId + 1
+    data.id = progressId
+    progressState.active = true
+    TriggerEvent('bs:interactions:progress', progressState)
+    SendNUIMessage(data)
+    return progressId
+end
+RegisterNUICallback('progressState', function(data, cb)
+    cb({ ok = true })
+    if type(data) ~= 'table' then return end
+    local bottom = type(data.bottom) == 'string' and tonumber(data.bottom:match('^(%d+%.?%d*)px$'))
+    if bottom and bottom >= 0 and bottom <= 10000 then progressState.bottom = ('%gpx'):format(bottom) end
+    if tonumber(data.id) == progressId and type(data.active) == 'boolean' then progressState.active = data.active end
+    TriggerEvent('bs:interactions:progress', progressState)
+end)
+exports('GetProgressState', function() return { active = progressState.active, bottom = progressState.bottom } end)
 
 --------------------------------------------------------------------------------
 -- The weapon in your hands while you are using them for something else
@@ -69,7 +88,7 @@ local function runSearch(label, duration, opts)
     local ped = PlayerPedId()
     local startCoords = GetEntityCoords(ped)
 
-    SendNUIMessage({ action = 'progress', label = label, duration = duration })
+    local id = showProgress({ action = 'progress', label = label, duration = duration })
 
     -- Hidden before the clip starts so there is no frame of the search pose with the weapon still visible.
     hideWeapon(ped, true)
@@ -114,7 +133,7 @@ local function runSearch(label, duration, opts)
     -- Shown again on every exit. PlayerPedId() is re-read because death replaces the ped, and the new ped's weapon would stay hidden.
     hideWeapon(PlayerPedId(), false)
 
-    SendNUIMessage({ action = 'progress', cancel = true })
+    SendNUIMessage({ action = 'progress', cancel = true, id = id })
     searching = false
 
     return not cancelled
@@ -123,6 +142,7 @@ end
 -- On a resource restart mid-search the thread dies with the weapon still hidden. This restores it.
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
+    TriggerEvent('bs:interactions:progress', { active = false })
     if searching then hideWeapon(PlayerPedId(), false) end
 end)
 
@@ -131,12 +151,12 @@ exports('RunSearch', runSearch)
 -- Standalone progress bar, no animation and no movement cancel (for machines that run on their own).
 -- bs_recycler needs this here: SendNUIMessage reaches the calling resource's page, and a resource without a ui_page cannot show a bar.
 exports('Progress', function(label, duration)
-    SendNUIMessage({ action = 'progress', label = label, duration = duration, auto = true })
+    showProgress({ action = 'progress', label = label, duration = duration, auto = true })
     return true
 end)
 
 exports('CancelProgress', function()
-    SendNUIMessage({ action = 'progress', cancel = true })
+    SendNUIMessage({ action = 'progress', cancel = true, id = progressId })
     return true
 end)
 

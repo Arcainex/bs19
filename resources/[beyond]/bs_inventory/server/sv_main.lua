@@ -11,6 +11,10 @@ local containerGrants = {} -- [src] = { [containerId] = { expires = ms, pos = ve
 local GRANT_TTL = 10000     -- a grant is only good for the open it was issued for
 local CONTAINER_REACH = 5.0 -- step further than this (m) and the container is out of reach
 
+local function receipt(src, item, amount, kind, character)
+    if Inv.Pickups then Inv.Pickups.Record(src, item, amount, kind, character) end
+end
+
 -- Deep copy so a split stack or a world drop never shares a table with its source.
 local function copyTable(t)
     if type(t) ~= 'table' then return t end
@@ -569,11 +573,12 @@ local function addToInv(inv, itemName, amount, metadata)
 end
 
 -- Adds items, stacking where possible. Returns ok, label.
-function Inv.Give(src, itemName, amount, metadata)
+function Inv.Give(src, itemName, amount, metadata, quietPickup)
     local inv = playerInventory(src)
     if not inv then return false, 'no character' end
 
     local ok, label = addToInv(inv, itemName, amount, metadata)
+    if ok and not quietPickup then receipt(src, itemName, math.max(1, math.floor(tonumber(amount) or 1)), 'received', inv.ownerId) end
     Inv.Push(src)              -- push even on a partial add: some went in
     return ok, label
 end
@@ -604,7 +609,7 @@ function Inv.Equip(src, itemName)
 end
 
 -- Removes items across stacks. Returns true only if the full amount was taken.
-function Inv.Remove(src, itemName, amount)
+function Inv.Remove(src, itemName, amount, quietPickup)
     local inv = playerInventory(src)
     if not inv then return false end
 
@@ -634,6 +639,7 @@ function Inv.Remove(src, itemName, amount)
         end
     end
 
+    if not quietPickup then receipt(src, itemName, amount, 'removed', inv.ownerId) end
     Inv.Push(src)
     return true
 end
@@ -878,7 +884,7 @@ RegisterNetEvent('bs:inventory:ammoRefund', function(token)
     if not pending then return end
     if tonumber(token) ~= pending.token then return end
 
-    Inv.Give(src, pending.item, pending.count or 1)
+    Inv.Give(src, pending.item, pending.count or 1, nil, true)
     Inv.Push(src)
 end)
 
@@ -980,6 +986,7 @@ function Inv.Push(src)
         payload.containerLabel = cache[openKey].label
     end
 
+    if Inv.Pickups then Inv.Pickups.Flush(src, payload) end
     TriggerClientEvent('bs:inventory:state', src, payload)
 
     -- The bar reflects the bag: counts change, slots grey out, bindings stay.
@@ -1203,13 +1210,17 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         end
     end
 
+    local movedAmount, movedItem = amount, moving.item
+    local swappedItem, swappedAmount
     if target == moving then
+        movedAmount = 0
         -- Moved within its own slot (just a new spot in the grid). Coordinates were set above; nothing else changes.
     elseif target and target.item == moving.item and def and def.stack > 1 then
         -- Merge into the stack, up to its limit.
         local room = def.stack - target.amount
         local put = math.min(room, amount)
         if put <= 0 then return refuse(Lp(src, 'inv.e_stack')) end
+        movedAmount = put
         target.amount = target.amount + put
         moving.amount = moving.amount - put
         if moving.amount <= 0 then
@@ -1221,6 +1232,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     elseif target then
         -- Swap, but only when the whole stack is being moved.
         if amount ~= moving.amount then return refuse(Lp(src, 'inv.e_split')) end
+        swappedItem, swappedAmount = target.item, target.amount
         srcInv.slots[fromSlot], dstInv.slots[toSlot] = target, moving
         target.slot, moving.slot = fromSlot, toSlot
         target.id, moving.id = nil, nil       -- rows are rewritten below
@@ -1243,6 +1255,14 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
 
     persistSlot(srcInv, fromSlot)
     persistSlot(dstInv, toSlot)
+    -- Bag, bar, equipment and worn pack/vest form one carried inventory.
+    -- Only crossing its boundary is a receipt; splitting/rearranging is not.
+    local fromCarried = srcInv == inv or srcInv.wornBy == inv
+    local toCarried = dstInv == inv or dstInv.wornBy == inv
+    if fromCarried ~= toCarried and movedAmount > 0 then
+        receipt(src, movedItem, movedAmount, toCarried and 'received' or 'removed', inv.ownerId)
+        if swappedItem then receipt(src, swappedItem, swappedAmount, fromCarried and 'received' or 'removed', inv.ownerId) end
+    end
     Inv.Push(src)
     -- Someone looting a downed player's pack: the owner sees it change too.
     for _, b in ipairs({ srcInv, dstInv }) do
@@ -1396,6 +1416,7 @@ BSB.RegisterCallback('inventory:drop', function(src, slot, amount)
     entry.amount = entry.amount - amount
     if entry.amount <= 0 then inv.slots[tonumber(slot)] = nil end
     persistSlot(inv, tonumber(slot))
+    receipt(src, item, amount, 'removed', inv.ownerId)
     Inv.Push(src)
 
     -- The world drop itself is bs_economy's business; for now it simply leaves the character's hands.
@@ -1658,7 +1679,7 @@ AddEventHandler('bs:hook:player:spawned', function(player)
         -- Cleared first, so a second spawn event cannot grant the same list again.
         exports.bs_core:SetPlayerMeta(player.source, 'pendingLoadout', nil)
         for _, entry in ipairs(pending) do
-            Inv.Give(player.source, entry.item, entry.amount or 1)
+            Inv.Give(player.source, entry.item, entry.amount or 1, nil, true)
         end
     end
 
@@ -1922,8 +1943,9 @@ exports('ItemBlurb', function(itemName, src)
              rounds = def.data and def.data.rounds or nil }
 end)
 
-exports('GiveItem', function(src, item, amount, metadata)
-    return Inv.Give(src, item, amount, type(metadata) == 'table' and metadata or nil)
+exports('GiveItem', function(src, item, amount, metadata, options)
+    return Inv.Give(src, item, amount, type(metadata) == 'table' and metadata or nil,
+        type(options) == 'table' and options.pickup == false)
 end)
 exports('RemoveItem', function(src, item, amount) return Inv.Remove(src, item, amount) end)
 
@@ -2077,6 +2099,7 @@ exports('RemoveSlot', function(src, slot, item)
     e.amount = e.amount - 1
     if e.amount <= 0 then inv.slots[slot] = nil end
     persistSlot(inv, slot)
+    receipt(src, item, 1, 'removed', inv.ownerId)
     Inv.Push(src)
     return true
 end)
@@ -2137,6 +2160,7 @@ BSB.RegisterCallback('inventory:dropWorld', function(src, slot, amount, coords)
     local meta = copyTable(entry.metadata)
     if entry.amount <= 0 then inv.slots[tonumber(slot)] = nil end
     persistSlot(inv, tonumber(slot))
+    receipt(src, item, amount, 'removed', inv.ownerId)
     Inv.Push(src)
 
     dropSeq = dropSeq + 1
@@ -2201,7 +2225,7 @@ BSB.RegisterCallback('inventory:give', function(src, slot, amount, targetSrc)
     amount = math.max(1, math.min(math.floor(tonumber(amount) or entry.amount), entry.amount))
     local item = entry.item
 
-    local ok, label = Inv.Give(targetSrc, item, amount)
+    local ok, label = Inv.Give(targetSrc, item, amount, nil, true)
     if not ok then return { ok = false, error = Lp(src, 'inv.e_cant_carry', { why = label or '' }) } end
 
     entry.amount = entry.amount - amount
@@ -2346,6 +2370,7 @@ exports('GiveAll', function(src, item, amount, metadata)
     local inv = playerInventory(src)
     if not inv then return false end
     local ok = addAll(inv, item, math.max(1, math.floor(tonumber(amount) or 1)), metadata)
+    if ok then receipt(src, item, math.max(1, math.floor(tonumber(amount) or 1)), 'received', inv.ownerId) end
     Inv.Push(src)
     return ok
 end)
@@ -2358,7 +2383,7 @@ exports('MoveToContainer', function(src, item, amount, containerId)
     amount = math.max(1, math.floor(tonumber(amount) or 1))
     if Inv.Count(src, item) < amount then return false end
     if not addAll(box, item, amount) then return false end
-    Inv.Remove(src, item, amount)
+    Inv.Remove(src, item, amount, box.wornBy == inv)
     pushContainer(containerId)
     return true
 end)
@@ -2372,6 +2397,7 @@ exports('MoveFromContainer', function(src, item, amount, containerId)
     if not addAll(inv, item, amount) then return false end
     removeFromInv(box, item, amount)
     pushContainer(containerId)
+    if box.wornBy ~= inv then receipt(src, item, amount, 'received', inv.ownerId) end
     Inv.Push(src)
     return true
 end)

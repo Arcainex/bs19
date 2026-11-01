@@ -37,6 +37,16 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* Placement/fade belongs to the wrapper. The item plate retains every native grid style. */
+.pickup-visual {
+    position: fixed; left: 50%; bottom: calc(22vh / var(--ui-scale, 1));
+    transform: translateX(-50%); pointer-events: none; z-index: 100;
+    opacity: 1; transition: opacity 180ms ease-out;
+}
+.pickup-visual[hidden] { display: none !important; }
+.pickup-visual.is-fading { opacity: 0; }
+.pickup-visual .grid { padding: 0; }
+
 /* A vignette rather than a blackout; the ped in the middle column is lit by the world behind. */
 .scrim {
     position: fixed; inset: 0;
