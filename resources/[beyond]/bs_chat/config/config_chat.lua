@@ -9,14 +9,13 @@ Chat.Settings = {
     --- Lines kept in the scrollback. Beyond this the oldest are dropped.
     history = 120,
 
-    --- Characters one message may carry. Anything longer is truncated rather
-    --- than refused: losing the end of a sentence beats losing all of it.
+    --- Characters one message may carry.
     maxLength = 220,
 
     -- Messages per player per ten seconds. Extra ones are dropped silently.
     rateLimit = 12,
 
-    -- Proximity chat, off by default. When enabled, only players within `range` metres hear you; staff and system messages are unaffected.
+    -- Proximity chat, off by default.
     proximity = {
         enabled = false,
         range   = 40.0,

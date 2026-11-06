@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Safezone',
     ['zed.search_body'] = 'Search body',
     ['zed.skin'] = 'Skin the body',
-    ['zed.take_down'] = '[E]  TAKE IT DOWN',
+    ['zed.takedown_opt'] = 'Take down',
     ['zed.they_here'] = 'They are here.',
     ['zed.unknown_opt'] = 'Unknown option.',
     ['zed.vip_colours'] = 'Custom colours are a VIP perk.',

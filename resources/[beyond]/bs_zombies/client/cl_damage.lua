@@ -63,6 +63,9 @@ local function regionForImpact(ped, hit)
     return bestRegion, headshot
 end
 
+-- Shared with cl_filler.lua, so a hit on a filler walker is resolved the same way before it is replayed
+Zombies.RegionForImpact = regionForImpact
+
 -- Bones the engine can report for a head hit
 local ENGINE_HEAD = { [31086] = true, [12844] = true }
 local HEAD_POINTS = { 31086 }
@@ -175,10 +178,11 @@ function Zombies.IsMeleeWeapon(hash)
     return MELEE_GROUPS[GetWeapontypeGroup(hash)] == true
 end
 
-local function report(id, region, headshot, weaponHash, dist)
+local function report(id, region, headshot, weaponHash, dist, point)
     if Zombies.IsMeleeWeapon and Zombies.IsMeleeWeapon(weaponHash) then
         Crumb('melee', 'hit id=%s region=%s', tostring(id), tostring(region))
     end
+    TriggerEvent('bs:z:localImpact', id, headshot == true, Zombies.IsMeleeWeapon(weaponHash), point)
     TriggerServerEvent('bs:z:dmg', id, region, headshot and 1 or 0,
                        weaponHash, dist)
 
@@ -285,7 +289,7 @@ local function onShotFired(impact)
 
     if headshot then
         clearEngineHit(entity)
-        report(id, region, headshot, weaponHash or 0, dist)
+        report(id, region, headshot, weaponHash or 0, dist, hit)
         return
     end
 
@@ -297,7 +301,7 @@ local function onShotFired(impact)
             Wait(0)
         until GetGameTimer() > deadline
         clearEngineHit(entity)
-        report(id, region, headshot, weaponHash or 0, dist)
+        report(id, region, headshot, weaponHash or 0, dist, hit)
     end)
 end
 
@@ -356,7 +360,7 @@ local function onMeleeSwing()
     local region, headshot = regionForImpact(bestPed, aim)
 
     local _, weaponHash = GetCurrentPedWeapon(ped, true)
-    report(bestId, region, headshot, weaponHash or 0, bestDist)
+    report(bestId, region, headshot, weaponHash or 0, bestDist, aim)
 end
 
 CreateThread(function()

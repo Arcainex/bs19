@@ -10,6 +10,8 @@ Registry = {
     hostOf    = {},    -- [src] = { [id] = true }
     -- Short recycled label for staff debug, separate from the permanent record id used on the wire.
     debugIds  = { next = 1, free = {} },
+    endedIds  = {},    -- [id] = ms: removed or dead, never created again (spawnEnt guard)
+    recentDeaths = {}, -- { x, y, z, at }: no filler promotion right where a walker just died
     hordeBonus = {},   -- [src] = { startsAt, until_, extra } - set by sv_director
 }
 
@@ -133,7 +135,7 @@ local function noteBirth(record, path)
     local floor = spawnFloor()
 
     -- 'staff' is exempt from the floor (see zombies:force), so it is only stamped
-    if path ~= 'staff' and path ~= 'event' and d and d < floor then
+    if path ~= 'staff' and path ~= 'event' and path ~= 'filler' and d and d < floor then
         print(('^1[BS ZOMBIES]^7 FLOOR BREACH AT BIRTH: walker %d created by "%s" %.0fm from src %s (floor %.0fm) at %.1f %.1f')
             :format(record.id, path, d, tostring(src), floor, record.x, record.y))
     end
@@ -389,6 +391,7 @@ end
 local function removeZombie(id, reason)
     local record = Registry.zombies[id]
     if not record then return end
+    local hadEnt = record.ent ~= nil
 
     -- Networked walker: corpse it or delete its entity (sv_net.lua).
     if record.ent and ZNet and ZNet.OnRemove then
@@ -408,10 +411,21 @@ local function removeZombie(id, reason)
     liveGridDrop(record)
     releaseDebugId(record.debugId)
     Registry.zombies[id] = nil
+    Registry.endedIds[id] = GetGameTimer()
 
     -- Removals are counted by reason and reported by the director tick.
     Registry.removedBy = Registry.removedBy or {}
     Registry.removedBy[reason or '?'] = (Registry.removedBy[reason or '?'] or 0) + 1
+    -- Kept for /zpop: running totals and the last few removals with age and distance
+    Registry.removedTotal = Registry.removedTotal or {}
+    Registry.removedTotal[reason or '?'] = (Registry.removedTotal[reason or '?'] or 0) + 1
+    Registry.recentRemovals = Registry.recentRemovals or {}
+    local nd = nearestPlayer2D(record.x, record.y)
+    table.insert(Registry.recentRemovals, 1, ('#%d %s age %.0fs %s, %s, ped %s')
+        :format(id, tostring(reason), (GetGameTimer() - (record.born or GetGameTimer())) / 1000.0,
+                nd and ('%.0fm'):format(nd) or '?', tostring(record.bornBy or '?'),
+                hadEnt and 'yes' or 'no'))
+    while #Registry.recentRemovals > 10 do table.remove(Registry.recentRemovals) end
 
     -- Forced staff spawns are rare and interesting, so each one is named.
     if record.cell and tostring(record.cell):sub(1, 6) == 'force:' then
@@ -425,6 +439,7 @@ local function removeZombie(id, reason)
 end
 
 Registry.Remove = removeZombie
+Registry.StreamRadius = STREAM_RADIUS
 Registry.GridPut = liveGridPut
 Registry.AssignHost = assignHost
 
@@ -617,6 +632,63 @@ end
 
 -- Lets the streaming planner (same Lua state) reach the function above
 Registry.SpawnAtPoint = spawnAtPoint
+
+-- Hybrid population: a local filler walker noticed a player and becomes a real walker where it stood
+-- Exempt from the distance floor (it is already in front of the player); safe zones and the world cap still apply
+-- headroom lets a promotion run a little over the world cap; far records are shed by the usual paths
+local function recentDeathNear(x, y, radius, ms)
+    local now = GetGameTimer()
+    for _, d in ipairs(Registry.recentDeaths) do
+        if now - d.at <= ms and (d.x - x) ^ 2 + (d.y - y) ^ 2 <= radius * radius then return true end
+    end
+    return false
+end
+Registry.RecentDeathNear = recentDeathNear
+
+local function spawnPromoted(x, y, z, heading, model, headroom, look)
+    if not ZPolicy.Point(x, y, z) or not ZPolicy.Finite(heading) then return nil, 'noCoord' end
+    if inSafeZone(x, y) then return nil, 'safeZone' end
+    -- Never a new walker where one just died (a filler standing on the body, or a replayed promotion)
+    local FC = (Zombies and Zombies.Filler) or {}
+    if recentDeathNear(x, y, tonumber(FC.deathExclusionRadius) or 4.0, tonumber(FC.deathExclusionMs) or 20000) then
+        return nil, 'recentDeath'
+    end
+    local count = 0
+    for _ in pairs(Registry.zombies) do count = count + 1 end
+    if count >= MAX_TOTAL + math.max(0, math.floor(tonumber(headroom) or 0)) then return nil, 'cap' end
+
+    local typeId = 'walker'
+    local def = Zombies.Types[typeId]
+    if not def then return nil, 'noType' end
+    local known = false
+    for _, m in ipairs(Zombies.Models or {}) do if m == model then known = true break end end
+    if not known then model = Zombies.PickModel(x, y, typeId) end
+    if not model then return nil, 'noModel' end
+
+    local id = Registry.nextId
+    Registry.nextId = id + 1
+    local zhp = ZDiff.Health(def.health, x, y)
+    local record = {
+        id = id, debugId = acquireDebugId(),
+        cell = 'filler:' .. id, typeId = typeId, model = model,
+        x = x, y = y, z = z, h = heading,
+        -- The filler stood on this spot, so the client's Z is the ground
+        needsGround = false,
+        hp = zhp, maxHp = zhp,
+        reacher = Zombies.Reach.enabled and math.random() < (Zombies.Reach.chance or 0.4),
+        feeding = false,
+        born = GetGameTimer(),
+        state = 'idle',
+        filler = true,
+        look = look,
+    }
+    Registry.zombies[id] = record
+    Registry.byCell[record.cell] = id
+    liveGridPut(record)
+    noteBirth(record, 'filler')
+    return record
+end
+Registry.SpawnPromoted = spawnPromoted
 
 
 local function countNear(x, y, z)
@@ -973,14 +1045,22 @@ RegisterNetEvent('bs:z:report', function(batch)
     local src = source
     if type(batch) ~= 'table' then return end
 
-    local mine = Registry.hostOf[src]
-    if not mine then return end
-
     local now = GetGameTimer()
 
     for _, entry in ipairs(batch) do
-        local id = entry[1]
-        local record = Registry.zombies[id]
+        local id = tonumber(type(entry) == 'table' and entry[1] or nil)
+        local record = id and Registry.zombies[id]
+        local mine = Registry.hostOf[src] or {}
+
+        -- A networked walker's engine owner is its host even when the host map has not caught up yet
+        if record and not mine[id] and record.ent and ZNet and ZNet.enabled and DoesEntityExist(record.ent)
+           and NetworkGetEntityOwner(record.ent) == src then
+            record.netOwner = src
+            assignHost(record)
+            mine = Registry.hostOf[src] or {}
+            Registry.reportHealed = (Registry.reportHealed or 0) + 1
+        end
+        if record and not mine[id] then Registry.reportRefused = (Registry.reportRefused or 0) + 1 end
 
         -- Only the host of THIS walker may move it.
         if record and mine[id] and record.ent and ZNet and ZNet.enabled then
@@ -1068,6 +1148,7 @@ local killRate = {}
 -- Weapon name to hash, built once at start. cl_combat reports the weapon as
 local weaponByHash = {}
 for name, entry in pairs(Zombies.WeaponBaseDamage) do
+    entry.name = entry.name or name
     weaponByHash[tostring(GetHashKey(name))] = entry
 end
 
@@ -1201,9 +1282,16 @@ end)
 local releaseGrab   -- defined with the grab events below
 
 local function applyHit(src, id, record, damage, headshot, weapon, noReward)
+    -- A walker dies once
+    if record.dead or Registry.zombies[id] ~= record then
+        print(('[BS ZOMBIES] RESPAWN BLOCKED id=%s (second death ignored)'):format(tostring(id)))
+        return
+    end
     if ZSimSense and ZSimSense.ReportDamage then ZSimSense.ReportDamage(src, id) end
     Registry.hitStats.applied = Registry.hitStats.applied + 1
     record.hp = record.hp - damage
+    -- The health bar reads this bag, so every client shows the server's hp
+    if record.ent and ZNet and ZNet.MirrorHp then pcall(ZNet.MirrorHp, record) end
 
     if record.hp > 0 then
         -- Everyone sees the hit, and everything nearby turns toward it.
@@ -1212,6 +1300,10 @@ local function applyHit(src, id, record, damage, headshot, weapon, noReward)
     end
 
     Registry.hitStats.deaths = Registry.hitStats.deaths + 1
+    record.dead = true
+    table.insert(Registry.recentDeaths, { x = record.x, y = record.y, z = record.z or 0.0, at = GetGameTimer() })
+    while #Registry.recentDeaths > 64 do table.remove(Registry.recentDeaths, 1) end
+    if Registry.AuditHit then Registry.AuditHit(id, src, 'died', tostring(weapon or '?'), damage, record.hp) end
     if record.grabBy or record.state == 'grab' then releaseGrab(record) end   -- end the grab cleanly
 
     -- Death path order matters: ZNodes.RecordDeath
@@ -1224,6 +1316,7 @@ local function applyHit(src, id, record, damage, headshot, weapon, noReward)
         x = record.x, y = record.y, z = record.z,
         killer = src, headshot = headshot and true or false,
         loot = def.loot or 'walker',
+        net = record.net,
     })
 
     -- 2
@@ -1254,6 +1347,9 @@ local function applyHit(src, id, record, damage, headshot, weapon, noReward)
 
     -- Staff kills (/zkill) pay nothing and add no kill stats.
     if noReward then return end
+
+    -- Kill hook for other resources (bs_darkzone XP). Server event only.
+    pcall(TriggerEvent, 'bs:zombies:killed', src, record.event, record.typeId, record.x, record.y)
 
     -- Rewards and logging. Isolated: an error here costs a payout, not a death.
 
@@ -1461,6 +1557,34 @@ end)
 
 local dmgGate = {}   -- [src] = { at = ms, n = shots this window }
 
+-- Hit audit: the last hits on each walker with what the server decided (/zinspect)
+Registry.hitLog = Registry.hitLog or {}
+Registry.hitStats.refused = Registry.hitStats.refused or {}
+local function audit(id, src, verdict, why, dmg, hp, region, weapon)
+    if verdict == 'refused' then
+        local key = tostring(why):match('^(%S+)') or '?'
+        Registry.hitStats.refused[key] = (Registry.hitStats.refused[key] or 0) + 1
+    end
+    id = tonumber(id)
+    if not id then return end
+    local log = Registry.hitLog[id]
+    if not log then log = {}; Registry.hitLog[id] = log end
+    table.insert(log, 1, { at = GetGameTimer(), src = src, verdict = verdict, why = why,
+                           dmg = dmg, hp = hp, region = region, weapon = weapon })
+    while #log > 5 do table.remove(log) end
+end
+Registry.AuditHit = audit
+
+CreateThread(function()
+    while true do
+        Wait(60000)
+        local now = GetGameTimer()
+        for id, log in pairs(Registry.hitLog) do
+            if not Registry.zombies[id] and (not log[1] or now - log[1].at > 120000) then Registry.hitLog[id] = nil end
+        end
+    end
+end)
+
 -- Body/melee damage multiplier from player level (bs_core) and combat skill (bs_skills)
 local function progressionMult(src)
     local P = (Zombies.Damage or {}).progression
@@ -1497,7 +1621,7 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
     gate.n = gate.n + 1
     if gate.n > (D.maxShotsPerSecond or 30) then
         Registry.hitStats.rate = (Registry.hitStats.rate or 0) + 1
-        return
+        return audit(id, src, 'refused', 'rate')
     end
 
     Registry.hitStats.received = Registry.hitStats.received + 1
@@ -1506,7 +1630,7 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
     if not record then
         Registry.hitStats.noRecord = Registry.hitStats.noRecord + 1
         tellClientNoSuchWalker(src, id)
-        return
+        return audit(id, src, 'refused', 'noRecord')
     end
 
     if record.nodeId then
@@ -1517,12 +1641,12 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
 
     -- Range check against the shooter's real server position
     local ped = GetPlayerPed(src)
-    if not ped or ped == 0 then return end
+    if not ped or ped == 0 then return audit(id, src, 'refused', 'noShooterPed') end
     local at = GetEntityCoords(ped)
     local targetX, targetY = record.x, record.y
     local live = record.ent and DoesEntityExist(record.ent) and record.ent or nil
     if live then
-        if GetEntityRoutingBucket(live) ~= GetPlayerRoutingBucket(src) then return end
+        if GetEntityRoutingBucket(live) ~= GetPlayerRoutingBucket(src) then return audit(id, src, 'refused', 'bucket') end
         local position = GetEntityCoords(live)
         targetX, targetY = position.x, position.y
     end
@@ -1535,29 +1659,65 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
             print(('[BS ZOMBIES] walker %d hit refused: server record %.0fm from shooter (limit %.0fm); host movement may be desynced')
                 :format(id, math.sqrt(dx * dx + dy * dy), maxR))
         end
-        return
+        return audit(id, src, 'refused', ('outOfRange %.0fm'):format(math.sqrt(dx * dx + dy * dy)))
     end
 
     region = tostring(region or 'torso')
+    if not record.hp or not record.maxHp then
+        -- A record without health can never die; give it the type default rather than ignoring hits
+        local def = Zombies.Types[record.typeId or 'walker'] or Zombies.Types.walker or {}
+        record.maxHp = record.maxHp or record.hp or def.health or 100
+        record.hp = record.hp or record.maxHp
+        Registry.hitStats.healedHp = (Registry.hitStats.healedHp or 0) + 1
+    end
     local headshot = (tonumber(headshotFlag) or 0) == 1
     if not known[src] or not known[src][id] then
         -- State bags can arrive before the periodic subscription snapshot.
         -- Only a live, server-owned record in this bucket may use that fallback.
-        if not live or not record.net or NetworkGetNetworkIdFromEntity(live) ~= record.net then
+        -- Walkers that just streamed in or changed owner are still real records: accept them when close,
+        -- otherwise shots on them were dropped silently and the walker never lost health.
+        local closeEnough = (dx * dx + dy * dy) <= ((D.unsubscribedHitRange or 150.0) ^ 2)
+        if not closeEnough and (not live or not record.net or NetworkGetNetworkIdFromEntity(live) ~= record.net) then
             Registry.hitStats.notSubscribed = (Registry.hitStats.notSubscribed or 0) + 1
-            return
+            if not record.warnedNotSubscribed then
+                record.warnedNotSubscribed = true
+                print(('[BS ZOMBIES] walker %d hit refused: shooter %d not subscribed and %.0fm away'):format(id, src, math.sqrt(dx * dx + dy * dy)))
+            end
+            return audit(id, src, 'refused', 'notSubscribed')
         end
     end
-    if region ~= 'head' and region ~= 'torso' and region ~= 'arm' and region ~= 'leg' then return end
-    if headshot and region ~= 'head' then return end
+    if region ~= 'head' and region ~= 'torso' and region ~= 'arm' and region ~= 'leg' then
+        return audit(id, src, 'refused', 'badRegion ' .. region:sub(1, 12))
+    end
+    if headshot and region ~= 'head' then return audit(id, src, 'refused', 'headshotNotHead') end
 
     -- Weapon damage comes from this server's table; the client only says which weapon
     local entry = weaponByHash[tostring(weapon)]
-    if entry and entry.melee and (dx*dx+dy*dy) > ((D.meleeRange or 2.4)+2.0)^2 then return end
+    -- Server positions trail the clients by a few hundred ms, so melee gets slack (meleeServerSlack) on top of its reach
+    if entry and entry.melee and (dx*dx+dy*dy) > ((D.meleeRange or 2.4) + (D.meleeServerSlack or 4.0))^2 then
+        return audit(id, src, 'refused', ('meleeRange %.1fm'):format(math.sqrt(dx * dx + dy * dy)), nil, nil, region, weapon)
+    end
     local base = entry and entry.raw or nil
     if not base or base <= 0 then base = (record.maxHp or 220) * 0.12 end
     if entry and entry.melee then
         base = base * ((Zombies.Settings and Zombies.Settings.meleeDamageScale) or 1.0)
+    end
+
+    -- Freeflow melee: hits-to-kill per weapon (blades 1, blunt 2-4, fists 5+). Finishers still kill through the execution path.
+    local C = Zombies.Combat
+    local hitsToKill = entry and entry.melee and C and C.enabled and C.meleeHits and C.meleeHits[entry.name or '']
+    if hitsToKill then
+        local per = math.ceil((record.maxHp or 220) / math.max(1, hitsToKill))
+        if headshot then per = math.ceil(per * (C.meleeHeadMult or 1.5)) end
+        local damage = math.min(record.hp or 0, per)
+        headshot = headshot and damage >= (record.hp or 0)
+        if damage > 0 then
+            local hpBefore = record.hp or 0
+            audit(id, src, 'ok', 'melee', damage, hpBefore - damage, region, weapon)
+            applyHit(src, id, record, damage, headshot, weapon)
+            TriggerClientEvent('bs:z:dmgnum', src, id, headshot and hpBefore or damage, headshot and 'head' or 'body')
+            return
+        end
     end
 
     -- Headshot rule: a headshot kills at any hp
@@ -1595,11 +1755,12 @@ RegisterNetEvent('bs:z:dmg', function(id, region, headshotFlag, weapon, dist)
             end
             TriggerClientEvent('bs:z:hurt', -1, id, record.hp, src)
             TriggerClientEvent('bs:z:dmgnum', src, id, 0, 'floored')
-            return
+            return audit(id, src, 'floored', 'bodyFloor', 0, record.hp, region, weapon)
         end
     end
 
     local hpBefore = record.hp or 0
+    audit(id, src, 'ok', headshot and 'headshot' or 'body', damage, hpBefore - damage, region, weapon)
     applyHit(src, id, record, damage, headshot, weapon)
     TriggerClientEvent('bs:z:dmgnum', src, id, headshot and hpBefore or damage, headshot and 'head' or 'body')
 end)
@@ -1675,7 +1836,7 @@ RegisterNetEvent('bs:z:envdeath', function(id)
     elseif record.host ~= source then return end
 
     Registry.hitStats.envDeath = (Registry.hitStats.envDeath or 0) + 1
-    TriggerClientEvent('bs:z:dead', -1, id, { env = true })
+    TriggerClientEvent('bs:z:dead', -1, id, { env = true, net = record.net })
     removeZombie(id, 'environment')
 end)
 
@@ -2071,13 +2232,16 @@ BSB.RegisterCallback('zombies:nearest', function(src)
     local ranked = {}
 
     -- The count within streaming range matters as much as the nearest one: "14 walkers within 100m but none drawn" is a diagnosis
-    local near = 0
+    local near, withPed = 0, 0
 
     for _, record in pairs(Registry.zombies) do
         local dx, dy = record.x - at.x, record.y - at.y
         local d2 = dx * dx + dy * dy
         if d2 < bestD2 then best, bestD2 = record, d2 end
-        if d2 <= (100.0 * 100.0) then near = near + 1 end
+        if d2 <= (100.0 * 100.0) then
+            near = near + 1
+            if record.ent and DoesEntityExist(record.ent) then withPed = withPed + 1 end
+        end
         if d2 <= (400.0 * 400.0) then ranked[#ranked + 1] = { d2 = d2, id = record.id } end
     end
     table.sort(ranked, function(a, b) return a.d2 < b.d2 end)
@@ -2102,6 +2266,8 @@ BSB.RegisterCallback('zombies:nearest', function(src)
         maxHp    = best.maxHp,
         distance = math.sqrt(bestD2),
         near     = near,
+        withPed  = withPed,
+        bucket   = GetPlayerRoutingBucket(src),
         ids      = ids,
 
         -- Provenance, so staff next to a walker that should not be there can see where it came from without the server log
@@ -2332,5 +2498,182 @@ RegisterNetEvent('bs:z:zkillhit', function(id)
     if zkillOne(src, id) then
         zkillLog(src, ('zkill walker %d at %.1f, %.1f, %.1f'):format(id, x, y, z))
         zkillSay(src, Lp(src, 'zed.zkill_done', { id = id }))
+    end
+end)
+
+-- Companion hits share the normal registry death path. No source-player XP is awarded for NPC work.
+local linkHitGate,linkClawGate={},{}
+exports('LinkDamage',function(src,id,ped,weapon,head)
+    if GetInvokingResource()~='bs_survivor_link'then return false end
+    local record=Registry.zombies[id]
+    if not record or not record.ent or not DoesEntityExist(record.ent)or not DoesEntityExist(ped)then return false end
+    if GetEntityRoutingBucket(ped)~=GetEntityRoutingBucket(record.ent)then return false end
+    local entry=weaponByHash[tostring(weapon)]
+    local range=entry and entry.melee and 3.0 or 100.0
+    if #(GetEntityCoords(ped)-GetEntityCoords(record.ent))>range then return false end
+    local key=ped..':'..id;local now=GetGameTimer()
+    if now-(linkHitGate[key]or 0)<(entry and entry.melee and 600 or 100)then return false end
+    linkHitGate[key]=now
+    local base=entry and entry.raw or 12
+    local floor=(entry and entry.melee or (Zombies.Damage or {}).headshotOnly==false)and 0 or ((Zombies.Damage or {}).bodyFloor or 10)
+    local damage=head and record.hp or math.max(0,math.min(base,record.hp-floor))
+    if damage>0 then applyHit(src,id,record,damage,head,tostring(weapon),true)end
+    return true
+end)
+-- Survivor Link grab: the walker that brought a companion down holds him. Same broadcast as a player grab,
+-- with the companion's negative net id as the victim, so no player is ever matched. Re-sent by the caller while it lasts.
+exports('LinkHold',function(net,victimNet,holding)
+    if GetInvokingResource()~='bs_survivor_link'then return false end
+    local zombie=NetworkGetEntityFromNetworkId(tonumber(net)or 0)
+    if zombie==0 or not DoesEntityExist(zombie)then return false end
+    local id=Entity(zombie).state.bsZombie;local record=id and Registry.zombies[id]
+    if not record or record.ent~=zombie or record.grabBy then return false end
+    record.state=holding and 'grab'or 'hunting'
+    TriggerClientEvent('bs:z:grabbed',-1,record.id,-math.abs(tonumber(victimNet)or 0),holding and true or false)
+    return true
+end)
+exports('LinkClaw',function(net,ped)
+    if GetInvokingResource()~='bs_survivor_link'or not net or not DoesEntityExist(ped)then return false end
+    local zombie=NetworkGetEntityFromNetworkId(net)
+    if zombie==0 or not DoesEntityExist(zombie)then return false end
+    local id=Entity(zombie).state.bsZombie;local record=id and Registry.zombies[id]
+    if not record or record.ent~=zombie or record.tgtSrc~=-NetworkGetNetworkIdFromEntity(ped)or GetEntityRoutingBucket(zombie)~=GetEntityRoutingBucket(ped)or #(GetEntityCoords(zombie)-GetEntityCoords(ped))>1.8 then return false end
+    local now=GetGameTimer();if now-(linkClawGate[id]or 0)<((Zombies.Attack or {}).cooldown or 1400)then return false end
+    linkClawGate[id]=now
+    local def=Zombies.Types and Zombies.Types[record.typeId or 'walker']or {}
+    return math.max(1,math.min(100,tonumber(def.damage)or 12))
+end)
+
+
+-- /zinspect <id> (alias /zwhy): one walker, server and client side. No id: the walker in your crosshair.
+
+local inspectPending = {}   -- ['requester:id:client'] = expires (ms)
+
+local function inspectSay(src, line)
+    print(line)
+    if src and src > 0 then TriggerClientEvent('chat:addMessage', src, { args = { line } }) end
+end
+
+local function fmtAge(at)
+    if not at then return 'never' end
+    return ('%.1fs ago'):format((GetGameTimer() - at) / 1000.0)
+end
+
+local function inspectAllowed(src)
+    return src == 0 or IsPlayerAceAllowed(src, 'bs.admin') or isStaff(src)
+end
+
+local function doInspect(src, id)
+    local P = ('^5[ZINSPECT #%d]^7 '):format(id)
+    local r = Registry.zombies[id]
+    local owner
+    if r then
+        local hosted = Registry.hostOf[r.host or -1] and Registry.hostOf[r.host or -1][id] and true or false
+        inspectSay(src, P .. ('record hp %s / maxHp %s | type %s state %s | filler %s crawler %s feeding %s | born %s via %s')
+            :format(tostring(r.hp), tostring(r.maxHp), tostring(r.typeId), tostring(r.state), tostring(r.filler == true),
+                    tostring(r.crawler == true), tostring(r.feeding == true), fmtAge(r.born), tostring(r.bornBy or '?')))
+        local ent = r.ent
+        if ent and DoesEntityExist(ent) then
+            owner = NetworkGetEntityOwner(ent)
+            local st = Entity(ent).state
+            local c = GetEntityCoords(ent)
+            inspectSay(src, P .. ('entity %s net %s (record net %s) | engine owner %s, netOwner %s, host %s (host map %s) | owner report %s')
+                :format(tostring(ent), tostring(NetworkGetNetworkIdFromEntity(ent)), tostring(r.net), tostring(owner),
+                        tostring(r.netOwner), tostring(r.host), tostring(hosted), fmtAge(r.lastReport)))
+            inspectSay(src, P .. ('server copy: health %s / %s | bucket %s | at %.1f %.1f %.1f | bags bsZombie=%s zHp=%s zMhp=%s dead=%s zState=%s zTarget=%s')
+                :format(tostring(GetEntityHealth(ent)), tostring(GetEntityMaxHealth and GetEntityMaxHealth(ent) or '?'),
+                        tostring(GetEntityRoutingBucket(ent)), c.x, c.y, c.z, tostring(st.bsZombie), tostring(st.zHp),
+                        tostring(st.zMhp), tostring(st.bsZombieDead), tostring(st.zState), tostring(st.zTarget)))
+        else
+            inspectSay(src, P .. ('no entity (record ent %s) - not networked right now'):format(tostring(ent)))
+        end
+        local subs = {}
+        for s2, seen in pairs(known) do if seen[id] then subs[#subs + 1] = tostring(s2) end end
+        inspectSay(src, P .. 'subscribed: ' .. (#subs > 0 and table.concat(subs, ', ') or 'nobody'))
+    else
+        local found
+        for ent, c in pairs((ZNet and ZNet.corpses) or {}) do
+            if tostring(c.id) == tostring(id) then
+                found = true
+                owner = DoesEntityExist(ent) and NetworkGetEntityOwner(ent) or nil
+                inspectSay(src, P .. ('DEAD: corpse entity %s net %s owner %s | died %s | owner confirmed %s | forced kill %s | server health %s')
+                    :format(tostring(ent), tostring(c.net), tostring(owner), fmtAge(c.deathAt or c.bornAt),
+                            c.ack and ('yes by ' .. tostring(c.ack)) or 'NO', c.forcedAt and fmtAge(c.forcedAt) or 'not needed',
+                            DoesEntityExist(ent) and tostring(GetEntityHealth(ent)) or 'gone'))
+            end
+        end
+        if not found then
+            local why
+            for _, line in ipairs(Registry.recentRemovals or {}) do
+                if line:sub(1, #tostring(id) + 2) == ('#' .. id .. ' ') then why = line break end
+            end
+            inspectSay(src, P .. 'no record: ' .. (why or 'removed a while ago or never existed'))
+        end
+    end
+    local log = Registry.hitLog[id]
+    if log and #log > 0 then
+        for _, h in ipairs(log) do
+            inspectSay(src, P .. ('  hit %s from %s: %s (%s) dmg %s -> hp %s region %s weapon %s')
+                :format(fmtAge(h.at), tostring(h.src), tostring(h.verdict), tostring(h.why), tostring(h.dmg or '-'),
+                        tostring(h.hp or '-'), tostring(h.region or '-'), tostring(h.weapon or '-')))
+        end
+    else
+        inspectSay(src, P .. '  no hits reached the server for this walker')
+    end
+    -- The requester and the engine owner add their own view of the ped
+    local asked = {}
+    for _, who in ipairs({ src, owner }) do
+        who = tonumber(who)
+        if who and who > 0 and not asked[who] and GetPlayerName(who) then
+            asked[who] = true
+            inspectPending[('%d:%d:%d'):format(src, id, who)] = GetGameTimer() + 10000
+            TriggerClientEvent('bs:z:inspectq', who, id, src)
+        end
+    end
+end
+
+local function inspectCommand(src, args)
+    if not inspectAllowed(src) then return end
+    local id = tonumber(args[1])
+    if id then return doInspect(src, math.floor(id)) end
+    if src == 0 then print('usage: zinspect <walker id>') return end
+    TriggerClientEvent('bs:z:inspectcast', src)
+end
+RegisterCommand('zinspect', inspectCommand, false)
+RegisterCommand('zwhy', inspectCommand, false)
+
+RegisterNetEvent('bs:z:inspecthit', function(id)
+    local src = source
+    if not inspectAllowed(src) then return end
+    id = tonumber(id)
+    if not id or id <= 0 then
+        inspectSay(src, '^5[ZINSPECT]^7 no walker under your crosshair - use /zinspect <id> (ids are in /zgait)')
+        return
+    end
+    doInspect(src, math.floor(id))
+end)
+
+RegisterNetEvent('bs:z:inspecta', function(id, requester, view)
+    local src = source
+    id, requester = tonumber(id), tonumber(requester)
+    if not id or not requester then return end
+    local key = ('%d:%d:%d'):format(requester, id, src)
+    local untilAt = inspectPending[key]
+    if not untilAt or GetGameTimer() > untilAt then return end
+    inspectPending[key] = nil
+    inspectSay(requester, ('^5[ZINSPECT #%d]^7 client %d (%s): %s')
+        :format(id, src, GetPlayerName(src) or '?', tostring(view):sub(1, 600)))
+end)
+
+CreateThread(function()
+    while true do
+        Wait(60000)
+        local now = GetGameTimer()
+        for id, at in pairs(Registry.endedIds) do
+            if now - at > 1800000 then Registry.endedIds[id] = nil end
+        end
+        local keep = {}
+        for _, d in ipairs(Registry.recentDeaths) do if now - d.at <= 120000 then keep[#keep + 1] = d end end
+        Registry.recentDeaths = keep
     end
 end)

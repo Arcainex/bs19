@@ -1,0 +1,70 @@
+/* Theme pack: Quarantine: field hospital records. Off-white stained paper, red hazard tape, typewritten forms and red stamped headers. */
+html[data-theme="quarantine"] {
+    --bs-f-stencil: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-f-cond: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-f-text: 'Courier New', Courier, monospace;
+    --bs-f-mono: 'Courier New', Courier, monospace;
+    --bs-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='4' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.431 0 0 0 0 0.337 0 0 0 0 0.196 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+    --bs-scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cg fill='none' stroke='%237a5a30'%3E%3Ccircle cx='470' cy='300' r='58' stroke-width='5' opacity='.07'/%3E%3Ccircle cx='474' cy='296' r='52' stroke-width='1.5' opacity='.06'/%3E%3C/g%3E%3Cg stroke='%235a4a38' stroke-width='.7' opacity='.06'%3E%3Cpath d='M0 140l600-30M210 0l-40 400'/%3E%3C/g%3E%3Cg stroke='%233a6a9a' stroke-width='.5' opacity='.05'%3E%3Cpath d='M0 30.5h600M0 60.5h600M0 90.5h600M0 120.5h600M0 150.5h600M0 180.5h600M0 210.5h600M0 240.5h600M0 270.5h600M0 300.5h600M0 330.5h600M0 360.5h600M0 390.5h600'/%3E%3C/g%3E%3C/svg%3E");
+    --bs-stain: radial-gradient(ellipse 30% 22% at 12% 18%, rgba(140, 100, 40, .16), transparent 70%), radial-gradient(ellipse 25% 30% at 88% 80%, rgba(120, 80, 30, .12), transparent 70%);
+    --t-bg: 232,227,213;
+    --t-panel: 222,215,197;
+    --t-panel2: 206,198,177;
+    --t-ink: 28,26,24;
+    --t-ink2: 54,50,46;
+    --t-dim: 88,80,70;
+    --t-acc: 168,26,32;
+    --t-acc2: 138,18,24;
+    --t-bad: 160,24,28;
+    --t-bad2: 150,22,26;
+    --t-ok: 34,104,64;
+    --t-warn: 150,104,0;
+    --t-shade: 72,56,40;
+    --t-shade-k: 0.35;
+    --t-head-ls: .22em;
+    --t-head-w: 600;
+    --t-head-bg: rgb(var(--t-acc));
+    --t-head-pad: 3px 9px 2px;
+    --t-head-ink: rgb(244, 238, 226);
+    --t-title-ls: .24em;
+    --t-ui-ls: .12em;
+    --t-deco: repeating-linear-gradient(-45deg, rgb(var(--t-acc)) 0 9px, rgb(236, 230, 214) 9px 18px) 0 0 / 100% 5px no-repeat;
+}
+
+/* HUD over the world: its own dark set, and it only replaces the config colours when the player has no menu palette. */
+html[data-theme="quarantine"] {
+    --t-h-ink: 238,232,216;
+    --t-h-dim: 186,178,160;
+    --t-h-acc: 222,72,64;
+    --t-h-bad: 226,80,70;
+    --t-h-ok: 120,190,140;
+    --t-h-bg: 26,24,22;
+}
+html[data-theme="quarantine"]:not([data-bs-palette]) {
+    --t-hud-acc: rgb(var(--t-h-acc));
+    --t-hud-ink: rgb(var(--t-h-ink));
+    --t-hud-dim: rgb(var(--t-h-dim));
+    --t-hud-bad: rgb(var(--t-h-bad));
+    --t-hud-ok: rgb(var(--t-h-ok));
+    --t-hud-bg: rgb(var(--t-h-bg));
+    --t-hud-font: 'Courier New', Courier, monospace;
+    --t-hud-head: 'BS Text', 'Segoe UI', Arial, sans-serif;
+}
+
+/* paper does not need the dark halo text-shadows used over the world */
+html[data-theme="quarantine"] body:not(.bs-hud) .panel *, html[data-theme="quarantine"] .wrap *, html[data-theme="quarantine"] #app *, html[data-theme="quarantine"] .pause * { text-shadow: none; }
+html[data-theme="quarantine"] .sel__title, html[data-theme="quarantine"] .panel__title, html[data-theme="quarantine"] .bs-stencil { -webkit-mask-image: none; font-weight: 600; color: rgb(var(--t-ink)); }
+html[data-theme="quarantine"] .panel::after { -webkit-mask-image: none; width: 100%; }
+html[data-theme="quarantine"] .panel::before { width: 8px; background: repeating-linear-gradient(-45deg, rgb(var(--t-acc)) 0 10px, rgb(236, 230, 214) 10px 20px); opacity: 1; }
+html[data-theme="quarantine"] .vignette { background: linear-gradient(90deg, rgba(40, 32, 24, .55) 0%, transparent 50%), radial-gradient(ellipse at 62% 45%, transparent 40%, rgba(0, 0, 0, .55) 100%); }
+html[data-theme="quarantine"] .sel__play { clip-path: none; border: 2px solid rgb(var(--t-ink)); color: rgb(244, 238, 226); font-family: var(--t-f-head); font-weight: 600; letter-spacing: .3em; }
+html[data-theme="quarantine"] .sel__play::before, html[data-theme="quarantine"] .sel__play::after { display: none; }
+html[data-theme="quarantine"] .sel__play small { color: rgba(244, 238, 226, .85); }
+html[data-theme="quarantine"] .slot, html[data-theme="quarantine"] .dossier { clip-path: none; }
+html[data-theme="quarantine"] .slot.is-active::after { display: none; }
+html[data-theme="quarantine"] .slot__face img { filter: grayscale(1) contrast(1.1); }
+html[data-theme="quarantine"] .topbar { background: rgb(var(--t-bg)); padding: 8px 10px; border-bottom: 2px solid rgb(var(--t-ink)); }
+html[data-theme="quarantine"] .board, html[data-theme="quarantine"] .stats, html[data-theme="quarantine"] .sheet, html[data-theme="quarantine"] .fieldmed, html[data-theme="quarantine"] .boosters, html[data-theme="quarantine"] .bar { box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+html[data-theme="quarantine"] .tab.is-active, html[data-theme="quarantine"] .btn--primary, html[data-theme="quarantine"] .btn.primary,
+html[data-theme="quarantine"] .mode button.on, html[data-theme="quarantine"] .chip.on, html[data-theme="quarantine"] .seg button.on, html[data-theme="quarantine"] .badge.pen { color: rgb(244, 238, 226); }
+html[data-theme="quarantine"] .pause .shade { background: linear-gradient(90deg, rgba(232, 227, 213, .97), rgba(232, 227, 213, .9) 70%, rgba(232, 227, 213, .7)); }

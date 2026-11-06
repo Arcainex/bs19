@@ -44,7 +44,9 @@ function Skills.Math.PerkList(treeId, level, owned)
             requires    = perk.requires,
             cost        = perk.cost or 1,
             order       = perk.order or 99,
+            needsPerk   = perk.needsPerk,
             pending     = perk.pending or false,
+            trainer     = perk.trainer,
             owned       = owned and owned[id] and true or false,
             available   = (level or 0) >= (perk.requires or 0)
                           and (not perk.needsPerk or (owned and owned[perk.needsPerk]) and true or false),

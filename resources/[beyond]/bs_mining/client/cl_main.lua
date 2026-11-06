@@ -1,5 +1,4 @@
--- bs_mining - the swinging. Registers every node model with the interaction dot, plays the animation, makes noise and asks the server whether the swing counted. It decides nothing: yield, node state and tool wear come from the server.
--- Options use `event` strings, not functions: a closure does not survive the export boundary into bs_interactions, so the option shows but pressing E does nothing.
+-- bs_mining - the swinging.
 
 local busy = false
 
@@ -7,8 +6,7 @@ local function notify(kind, message)
     TriggerEvent('bs:ui:notify', { type = kind, message = message })
 end
 
--- Animation
--- A dict can load and still not contain the clip, in which case TaskPlayAnim silently does nothing. GetAnimDuration returning 0 is the only reliable test, so candidates are tried in order and the first playable one is kept.
+-- Animation: a dict can load and still not contain the clip, in which case TaskPlayAnim silently does nothing.
 
 local resolved = {}      -- [typeId] = anim | false
 
@@ -60,7 +58,7 @@ local function swing(typeId, def, key, coords)
 
     exports.bs_interactions:Progress(def.label, Mining.Settings.swingMs)
 
-    -- The noise is the point: every other way to get materials rewards moving, this asks you to stand still making a racket. bs_emotes owns the radius; this only reports what happened and where.
+    -- The noise is the point: every other way to get materials rewards moving
     if GetResourceState('bs_emotes') == 'started' and def.noise then
         pcall(function() exports.bs_emotes:MakeNoise(def.noise, coords) end)
     end
@@ -98,7 +96,7 @@ RegisterNetEvent('bs:mining:work', function(payload)
         local key = nodeKey(coords)
         local keepGoing = true
 
-        -- Swing until the node is empty, the tool breaks, or you stop. The loop lives here so working a rock is one decision followed by a commitment. Each swing is still validated on its own, both ends.
+        -- Swing until the node is empty, the tool breaks, or you stop.
         while keepGoing do
             local started = BSB.Await('mining:start', 8000, typeId, key)
             if not started or not started.ok then

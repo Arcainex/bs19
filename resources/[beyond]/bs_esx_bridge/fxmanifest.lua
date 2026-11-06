@@ -6,10 +6,10 @@ name 'bs_esx_bridge'
 author 'BeyondSurvival'
 description 'Compatibility shim - lets ESX-authored scripts run against BeyondSurvival'
 version '0.1.0'
+provide 'es_extended'
 
--- Using this from a third-party ESX script: change only its import.
--- ESX = exports['es_extended']:getSharedObject()  ->  ESX = exports['bs_esx_bridge']:getSharedObject()
--- See shared/sh_esx.lua for why it is a shared_script include rather than a live object (functions don't survive exports/events).
+-- Start this resource only on standalone BS19 servers. It replaces the
+-- es_extended dependency name for ESX scripts; never run it beside ESX.
 
 shared_scripts {
     '@bs_core/shared/sh_bridge.lua',
@@ -25,13 +25,10 @@ server_scripts {
     'server/sv_main.lua',
 }
 
--- Also usable from other resources via shared_scripts { '@bs_esx_bridge/shared/sh_esx.lua' }, same pattern as bs_core's sh_bridge.lua.
+-- Also usable from other resources via shared_scripts { '@bs_esx_bridge/shared/sh_esx.lua' }
 files {
     'shared/sh_esx.lua',
-}
-
-exports {
-    'getSharedObject',
+    'imports.lua',
 }
 
 dependencies {

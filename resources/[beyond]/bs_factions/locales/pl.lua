@@ -254,4 +254,11 @@ return {
     ['fac.cmd.rep_usage'] = 'Użycie: /setfactionrep <serverId> <ilość>',
     ['fac.cmd.rep_nofaction'] = 'Ten gracz nie należy do żadnej frakcji.',
     ['fac.cmd.rep_set'] = 'Ustawiono reputację na {n}.',
+    -- faction emblems and identity
+    ['fac.emblem_no_perm'] = 'Herb może zmienić tylko przywódca lub rangi z uprawnieniem Herb.',
+    ['fac.emblem_wait'] = 'Poczekaj kilka sekund przed ponownym zapisem.',
+    ['fac.banner_added'] = 'Sztandar postawiony dla: {faction}.',
+    ['fac.banner_none_near'] = 'Brak postawionego sztandaru w promieniu 6 m.',
+    ['fac.banner_removed'] = 'Sztandar usunięty.',
+    ['fac.banner_list'] = 'Sztandary: {list}',
 }

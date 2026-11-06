@@ -254,4 +254,11 @@ return {
     ['fac.cmd.rep_usage'] = 'Kullanım: /setfactionrep <serverId> <miktar>',
     ['fac.cmd.rep_nofaction'] = 'Bu oyuncu bir grupta değil.',
     ['fac.cmd.rep_set'] = 'İtibar {n} olarak ayarlandı.',
+    -- faction emblems and identity
+    ['fac.emblem_no_perm'] = 'Amblemi yalnızca lider veya Amblem iznine sahip rütbeler değiştirebilir.',
+    ['fac.emblem_wait'] = 'Tekrar kaydetmeden önce birkaç saniye bekle.',
+    ['fac.banner_added'] = '{faction} için sancak dikildi.',
+    ['fac.banner_none_near'] = '6 m içinde dikilmiş sancak yok.',
+    ['fac.banner_removed'] = 'Sancak kaldırıldı.',
+    ['fac.banner_list'] = 'Sancaklar: {list}',
 }

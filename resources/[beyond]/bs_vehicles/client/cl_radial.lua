@@ -152,18 +152,18 @@ local function diagnose(vehicle)
     local parts = Wear.Diagnose(vehicle)
     if not parts then return notify('warn', L('radial.cant_look')) end
 
-    local lines, absent = {}, {}
+    local rows, absent = {}, {}
     for _, id in ipairs(parts.missing or {}) do absent[id] = true end
     for _, part in ipairs(Vehicles.Parts) do
-        local value = math.floor(parts[part.id] or 100)
+        local value = math.max(0, math.min(100, math.floor(tonumber(parts[part.id]) or 100)))
         local state = value <= part.fail and L('cond.gone')
             or value <= part.warn and L('cond.poor')
             or value < 85 and L('cond.worn') or L('cond.good')
-        lines[#lines + 1] = absent[part.id] and ('%s: %s'):format(Veh.PartLabel(part), L('radial.missing'))
-            or ('%s %d%% (%s)'):format(Veh.PartLabel(part), value, state)
+        rows[#rows + 1] = { label = Veh.PartLabel(part), value = value,
+            state = absent[part.id] and L('radial.missing') or state, missing = absent[part.id] == true }
     end
-
-    notify('info', table.concat(lines, '  |  '), 9000)
+    SendNUIMessage({ action = 'vehicleInspection', plate = GetVehicleNumberPlateText(vehicle), rows = rows })
+    SetNuiFocus(true, true)
 end
 
 -- Doors, windows, engine, seats: the mechanical half of the wheel
@@ -580,3 +580,9 @@ RegisterKeyMapping(Vehicles.Radial.command, L('radial.keymap'),
     'keyboard', Vehicles.Radial.key)
 
 exports('OpenWheel', function() CreateThread(openWheel) end)
+
+
+RegisterNUICallback('inspectionClose', function(_, cb)
+    SetNuiFocus(false, false)
+    cb({ ok = true })
+end)

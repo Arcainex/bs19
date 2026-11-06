@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_emotes actions: hands up and whistling. Both are upper-body animations (flag 49) so you can still walk and look around.
+-- BeyondSurvival - bs_emotes actions: hands up and whistling.
 
 Actions = { handsUp = false, whistling = false }
 
@@ -25,9 +25,7 @@ local function busy()
     return false
 end
 
---------------------------------------------------------------------------------
 -- Hands up
---------------------------------------------------------------------------------
 
 function Actions.SetHandsUp(state)
     local ped = PlayerPedId()
@@ -85,9 +83,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Whistle
---------------------------------------------------------------------------------
 
 RegisterCommand('bs_whistle', function()
     if LocalPlayer.state.bsDrone then return end -- flying the drone

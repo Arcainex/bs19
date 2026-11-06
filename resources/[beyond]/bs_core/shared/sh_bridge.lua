@@ -19,7 +19,7 @@ if IsDuplicityVersion() then
     -- server
     local handlers = {}
 
-    -- fn(source, ...) -> any. Return values are sent back to the caller.
+    -- fn(source, ...) to any. Return values are sent back to the caller.
     function BSB.RegisterCallback(name, fn)
         if type(name) ~= 'string' or type(fn) ~= 'function' then
             return error('BSB.RegisterCallback(name:string, fn:function)', 2)
@@ -27,7 +27,7 @@ if IsDuplicityVersion() then
         handlers[name] = fn
     end
 
-    -- Rate limit on bs:callback:request, checked after the "is this ours" test so a flood aimed at one resource only throttles that resource's own handlers. Without it a client could spawn unbounded handler coroutines (often DB queries).
+    -- Rate limit on bs:callback:request, checked after the "is this ours" test so a flood aimed at one resource
     local requestRate = {} -- [src] = { at = GetGameTimer() window start, n = count }
     local RATE_WINDOW_MS = 1000
     local RATE_MAX       = 40
@@ -70,7 +70,7 @@ if IsDuplicityVersion() then
     local pendingClient   = {}
     local clientSequence  = 0
 
-    -- Calls a callback registered on one specific client (BSB.RegisterClientCallback) and yields until it answers, or the timeout elapses (returns nil).
+    -- Calls a callback registered on one specific client (BSB.RegisterClientCallback) and yields until it answers
     function BSB.AwaitClient(target, name, timeoutMs, ...)
         clientSequence = clientSequence + 1
         local token = ('s%d'):format(clientSequence)
@@ -160,7 +160,7 @@ else
         return table.unpack(response, 1, response.n)
     end
 
-    -- Registers a callback the server may invoke on this client via BSB.AwaitClient. Any resource may own any name; an unowned name stays silent.
+    -- Registers a callback the server may invoke on this client via BSB.AwaitClient.
     local clientHandlers = {}
     function BSB.RegisterClientCallback(name, fn)
         if type(name) ~= 'string' or type(fn) ~= 'function' then

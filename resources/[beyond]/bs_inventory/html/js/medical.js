@@ -1,5 +1,4 @@
-// Medical tab: a clickable body diagram plus a technical readout. Data comes from bs_medical (through cl_main.lua as action 'medical'); clicks go back as post('medical', ...).
-// Separate from the Field Medical card on the MYSELF tab, which it never touches.
+// Medical tab: a clickable body diagram plus a technical readout.
 (function () {
     'use strict';
     const RESN = (typeof GetParentResourceName === 'function') ? GetParentResourceName() : 'bs_inventory';
@@ -68,7 +67,7 @@
         return r;
     }
 
-    // ---------------------------------------------------------------- body
+    // body
     function renderBody() {
         const st = M.state || {};
         document.querySelectorAll('#medBody [data-part]').forEach((n) => {
@@ -100,7 +99,7 @@
         ].map(([c, l, txt]) => `<span class="med__lg"><i class="med__lgdot med__lgdot--${c}">${l}</i>${esc(txt)}</span>`).join('');
     }
 
-    // ---------------------------------------------------------------- readout
+    // readout
     function vrow(label, value, cls, bar, barCls, sub) {
         return `<span class="med__vlabel">${esc(label)}</span>
             <span class="med__val${cls ? ' med__val--' + cls : ''}">${value}</span>

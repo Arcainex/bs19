@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_inventory: item definitions are synced from config into `bs_item_definitions` on start, so the database and config cannot drift. The definitions are the source of truth for weight, stack size and behaviour.
+-- BeyondSurvival - bs_inventory: item definitions are synced from config into `bs_item_definitions` on start
 
 Items.Runtime = {}
 
@@ -19,7 +19,7 @@ CreateThread(function()
             icon      = def.icon or name,
             data      = def.data or {},
 
-            -- Items.Runtime (what Items.Get returns) now also carries size and body slot, which were previously dropped when the definition was copied.
+            -- Items.Runtime (what Items.Get returns) now also carries size and body slot
             w         = def.w or 1,
             h         = def.h or 1,
             equipSlot = def.equipSlot,
@@ -49,7 +49,6 @@ end)
 function Items.Get(name) return Items.Runtime[name] end
 
 -- Item names and descriptions in a player's language (server default without src).
--- Locale keys item.<name> and item.<name>.desc, config label as the English fallback.
 local function itemText(src, name, suffix, fallback)
     local key = 'item.' .. tostring(name) .. (suffix or '')
     local text = src and Lp(src, key) or L(key)
@@ -73,7 +72,7 @@ exports('ItemDescription', function(name, src) return ItemDescription(name, tonu
 exports('GetItem', function(name) return Items.Runtime[name] end)
 exports('GetItems', function() return Items.Runtime end)
 
--- Returns the inventory item for a weapon model, or nil. Exported because Items.Definitions lives in this resource's Lua state; bs_admin uses it to put a spawned weapon in the bag.
+-- Returns the inventory item for a weapon model, or nil.
 exports('ItemForWeapon', function(model)
     if type(model) ~= 'string' then return nil end
     for name, def in pairs(Items.Definitions or {}) do
@@ -82,7 +81,7 @@ exports('ItemForWeapon', function(model)
     return nil
 end)
 
--- Service contract (see bs_core/shared/sh_services.lua). Declares what this resource offers so a consumer asking for something missing finds out at the call site instead of getting nil.
+-- Service contract (see bs_core/shared/sh_services.lua).
 if BS and BS.Provide then
     BS.Provide('inventory', {
         'GiveItem', 'RemoveItem', 'CountItem', 'Refresh',

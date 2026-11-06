@@ -1,14 +1,10 @@
--- bs_factions - reputation lives here and only the server decides it. Other resources call exports.bs_factions:AddReputation(src, amount, reason); there is no client event to set reputation.
--- Unlocks are permanent once earned (bs_faction_unlocks), independent of current membership (bs_faction_members).
--- Join/leave has one implementation each (doJoin/doLeave), used by both the BSB callback and the chat commands.
+-- bs_factions - reputation lives here and only the server decides it.
 
 local state      = {}   -- [src] = { charId, factionId, reputation, joinedAt }
 local byCharId    = {}   -- [charId] = state[src], same table, second index
 local unlocked    = {}   -- [charId] = { [unlockId] = true }
 
---------------------------------------------------------------------------------
 -- Small helpers
---------------------------------------------------------------------------------
 
 local function notify(src, kind, message)
     TriggerClientEvent('bs:ui:notify', src, { type = kind, message = message, duration = 3400 })
@@ -23,9 +19,7 @@ local function bankReputation(charId, factionId, reputation)
     ]], { charId, factionId, reputation })
 end
 
---------------------------------------------------------------------------------
 -- Loading / unloading, driven by bs_core's cross-resource hooks
---------------------------------------------------------------------------------
 
 local function loadUnlocks(charId)
     local rows = exports.oxmysql:query_async(
@@ -124,9 +118,7 @@ AddEventHandler('playerDropped', function()
     dropPlayer(source, state[source])
 end)
 
---------------------------------------------------------------------------------
 -- Unlock resolution
---------------------------------------------------------------------------------
 
 -- Checks the faction's unlock list against current reputation and grants newly earned ones. Runs after every reputation gain.
 local function resolveUnlocks(src)
@@ -148,7 +140,7 @@ local function resolveUnlocks(src)
                 VALUES (?, ?, ?)
             ]], { s.charId, s.factionId, unlock.id })
 
-            -- Cross-resource broadcast so bs_emotes/bs_inventory/bs_ui can react without bs_factions knowing what a 'clothing' or 'emote' unlock is.
+            -- Cross-resource broadcast so bs_emotes/bs_inventory/bs_ui can react without bs_factions knowing what a
             TriggerEvent('bs:hook:faction:unlock', {
                 charId = s.charId, factionId = s.factionId,
                 unlockId = unlock.id, type = unlock.type, label = unlock.label,
@@ -163,9 +155,7 @@ local function resolveUnlocks(src)
     end
 end
 
---------------------------------------------------------------------------------
 -- Reputation, server-authoritative only
---------------------------------------------------------------------------------
 
 --- @return number|false  the new total, or false if there is nothing to add to
 exports('AddReputation', function(src, amount, reason)
@@ -210,8 +200,7 @@ exports('SetReputation', function(src, amount)
     return s.reputation
 end)
 
--- Automatic reputation from gameplay
--- bs_core's BS.AwardAction fires 'bs:hook:player:action' (player, actionId, reward) for every rewarded action. Listening to it and looking the action up in Factions.ActionRewards is the whole integration.
+-- Automatic reputation from gameplay bs_core's BS.AwardAction fires 'bs:hook:player:action'
 
 AddEventHandler('bs:hook:player:action', function(player, actionId)
     if type(player) ~= 'table' or not player.source then return end
@@ -227,9 +216,7 @@ AddEventHandler('bs:hook:player:action', function(player, actionId)
     exports.bs_factions:AddReputation(src, mapping.rep, actionId)
 end)
 
---------------------------------------------------------------------------------
 -- Plain-data reads, the same shape as bs_core's GetPlayerSummary
---------------------------------------------------------------------------------
 
 exports('GetFaction', function(src)
     local s = state[tonumber(src)]
@@ -350,9 +337,7 @@ local function doLeave(src)
     return { ok = true, left = left }
 end
 
--- Exposed to sv_squads.lua, which owns the rules for who may join.
--- sv_squads is a separate chunk and cannot see doJoin/doLeave/state, so this file keeps the join mechanics (banking, resume, unlocks).
--- FactionJoinGuard is a global hook: sv_squads installs it, joins it refuses are blocked. nil means no rules installed yet.
+-- Exposed to sv_squads.lua, which owns the rules for who may join. sv_squads is a separate chunk and cannot see
 FactionDoJoin  = function(src, factionId, bypass)
     if FactionJoinGuard and not bypass then
         local allowed, why = FactionJoinGuard(src, factionId)
@@ -395,9 +380,7 @@ BSB.RegisterCallback('factions:status', function(src)
     }
 end)
 
---------------------------------------------------------------------------------
 -- Commands - thin wrappers around doJoin/doLeave
---------------------------------------------------------------------------------
 
 -- /joinfaction goes through the same join guard as everything else.
 RegisterCommand(Factions.Settings.joinCommand, function(src, args)
@@ -440,9 +423,7 @@ RegisterCommand(Factions.Settings.listCommand, function(src)
     notify(src, 'info', table.concat(lines, '  |  '))
 end, false)
 
---------------------------------------------------------------------------------
 -- Staff
---------------------------------------------------------------------------------
 
 RegisterCommand('setfactionrep', function(src, args)
     if src ~= 0 and not IsPlayerAceAllowed(src, 'bs.admin') then return end

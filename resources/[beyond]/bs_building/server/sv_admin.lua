@@ -176,21 +176,8 @@ end, false)
 
 -- A finished piece with no materials taken. Used by free build.
 function Building.PlaceFinished(src, pieceId, pos, h, fac, charId)
-    local d = Building.Pieces[pieceId]
-    if not d then return nil end
-    local dep = {}
-    for _, c in ipairs(Building.CostOf(d)) do dep[c.item] = c.amount end
-    local id = exports.oxmysql:insert_async(
-        'INSERT INTO `bs_build_pieces` (`piece`,`faction_id`,`owner_char`,`x`,`y`,`z`,`h`,`health`,`built`,`deposited`,`data`) VALUES (?,?,?,?,?,?,?,?,1,?,?)',
-        { pieceId, fac, charId, pos.x, pos.y, pos.z, h, d.health, json.encode(dep), json.encode(Building.NewData(pieceId)) })
-    if not id then return nil end
-    local r = { id = id, piece = pieceId, fac = fac, owner = charId, x = pos.x, y = pos.y, z = pos.z, h = h,
-                health = d.health, built = true, dep = dep, data = Building.NewData(pieceId), placedAt = os.time() }
-    Store.add(r)
-    r.health = Store.maxHp(r)
-    Store.push(r)
-    Store.log(src, 'admin', ('free build %s #%d'):format(pieceId, id), pos)
-    return r
+    if not Building.Pieces[pieceId] then return nil end
+    return Building.InsertBuilt(src, pieceId, pos, h, fac, charId, 'admin')
 end
 
 exports('SetFreeBuild', function(src, on)
@@ -242,4 +229,28 @@ exports('FinishInRadius', function(x, y, z, radius, by)
     end
     Store.log(by, 'admin', ('finished %d frames in %.0fm'):format(n, tonumber(radius) or 20), { x = x, y = y, z = z })
     return n
+end)
+
+-- The staff editor reads defaults here and stages overrides through bs_config.
+exports('ConfigExt', function(src, action)
+    if not isAdmin(src) then return {ok=false,error='Not allowed'} end
+    if action~='get' then return {ok=false,error='Use F1 Apply to change material costs'} end
+    local pieces,items={},{}
+    for id,d in pairs(Building.Pieces) do
+        if not d.hidden and not d.flag then
+            local tiers={}
+            local function addTier(t)
+                local spec=Building.Spec(d,t)
+                local cost={}
+                for _,c in ipairs((spec and spec.cost) or d.cost or {}) do cost[c.item]=c.amount end
+                tiers[#tiers+1]={id=t or 'base',label=t and Lp(src,'tier.'..t) or 'Standard',cost=cost}
+            end
+            if d.tiers then for _,t in ipairs(Building.TierList(d)) do addTier(t) end else addTier(nil) end
+            if #tiers>0 then pieces[#pieces+1]={id=id,label=Lp(src,'piece.'..id),tiers=tiers} end
+        end
+    end
+    for id,d in pairs(exports.bs_inventory:GetItems()) do items[#items+1]={id=id,label=d.label or id} end
+    table.sort(items,function(a,b)return a.label<b.label end)
+    table.sort(pieces,function(a,b)return a.label<b.label end)
+    return {ok=true,pieces=pieces,items=items,costScale=tonumber(S.costScale) or 1}
 end)

@@ -1,7 +1,4 @@
 -- bs_jobs mechanic garage: an apocalyptic LS Customs at the faction yard.
--- Mechanics work on cars, the Bikers' Bike Mechanic on motorbikes (nobody else can touch a bike).
--- Mod slots are real GTA slots (saved on owned cars in bs_vehicles). Paint and props are saved here.
--- Paint numbers are GTA colour indices (worn / matte / util). Close enough to rust, primer and camo.
 
 Jobs.Garage = {
     radius  = 14.0,   -- how close to your yard station the car must be

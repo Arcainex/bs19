@@ -12,6 +12,8 @@ version '1.0.0'
 
 server_scripts {
     '@bs_core/shared/sh_bridge.lua',
+    '@bs_core/shared/sh_locale.lua',
+    'server/sv_locale.lua',
     -- ZAtlas.bounds and ZAtlas.points (world box and place names) are read from bs_zombies, not copied, like bs_atlas's fxmanifest. Must come before sv_http.lua.
     '@bs_zombies/config/config_atlas.lua',
     'server/sv_http.lua',

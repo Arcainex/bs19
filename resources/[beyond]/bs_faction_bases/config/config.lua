@@ -8,7 +8,8 @@ FactionBases.Settings = {
     reclaimSeconds = 900,
     flagItem = 'faction_flag',          -- outpost flag kit
     safezoneFlagItem = 'safezone_flag', -- safezone flag
-    flagModel = 'prop_flag_us',
+    flagModel = 'prop_flag_us',     -- used only when none of the poles below exist
+    flagPoleModels = { 'prop_flagpole_2a', 'prop_flagpole_1a', 'prop_flagpole_2b' }, -- bs_factions draws the emblem cloth on top
     placementDistance = 6.0,
     edgeMarker = true,       -- members see a ring at the safezone edge
 }

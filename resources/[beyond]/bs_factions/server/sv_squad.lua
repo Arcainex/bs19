@@ -1,5 +1,4 @@
 -- bs_factions - squads: 1..Factions.Squad.maxSize characters of the same faction.
--- Memory is authoritative while running; changes are written to bs_squads / bs_squad_members (022_squads.sql) and pushed to online members as `bs:squad:sync`. Offline members stay in their squad.
 
 local Cfg = Factions.Squad or {}
 -- read live so bs_config can change it without a restart
@@ -10,11 +9,11 @@ end
 local MAXRANKS = tonumber(Cfg.maxRanks) or 6
 local NAMEMAX = tonumber(Cfg.nameMax) or 24
 
-local Squads = {}   -- id -> { id, name, factionId, leader, ranks, members = { [charId] = { rankId, name } } }
-local ByChar = {}   -- charId -> squadId
-local Online = {}   -- src -> charId
-local SrcOf = {}    -- charId -> src
-local Invites = {}  -- src -> { squadId, by, byName, until_ }
+local Squads = {}   -- id to { id, name, factionId, leader, ranks, members = { [charId] = { rankId, name } } }
+local ByChar = {}   -- charId to squadId
+local Online = {}   -- src to charId
+local SrcOf = {}    -- charId to src
+local Invites = {}  -- src to { squadId, by, byName, until_ }
 local Loaded = false
 
 local function q(sql, p) return exports.oxmysql:query_async(sql, p or {}) or {} end
@@ -78,9 +77,22 @@ local function fullState(src)
     local list = {}
     for mcid, m in pairs(sq.members) do
         local msrc = SrcOf[mcid]; local s = msrc and summary(msrc)
+        local linked
+        if not msrc and GetResourceState('bs_survivor_link')=='started'then
+            local ok,value=pcall(function()return exports.bs_survivor_link:GetCompanionByCharId(mcid)end)
+            if ok then linked=value end
+        end
+        local linkedHealth
+        if linked and linked.life then
+            local maximum=math.max(101,tonumber(linked.life.maxHealth)or 200)
+            linkedHealth=math.max(0,math.min(100,((linked.life.health or 100)-100)/(maximum-100)*100))
+            if linked.life.status~='alive'then linkedHealth=0 end
+        end
         list[#list + 1] = { charId = mcid, name = (s and s.name) or m.name, level = s and s.level or nil,
             rankId = m.rankId, rankLabel = rankLabel(sq, m.rankId), isLeader = mcid == sq.leader,
-            online = msrc ~= nil, src = msrc, health = msrc and healthOf(msrc) or nil }
+            online = msrc ~= nil or linked~=nil, linked=linked~=nil, net=linked and linked.net or nil,
+            downed = linked and linked.life and linked.life.status~='alive' or nil,
+            src = msrc, health = msrc and healthOf(msrc) or linkedHealth }
     end
     table.sort(list, function(a, b)
         if a.isLeader ~= b.isLeader then return a.isLeader end
@@ -104,7 +116,7 @@ local function pushSquad(sq)
     for mcid in pairs(sq.members) do if SrcOf[mcid] then push(SrcOf[mcid]) end end
 end
 
---------------------------------------------------------------------------- persistence
+-- persistence
 local function saveRanks(sq) x('UPDATE bs_squads SET ranks=?, name=?, leader_char=? WHERE id=?', { json.encode(sq.ranks), sq.name, sq.leader, sq.id }) end
 
 local function removeMember(sq, cid)
@@ -184,7 +196,7 @@ local function validate(src)
     end
 end
 
---------------------------------------------------------------------------- actions
+-- actions
 local function mine(src)
     local cid = charOf(src); local id = cid and ByChar[cid]
     return cid, id and Squads[id]
@@ -411,8 +423,7 @@ BSB.RegisterCallback('squad:disband', guard(disband))
 BSB.RegisterCallback('squad:transfer', guard(transfer))
 BSB.RegisterCallback('squad:nearby', guard(nearby))
 
--- exports
--- Drops a character from their squad (online or not). Used by faction kicks.
+-- exports: drops a character from their squad (online or not). Used by faction kicks.
 function SquadRemoveChar(cid)
     cid = tonumber(cid); local id = cid and ByChar[cid]; local sq = id and Squads[id]
     if not sq then return false end
@@ -441,7 +452,7 @@ exports('SameSquad', function(a, b)
     return ca ~= nil and cb ~= nil and ByChar[ca] ~= nil and ByChar[ca] == ByChar[cb]
 end)
 
---------------------------------------------------------------------------- lifecycle
+-- lifecycle
 local function onLoaded(src)
     src = tonumber(src); if not src then return end
     local old = Online[src]
@@ -472,6 +483,15 @@ AddEventHandler('bs:hook:player:loaded', function(pl)
     end)
 end)
 
+-- A Survivor Link switch unloads one character and loads another on the same source: drop the stale mapping now.
+AddEventHandler('bs:hook:player:unloaded', function(pl)
+    local src = pl and tonumber(pl.source)
+    local cid = src and Online[src]
+    if not cid then return end
+    Online[src] = nil
+    if SrcOf[cid] == src then SrcOf[cid] = nil end
+end)
+
 AddEventHandler('playerDropped', function()
     local src = source
     if not src then return end
@@ -492,4 +512,68 @@ CreateThread(function()
         end
         for src, i in pairs(Invites) do if i.until_ < os.time() then Invites[src] = nil end end
     end
+end)
+
+local linkedSquadJoining = {}
+-- Read only: squad of a character with no player source (a Survivor Link companion), for the roster frames.
+exports('LinkedSquadOf',function(charId)
+    local id=ByChar[tonumber(charId)];local sq=id and Squads[id]
+    local member=sq and sq.members[tonumber(charId)]
+    return member and {id=sq.id,rankId=member.rankId,rankLabel=rankLabel(sq,member.rankId)}or nil
+end)
+exports('GetLinkedSquadSummary',function(charId)
+    if GetInvokingResource()~='bs_survivor_link'then return nil end
+    local id=ByChar[tonumber(charId)];local sq=id and Squads[id]
+    local member=sq and sq.members[tonumber(charId)]
+    return member and {id=sq.id,name=sq.name,rankId=member.rankId,rankLabel=rankLabel(sq,member.rankId)}or nil
+end)
+-- A linked survivor leaves the squad when his body is gone (dismissed, dead, owner logged out).
+exports('LinkedSquadLeave',function(charId)
+    if GetInvokingResource()~='bs_survivor_link'then return false end
+    charId=tonumber(charId);local id=charId and ByChar[charId];local sq=id and Squads[id]
+    if not sq or SrcOf[charId]then return false end
+    removeMember(sq,charId)
+    if Squads[sq.id]then pushSquad(sq)end
+    return true
+end)
+-- Companion appeared, went down or got up: refresh everyone's squad view.
+exports('LinkedSquadRefresh',function(charId)
+    if GetInvokingResource()~='bs_survivor_link'then return false end
+    local id=ByChar[tonumber(charId)];local sq=id and Squads[id]
+    if sq then pushSquad(sq)end
+    return sq~=nil
+end)
+exports('RecruitLinkedToSquad',function(src,charId)
+    src,charId=tonumber(src),tonumber(charId)
+    if GetInvokingResource()~='bs_survivor_link'or not src or not charId or linkedSquadJoining[charId]then return {ok=false,error='This survivor is unavailable.'}end
+    linkedSquadJoining[charId]=true
+    local ok,result=pcall(function()
+        local cid,sq=mine(src)
+        if not sq or sq.leader~=cid then return {ok=false,error='Only your squad leader may recruit this survivor.'}end
+        if ByChar[charId]then return {ok=false,error='This survivor already belongs to a squad.'}end
+        if count(sq)>=maxSize()then return {ok=false,error='Your squad is full.'}end
+        local link=exports.bs_survivor_link:GetCompanion(src)
+        if not link or link.id~=charId or not link.life or link.life.status~='alive'then return {ok=false,error='Your linked survivor is unavailable.'}end
+        local ped=NetworkGetEntityFromNetworkId(link.net or 0);local me=GetPlayerPed(src)
+        if ped==0 or me==0 or not DoesEntityExist(ped)or GetEntityRoutingBucket(ped)~=GetPlayerRoutingBucket(src)
+            or #(GetEntityCoords(ped)-GetEntityCoords(me))>(tonumber(Cfg.inviteDistance)or 25.0)then return {ok=false,error='Move beside your linked survivor.'}end
+        local row=q('SELECT faction_id FROM bs_faction_members WHERE character_id=? LIMIT 1',{charId})[1]
+        if not row or row.faction_id~=sq.factionId or factionOf(src)~=sq.factionId then return {ok=false,error="Both survivors must belong to this squad's faction."}end
+        local owner=exports.bs_core:GetPlayer(src)
+        local char=owner and q('SELECT first_name,last_name FROM bs_characters WHERE id=? AND user_id=? AND deleted_at IS NULL LIMIT 1',{charId,owner.userId})[1]
+        if not char then return {ok=false,error='Choose your own linked survivor.'}end
+        if count(sq)>=maxSize()or ByChar[charId]or sq.leader~=charOf(src)then return {ok=false,error='Squad membership changed. Try again.'}end
+        local name=(char.first_name or '')..' '..(char.last_name or '')
+        local rank=lastRankId(sq)
+        x('INSERT INTO bs_squad_members(character_id,squad_id,rank_id,name) VALUES(?,?,?,?)',{charId,sq.id,rank,name})
+        local saved=q('SELECT squad_id FROM bs_squad_members WHERE character_id=? LIMIT 1',{charId})[1]
+        if not saved or tonumber(saved.squad_id)~=sq.id then return {ok=false,error='Squad membership could not be saved.'}end
+        sq.members[charId]={rankId=rank,name=name};ByChar[charId]=sq.id
+        Entity(ped).state:set('bsSquad',{id=sq.id,name=sq.name,rank=rankLabel(sq,rank)},true)
+        pushSquad(sq)
+        return {ok=true,label=sq.name}
+    end)
+    linkedSquadJoining[charId]=nil
+    if not ok then print('[bs_factions] linked squad recruitment failed: '..tostring(result));return {ok=false,error='Squad recruitment failed.'}end
+    return result
 end)

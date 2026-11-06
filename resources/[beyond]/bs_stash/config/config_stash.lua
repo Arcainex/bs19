@@ -1,5 +1,4 @@
--- bs_stash - buried stashes.
--- A shovel is required to bury and dig. Other players can find one only by standing on it with a shovel (no prop or marker). Capped per character.
+-- bs_stash - buried stashes. A shovel is required to bury and dig.
 
 Stash = {}
 
@@ -16,7 +15,6 @@ Stash.Settings = {
     -- Time to dig, ms - burying and opening both.
     digMs = 6000,
 
-    -- Distance (m) at which the owner sees their stash name.
     ownerSight = 50.0,
 
     -- Distance (m) a stranger must be within, and only with a shovel.

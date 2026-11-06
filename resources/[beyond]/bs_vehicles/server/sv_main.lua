@@ -1574,3 +1574,41 @@ exports('TesterPool', function()
     end)
     return out
 end)
+
+local inverterLocks={}
+AddEventHandler('bs:radio:installInverter',function(src,_,slot)
+    src=tonumber(src);local ped=src and GetPlayerPed(src)
+    local vehicle=ped and GetVehiclePedIsIn(ped,false)or 0
+    local function say(message)TriggerClientEvent('bs:ui:notify',src,{type='info',message=message,duration=5000})end
+    if vehicle==0 then say('Sit in the vehicle to install its power inverter.');return end
+    local plate=clean(GetVehicleNumberPlateText(vehicle))
+    if not plate or inverterLocks[plate]then return end
+    inverterLocks[plate]=true
+    local ok,err=pcall(function()
+        local record=get(plate)
+        if not record or GetVehiclePedIsIn(GetPlayerPed(src),false)~=vehicle or not hasKey(record,charIdOf(src))then say('You need the vehicle keys to install an inverter.');return end
+        record.parts=record.parts or {}
+        if record.parts.powerInverter then say('This vehicle already has a power inverter.');return end
+        local parts={};for k,v in pairs(record.parts)do parts[k]=v end;parts.powerInverter=true
+        if not exports.bs_inventory:InstallVehicleInverter(src,slot,record.id,parts)then say('The inverter could not be installed.');return end
+        record.parts=parts;say('Power inverter installed. Your equipped radio can now charge here.')
+    end)
+    inverterLocks[plate]=nil
+    if not ok then print('[bs_vehicles] inverter installation failed: '..tostring(err))end
+end)
+exports('PortableChargingPower',function(src,draw)
+    if GetInvokingResource()~='bs_radio'then return false end
+    local ped=GetPlayerPed(tonumber(src));local vehicle=ped and GetVehiclePedIsIn(ped,false)or 0
+    if vehicle==0 then return false end
+    local plate=clean(GetVehicleNumberPlateText(vehicle));local record=plate and get(plate)
+    if not record or GetVehiclePedIsIn(GetPlayerPed(src),false)~=vehicle or not record.parts or not record.parts.powerInverter or record.scrapped or record.wreckedAt or (record.missing and record.missing.battery)then return false end
+    local amount=tonumber(draw)or 0
+    if amount<0 or amount>2 then return false end
+    local battery=tonumber(record.parts.battery)or 0
+    if battery<=5.0 or battery<amount then return false end
+    if amount>0 then
+        record.parts.battery=math.max(0,battery-amount);touch(record.plate)
+        TriggerClientEvent('bs:vehicles:battery',driver[record.plate]or src,record.plate,record.parts.battery)
+    end
+    return true,plate
+end)

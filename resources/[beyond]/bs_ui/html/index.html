@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="shared/theme.js?v=20261027t2"></script>
     <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
     <script src="shared/scale.js?v=20261016a"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BeyondSurvival UI</title>
     <!-- v= is bumped by hand on every asset change, see bs_inventory/html/index.html -->
-    <link rel="stylesheet" href="css/root.css?v=20261013i" />
+    <link rel="stylesheet" href="css/root.css?v=20261027t2" />
     <link rel="stylesheet" href="css/filter.css?v=20261013i" />
-    <link rel="stylesheet" href="css/hud.css?v=20261017a" />
-    <link rel="stylesheet" href="css/notify.css?v=20261013i" />
-    <link rel="stylesheet" href="css/partyhud.css?v=20261013i" />
-    <link rel="stylesheet" href="css/announce.css?v=20261014a" />
+    <link rel="stylesheet" href="css/hud.css?v=20261027t2" />
+    <link rel="stylesheet" href="css/notify.css?v=20261027t2" />
+    <link rel="stylesheet" href="css/partyhud.css?v=20261031squad" />
+    <link rel="stylesheet" href="css/announce.css?v=20261027t2" />
+<link rel="stylesheet" href="css/voiceradio.css?v=20261027t2">
 </head>
 <body>
     <!-- XP strip: position is a player setting, so it sits outside the HUD -->
@@ -59,7 +61,7 @@
     <!-- Throttle level from the scroll-wheel throttle (bs_vehicles cl_cruise.lua) -->
     <div id="throttle" class="throttle hidden"><i class="throttle__fill"></i></div>
 
-    <!-- Map frame. The game draws the minimap and NUI cannot recolour it, so this overlays a worn-paper look: border, corner brackets, grain and a compass letter. -->
+    <!-- Map frame: the game draws the minimap and NUI cannot recolour it, so this overlays a worn-paper look: border -->
     <div id="mapframe" class="mapframe hidden" aria-hidden="true">
         <svg class="mapframe__grain" viewBox="0 0 100 100" preserveAspectRatio="none">
             <filter id="mapgrain">
@@ -78,7 +80,7 @@
         <span class="mapframe__fold"></span>
     </div>
 
-    <!-- Field map. cl_fieldmap.lua moves the game's bigmap radar behind #fieldmap__cutout; its RECT is hand-matched to the size and position below, so keep them in step. -->
+    <!-- Field map. cl_fieldmap.lua moves the game's bigmap radar behind #fieldmap__cutout -->
     <div id="fieldmap" class="fieldmap hidden" aria-hidden="true">
         <svg class="fieldmap__grain" viewBox="0 0 100 100" preserveAspectRatio="none">
             <filter id="fieldmapgrain">
@@ -99,7 +101,7 @@
         <p class="fieldmap__hint" data-i18n="ui.scroll_to_zoom_m_or_esc_to_close">SCROLL TO ZOOM &middot; M OR ESC TO CLOSE</p>
     </div>
 
-    <!-- Personal screen filter. First in the body so it composites under everything else (grain over the world is fine, over inventory text it hurts legibility). Four empty layers driven by js/filter.js, see css/filter.css. -->
+    <!-- Personal screen filter: first in the body so it composites under everything else -->
     <div id="filter">
         <div class="filter__tint"></div>
         <div class="filter__vignette"></div>
@@ -122,13 +124,14 @@
     </div>
 
     <script src="js/filter.js?v=20261013i"></script>
-    <script src="js/icons.js?v=20261013i"></script>
-    <script src="js/nui.js?v=20261013i"></script>
-    <script src="js/hud.js?v=20261017a"></script>
+    <script src="js/icons.js?v=20261031custom"></script>
+    <script src="js/nui.js?v=20261027n"></script>
+    <script src="js/hud.js?v=20261027n"></script>
     <script src="js/notify.js?v=20261013i"></script>
     <script src="js/sound.js?v=20261013i"></script>
-    <script src="js/partyhud.js?v=20261014c1"></script>
+    <script src="js/partyhud.js?v=20261031squad"></script>
     <script src="js/announce.js?v=20261014a"></script>
     <script src="js/hudmove.js?v=20261017a"></script>
+<script src="js/voiceradio.js?v=20261026"></script>
 </body>
 </html>

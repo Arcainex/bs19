@@ -1,5 +1,4 @@
 -- bs_inventory - items added by crafting, recycling and gathering (bs_crafting, bs_recycler).
--- Merged into Items.Definitions after config_items.lua. An id that already exists is left alone, so other files win.
 
 local add = {
     -- materials

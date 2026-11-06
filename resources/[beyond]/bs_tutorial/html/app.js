@@ -46,7 +46,7 @@
     audio = { ctx, g };
   }
 
-  // ---------------------------------------------------------------- picker
+  // picker
   const PK = { cards: [], sel: null, busy: false };
   function drawPicker() {
     $('pkCards').innerHTML = PK.cards.map((c) => `<div class="pk-card ${PK.sel === c.id ? 'on' : ''}" data-pk="${esc(c.id)}" style="--c:${esc(c.colour || '')}">
@@ -58,7 +58,7 @@
   }
   function select(id) { if (PK.sel === id) return; PK.sel = id; drawPicker(); post('pickSelect', { id }); }
 
-  // ---------------------------------------------------------------- tour
+  // tour
   const TR = { chapters: [], done: {}, idx: 1, seconds: 24, timer: null, start: 0 };
   function drawList() {
     $('chList').innerHTML = TR.chapters.map((c, i) => `<li data-ch="${i + 1}" class="${TR.idx === i + 1 ? 'on' : ''}"><span class="ck">${TR.done[c.id] ? '&#10003;' : ''}</span><span class="n">${i + 1}</span>${esc(c.title)}</li>`).join('');
@@ -78,7 +78,7 @@
     drawList();
   }
 
-  // ---------------------------------------------------------------- input
+  // input
   document.addEventListener('click', (e) => {
     const pk = e.target.closest('[data-pk]'); if (pk) return select(pk.dataset.pk);
     const ch = e.target.closest('[data-ch]'); if (ch) return post('tourGo', { index: Number(ch.dataset.ch) });

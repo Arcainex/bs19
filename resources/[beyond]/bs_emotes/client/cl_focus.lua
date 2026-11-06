@@ -1,5 +1,4 @@
 -- bs_emotes - hold TAB to focus (Scoped focus Survival perk).
--- TAB is the weapon wheel, so it is blocked every frame while we own the key. There is no native to set the gameplay camera FOV, so a scripted camera mirrors the gameplay camera with a tighter FOV and a small shoulder offset; mouse look keeps working.
 
 Focus = { active = false, t = 0.0 }
 
@@ -41,7 +40,7 @@ local function destroyCam()
     cam = nil
 end
 
--- PERF: cross-resource exports are not free and this loop runs every frame, so the loaded flag is re-read from bs_core at most every 250ms.
+-- PERF: cross-resource exports are not free and this loop runs every frame
 local _perfLoadedAt, _perfLoaded = 0, false
 local function loadedCached()
     local now = GetGameTimer()
@@ -89,7 +88,7 @@ CreateThread(function()
             local blend = ease(Focus.t)
             local target = Focus.TargetFov()
 
-            -- Aiming already tightens the game camera to around 40, so the lens works from the live camera FOV and goes a step past the aim zoom while aiming.
+            -- Aiming already tightens the game camera to around 40
             local liveFov = GetGameplayCamFov()
             if IsPlayerFreeAiming(PlayerId()) then
                 target = math.min(target, liveFov * (cfg.aimZoomFactor or 0.55))
@@ -104,7 +103,7 @@ CreateThread(function()
             local yaw = math.rad(rot.z)
             local right = vector3(math.cos(yaw), math.sin(yaw), 0.0)
 
-            -- The shoulder offset is right in third person but moves the lens off the weapon optic in first person, so only the FOV changes there.
+            -- The shoulder offset is right in third person but moves the lens off the weapon optic in first person
             local firstPerson = GetFollowPedCamViewMode() == 4
             local shoulder = firstPerson and 0.0 or (off.x or 0.0)
             local vertical = firstPerson and 0.0 or (off.z or 0.0)
@@ -133,7 +132,7 @@ CreateThread(function()
     end
 end)
 
--- Focus tightens with each Survival level: base FOV at level 0, scope-like at the cap. Smaller FOV means more zoom, so the per-level value is subtracted.
+-- Focus tightens with each Survival level: base FOV at level 0, scope-like at the cap.
 function Focus.TargetFov()
     local base = cfg.fov or 32.0
     local level = 0
@@ -150,7 +149,6 @@ function Focus.TargetFov()
 end
 
 -- Is the player holding TAB to focus, and by how much?
--- Other resources cannot read Focus.t directly, so this is the way to ask. Thresholded at half because Focus.t eases continuously and a bare truthiness test flickers.
 exports('Focusing', function()
     return Focus.t > 0.5
 end)

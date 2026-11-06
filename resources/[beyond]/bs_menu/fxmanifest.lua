@@ -23,6 +23,7 @@ files {
     'html/css/style.css',
     'html/css/faction-hub.css',
     'html/js/app.js',
+    'html/js/emblem-builder.js',
 }
 
 dependencies { 'bs_core' }

@@ -1,4 +1,4 @@
-// BeyondSurvival - resolution-adaptive NUI scaling shared by every [beyond] page. Pages are laid out for 1920x1080; the whole <body> is scaled with a transform (not CSS zoom, so client coordinates stay in one pixel space).
+// BeyondSurvival - resolution-adaptive NUI scaling shared by every [beyond] page.
 (function () {
     'use strict';
     if (window.BSScale) return;

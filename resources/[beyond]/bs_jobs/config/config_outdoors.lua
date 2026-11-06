@@ -1,0 +1,161 @@
+Jobs.Fishing = {
+    ms = 10000,
+    minMs = 6500,
+    bait = 'fish_bait',
+    maxCastDistance = 30.0,
+    species = {
+        { item = 'fish_bass', label = 'Bass', water = 'fresh', weight = 55, value = 16 },
+        { item = 'fish_catfish', label = 'Catfish', water = 'fresh', weight = 30, value = 28 },
+        { item = 'fish_trout', label = 'Trout', water = 'fresh', weight = 12, value = 55 },
+        { item = 'fish_salmon', label = 'Salmon', water = 'fresh', weight = 3, value = 110 },
+        { item = 'fish_mackerel', label = 'Mackerel', water = 'salt', weight = 68, value = 18 },
+        { item = 'raw_fish', label = 'Sea fish', water = 'salt', weight = 27, value = 30 },
+        { item = 'big_fish', label = 'Trophy fish', water = 'salt', weight = 5, value = 140 },
+    },
+    -- Alamo Sea and inland river corridors. Other water uses the coastal pool.
+    freshwater = {
+        { x = 1150.0, y = 3900.0, radius = 1650.0 },
+        { x = -1350.0, y = 4350.0, radius = 1050.0 },
+        { x = -1550.0, y = 1700.0, radius = 1050.0 },
+    },
+}
+
+Jobs.Foraging = {
+    cooldown = 600,
+    ms = 4000,
+    models = {
+        'bh1_49_bushdec_01',
+        'bh1_49_bushdec_02',
+        'bh1_49_bushdec_03',
+        'bh1_49_bushdec_04',
+        'bh1_49_bushdec_05',
+        'bh1_49_bushdec_06',
+        'bh1_49_bushdec_07',
+        'bh1_49_bushdec_08',
+        'bh1_49_bushdec_09',
+        'bh1_49_bushdec_10',
+        'bh1_49_bushdec_11',
+        'bh1_49_bushdec_12',
+        'dt1_03_b2_bush2',
+        'dt1_03_b2_bush3',
+        'dt1_03_bush_detail01',
+        'h4_prop_bush_bgnvla_lrg_01',
+        'h4_prop_bush_bgnvla_med_01',
+        'h4_prop_bush_bgnvla_sml_01',
+        'h4_prop_bush_boxwood_med_01',
+        'h4_prop_bush_buddleia_low_01',
+        'h4_prop_bush_buddleia_sml_01',
+        'h4_prop_bush_ear_aa',
+        'h4_prop_bush_ear_ab',
+        'h4_prop_bush_fern_low_01',
+        'h4_prop_bush_fern_tall_cc',
+        'h4_prop_bush_mang_aa',
+        'h4_prop_bush_mang_ac',
+        'h4_prop_bush_mang_ad',
+        'h4_prop_bush_mang_lg_aa',
+        'h4_prop_bush_mang_low_aa',
+        'h4_prop_bush_mang_low_ab',
+        'h4_prop_bush_mang_lrg_01',
+        'h4_prop_bush_mang_lrg_02',
+        'h4_prop_bush_monstera_med_01',
+        'h4_prop_bush_olndr_white_lrg',
+        'h4_prop_bush_olndr_white_sml',
+        'h4_prop_bush_rosemary_lrg_01',
+        'h4_prop_bush_seagrape_low_01',
+        'plg_03_cbush_005',
+        'plg_03_cbush_01',
+        'plg_03_cbush_02',
+        'plg_03_cbush_03',
+        'plg_03_cbush_04',
+        'proc_brittlebush_01',
+        'proc_leafybush_01',
+        'proc_scrub_bush01',
+        'prop_bush_dead_02',
+        'prop_bush_grape_01',
+        'prop_bush_lrg_01',
+        'prop_bush_lrg_01b',
+        'prop_bush_lrg_01c',
+        'prop_bush_lrg_01c_cr',
+        'prop_bush_lrg_01d',
+        'prop_bush_lrg_01e',
+        'prop_bush_lrg_01e_cr',
+        'prop_bush_lrg_01e_cr2',
+        'prop_bush_lrg_02',
+        'prop_bush_lrg_02b',
+        'prop_bush_lrg_03',
+        'prop_bush_lrg_04b',
+        'prop_bush_lrg_04c',
+        'prop_bush_lrg_04d',
+        'prop_bush_med_01',
+        'prop_bush_med_02',
+        'prop_bush_med_03',
+        'prop_bush_med_03_cr',
+        'prop_bush_med_03_cr2',
+        'prop_bush_med_05',
+        'prop_bush_med_06',
+        'prop_bush_med_07',
+        'prop_bush_neat_01',
+        'prop_bush_neat_02',
+        'prop_bush_neat_03',
+        'prop_bush_neat_04',
+        'prop_bush_neat_05',
+        'prop_bush_neat_06',
+        'prop_bush_neat_07',
+        'prop_bush_neat_08',
+        'prop_bush_ornament_01',
+        'prop_bush_ornament_02',
+        'prop_bush_ornament_03',
+        'prop_bush_ornament_04',
+        'prop_small_bushyba',
+        'prop_snow_bush_01_a',
+        'prop_snow_bush_02_a',
+        'prop_snow_bush_02_b',
+        'prop_snow_bush_03',
+        'prop_snow_bush_04',
+        'prop_snow_bush_04b',
+    },
+    -- Edible yields stay on a small plant set rather than every ornamental hedge.
+    berries = { 'prop_bush_med_03', 'prop_bush_med_03_cr', 'prop_bush_med_03_cr2', 'prop_bush_med_05' },
+
+    -- Most hillside shrubs are baked into map tiles or spawned as procedural foliage, so they never
+    -- match the model list above. These settings let players search the undergrowth around them instead.
+    undergrowth = true,
+    scanRadius = 3.5,      -- how far around the player to look for plants
+    scanInterval = 900,    -- ms between nearby-foliage scans while on foot
+    cellSize = 8.0,        -- undergrowth cooldowns are shared per grid cell of this size (metres)
+
+    -- Any nearby prop whose model name contains one of these counts as a plant (needs archetype names).
+    namePatterns = { 'bush', 'shrub', 'hedge', 'scrub', 'fern', 'brittle', 'sage', 'oleander', 'foliage',
+        'undergrowth', 'veg_', '_veg', 'plant', 'ivy', 'creeper', 'leafy', 'reeds', 'grassfronds',
+        'drygrass', 'meadow', 'lupins', 'proc_grass', 'proc_dry', 'proc_desert', 'proc_wild', 'proc_sml' },
+    nameExcludes = { 'powerplant', 'planter', 'plantpot', 'plant_int', 'stone', 'rock', 'litter', 'debris', 'gravel' },
+
+    -- Extra vanilla plant models checked with a closest-object search (unknown names are harmless).
+    extraModels = {
+        'prop_bush_lrg_04b', 'prop_bush_lrg_04c', 'prop_bush_lrg_04d',
+        'prop_veg_crop_03_cab', 'prop_veg_crop_03_pump', 'prop_veg_crop_04', 'prop_veg_crop_04_leaf',
+        'prop_veg_crop_05', 'prop_veg_crop_06', 'prop_veg_grass_01_a', 'prop_veg_grass_01_b',
+        'prop_veg_grass_01_c', 'prop_veg_grass_01_d', 'prop_veg_grass_02_a',
+        'prop_plant_01a', 'prop_plant_01b', 'prop_plant_cane_01a', 'prop_plant_cane_01b',
+        'prop_plant_cane_02a', 'prop_plant_cane_02b', 'prop_plant_fern_01a', 'prop_plant_fern_01b',
+        'prop_plant_fern_02a', 'prop_plant_fern_02b', 'prop_plant_fern_02c', 'prop_plant_paradise',
+        'prop_plant_paradise_b', 'prop_desert_iron_01',
+        'proc_desert_sage_01', 'proc_dry_plants_01', 'proc_drygrasses01', 'proc_drygrasses01b',
+        'proc_drygrassfronds01', 'proc_dryplantsgrass_01', 'proc_dryplantsgrass_02', 'proc_grassfronds01',
+        'proc_grassplantmix_01', 'proc_grassplantmix_02', 'proc_indian_pbrush_01', 'proc_leafyplant_01',
+        'proc_lizardtail_01', 'proc_lupins_01', 'proc_meadowmix_01', 'proc_sage_01', 'proc_sml_reeds_01',
+        'proc_wildquinine',
+    },
+
+    -- Surface materials that count as dense foliage when a short probe around the player hits them.
+    -- Use /bushdebug on a shrub you cannot search and add its material hash here if it is missing.
+    materials = {
+        581794674,    -- bushes
+        -2041329971,  -- leaves
+        -1915425863,  -- twigs
+        -461750719,   -- long grass
+    },
+
+    -- Hand-placed foraging areas for custom maps where nothing else is detected: { x =, y =, z =, radius = }
+    zones = {},
+}

@@ -1,5 +1,4 @@
--- bs_crafting: F1 recipe editor backend and building registration.
--- bs_config checks admin rights before it forwards anything here (see ConfigExt in bs_config).
+-- bs_crafting: F1 recipe editor backend and building registration. bs_config checks admin rights before it
 
 local INV = exports.bs_inventory
 

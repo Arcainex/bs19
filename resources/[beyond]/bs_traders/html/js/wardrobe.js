@@ -1,4 +1,4 @@
-// bs_traders - clothing shop panel. Kept separate from app.js so the trade menu and wardrobe do not share document-wide key listeners.
+// bs_traders - clothing shop panel.
 
 (function () {
     'use strict';
@@ -12,7 +12,7 @@
         open: false,
         cats: [],
         rules: [],
-        owned: {},           // "category:drawable" -> true
+        owned: {},           // "category:drawable" to true
         outfits: [],
         maxOutfits: 0,
         gender: 'm',
@@ -25,8 +25,8 @@
         pose: null,          // which pose is being held, or null for standing
         active: null,        // selected category id, or OUTFITS
         cursor: 0,           // keyboard position within the drawn list
-        original: {},        // [catId] = { drawable, texture }  as opened
-        current: {},         // [catId] = { drawable, texture }  as previewed
+        original: {},        // [catId] = { drawable, texture } as opened
+        current: {},         // [catId] = { drawable, texture } as previewed
         rows: [],            // what the keyboard is stepping through
     };
 
@@ -45,7 +45,7 @@
     function ownKey(catId, drawable) { return catId + ':' + drawable; }
     function owns(catId, drawable) { return !!state.owned[ownKey(catId, drawable)]; }
 
-    // Garment names come from js/clothingnames.js (dump of the game's text tables). An entry is a plain string when every colour of a garment shares a name, otherwise a per-texture list.
+    // Garment names come from js/clothingnames.js (dump of the game's text tables).
 
     function garmentName(cat, drawable, texture) {
         var table = window.BS_CLOTHING_NAMES || {};
@@ -63,7 +63,7 @@
         return cat.label.replace(/s$/, '') + ' #' + drawable;
     }
 
-    // Rules: mirrors Wardrobe.RuleFor / PriceFor / Allowed in config_wardrobe.lua, with the same precedence (exact drawable, then range, then bare category rule), so the panel agrees with the server about what is locked.
+    // Rules: mirrors Wardrobe.RuleFor / PriceFor / Allowed in config_wardrobe.lua
 
     function ruleFor(catId, drawable) {
         var best = null, bestScore = -1;
@@ -221,7 +221,7 @@
         var cur = state.current[cat.id] || { drawable: 0, texture: 0 };
         var hasBare = cat.bare !== undefined && cat.bare !== null;
 
-        // Remove row: props have a real empty state (-1), components do not, so `bare` is the drawable that is the bare body on this model. It is drawn as a normal row and skipped in the loop below. Categories with no bare value get no Remove row.
+        // Remove row: props have a real empty state (-1), components do not
         if (cat.kind === 'prop' || hasBare) {
             var bareValue = cat.kind === 'prop' ? -1 : cat.bare;
             list.appendChild(row(cat, bareValue, cur, true));
@@ -447,7 +447,7 @@
         });
     }
 
-    // Poses: a latching toggle group. Clicking the current pose stands back up (the Lua side treats re-selecting the held pose as a clear). A pose whose clip does not resolve removes its own button. See cl_wardrobe.lua.
+    // Poses: a latching toggle group.
 
     function renderPoses() {
         var box = document.getElementById('wdPoses');
@@ -544,7 +544,7 @@
         post('wardrobeZoom', { by: e.deltaY > 0 ? 0.08 : -0.08 });
     });
 
-    // Keyboard: Up/Down walks the list and puts the row on, Left/Right steps the colour, Tab changes category, Enter confirms, Escape leaves. Uses keydown with preventDefault on arrows so the list does not scroll under the cursor.
+    // Keyboard: Up/Down walks the list and puts the row on, Left/Right steps the colour, Tab changes category
 
     function step(delta) {
         if (!state.rows.length) { return; }
@@ -652,10 +652,10 @@
 
             root.classList.remove('hidden');
 
-            // Tell the client the panel is really open. Until this lands it does not freeze the player, move the camera or take the mouse (see cl_wardrobe.lua). Sent after the class is removed.
+            // Tell the client the panel is really open.
             post('wardrobeReady', {});
         } else if (msg.state === 'cash') {
-            // Balance changed while the shop is open: re-render the bill, since affordability and the Confirm button depend on it. See cl_wardrobe.lua.
+            // Balance changed while the shop is open: re-render the bill, since affordability and the Confirm button depend on it.
             state.cash = msg.cash || 0;
             document.getElementById('wdCash').textContent = money(state.cash);
             renderBill();

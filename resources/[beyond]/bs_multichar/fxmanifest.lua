@@ -13,13 +13,13 @@ shared_scripts {
     '@bs_core/shared/sh_services.lua',
     'config/config_multichar.lua',
     '@bs_config/shared/apply.lua',
-    -- config/config_presets.lua is not loaded (presets were removed from the creator). bs_inventory's config_clothing.lua is not loaded either, since the creator no longer dresses the preview.
+    -- config/config_presets.lua is not loaded (presets were removed from the creator). bs_inventory's
 }
 
 client_scripts {
     'client/cl_scene.lua',
+    'client/cl_selection_set.lua',
     'client/cl_main.lua',
-    -- In-game face/hair edit (bs_vip monthly change / staff ticket)
     'client/cl_edit.lua',
 }
 

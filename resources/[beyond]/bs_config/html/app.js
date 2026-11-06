@@ -133,12 +133,13 @@
 
   // Extension pages (html/ext_*.js push into window.BSConfigExt).
   const EXT = () => window.BSConfigExt || [];
-  function extRail(it) { return EXT().map(x => it(x.id, x.label, '<i>&#9881;</i>')).join(''); }
+  function extRail(it) { return EXT().filter(x => !S.cats.some(c => c.id === x.id)).map(x => it(x.id, x.label, '<i>&#9881;</i>')).join(''); }
 
   function control(e) {
     const v = eff(e.id);
+    if (e.type === 'json') return `<textarea data-id="${esc(e.id)}" data-k="json" style="width:100%;min-height:150px;font:12px/1.5 monospace">${esc(JSON.stringify(v,null,2))}</textarea>`;
     if (e.type === 'bool') return `<div class="tog${v ? ' on' : ''}" data-id="${e.id}" data-k="tog"></div><span class="mm">${v ? T('cfg.ctl_on', 'ON') : T('cfg.ctl_off', 'OFF')}</span>`;
-    if (e.type === 'enum') return `<select data-id="${e.id}" data-k="sel">${e.opts.map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    if (e.type === 'enum') return `<select data-id="${e.id}" data-k="sel">${e.opts.map(o => `<option value="${esc(o)}"${o === v ? ' selected' : ''}>${esc(e.id === 'bs_zombies:Zombies.Mode' ? ({networked:'Networked',networked_plus:'Networked+',legacy:'Legacy'}[o] || o) : o)}</option>`).join('')}</select>`;
     if (e.type === 'string') return `<input type="text" maxlength="32" data-id="${e.id}" data-k="txt" value="${esc(v)}">`;
     return `<span class="mm">${fmt(e.min)}</span><input type="range" min="${e.min}" max="${e.max}" step="${e.step}" value="${v}" data-id="${e.id}" data-k="rng"><span class="mm">${fmt(e.max)}</span><input type="number" min="${e.min}" max="${e.max}" step="${e.step}" value="${v}" data-id="${e.id}" data-k="num">`;
   }
@@ -162,7 +163,7 @@
     if (!S.query && S.cat === '_audit') return renderAudit();
     if (!S.query && S.cat === '_profiles') return renderProfilePage();
     const ext = !S.query && EXT().find(x => x.id === S.cat);
-    if (ext) { m.innerHTML = `<h2 class="cat">${esc(ext.label)}</h2><div class="empty">${esc(T('cfg.loading', 'Loading...'))}</div>`; return ext.render(m); }
+    if (ext) { m.innerHTML = `<h2 class="cat">${esc(TX(ext.label))}</h2><div class="empty">${esc(T('cfg.loading', 'Loading...'))}</div>`; return ext.render(m); }
     if (S.mode === 'simple' && !S.query) return renderSimple();
     const list = visible();
     if (!list.length) { m.innerHTML = `<div class="empty">${esc(T('cfg.nomatch', 'No setting matches.'))}</div>`; return; }
@@ -340,6 +341,7 @@
     const t = ev.target; if (!t.dataset || !t.dataset.id) return;
     if (t.dataset.k === 'num') setPending(t.dataset.id, parseFloat(t.value));
     else if (t.dataset.k === 'sel') setPending(t.dataset.id, t.value);
+    else if (t.dataset.k === 'json') { try { const value = JSON.parse(t.value); if (!value || typeof value !== 'object') throw Error(); setPending(t.dataset.id,value); } catch (_) { toast('Enter a valid JSON object or list.',true); } }
     else if (t.dataset.k === 'txt') setPending(t.dataset.id, t.value.slice(0, 32));
   });
   $('search').addEventListener('input', (e) => { S.query = e.target.value; render(); });
@@ -370,7 +372,9 @@
     else if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); $('search').focus(); }
   });
 
-  window.BSConfigUI = { rpc, esc, T, TX, toast, modal: (t, b, btns) => modal(t, b, btns), closeModal: () => closeModal(), confirmBox: (a, b) => confirmBox(a, b) };
+  const configClone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  window.BSConfigUI = { value: id => configClone(eff(id)), schema: () => configClone(S.schema),
+    setValue: (id,value) => { if (!S.byId[id]) return false; setPending(id,configClone(value)); return true; }, rpc, esc, T, TX, toast, modal: (t, b, btns) => modal(t, b, btns), closeModal: () => closeModal(), confirmBox: (a, b) => confirmBox(a, b) };
 
   if (window.BSI18n) BSI18n.onChange(() => { if (!$('app').classList.contains('hidden') && S.schema.length) { closeModal(); render(); } });
 

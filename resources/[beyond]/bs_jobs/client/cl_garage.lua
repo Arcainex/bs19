@@ -83,9 +83,7 @@ end)
 
 RegisterNUICallback('close', function(_, cb) focus(false); garageVeh = nil; cb({ ok = true }) end)
 
---------------------------------------------------------------------------------
 -- Gunsmith bench
---------------------------------------------------------------------------------
 
 local function openGunsmith()
     local r = BSB.Await('jobs:gs:list', 8000)
@@ -110,9 +108,7 @@ AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() and uiOpen then SetNuiFocus(false, false) end
 end)
 
---------------------------------------------------------------------------------
 -- Paint and props on modded cars, drawn locally by every client near them.
---------------------------------------------------------------------------------
 
 local Cos = {}        -- [plate] = { paint, props }
 local Fitted = {}     -- [veh] = { sig, objs }

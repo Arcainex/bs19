@@ -1,11 +1,6 @@
--- bs_traders - clothing shop authority. The client browses and previews; the server decides: who the player is (VIP, level), what they own (bought garments stay owned, bills count only new ones), and whether they may buy this (re-checked on every purchase).
--- Money moves only here, through bs_core's source-taking exports (see cashOf() in sv_traders.lua for why object methods do not survive exports).
+-- bs_traders - clothing shop authority.
 
--- Storage
--- Two tables. bs_core already persists the current outfit; this file never writes it. It stores the two lists:
--- owned: every (category, drawable) the character has paid for. Only grows; checked server-side.
--- outfits: saved sets by name, limited to owned garments, so wearing one is free.
--- Created at start with CREATE TABLE IF NOT EXISTS because this resource owns its schema (see sv_registry.lua).
+-- Storage: two tables. bs_core already persists the current outfit; this file never writes it.
 
 CreateThread(function()
     exports.oxmysql:execute_async([[
@@ -29,12 +24,9 @@ CreateThread(function()
     ]])
 end)
 
---------------------------------------------------------------------------------
 -- Who is asking
---------------------------------------------------------------------------------
 
--- Facts the gate needs. bs_vip is optional, so IsVIP is called through a resource-state check; without it there are simply no VIP items (never treat everyone as VIP).
--- `charId` keys everything below; with no character loaded every path refuses.
+-- Facts the gate needs. bs_vip is optional, so IsVIP is called through a resource-state check
 local function identify(src)
     local vip = false
     if GetResourceState('bs_vip') == 'started' then
@@ -70,11 +62,9 @@ local function cashOf(src)
     return (summary.accounts and summary.accounts.cash) or 0
 end
 
---------------------------------------------------------------------------------
 -- Ownership
---------------------------------------------------------------------------------
 
--- Ownership is per drawable, not per texture: buying a jacket unlocks every colour, so the colour arrows are not a trap. Price the garment, give the wardrobe.
+-- Ownership is per drawable, not per texture: buying a jacket unlocks every colour, so the colour arrows are not a trap.
 local function ownedKeys(charId)
     if not charId then return {} end
 
@@ -102,9 +92,7 @@ local function ownsSet(charId)
     return set
 end
 
---------------------------------------------------------------------------------
 -- Saved outfits
---------------------------------------------------------------------------------
 
 local function outfitsOf(charId)
     if not charId then return {} end
@@ -124,9 +112,7 @@ local function outfitsOf(charId)
     return out
 end
 
---------------------------------------------------------------------------------
 -- Opening the shop
---------------------------------------------------------------------------------
 
 -- Shared by both entry points: the npc exists, sells clothes and the player is standing at it. Returns nil, reason otherwise.
 local function shopNpc(src, npcId)
@@ -142,8 +128,7 @@ local function shopNpc(src, npcId)
     return npc
 end
 
--- What the panel needs that the client cannot work out. Not a catalogue: the client knows its own ped's drawable counts. Returns the rules (categories, prices, player status, owned items) and the client draws against them.
--- `rules` is sent whole so locked rows can be shown as 'VIP' or 'level 15' instead of hidden.
+-- What the panel needs that the client cannot work out.
 BSB.RegisterCallback('wardrobe:open', function(src, npcId)
     local npc, why = shopNpc(src, npcId)
     if not npc then return { ok = false, reason = why } end
@@ -170,12 +155,9 @@ BSB.RegisterCallback('wardrobe:open', function(src, npcId)
     }
 end)
 
---------------------------------------------------------------------------------
 -- Buying
---------------------------------------------------------------------------------
 
--- Confirm a whole fitting at once. `changes` is a list of { category, drawable, texture }, only what the player altered (diffed against the outfit snapshotted when the shop opened).
--- One transaction: everything is priced and authorised first, money moves once, then the client is told to keep what it wears. Uses the per-player transaction lock so a double-clicked Confirm cannot bill twice.
+-- Confirm a whole fitting at once. `changes` is a list of { category, drawable, texture }
 BSB.RegisterCallback('wardrobe:buy', function(src, npcId, changes)
     return WithTxLock(src, function()
         local npc, why = shopNpc(src, npcId)
@@ -201,7 +183,7 @@ BSB.RegisterCallback('wardrobe:buy', function(src, npcId, changes)
                 return { ok = false, reason = ('unknown category: %s'):format(categoryId) }
             end
 
-            -- Taking something off is free. Components have no empty state, so the client resolves 'none' to the model's bare drawable (Wardrobe.BareFor) before it gets here; -1 only reaches this for props (ClearPedProp). Nobody is charged for undressing.
+            -- Taking something off is free.
             if drawable < 0 then
                 if cat.kind ~= 'prop' then
                     return { ok = false, reason = ('%s: removal was not resolved'):format(cat.label) }
@@ -243,8 +225,7 @@ BSB.RegisterCallback('wardrobe:buy', function(src, npcId, changes)
             recordOwned(who.charId, entry[1], entry[2])
         end
 
-        -- The outfit itself is not written here. The client is already wearing it and bs_core's outfit layer persists it ('bs:outfit:push' -> CaptureOutfit -> character metadata); a second server-side copy would drift.
-        -- The server only confirms 'paid for, allowed' and tells the client to keep what it has on.
+        -- The outfit itself is not written here.
         return {
             ok = true,
             spent = total,
@@ -254,9 +235,7 @@ BSB.RegisterCallback('wardrobe:buy', function(src, npcId, changes)
     end)
 end)
 
---------------------------------------------------------------------------------
 -- Outfits
---------------------------------------------------------------------------------
 
 -- Save what is on the ped, by name. `parts` is { category = { drawable, texture } }. Refused unless every garment is owned or bare, so an outfit is never a way to acquire clothes and wearing one needs no price check.
 BSB.RegisterCallback('wardrobe:outfitSave', function(src, npcId, name, parts)
@@ -332,8 +311,7 @@ BSB.RegisterCallback('wardrobe:outfitDelete', function(src, outfitId)
     return { ok = true, outfits = outfitsOf(who.charId) }
 end)
 
--- What may be saved as worn. Classifies each shop piece of a sanitised outfit with the same rules as wardrobe:buy (bare is free, locked is refused, price 0 is free); ownership is checked by the caller against bs_wardrobe_owned. Stops previewing a paid or VIP piece and disconnecting from keeping it.
--- Returns a list of { kind, index, category, drawable, bare, verdict } (verdict 'free' | 'paid' | 'locked') plus the charId. Categories the shop does not sell (face, hair) are not listed.
+-- What may be saved as worn.
 exports('ClassifyOutfit', function(src, outfit)
     if type(outfit) ~= 'table' then return {}, nil end
     local who = identify(src)

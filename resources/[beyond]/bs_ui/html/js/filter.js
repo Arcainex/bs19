@@ -1,4 +1,4 @@
-// bs_ui - personal screen filter, page side. Receives already-resolved values (cl_filter.lua applies master strength) and just sets four numbers.
+// bs_ui - personal screen filter, page side.
 
 (function () {
     'use strict';

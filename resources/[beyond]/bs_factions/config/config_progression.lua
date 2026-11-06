@@ -5,7 +5,7 @@ Factions.Progression = {
     -- XP needed to go from level n to n+1 = floor(base * n ^ exponent)
     curve = { base = 400, exponent = 1.55 },
 
-    -- Treasury donations: poor rate on purpose, capped per member per day.
+    -- Treasury donations: poor rate, capped per member per day.
     donation = { dollarsPerXp = 25, dailyXpCap = 400, min = 100, max = 50000 },
 
     -- Board sizes and how many of each a faction rolls.

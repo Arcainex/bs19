@@ -15,6 +15,7 @@ local function send(p) SendNUIMessage(p) end
 local function refreshRights()
     local info = BSB.Await('admin:whoami', 8000)
     isAdmin = info and info.admin or false
+    Noclip.isAdmin = isAdmin
     send({ action = 'rights', admin = isAdmin, superadmin = info and info.superadmin or false })
     if isAdmin then AdminAddSuggestions() end
     return isAdmin
@@ -98,7 +99,7 @@ local function openMenu()
             local ok, list = pcall(function() return exports.bs_zombies:Types() end)
             return (ok and list) or {}
         end)(),
-        state     = { godmode = godmode, zombieGodmode = zombieGodmode, noclip = Noclip.active,
+        state     = { godmode = godmode, zombieGodmode = zombieGodmode, noclip = Noclip.active, noclipKey = Noclip.keyEnabled,
                       invisible = invisible, coords = coordsOverlay, propid = propIdOverlay,
                       advanced = advancedMode, guardAlerts = guardAlerts },
     })
@@ -279,6 +280,10 @@ local localActions = {
 
     noclip = function()
         return { noclip = Noclip.Toggle() }
+    end,
+
+    noclipKey = function()
+        return { noclipKey = Noclip.SetKeyEnabled(not Noclip.keyEnabled) }
     end,
 
     -- Two separate godmodes

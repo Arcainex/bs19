@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:1280px;height:720px;overflow:hidden;background:#11140f}img{position:absolute;inset:-50px;width:1380px;height:820px;object-fit:cover;filter:blur(24px) brightness(.45) saturate(.7)}body:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent,#080a08b3)}
+</style></head><body><img id="scene" alt=""><script>
+const params=new URLSearchParams(location.search),token=Number(params.get('token')),resource=params.get('resource');
+const call=(name,data)=>fetch('https://'+resource+'/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
+const img=document.getElementById('scene');img.onload=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>call('studioBackdropReady',{token})));img.src='workbench-backdrop.png';
+window.addEventListener('message',({data})=>{if(data.token!==token||typeof data.image!=='string'||!data.image.startsWith('data:image/jpeg;'))return;img.src=data.image;});
+call('studioBackdropPage',{token});
+</script></body></html>

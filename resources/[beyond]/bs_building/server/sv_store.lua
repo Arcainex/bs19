@@ -1,7 +1,8 @@
--- bs_building store: pieces in memory, grid lookups, DB writes, pushes to nearby players.
+-- bs_building store: pieces and wires in memory, grid lookups, DB writes, pushes to nearby players.
 
 local S = Building.Settings
-Store = { pieces = {}, grid = {}, ready = false, bases = {}, waiting = {} }
+Building.PowerDirty = Building.PowerDirty or function() end
+Store = { pieces = {}, grid = {}, ready = false, bases = {}, waiting = {}, wires = {}, wiresReady = false }
 
 local CELL = 128.0
 Store.CELL = CELL
@@ -50,21 +51,55 @@ end
 
 function Store.def(r) return Building.Pieces[r.piece] end
 
+-- Tier the piece is at (nil for pieces without tiers)
+function Store.tier(r)
+    return Building.TierOfData(Store.def(r), r.data and r.data.tier)
+end
+
+function Store.spec(r) return Building.Spec(Store.def(r), r.data and r.data.tier) end
+
 function Store.maxHp(r)
-    local d = Store.def(r)
-    return (d and d.health or 500) * ((r.data and r.data.fort) and 1.25 or 1)
+    local sp = Store.spec(r)
+    return (sp and sp.health or 500) * ((r.data and r.data.fort) and 1.25 or 1)
 end
 
 -- What a client is allowed to see. The code never leaves the server.
 function Store.view(r)
     local d = r.data or {}
-    return {
+    local def = Store.def(r)
+    local v = {
         id = r.id, p = r.piece, f = r.fac, ow = r.owner, x = r.x, y = r.y, z = r.z, h = r.h,
         hp = math.floor(r.health), mhp = math.floor(Store.maxHp(r)), b = r.built,
         dep = (not r.built) and r.dep or nil, o = d.open or false, lk = r.code ~= nil,
         on = d.on or false, fuel = d.fuel, w = d.water, decay = r.decaying or false,
-        lm = d.lock,
+        lm = d.lock, t = Store.tier(r),
+        ab = d.ab and d.ab.ends or nil,
     }
+    if def and (def.power or def.light) then v.lit = d.lit ~= false; v.pw = r.pw == true end
+    if def and def.node then v.pw = r.pw == true end
+    if def and def.generator then
+        v.res = d.res or 0
+        v.pw = r.pw == true
+        local n, charge = 0, 0
+        for _, b in ipairs(d.bats or {}) do n = n + 1; charge = charge + (tonumber(b.charge) or 0) end
+        v.bat = n > 0 and math.floor(charge / n) or nil
+    end
+    return v
+end
+
+function Store.wireView(w) return { id = w.id, a = w.a, b = w.b } end
+
+-- Wires whose first end sits in this cell
+function Store.cellWires(cx, cy)
+    local out = {}
+    for _, w in pairs(Store.wires) do
+        local a = Store.pieces[w.a]
+        if a then
+            local ax, ay = Store.cellOf(a.x, a.y)
+            if ax == cx and ay == cy then out[#out + 1] = Store.wireView(w) end
+        end
+    end
+    return out
 end
 
 function Store.cellList(cx, cy)
@@ -87,6 +122,7 @@ local function nearbyPlayers(r)
     end
     return out
 end
+Store.nearbyPlayers = nearbyPlayers
 function Store.push(r)
     local v = Store.view(r)
     for _, pid in ipairs(nearbyPlayers(r)) do TriggerClientEvent('bs:building:upsert', pid, v) end
@@ -117,12 +153,41 @@ function Store.add(r)
     gridAdd(r)
 end
 
+-- Wires
+
+function Store.wiresOf(id)
+    local out = {}
+    for _, w in pairs(Store.wires) do if w.a == id or w.b == id then out[#out + 1] = w end end
+    return out
+end
+
+function Store.addWire(w)
+    Store.wires[w.id] = w
+    local a = Store.pieces[w.a]
+    if a then
+        local v = Store.wireView(w)
+        for _, pid in ipairs(nearbyPlayers(a)) do TriggerClientEvent('bs:building:wire', pid, v) end
+    end
+    Building.PowerDirty()
+end
+
+function Store.removeWire(w)
+    if not Store.wires[w.id] then return end
+    Store.wires[w.id] = nil
+    x('DELETE FROM `bs_build_wires` WHERE `id` = ?', { w.id })
+    local a = Store.pieces[w.a] or Store.pieces[w.b]
+    if a then for _, pid in ipairs(nearbyPlayers(a)) do TriggerClientEvent('bs:building:unwire', pid, w.id) end end
+    Building.PowerDirty()
+end
+
 function Store.remove(r, how)
+    for _, w in ipairs(Store.wiresOf(r.id)) do Store.removeWire(w) end
     gridDel(r)
     Store.pieces[r.id] = nil
     x('DELETE FROM `bs_build_pieces` WHERE `id` = ?', { r.id })
     Store.pushRemove(r, how)
     TriggerEvent('bs:building:pieceRemoved', r.id, r.piece)
+    Building.PowerDirty()
 end
 
 -- Debounced writes: health and data change often during raids.
@@ -182,6 +247,9 @@ function Store.flag(src, kind, details)
     end
 end
 
+-- v1 ids that were replaced (migration 046 renames the rows, this covers a server that skipped it)
+local Renamed = { wall_window = 'wall', floor_frame = 'floor', window = 'mesh_panel', hatch = 'ladder' }
+
 CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(250) end
     -- migration 031 makes these; wait for bs_core to have run it
@@ -194,6 +262,10 @@ CreateThread(function()
     local n = 0
     for _, row in ipairs(q('SELECT * FROM `bs_build_pieces`')) do
         local r = Store.fromRow(row)
+        if Renamed[r.piece] then
+            r.piece = Renamed[r.piece]
+            x('UPDATE `bs_build_pieces` SET `piece` = ? WHERE `id` = ?', { r.piece, r.id })
+        end
         if Building.Pieces[r.piece] then Store.add(r); n = n + 1
         else
             -- piece from another resource that has not registered yet
@@ -204,7 +276,18 @@ CreateThread(function()
     for _, row in ipairs(q('SELECT `faction_id`, `last_visit` FROM `bs_build_bases`')) do
         Store.bases[row.faction_id] = math.floor((tonumber(row.last_visit) or os.time() * 1000) / 1000)
     end
+    -- wires come with migration 046; without the table there are simply no wires
+    local okW, rows = pcall(function() return exports.oxmysql:query_async('SELECT * FROM `bs_build_wires`') end)
+    if okW and type(rows) == 'table' then
+        for _, row in ipairs(rows) do
+            local w = { id = tonumber(row.id), a = tonumber(row.a_id), b = tonumber(row.b_id), owner = tonumber(row.owner_char), fac = row.faction_id }
+            if Store.pieces[w.a] and Store.pieces[w.b] then Store.wires[w.id] = w
+            else x('DELETE FROM `bs_build_wires` WHERE `id` = ?', { w.id }) end
+        end
+        Store.wiresReady = true
+    end
     Store.ready = true
     print(('^2[BeyondSurvival]^7 (building) %d pieces loaded'):format(n))
     TriggerClientEvent('bs:building:reset', -1)
+    Building.PowerDirty()
 end)

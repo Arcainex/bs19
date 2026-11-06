@@ -1,14 +1,12 @@
--- bs_menu - the hub. U opens and closes it. Entries either render a panel inside the hub (stats, skills) or hand off to another resource and close the hub (inventory, settings).
+-- bs_menu - the hub: u opens and closes it.
 
 local open = false
 
--- Opening makes three server round trips (8s each) before `open` is set. `opening` is set on the first frame so pressing U twice cannot open it twice (double blur, double NUI focus).
+-- Opening makes three server round trips (8s each) before `open` is set. `opening` is set on the first frame so
 local opening = false
--- Each async open gets a ticket; closing or panic invalidates it so a late server response cannot reopen a menu the player left.
 local openTicket = 0
 
--- Sanitise the payload before SendNUIMessage. json.encode happily writes `inf` and the NUI parser then rejects it (rapidjson error 3), leaving a blurred screen with no panel.
--- So walk the payload first and drop inf/-inf/NaN, functions, threads, userdata and cycles. Depth-limited, and the dropped paths are printed so the source resource can be fixed.
+-- Sanitise the payload before SendNUIMessage. json.encode happily writes `inf` and the NUI parser then rejects
 local MAX_DEPTH = 12
 
 local function scrub(value, seen, depth, path, dropped)
@@ -199,11 +197,19 @@ local function openQuickWheel()
                 { id='stats', label=L('m.survivor'), icon='heart', note=L('q.stats_n') },
                 { id='skills', label=L('q.skills'), icon='star', note=L('q.skills_n') },
                 { id='faction', label=L('q.faction'), icon='key', note=L('q.faction_n') },
+                { id='needs', label='Needs', icon='needs', note='Bodily needs' },
+                { id='radio', label=L('q.radio'), icon='radio', note=L('q.radio_n') },
                 { id='settings', label=L('q.settings'), icon='gear', note=L('q.settings_n') },
             },
         })
         if choice == 'inventory' then exports.bs_inventory:Open()
+        elseif choice == 'skills' then exports.bs_inventory:Open('skills')
+        elseif choice == 'stats' then TriggerEvent('bs:survivor:open')
+        elseif choice == 'craft' then exports.bs_inventory:Open('craft')
+        elseif choice == 'needs' then TriggerEvent('bs:bodily:open')
+        elseif choice == 'radio' then TriggerEvent('bs:walkie:open')
         elseif choice == 'settings' then exports.bs_inventory:Open('settings')
+        elseif choice == 'build' and GetResourceState('bs_building') == 'started' then TriggerEvent('bs:building:open', 'bar')
         elseif choice == 'faction' then openMenu('faction')
         elseif choice then openMenu(choice) end
     end)
@@ -517,7 +523,7 @@ RegisterNUICallback('refresh', function(_, cb)
     end)
 end)
 
--- World behind the hub: a NUI page cannot blur the game, so use GTA's own blur (like the pause menu). The world stays visible and softened.
+-- World behind the hub: a NUI page cannot blur the game, so use GTA's own blur (like the pause menu).
 CreateThread(function()
     while true do
         if open then
@@ -567,10 +573,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Faction hub: thin pass-through to the faction/squad/sanction callbacks.
--- Only names in this list get through, so the page can't call anything else.
---------------------------------------------------------------------------------
 local HUB_FX = {}
 for _, n in ipairs({
     'squad:get', 'squad:create', 'squad:invite', 'squad:accept', 'squad:decline', 'squad:leave',
@@ -579,8 +582,9 @@ for _, n in ipairs({
     'factions:ranks:create', 'factions:ranks:rename', 'factions:ranks:move', 'factions:ranks:delete', 'factions:panel',
     'sanctions:templates', 'sanctions:list', 'sanctions:issue', 'sanctions:lift',
     'jail:get', 'jail:setOrigin', 'jail:setExit', 'jail:addCell', 'jail:removeCell', 'jail:release',
-    'factions:progress:get', 'factions:missions:get', 'factions:missions:deliver', 'factions:skills:get',
+    'factions:progress:get', 'factions:missions:accept', 'factions:missions:get', 'factions:missions:deliver', 'factions:skills:get',
     'factions:skills:spend', 'factions:cosmetics:set', 'factions:donate', 'factions:rosterAll',
+    'factions:emblem:get', 'factions:emblem:set',
     -- faction jobs (bs_jobs)
     'jobs:overview', 'jobs:apply', 'jobs:withdraw', 'jobs:leave', 'jobs:approve', 'jobs:kick', 'jobs:pick', 'jobs:placeStation',
     'jobs:board', 'jobs:take', 'jobs:abandon', 'jobs:turnin', 'jobs:scores', 'jobs:kid:pay', 'jobs:kid:ransom', 'jobs:kid:release',
@@ -591,7 +595,7 @@ for _, n in ipairs({
     'factions:admin:skill', 'factions:admin:reputation', 'factions:admin:treasury', 'factions:admin:addMember',
     'factions:admin:removeMember', 'factions:admin:setRank', 'factions:admin:transfer', 'factions:admin:disband',
     'factions:admin:reroll', 'factions:admin:completeMission', 'factions:admin:resetCooldowns',
-    'factions:admin:flagTeleport', 'factions:admin:flagRemove', 'factions:admin:identity', 'factions:admin:clearBriefing',
+    'factions:admin:flagTeleport', 'factions:admin:flagRemove', 'factions:admin:identity', 'factions:admin:clearBriefing', 'factions:admin:emblem',
 }) do HUB_FX[n] = true end
 
 local function clean(v)

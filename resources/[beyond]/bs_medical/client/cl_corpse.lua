@@ -1,4 +1,3 @@
--- bs_medical - client side of the player body the server leaves behind (sv_corpse.lua): dressing it as the dead player, keeping it dead, the "Search body" option, rot from walkers feeding, and the owner's map blip.
 
 local C = Medical.Corpse or {}
 local templates = {}   -- [id] = { outfit, appearance } captured at death
@@ -13,7 +12,7 @@ local function dropTemplate(id)
     templates[id] = nil
 end
 
--- Captured at death before the wipe strips clothes: plain data, no clone ped. ClonePedToTarget copied junk slots and caused "Invalid variation" spam.
+-- Captured at death before the wipe strips clothes: plain data, no clone ped.
 RegisterNetEvent('bs:medical:corpse:snapshot', function(id)
     local okO, outfit = pcall(function() return exports.bs_core:CaptureOutfit() end)
     local okD, data = pcall(function() return exports.bs_core:GetData() end)

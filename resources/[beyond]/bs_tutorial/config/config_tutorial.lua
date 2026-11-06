@@ -20,7 +20,7 @@ Tutorial.Settings = {
     bucketBase       = 30000,  -- private routing bucket = bucketBase + server id
 }
 
--- First full completion.
+-- Full completion.
 Tutorial.StarterKit = {
     { item = 'bandage', amount = 2 },
     { item = 'water_bottle', amount = 1 },
@@ -121,5 +121,5 @@ Tutorial.Chapters = {
 -- Your own chapters, played after the built-in ones. Plain text works here, no locale file needed.
 -- Example:
 -- { id = 'ourrules', icon = 'shield', title = 'Our house rules', lines = { 'Be nice.', 'Have fun.' },
---   keys = {}, cam = { { pos = vector3(0.0, 0.0, 100.0), look = vector3(10.0, 10.0, 70.0) }, { pos = vector3(20.0, 0.0, 100.0), look = vector3(10.0, 10.0, 70.0) } } },
+-- keys = {}, cam = { { pos = vector3(0.0, 0.0, 100.0), look = vector3(10.0, 10.0, 70.0) }, { pos = vector3(20.0, 0.0, 100.0), look = vector3(10.0, 10.0, 70.0) } } },
 Tutorial.CustomChapters = {}

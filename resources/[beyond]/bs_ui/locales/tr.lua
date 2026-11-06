@@ -15,6 +15,7 @@ return {
     ['ui.bar_stamina'] = 'Dayanıklılık',
     ['ui.bar_hunger'] = 'Açlık',
     ['ui.bar_thirst'] = 'Susuzluk',
+    ['ui.bar_noise'] = 'Gürültü',
     ['ui.bar_infection'] = 'Enfeksiyon',
     ['ui.xp'] = 'TP',
     ['ui.dash_fuel'] = 'YAKIT',

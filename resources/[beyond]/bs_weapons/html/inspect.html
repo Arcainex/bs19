@@ -1,0 +1,128 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="nui://bs_ui/html/shared/theme.js?v=20261104"></script>
+<script src="nui://bs_ui/html/shared/scale.js?v=20261104"></script>
+<link rel="stylesheet" href="nui://bs_ui/html/css/fonts.css">
+<link rel="stylesheet" href="inspect.css?v=20261104">
+<link rel="stylesheet" href="attachments.css?v=20261104">
+<title>Customize Weapon</title></head><body>
+
+<main id="inspector" hidden>
+  <div class="wb-veil"></div>
+  <div id="orbitArea" aria-label="Weapon preview"><svg id="gizmo" aria-label="Transform handles"></svg><div id="dropHint" hidden>Release to stick it here</div></div>
+
+  <header class="wb-top">
+    <div class="wb-id"><span class="k-kicker">ARSENAL // CUSTOMIZE WEAPON</span><h1 id="weapon" class="k-title k-fit"></h1><span id="serial" class="k-mono"></span></div>
+    <div class="wb-actions">
+      <span id="dirty" class="k-stamp is-dim">Applied</span>
+      <button id="revert" class="wb-btn" disabled>Revert</button>
+      <button id="apply" class="wb-btn is-primary" disabled>Apply changes</button>
+      <button id="close" class="wb-close" aria-label="Close workbench">✕</button>
+    </div>
+  </header>
+
+  <aside class="wb-left k-panel">
+    <nav id="tabs" class="wb-tabs"><button data-tool="appearance" class="active">Finish</button><button data-tool="equipment">Pieces</button><button data-tool="stickers">Stickers</button></nav>
+    <div class="wb-body">
+      <section data-pane="appearance">
+        <h2 class="wb-h">Finish</h2>
+        <div id="finishWheel" class="cw"></div>
+        <p class="wb-hint">GTA weapons take factory finishes only. The wheel picks the closest one this model has.</p>
+        <div id="finishLibrary" class="wb-swatches"></div>
+        <section id="paintBox" class="wb-paint" hidden>
+          <h2 class="wb-h">Custom paint <span class="wb-tag">Experimental</span></h2>
+          <p id="paintHint" class="wb-hint is-small"></p>
+          <label class="wb-check"><input id="paintOn" type="checkbox">Paint this weapon in any colour</label>
+          <div id="paintControls" hidden>
+            <span class="wb-label">Parts to paint</span><div id="paintParts" class="wb-chips"></div>
+            <span class="wb-label">The wheel sets</span><div id="paintTarget" class="wb-seg is-3"><button data-target="base" class="active">Main</button><button data-target="second">Second</button><button data-target="brush">Brush</button></div>
+            <span class="wb-label">Pattern</span><div id="paintPattern" class="wb-chips"><button data-pattern="solid">Solid</button><button data-pattern="worn">Worn</button><button data-pattern="twotone">Two-tone</button><button data-pattern="stripes">Stripes</button><button data-pattern="camo">Camo</button></div>
+            <div class="wb-paintcols"><span>Main<i id="paintBaseSw"></i></span><span>Second<i id="paintSecondSw"></i></span><span>Brush<i id="paintBrushSw"></i></span></div>
+            <label class="wb-field">Wear<input id="paintWear" type="range" min="0" max="100" step="5" value="35"></label>
+            <span class="wb-label">Hand painting</span>
+            <div class="wb-brush"><canvas id="paintCanvas" width="512" height="512"></canvas>
+              <div class="wb-brush__tools"><div class="wb-seg is-2"><button data-brush="paint" class="active">Brush</button><button data-brush="erase">Eraser</button></div>
+              <label class="wb-field">Size<input id="paintSize" type="range" min="2" max="60" step="1" value="14"></label>
+              <button id="paintClear" class="wb-btn is-small">Clear strokes</button><small id="paintStrokes" class="k-mono"></small></div></div>
+            <p class="wb-hint is-small">You paint the part's texture map; strokes show live on the weapon so you can see where they land.</p>
+          </div>
+        </section>
+        <h2 class="wb-h">Markings</h2>
+        <label class="wb-field">Weapon name<input id="name" maxlength="40" spellcheck="false" placeholder="No name"></label>
+        <div class="wb-facts"><span>Damage<b id="damage"></b></span><span>Magazine<b id="magazine"></b></span><span>Rounds<b id="ammo"></b></span></div>
+      </section>
+      <section data-pane="equipment" hidden>
+        <h2 class="wb-h">Pieces from your bag</h2>
+        <p id="cosmeticAvailability" class="wb-hint"></p>
+        <div id="equipmentLibrary" class="wb-grid"></div>
+      </section>
+      <section data-pane="stickers" hidden>
+        <h2 class="wb-h">Sticker collection</h2>
+        <p id="stickerAvailability" class="wb-hint"></p>
+        <input id="stickerSearch" class="wb-search" type="search" placeholder="Search designs or factions" spellcheck="false">
+        <div id="stickerCategory" class="wb-chips"><button data-cat="" class="active">All</button><button data-cat="Marks">Marks</button><button data-cat="Warnings">Warnings</button><button data-cat="Paint">Paint</button><button data-cat="Factions">Factions</button></div>
+        <div id="stickerLibrary" class="wb-grid is-stickers"></div>
+      </section>
+    </div>
+  </aside>
+
+  <aside class="wb-right k-panel">
+    <div class="wb-pieces">
+      <div class="wb-pieces__head"><span class="k-kicker">ON THIS WEAPON</span><span id="pieceCount" class="k-mono"></span></div>
+      <div id="layers"></div>
+      <p class="wb-hint is-small">✕ takes a piece off. Saved pieces go back to your bag when you apply.</p>
+    </div>
+    <section id="pieceEditor" hidden>
+      <div class="wb-sel"><span class="k-kicker">SELECTED</span><h2 id="selectionName" class="wb-h"></h2></div>
+      <div id="mountTools">
+        <div class="wb-seg"><button data-mode="move" class="active"><kbd>W</kbd>Move</button><button data-mode="rotate"><kbd>E</kbd>Rotate</button><button data-mode="scale"><kbd>R</kbd>Scale</button></div>
+        <label class="wb-check"><input id="snap" type="checkbox">Snap to steps</label>
+        <p class="wb-hint is-small">Drag a coloured handle on the weapon. Hold Shift for fine moves.</p>
+      </div>
+      <div id="stickerSurfaceRow" hidden>
+        <div id="stickerWheel" class="cw is-small"></div>
+        <label class="wb-field">Opacity<input id="stickerOpacity" type="range" min="10" max="100" step="5" value="100"></label>
+        <div class="wb-row"><button id="stickerOriginal" class="wb-btn is-small">Original colours</button><button id="stickerFace" class="wb-btn is-small">Face surface</button></div>
+        <label class="wb-field">Surface<select id="stickerSurface"></select></label>
+        <div id="stickerQuickTools" class="wb-row"></div>
+        <p class="wb-hint is-small">Drag on the weapon to slide it. Arrows nudge, Shift-wheel sizes, Alt-wheel turns.</p>
+      </div>
+      <details class="wb-precise"><summary>Precise values</summary><div id="numeric"></div></details>
+    </section>
+    <p id="status" role="status"></p>
+  </aside>
+
+  <footer class="wb-keys"><label class="wb-bd">Backdrop<select id="backdropSel" aria-label="Workbench backdrop"></select></label><span><kbd>RMB</kbd>Orbit</span><span><kbd>Wheel</kbd>Zoom</span><button id="resetCamera">Reset view</button><span><kbd>Ctrl Z</kbd>Undo</span><span><kbd>Ctrl X</kbd>Redo</span><span><kbd>Esc</kbd>Close</span></footer>
+
+  <div id="confirmClose" role="dialog" aria-modal="true" hidden><div class="k-panel wb-dialog"><span class="k-kicker">UNSAVED DRAFT</span><h2 class="k-title">Discard changes?</h2><p>Your draft finish, pieces and stickers will be thrown away. Nothing leaves your bag.</p><div class="wb-row"><button id="keepEditing" class="wb-btn">Keep editing</button><button id="discard" class="wb-btn is-danger">Discard &amp; close</button></div></div></div>
+</main>
+
+<section id="attachments" hidden aria-label="Weapon attachments">
+  <div class="k-veil"></div>
+  <div id="atStage" aria-label="Right drag to turn the weapon"></div>
+  <div id="atPoints"></div>
+  <aside id="atRailPanel" class="k-panel at-rail">
+    <div class="at-rail__head"><span class="k-kicker">FIELD KIT // ATTACHMENTS</span><h1 id="atWeapon" class="k-title at-title k-fit"></h1><div class="at-rail__meta"><span id="atSerial" class="k-mono"></span><span id="atRounds" class="k-stamp"></span></div></div>
+    <div id="atRail" class="at-rail__list"></div>
+    <div id="atRailFoot" class="at-rail__foot"></div>
+  </aside>
+  <aside id="atCard" class="k-panel at-card">
+    <span class="k-kicker">SPEC SHEET</span><h2 id="atCardTitle" class="k-title" style="font-size:28px">Current build</h2><p id="atCardSub" class="at-card__sub"></p>
+    <div id="atStats"></div><div class="at-sep"></div><div id="atFacts" class="at-facts"></div>
+    <p id="atBlurb" class="at-blurb"></p><p id="atNote" class="at-note" hidden>Engine stats are unavailable for this weapon; noise and magazine still come from the server config.</p>
+    <div id="atStatus" role="status"></div>
+  </aside>
+  <button id="atClose" aria-label="Close attachments">✕</button>
+  <footer id="atKeys" class="at-keys"><span><kbd>LMB</kbd>Drag or click a part</span><span><kbd>RMB</kbd>Orbit</span><span><kbd>Wheel</kbd>Zoom</span><button id="atReset">Reset view</button><span><kbd>O</kbd><kbd>Esc</kbd>Close</span></footer>
+</section>
+
+<script src="nui://bs_ui/html/js/icons.js?v=20261031custom"></script>
+<script src="https://cfx-nui-bs_ui/html/shared/emblem.js"></script>
+<script src="game-frame.js"></script>
+<script src="sticker-art.js"></script>
+<script src="fit-title.js?v=20261105"></script>
+<script src="part-icons.js?v=20261105"></script>
+<script src="paint-render.js?v=20261105"></script>
+<script src="colour-wheel.js?v=20261105"></script>
+<script src="inspect.js?v=20261104"></script>
+<script src="attachments.js?v=20261104"></script>
+</body></html>

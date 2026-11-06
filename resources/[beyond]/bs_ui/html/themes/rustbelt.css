@@ -1,0 +1,60 @@
+/* Theme pack: Rust Belt: scrapyard steel. Oxidised plate, riveted bands, burnt orange, heavy serif caps like cast foundry plates. */
+html[data-theme="rustbelt"] {
+    --bs-f-stencil: 'Rockwell Extra Bold', Rockwell, Georgia, 'Times New Roman', serif;
+    --bs-f-cond: 'BS Cond', 'Arial Narrow', sans-serif;
+    --bs-f-text: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-f-mono: 'BS Cond', 'Arial Narrow', sans-serif;
+    --bs-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.510 0 0 0 0 0.314 0 0 0 0 0.180 0 0 0 0.32 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+    --bs-scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cdefs%3E%3CradialGradient id='r'%3E%3Cstop offset='0' stop-color='%23a4521f' stop-opacity='.13'/%3E%3Cstop offset='1' stop-color='%23a4521f' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx='90' cy='70' rx='120' ry='60' fill='url(%23r)'/%3E%3Cellipse cx='480' cy='300' rx='160' ry='80' fill='url(%23r)'/%3E%3Cellipse cx='330' cy='40' rx='70' ry='40' fill='url(%23r)'/%3E%3Cg stroke='%23f2dcc4' stroke-width='.5' opacity='.05'%3E%3Cpath d='M0 20h600M0 47h600M0 81h600M0 130h600M0 171h600M0 220h600M0 262h600M0 300h600M0 341h600M0 377h600'/%3E%3C/g%3E%3Cg stroke='%23000' stroke-width='1' opacity='.25'%3E%3Cpath d='M40 210l70 6M380 120l46-4'/%3E%3C/g%3E%3C/svg%3E");
+    --bs-stain: radial-gradient(ellipse 40% 30% at 15% 85%, rgba(140, 60, 20, .22), transparent 70%);
+    --t-bg: 22,16,12;
+    --t-panel: 38,28,21;
+    --t-panel2: 56,41,30;
+    --t-ink: 236,220,200;
+    --t-ink2: 212,192,170;
+    --t-dim: 170,146,124;
+    --t-acc: 214,104,40;
+    --t-acc2: 240,148,86;
+    --t-bad: 170,48,38;
+    --t-bad2: 238,124,104;
+    --t-ok: 140,166,100;
+    --t-warn: 220,166,64;
+    --t-shade: 8,5,3;
+    --t-shade-k: 1;
+    --t-head-ls: .12em;
+    --t-head-w: 700;
+    --t-head-bg: none;
+    --t-head-pad: 0;
+    --t-head-ink: rgb(var(--t-acc2));
+    --t-title-ls: .04em;
+    --t-ui-ls: .1em;
+    --t-deco: radial-gradient(circle, rgb(196, 150, 112) 0 1.6px, rgb(60, 38, 26) 2.2px, transparent 2.8px) 6px 0 / 26px 7px repeat-x, linear-gradient(180deg, rgb(92, 62, 42), rgb(48, 33, 24)) 0 0 / 100% 7px no-repeat;
+}
+
+/* HUD over the world: its own dark set, and it only replaces the config colours when the player has no menu palette. */
+html[data-theme="rustbelt"] {
+    --t-h-ink: 238,224,206;
+    --t-h-dim: 182,160,138;
+    --t-h-acc: 222,116,52;
+    --t-h-bad: 214,78,62;
+    --t-h-ok: 150,176,104;
+    --t-h-bg: 22,16,12;
+}
+html[data-theme="rustbelt"]:not([data-bs-palette]) {
+    --t-hud-acc: rgb(var(--t-h-acc));
+    --t-hud-ink: rgb(var(--t-h-ink));
+    --t-hud-dim: rgb(var(--t-h-dim));
+    --t-hud-bad: rgb(var(--t-h-bad));
+    --t-hud-ok: rgb(var(--t-h-ok));
+    --t-hud-bg: rgb(var(--t-h-bg));
+    --t-hud-font: 'BS Cond', 'Arial Narrow', sans-serif;
+    --t-hud-head: Georgia, 'Times New Roman', serif;
+}
+
+/* selector: riveted plate strip and a cast-plate title */
+html[data-theme="rustbelt"] .panel::before { width: 12px; background: radial-gradient(circle, rgb(196, 150, 112) 0 1.8px, rgb(50, 32, 22) 2.4px, transparent 3px) 0 8px / 12px 30px repeat-y, linear-gradient(90deg, rgb(98, 66, 44), rgb(46, 31, 22)); opacity: 1; }
+html[data-theme="rustbelt"] .sel__title, html[data-theme="rustbelt"] .panel__title { font-weight: 900; -webkit-mask-image: none; text-shadow: 0 2px 0 rgba(0, 0, 0, .8), 0 -1px 0 rgba(255, 210, 170, .12); }
+html[data-theme="rustbelt"] .sel__play { font-weight: 900; clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px); background: linear-gradient(180deg, rgb(var(--t-acc2)), rgb(var(--t-acc)) 55%, rgb(170, 78, 26)); }
+html[data-theme="rustbelt"] .sel__play::before, html[data-theme="rustbelt"] .sel__play::after { background: radial-gradient(circle, rgba(40, 20, 10, .7) 0 2.5px, transparent 3px) center / 26px 26px repeat-y; }
+html[data-theme="rustbelt"] .tab.is-active, html[data-theme="rustbelt"] .btn--primary { background: linear-gradient(180deg, rgb(var(--t-acc2)), rgb(var(--t-acc)) 60%); }
+html[data-theme="rustbelt"] .board__head, html[data-theme="rustbelt"] .card h4 { background: linear-gradient(180deg, rgba(255, 220, 190, .06), transparent); }

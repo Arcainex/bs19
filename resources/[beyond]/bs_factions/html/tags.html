@@ -6,11 +6,7 @@
 <meta charset="utf-8">
 <title>BeyondSurvival agent tags</title>
 <style>
-/*
-   Name tags. Same palette and type as the hub (bs_menu): bone text, dust for
-   quiet parts, amber accent, Consolas. Thin bracket lines and a hairline
-   divider, no boxes. Colours come from config at start.
-*/
+/* Name tags: same palette and type as the hub (bs_menu): bone text, dust for quiet parts, amber accent, Consolas. */
 :root { --accent:#e08c46; --squad:#7fd4a2; --bone:#f0ebdd; --dust:#a8a293; --down:#c0564a; --neutral:#c9c2b0;
         --mono:'Consolas','Courier New',monospace; }
 html, body { margin:0; width:100%; height:100%; overflow:hidden; background:transparent!important; pointer-events:none; user-select:none; }
@@ -59,6 +55,8 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; background:tran
 @keyframes brL { from { opacity:0; transform:translateX(18px) scaleY(.2); } to { opacity:.9; transform:none; } }
 @keyframes brR { from { opacity:0; transform:translateX(-18px) scaleY(.2); } to { opacity:.9; transform:none; } }
 @keyframes rule { from { transform:scaleX(0); opacity:0; } to { transform:scaleX(1); opacity:.45; } }
+.tag__mark { display:inline-block; width:18px; height:18px; line-height:0; }
+.tag__mark svg { width:100%; height:100%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.8)); }
 </style>
 <link rel="stylesheet" href="squad.css">
 </head>
@@ -68,18 +66,20 @@ html, body { margin:0; width:100%; height:100%; overflow:hidden; background:tran
 // One element per mate, reused each frame. Only transform and opacity change per update, so no text re-layout.
 const layer = document.getElementById('layer');
 const nodes = new Map();
+// faction emblems by id, pushed by cl_tags.lua; false = none set (a stable default is drawn)
+const marks = {};
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function build(t) {
     const el = document.createElement('div');
     el.className = 'tag is-new';
-    el.innerHTML = `<div class="tag__in"><div class="tag__group"><span class="tag__br tag__br--l"></span><span class="g"></span><span class="tag__sep"></span><span class="tag__rank"></span><span class="tag__br tag__br--r"></span></div><div class="tag__rule"></div><div><span class="tag__name"></span><span class="tag__lv"></span></div><div class="tag__down">${window.BSI18n ? BSI18n.t('tags.down') : 'DOWN'}</div></div>`;
+    el.innerHTML = `<div class="tag__in"><div class="tag__group"><span class="tag__br tag__br--l"></span><span class="tag__mark"></span><span class="g"></span><span class="tag__sep"></span><span class="tag__rank"></span><span class="tag__br tag__br--r"></span></div><div class="tag__rule"></div><div><span class="tag__name"></span><span class="tag__lv"></span></div><div class="tag__down">${window.BSI18n ? BSI18n.t('tags.down') : 'DOWN'}</div></div>`;
     setTimeout(() => el.classList.remove('is-new'), 700);
     layer.appendChild(el);
     return el;
 }
 function fill(el, t) {
-    const key = [t.kind, t.group, t.rank, t.name, t.level, t.down, t.hex, t.style].join('|');
+    const key = [t.kind, t.group, t.rank, t.name, t.level, t.down, t.hex, t.style, t.fid, t.fid ? String(marks[t.fid] && JSON.stringify(marks[t.fid])) : ''].join('|');
     if (el.dataset.key === key) return;
     el.dataset.key = key;
     const kind = t.kind === 'squad' || t.kind === 'safe' ? t.kind : 'faction';
@@ -90,6 +90,9 @@ function fill(el, t) {
     const hex = /^#[0-9a-f]{6}$/i.test(t.hex || '') ? t.hex : '';
     for (const sel of ['.tag__group', '.tag__rule']) { const n = el.querySelector(sel); if (hex) n.style.setProperty('--c', hex); else n.style.removeProperty('--c'); }
     el.querySelector('.g').textContent = t.group || '';
+    const m = el.querySelector('.tag__mark');
+    if (t.fid && window.BSEmblem && t.kind !== 'squad') { m.innerHTML = BSEmblem.render(marks[t.fid] ? BSEmblem.normalize(marks[t.fid]) : BSEmblem.fallback(t.fid)); m.style.display = ''; }
+    else { m.innerHTML = ''; m.style.display = 'none'; }
     el.querySelector('.tag__rank').textContent = t.rank || '';
     const hasRank = !!t.rank;
     el.querySelector('.tag__sep').style.display = hasRank ? '' : 'none';
@@ -118,6 +121,7 @@ function render(tags) {
 window.addEventListener('message', (e) => {
     const d = e.data || {};
     if (d.action === 'tags') render(Array.isArray(d.tags) ? d.tags : []);
+    if (d.action === 'tagsEmblems' && d.emblems && typeof d.emblems === 'object') { Object.assign(marks, d.emblems); for (const el of nodes.values()) el.dataset.key = ''; }
     if (d.action === 'tagsConfig' && d.colours) {
         const r = document.documentElement.style, c = d.colours;
         if (c.faction) r.setProperty('--accent', c.faction);
@@ -129,6 +133,7 @@ window.addEventListener('message', (e) => {
     }
 });
 </script>
+<script src="nui://bs_ui/html/shared/emblem.js?v=20261027"></script>
 <script src="squad.js"></script>
 </body>
 </html>

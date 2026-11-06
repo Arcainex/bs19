@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="nui://bs_ui/html/shared/theme.js?v=20261104a"></script>
+<link rel="stylesheet" href="nui://bs_ui/html/css/fonts.css">
+<link rel="stylesheet" href="ff.css">
+</head>
+<body>
+<div id="ff" class="ff mode-minimal">
+    <div id="combo" class="ffcombo">
+        <span class="ffcombo__tag" id="hitsLabel">HITS</span>
+        <b id="comboN">0</b>
+        <i class="ffcombo__tape"></i>
+    </div>
+    <div id="counter" class="ffcounter">
+        <svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="28"/><circle id="ring" class="ring" cx="32" cy="32" r="28"/></svg>
+        <kbd id="counterKey">E</kbd>
+        <span id="counterLabel">COUNTER</span>
+    </div>
+    <div id="locked" class="fflocked"><i></i><span id="lockLabel">LOCKED</span><i></i></div>
+    <div id="finisher" class="fffinisher"><span id="finLabel">FINISHER</span></div>
+    <div id="flash" class="ffflash"></div>
+</div>
+<script src="ff.js"></script>
+</body>
+</html>

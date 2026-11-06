@@ -12,7 +12,7 @@ Drugs.Quality = {
     good   = { effect = 1.3, addict = 0.7, label = 'pure' },
 }
 
--- item -> drug + quality
+-- item to drug + quality
 Drugs.Items = {
     cocaine_bad = { drug = 'cocaine', q = 'bad' },  cocaine = { drug = 'cocaine', q = 'normal' },  cocaine_good = { drug = 'cocaine', q = 'good' },
     morphine_bad = { drug = 'morphine', q = 'bad' }, morphine = { drug = 'morphine', q = 'normal' }, morphine_good = { drug = 'morphine', q = 'good' },
@@ -60,7 +60,7 @@ Drugs.Addiction = {
     cleanAfter = 600,           -- seconds after last use before decay starts
     withdrawalAfter = 900,      -- seconds after last use before withdrawal can start
     tickSeconds = 60,           -- server check interval
-    levels = { 25, 55, 85 },    -- points -> withdrawal level 1/2/3
+    levels = { 25, 55, 85 },    -- points to withdrawal level 1/2/3
 }
 
 -- Withdrawal debuffs by level (the worst drug wins).

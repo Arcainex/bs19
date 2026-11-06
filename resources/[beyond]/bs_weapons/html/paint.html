@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{display:block}</style></head><body><canvas id="c"></canvas><script src="paint-render.js"></script><script>
+const params=new URLSearchParams(location.search),size=Number(params.get('size'))||512,slot=Number(params.get('slot')),resource=params.get('resource');
+const c=document.getElementById('c');c.width=c.height=size;const ctx=c.getContext('2d');
+let rev=0;
+window.addEventListener('message',({data})=>{if(!data||data.slot!==slot)return;rev=data.rev;BSPaintRender.draw(ctx,size,data.part,data.seed);
+ requestAnimationFrame(()=>fetch('https://'+resource+'/paintPainted',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot,rev})}).catch(()=>{}));});
+fetch('https://'+resource+'/paintPageReady',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slot})}).catch(()=>{});
+</script></body></html>

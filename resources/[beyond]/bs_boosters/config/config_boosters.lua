@@ -1,5 +1,4 @@
--- Boosters: single-use personal buffs, 3 slots, PvE only.
--- Deployables and the riot shield live in bs_gadgets. Item defs are in bs_inventory/config/config_items.lua (category 'booster').
+-- Boosters: single-use personal buffs, 3 slots, PvE only. Deployables and the riot shield live in bs_gadgets.
 
 Boosters = {}
 
@@ -10,7 +9,7 @@ Boosters.Command = 'bs_booster%d'   -- key set name; changed so new default keys
 Boosters.MetaKey = 'boosters'       -- character metadata: { [1]=item, [2]=item, [3]=item }
 Boosters.UseDelayMs = 600           -- server-side anti-spam between any two uses
 
--- item name -> behaviour. cooldown is per TYPE, in seconds.
+-- item name to behaviour. cooldown is per TYPE, in seconds.
 Boosters.Types = {
     booster_adrenaline = {
         kind = 'adrenaline', label = 'Adrenaline', cooldown = 180,
@@ -34,3 +33,7 @@ Boosters.Types = {
 }
 
 function Boosters.IsBooster(item) return Boosters.Types[item] ~= nil end
+
+-- Dark Zone boosters (bs_darkzone): stronger takes on the same kinds.
+Boosters.Types.booster_dz_overdrive = { kind = 'adrenaline', label = 'Overdrive', cooldown = 240, duration = 25, speed = 1.35 }
+Boosters.Types.booster_dz_ironhide  = { kind = 'fortify', label = 'Ironhide', cooldown = 260, duration = 60, reduce = 0.55 }

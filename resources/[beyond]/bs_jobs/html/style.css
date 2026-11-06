@@ -25,3 +25,12 @@ button.b:disabled { opacity: 0.35; cursor: default; }
 .foot input { flex: 1; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); color: var(--bone); padding: 6px 8px; font-size: 13px; }
 .msg { font-size: 12px; color: var(--dust); padding: 6px 0; min-height: 18px; }
 .msg.bad { color: var(--bad); } .msg.ok { color: var(--good); }
+
+.fishing-game { position:fixed; bottom:12vh; left:50%; transform:translateX(-50%); width:min(460px,85vw); padding:22px; background:rgba(15,17,12,.96); border:1px solid #78603a; border-top:3px solid #de984b; color:#eee4cf; }
+.fishing-game header { display:flex; justify-content:space-between; font:15px Consolas,monospace; letter-spacing:.12em; }
+.fishing-game header b { color:#eda851; }
+.fishing-game p { font-size:15px; margin:14px 0; }
+.fishing-game__track { height:28px; background:#2d3026; position:relative; border:1px solid #55553f; overflow:hidden; }
+.fishing-game__track i { position:absolute; top:0; height:100%; background:#c58a36; }
+.fishing-game__track b { position:absolute; top:-2px; bottom:-2px; width:5px; background:#fff3dc; box-shadow:0 0 8px #000; }
+.fishing-game footer { margin-top:12px; color:#b9b39d; font:11px Consolas,monospace; }

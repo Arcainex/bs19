@@ -1,9 +1,9 @@
--- Cross-resource rule: talk to bs_core through exports (values) and 'bs:hook:*' events (callbacks). Lua functions don't survive export marshalling.
+-- Cross-resource rule: talk to bs_core through exports (values) and 'bs:hook:*' events (callbacks).
 
 local Events = exports.bs_core:GetEvents()
 
 --- payload: { type = 'info'|'success'|'warn'|'error', title, message, duration, icon }
--- Toasts are dropped while a full-screen scene owns the screen (the tutorial tour).
+--- Toasts are dropped while a full-screen scene owns the screen (the tutorial tour).
 local muteFor = { tutorial = true }
 local muted = nil
 AddEventHandler('bs:ui:opened', function(panel) if panel and muteFor[panel] then muted = panel end end)
@@ -51,7 +51,7 @@ AddEventHandler('bs:hook:player:money', function(account, _, delta)
     })
 end)
 
--- Chat box: the base `chat` resource binds L to toggleChat and saves the state in KVP, which can leave chat hidden. We can't write that KVP, so a hint is shown once on first spawn (T opens chat, L cycles visibility).
+-- Chat box: the base `chat` resource binds L to toggleChat and saves the state in KVP, which can leave chat hidden.
 
 local toldAboutChat = false
 

@@ -1,9 +1,13 @@
 -- bs_inventory - body status snapshots plus injury/drug/booster tracking for Field Medical.
--- Snapshots: four frozen local clones (front, right, back, left) in the sky, lit, in front of a flat magenta wall, filmed by a scripted camera. The page grabs the game frame via the NUI game-view texture, keys out the magenta and shows the figures as images. Captured unarmed, once per session (REFRESH redoes it).
 
 local CFG = Inventory.BodyRender or {}
 
 local Body = { sig = nil, busy = false, stale = true }
+function Body.SetSource(ped)
+    if Body.source==ped then return end
+    Body.source=ped;Body.sig=nil;Body.stale=true
+    SendNUIMessage({action='bodyReset'})
+end
 local ANGLES = { 180.0, 270.0, 0.0, 90.0 }   -- front, right side, back, left side
 local POSE_DICT, POSE_ANIM = 'mp_character_creation@customise@male_a', 'loop'
 
@@ -78,7 +82,7 @@ end
 -- Takes the four snapshots. Yields; call from a thread. Returns true when a screenshot was sent to the page.
 function Body.Capture()
     if Body.cancelled or Body.busy or not available() then return false end
-    local ped = PlayerPedId()
+    local ped = Body.source or PlayerPedId()
     if not DoesEntityExist(ped) or IsPedDeadOrDying(ped, true) then return false end
     Body.busy = true
     captureId=captureId+1
@@ -193,10 +197,10 @@ end
 function Body.NeedsCapture()
     if not available() then return false end
     -- once per session; the REFRESH button forces a new one
-    return Body.stale or Body.sig ~= signature(PlayerPedId())
+    return Body.stale or Body.sig ~= signature(Body.source or PlayerPedId())
 end
 
--- Called by cl_main when the page painted. Covers the screen, shoots if needed, then hands over to the portrait camera. cb runs either way.
+-- Called by cl_main when the page painted.
 function Body.Prepare(cb)
     Body.cancelled=false
     SendNUIMessage({ action = 'bodyMode', available = available() })
@@ -251,7 +255,7 @@ local injuries = {}
 local lastHp = nil
 
 local function pushInjuries()
-    SendNUIMessage({ action = 'injuries', zones = injuries })
+    SendNUIMessage({ action = 'injuries', zones = Body.source and {}or injuries })
 end
 
 local function clearInjuries()
@@ -286,6 +290,7 @@ AddEventHandler('bs:hook:player:died', clearInjuries)
 -- Active drugs and boosters, as chips
 
 local active = { drugs = {}, boosters = {} }
+AddEventHandler('bs:hook:player:unloaded',function()active.drugs,active.boosters={},{}end)
 
 local function pretty(id)
     return (tostring(id):gsub('_', ' '):upper())
@@ -303,7 +308,7 @@ local function pushActive()
             end
         end
     end
-    SendNUIMessage({ action = 'activeEffects', list = list })
+    SendNUIMessage({ action = 'activeEffects', list = Body.source and {}or list })
 end
 
 RegisterNetEvent('bs:drugs:apply', function(drug, _, duration)

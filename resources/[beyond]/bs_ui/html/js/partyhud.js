@@ -1,12 +1,10 @@
-// BeyondSurvival - squad/faction side frames.
-// partyhud:roster {rows, more} full row list (sent on change)
-// partyhud:live {list} per-member {src, hp, dist, down, oor} deltas
-// partyhud:visible {visible}
+// BeyondSurvival - squad/faction side frames. partyhud:roster {rows
 (() => {
     const root = document.getElementById('partyhud');
     if (!root) return;
     const list = root.querySelector('.partyhud__list');
-    const els = new Map();   // src -> {row, fill, ghost, bar, state, dist, live}
+    const rowKey = r => r.key ?? r.src;
+    const els = new Map();   // src to {row, fill, ghost, bar, state, dist, live}
 
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -39,7 +37,7 @@
     }
 
     BS.on('partyhud:roster', ({ rows = [], more = 0 }) => {
-        const keep = new Set(rows.map((r) => r.src));
+        const keep = new Set(rows.map(rowKey));
         for (const [src, e] of els) {
             if (!keep.has(src)) {
                 els.delete(src);
@@ -58,9 +56,9 @@
                 frag.push(sep);
                 lastKind = r.kind;
             }
-            let e = els.get(r.src);
-            if (e && e.kind !== r.kind) { e.row.remove(); els.delete(r.src); e = null; }
-            if (!e) { e = build(r); e.kind = r.kind; els.set(r.src, e); }
+            let e = els.get(rowKey(r));
+            if (e && e.kind !== r.kind) { e.row.remove(); els.delete(rowKey(r)); e = null; }
+            if (!e) { e = build(r); e.kind = r.kind; els.set(rowKey(r), e); }
             else {
                 e.row.querySelector('.ph-tag').textContent = r.tag;
                 e.row.querySelector('.ph-name').textContent = r.name;
@@ -83,7 +81,7 @@
 
     BS.on('partyhud:live', ({ list: changes = [] }) => {
         for (const l of changes) {
-            const e = els.get(l.src);
+            const e = els.get(rowKey(l));
             if (e) { e.live = l; paint(e); }
         }
     });

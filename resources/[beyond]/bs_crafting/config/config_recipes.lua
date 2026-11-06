@@ -39,12 +39,12 @@ Crafting.Recipes = {
     zombie_bait      = r('traps', HAND, 'zombie_bait', 1, 6, { { item = 'rotten_flesh', amount = 3 }, { item = 'rags', amount = 1 } }),
     tripwire_alarm   = r('traps', HAND, 'tripwire_alarm', 1, 10, { { item = 'wires', amount = 3 }, { item = 'junk_cans', amount = 2 } }),
     -- backpacks and vests (bs_inventory gear): small by hand, the rest at a workbench
-    pack_small       = r('misc', HAND, 'pack_small', 1, 20, { { item = 'cloth', amount = 6 }, { item = 'rags', amount = 2 } }),
+    pack_civilian       = r('misc', HAND, 'pack_civilian', 1, 20, { { item = 'cloth', amount = 6 }, { item = 'rags', amount = 2 } }),
     booster_decoy    = r('misc', HAND, 'booster_decoy', 1, 8, { { item = 'scrap_metal', amount = 2 }, { item = 'electrical_wire', amount = 1 } }),
 
     -- workbench
-    pack_medium      = r('misc', WB, 'pack_medium', 1, 40, { { item = 'cloth', amount = 8 }, { item = 'leather', amount = 4 } }),
-    pack_large       = r('misc', WB, 'pack_large', 1, 60, { { item = 'leather', amount = 8 }, { item = 'cloth', amount = 6 }, { item = 'duct_tape', amount = 2 } }),
+    pack_hiking      = r('misc', WB, 'pack_hiking', 1, 40, { { item = 'cloth', amount = 8 }, { item = 'leather', amount = 4 } }),
+    pack_survival       = r('misc', WB, 'pack_survival', 1, 60, { { item = 'leather', amount = 8 }, { item = 'cloth', amount = 6 }, { item = 'duct_tape', amount = 2 } }),
     vest_tactical    = r('misc', WB, 'vest_tactical', 1, 45, { { item = 'cloth', amount = 6 }, { item = 'leather', amount = 3 }, { item = 'duct_tape', amount = 1 } }),
     planks           = r('materials', WB, 'wood_plank', 3, 8, { { item = 'log', amount = 1 } }),
     nails            = r('materials', WB, 'nails', 10, 8, { { item = 'scrap_metal', amount = 1 } }),
@@ -103,6 +103,15 @@ Crafting.Recipes = {
     weed_good        = r('misc', CHEM, 'weed_good', 1, 45, { { item = 'weed_bad', amount = 3 }, { item = 'cloth', amount = 1 } }, { factionBase = true }),
 
     -- weapon bench
+    rebuild_vintage_pistol = r('weapons', GUN, 'vintage_pistol', 1, 90, {{ item = 'gun_parts', amount = 3 }, { item = 'scrap_metal', amount = 6 }, { item = 'screws', amount = 6 } }),
+    rebuild_revolver = r('weapons', GUN, 'revolver', 1, 120, {{ item = 'gun_parts', amount = 4 }, { item = 'scrap_metal', amount = 8 }, { item = 'screws', amount = 6 } }),
+    rebuild_micro_smg = r('weapons', GUN, 'micro_smg', 1, 180, {{ item = 'gun_parts', amount = 5 }, { item = 'scrap_metal', amount = 10 }, { item = 'metal_pipe', amount = 2 }, { item = 'screws', amount = 10 } }),
+    rebuild_pump_shotgun = r('weapons', GUN, 'pump_shotgun', 1, 180, {{ item = 'gun_parts', amount = 5 }, { item = 'metal_pipe', amount = 3 }, { item = 'wood_plank', amount = 2 }, { item = 'scrap_metal', amount = 8 }, { item = 'screws', amount = 8 } }),
+    rebuild_assault_rifle = r('weapons', GUN, 'assault_rifle', 1, 240, {{ item = 'gun_parts', amount = 8 }, { item = 'metal_pipe', amount = 3 }, { item = 'wood_plank', amount = 3 }, { item = 'scrap_metal', amount = 15 }, { item = 'screws', amount = 12 } }),
+    att_scope = r('attachments', GUN, 'att_scope', 1, 60, {{ item = 'electronics', amount = 3 }, { item = 'scrap_metal', amount = 4 }, { item = 'screws', amount = 4 } }),
+    att_reflex = r('attachments', GUN, 'att_reflex', 1, 60, {{ item = 'electronics', amount = 4 }, { item = 'scrap_metal', amount = 3 }, { item = 'screws', amount = 4 } }),
+    att_scope_long = r('attachments', GUN, 'att_scope_long', 1, 90, {{ item = 'electronics', amount = 6 }, { item = 'scrap_metal', amount = 6 }, { item = 'screws', amount = 6 } }),
+    att_muzzle_brake = r('attachments', GUN, 'att_muzzle_brake', 1, 45, {{ item = 'metal_pipe', amount = 1 }, { item = 'scrap_metal', amount = 4 }, { item = 'screws', amount = 4 } }),
     ammo_pistol      = r('ammo', GUN, 'ammo_pistol', 12, 20, { { item = 'ammo_casing', amount = 12 }, { item = 'gunpowder', amount = 2 }, { item = 'lead', amount = 2 } }),
     ammo_magnum      = r('ammo', GUN, 'ammo_magnum', 6, 20, { { item = 'ammo_casing', amount = 6 }, { item = 'gunpowder', amount = 2 }, { item = 'lead', amount = 2 } }),
     ammo_shotgun     = r('ammo', GUN, 'ammo_shotgun', 8, 20, { { item = 'ammo_casing', amount = 8 }, { item = 'gunpowder', amount = 3 }, { item = 'lead', amount = 3 } }),

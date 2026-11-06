@@ -22,8 +22,7 @@ end
 
 -- Resolving the grade
 
--- Which of a preset's candidate timecycle names exists here. Returns the name or
--- nil. The probe sets the modifier, so ClearTimecycleModifier runs on every miss.
+-- Which of a preset's candidate timecycle names exists here. Returns the name or nil.
 local function resolveGrade(preset)
     if resolved[preset.id] ~= nil then
         return resolved[preset.id] or nil
@@ -55,17 +54,14 @@ local function clearEngine()
     ClearTimecycleModifier()
     ClearExtraTimecycleModifier()
 
-    -- The engine's film grain. Wrapped because the natives keep Rockstar's
-    -- original spelling ("Overide"); the overlay grain does the visible work anyway.
+    -- The engine's film grain: wrapped because the natives keep Rockstar's original spelling ("Overide")
     pcall(function()
         SetNoiseOveride(false)
         SetNoisinessOveride(0.0)
     end)
 end
 
--- Put a preset on screen. `strength` is the player's own 0-1 master, applied on
--- top of the preset. Called on every settings change and on spawn, so it must be
--- safe to repeat.
+-- Put a preset on screen. `strength` is the player's own 0-1 master, applied on top of the preset.
 function FilterApply(id, strength)
     strength = math.max(0.0, math.min(1.0, tonumber(strength) or 1.0))
 
@@ -93,8 +89,7 @@ function FilterApply(id, strength)
     if grain > 0.01 then
         pcall(function()
             SetNoiseOveride(true)
-            -- Halved before it reaches the engine: its scale is much stronger than the
-            -- overlay's and the two stack.
+            -- Halved before it reaches the engine: its scale is much stronger than the overlay's and the two stack.
             SetNoisinessOveride(math.min(1.0, grain * 0.5))
         end)
     end
@@ -115,7 +110,6 @@ function FilterApply(id, strength)
 end
 
 -- The list the pickers are built from (Settings and the cinematic camera).
--- Copied rather than shared, so consumers never get the live table.
 exports('FilterPresets', function()
     local out = {}
     for _, preset in ipairs(UI.Filters or {}) do
@@ -133,9 +127,7 @@ exports('RestoreFilter', function()
     FilterApply(current or settings.filter, settings.filterStrength)
 end)
 
--- The filter is a persistent preference. When another system clears the grade,
--- restore only if the screen is otherwise unowned. A valid non-filter grade
--- (injury, cinematic) keeps priority.
+-- The filter is a persistent preference.
 CreateThread(function()
     while true do
         Wait(500)
@@ -146,10 +138,7 @@ CreateThread(function()
     end
 end)
 
--- Suspend, for anything that owns the screen briefly (death fade, cutscene,
--- character select). Drops the filter and remembers it so resume needs no
--- arguments. Not reference-counted: failing toward 'filter off' is safer than
--- a stuck filter.
+-- Suspend, for anything that owns the screen briefly (death fade, cutscene, character select).
 exports('SuspendFilter', function(state)
     suspended = state and true or false
     if suspended then
@@ -163,8 +152,7 @@ end)
 
 -- Safety
 
--- The timecycle is engine state, not resource state, so a restart leaves the
--- grade applied. Clear it on stop.
+-- The timecycle is engine state, not resource state, so a restart leaves the grade applied. Clear it on stop.
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     clearEngine()

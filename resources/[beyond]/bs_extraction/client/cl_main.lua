@@ -1,5 +1,4 @@
--- bs_extraction - client: reports the current zone, reports your own death to another player, and runs the stand-still timer at extraction points.
--- The server checks all of it (zone jumps, distance at extraction time).
+-- bs_extraction - client: reports the current zone, reports your own death to another player
 
 local currentZone   = nil
 local rogue         = false

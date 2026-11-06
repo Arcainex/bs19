@@ -1,6 +1,6 @@
--- bs_skills - /skilltest: prints why a skill did or did not work (character level vs tree level, refusal reasons, dodge clips, sway).
+-- bs_skills - /skilltest: prints why a skill did or did not work
 
--- Output uses print() so it can be copied from F8. Colour codes (^1 red, ^2 green, ^3 yellow, ^7 reset) only mark failing lines; the text never depends on colour.
+-- Output uses print() so it can be copied from F8.
 
 local function line(text) print('^7[skilltest] ' .. tostring(text)) end
 
@@ -43,9 +43,7 @@ local function reportTrees()
     end
 end
 
---------------------------------------------------------------------------------
 -- Dodge
---------------------------------------------------------------------------------
 
 local function reportDodge()
     head('DODGE  (cl_dodge.lua)')
@@ -126,9 +124,7 @@ local function reportDodge()
     end
 end
 
---------------------------------------------------------------------------------
 -- Sway
---------------------------------------------------------------------------------
 
 local function reportSway()
     head('SWAY  (cl_sway.lua)')

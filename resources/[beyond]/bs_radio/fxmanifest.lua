@@ -9,6 +9,7 @@ version '1.0.0'
 
 shared_scripts {
     'config/config.lua',
+    'config/config_power.lua',
     '@bs_config/shared/apply.lua',
     '@bs_core/shared/sh_locale.lua',
 }
@@ -21,3 +22,10 @@ files {
     'html/index.html',
     'html/audio/broadcast.ogg',
 }
+
+shared_script 'shared/walkie.lua'
+client_script 'client/cl_walkie.lua'
+server_script 'server/sv_battery.lua'
+server_script 'server/sv_walkie.lua'
+files { 'html/walkie.css', 'html/walkie.js' }
+dependency 'bs_voice'

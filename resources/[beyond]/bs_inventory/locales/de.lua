@@ -1,5 +1,7 @@
 -- bs_inventory strings (de)
 return {
+    ['inv.rotate'] = 'Gegenstand drehen',
+    ['inv.rotate_hint'] = 'R zum Drehen',
     ['ammo.added'] = '+{n} Schuss',
     ['ammo.mag_full'] = 'Magazin ist schon voll.',
     ['ammo.no_gun'] = 'Nichts in deinen Händen nimmt diese Munition.',
@@ -680,5 +682,18 @@ return {
     ['item.rabbit_pelt'] = 'Kaninchenfell',
     ['item.coyote_pelt'] = 'Kojotenfell',
     ['item.mtlion_pelt'] = 'Pumafell',
+    -- Dark Zone (bs_darkzone)
+    ['item.dz_flare'] = 'Signalfackel',
+    ['item.dz_intel'] = 'Feldaufklärung',
+    ['item.dz_sample'] = 'Infizierte Gewebeprobe',
+    ['item.dz_pdw_warden'] = 'Wächter-PDW',
+    ['item.dz_rifle_revenant'] = 'Wiedergänger-Gewehr',
+    ['item.dz_shotgun_breacher'] = 'Brecher-Schrotflinte',
+    ['item.booster_dz_overdrive'] = 'Vollgas',
+    ['item.booster_dz_ironhide'] = 'Eisenhaut',
+    ['item.booster_dz_sentry'] = 'Wachgeschütz',
+    ['inv.e_sealed'] = 'Kontaminiert: bleibt in dieser Tasche, bis du es extrahierst.',
+    ['inv.e_dz_full'] = 'Deine kontaminierte Tasche ist voll.',
     ['inv.cant_sprint_heavy'] = 'Zu viel Gewicht zum Rennen. Leg etwas ab.',
+    ['ui.customize_weapon'] = "WAFFE ANPASSEN",
 }

@@ -45,6 +45,7 @@ server_scripts {
     'server/sv_identity.lua',
     'server/sv_player.lua',
     'server/sv_characters.lua',
+    'server/sv_survivor_link.lua',
     'server/sv_needs.lua',
     'server/sv_outfit.lua',
     'server/sv_rewards.lua',

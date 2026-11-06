@@ -257,6 +257,12 @@ function Zombies.TryStrike(entry)
         return false
     end
 
+    -- Freeflow hooks: only a few walkers take turns on you (cl_fight_hooks.lua)
+    local C = Zombies.Combat
+    local hooks = C and C.enabled and Zombies.CombatTokenFull ~= nil
+    if hooks and Zombies.CombatTokenFull(entry.id, now) then return false end
+    local lead = hooks and math.max(0, C.windupLeadMs or 0) or 0
+
     Crumb('grab', 'start id=%s', tostring(entry.id))
     -- Each grab gets its own token and deadline
     entry.nextAttack = now + (A.cooldown or 1400)
@@ -264,7 +270,7 @@ function Zombies.TryStrike(entry)
     Swing.active   = true
     Swing.id       = entry.id
     Swing.stage    = 'windup'
-    Swing.deadline = now + (A.windup or 420) + (A.swingTime or 1100)
+    Swing.deadline = now + lead + (A.windup or 420) + (A.swingTime or 1100)
                          + (A.strandedGraceMs or 2500)
 
     local token = Swing.token
@@ -278,7 +284,12 @@ function Zombies.TryStrike(entry)
         SetEntityHeading(entry.ped, GetHeadingFromVector_2d(pAt.x - zAt.x, pAt.y - zAt.y))
     end
 
-    playSwing(entry.ped)
+    if hooks then
+        Zombies.CombatTakeToken(entry.id, now + lead + (A.swingTime or 1100))
+        -- Tells bs_fighting a hit is coming, and in how many ms (counter window)
+        if C.windupEvent ~= false then TriggerEvent('bs:z:windup', entry.id, lead + (A.windup or 420)) end
+    end
+    if lead <= 0 then playSwing(entry.ped) end
 
     -- Everyone else sees the same walker swing at the same moment.
     entry.state = 'grab'
@@ -296,6 +307,14 @@ function Zombies.TryStrike(entry)
         -- Body runs under pcall and the release happens afterwards no matter what
         local ok, err = pcall(function()
 
+        -- Telegraph first; a walker staggered meanwhile (counter) never swings
+        local countered = false
+        if lead > 0 then
+            Wait(lead)
+            countered = Zombies.IsStaggered ~= nil and Zombies.IsStaggered(entry.id)
+            if not countered then playSwing(entry.ped) end
+        end
+
         -- The windup makes the attack avoidable
         local dodgedAtStart = false
         if GetResourceState('bs_skills') == 'started' then
@@ -306,7 +325,8 @@ function Zombies.TryStrike(entry)
         Swing.stage = 'claw'
 
         local me = PlayerPedId()
-        local connected =
+        if hooks and Zombies.IsStaggered and Zombies.IsStaggered(entry.id) then countered = true end
+        local connected = not countered and
             DoesEntityExist(entry.ped)
             and not IsEntityDead(entry.ped)
             and not IsPedDeadOrDying(me, true)

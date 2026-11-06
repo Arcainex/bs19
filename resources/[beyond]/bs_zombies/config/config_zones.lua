@@ -143,6 +143,41 @@ Zones.Spawn = {
     },
 }
 
+-- Hybrid population (config_filler.lua): where the local filler crowd is thick
+-- kind picks the target in Zombies.Filler.targets (city / north); anywhere else is 'wilds'
+-- Circles may overlap; the first match wins, so list the towns before anything broader
+Zones.Filler = {
+    regions = {
+        { id = 'ls_downtown', kind = 'city',  coords = vector3(100.0, -800.0, 30.0),   radius = 700.0 },
+        { id = 'ls_south',    kind = 'city',  coords = vector3(150.0, -1550.0, 30.0),  radius = 850.0 },
+        { id = 'ls_west',     kind = 'city',  coords = vector3(-1250.0, -900.0, 15.0), radius = 750.0 },
+        { id = 'ls_vinewood', kind = 'city',  coords = vector3(-200.0, -100.0, 50.0),  radius = 800.0 },
+        { id = 'ls_east',     kind = 'city',  coords = vector3(1050.0, -1000.0, 40.0), radius = 650.0 },
+        { id = 'ls_port',     kind = 'city',  coords = vector3(650.0, -2450.0, 10.0),  radius = 650.0 },
+        { id = 'sandy',       kind = 'north', coords = vector3(1800.0, 3750.0, 33.0),  radius = 450.0 },
+        { id = 'grapeseed',   kind = 'north', coords = vector3(1750.0, 4850.0, 42.0),  radius = 400.0 },
+        { id = 'paleto',      kind = 'north', coords = vector3(-200.0, 6350.0, 31.0),  radius = 550.0 },
+        { id = 'harmony',     kind = 'north', coords = vector3(550.0, 2700.0, 42.0),   radius = 250.0 },
+    },
+
+    -- Permanent extra crowds on top of the region target (extra = filler walkers added)
+    -- Coordinates are close to the landmark; tune the radius in place if a crowd sits off the street
+    hotZones = {
+        { id = 'pillbox',      label = 'Pillbox Hill Medical',   coords = vector3(300.0, -585.0, 43.0),    radius = 110.0, extra = 18 },
+        { id = 'central_med',  label = 'Central LS Medical',     coords = vector3(340.0, -1400.0, 32.0),   radius = 100.0, extra = 15 },
+        { id = 'mount_zonah',  label = 'Mount Zonah Medical',    coords = vector3(-450.0, -340.0, 34.0),   radius = 100.0, extra = 15 },
+        { id = 'st_fiacre',    label = 'St Fiacre Hospital',     coords = vector3(1150.0, -1530.0, 35.0),  radius = 80.0,  extra = 12 },
+        { id = 'sandy_med',    label = 'Sandy Shores Medical',   coords = vector3(1840.0, 3670.0, 34.0),   radius = 60.0,  extra = 10 },
+        { id = 'paleto_med',   label = 'Paleto Medical',         coords = vector3(-250.0, 6320.0, 32.0),   radius = 70.0,  extra = 10 },
+        { id = 'zancudo',      label = 'Fort Zancudo',           coords = vector3(-2200.0, 3150.0, 32.0),  radius = 450.0, extra = 20 },
+        { id = 'humane_labs',  label = 'Humane Labs',            coords = vector3(3570.0, 3750.0, 36.0),   radius = 160.0, extra = 15 },
+        { id = 'bolingbroke',  label = 'Bolingbroke Penitentiary', coords = vector3(1700.0, 2600.0, 45.0), radius = 220.0, extra = 12 },
+        { id = 'legion',       label = 'Legion Square',          coords = vector3(190.0, -930.0, 30.0),    radius = 90.0,  extra = 12 },
+        { id = 'rockford_mall',label = 'Rockford Plaza',         coords = vector3(-170.0, -180.0, 44.0),   radius = 120.0, extra = 12 },
+        { id = 'mega_mall',    label = 'Strawberry Mega Mall',   coords = vector3(60.0, -1740.0, 29.0),    radius = 110.0, extra = 12 },
+    },
+}
+
 --- Difficulty scaling applied on top of the zone value.
 Zones.Scaling = {
     -- Night is worse.

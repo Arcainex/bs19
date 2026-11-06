@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Güvenli bölge',
     ['zed.search_body'] = 'Cesedi ara',
     ['zed.skin'] = 'Cesedi yüz',
-    ['zed.take_down'] = '[E]  İNDİR',
+    ['zed.takedown_opt'] = 'Etkisiz bırak',
     ['zed.they_here'] = 'Buradalar.',
     ['zed.unknown_opt'] = 'Bilinmeyen seçenek.',
     ['zed.vip_colours'] = 'Özel renkler bir VIP ayrıcalığıdır.',

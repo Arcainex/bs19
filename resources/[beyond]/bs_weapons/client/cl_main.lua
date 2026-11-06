@@ -122,6 +122,7 @@ local function refit(weaponName, weaponHash)
     local st = BSB.Await('weapons:fitted', 4000, weaponName)
     if st and st.ok then Fitted[weaponName] = st.fitted or {} end
     reapply(weaponName, weaponHash)
+    if st and st.ok then SetPedWeaponTintIndex(PlayerPedId(), weaponHash, st.tint or 0) end
 end
 
 -- Keep the ammo argument the server sends with set, so the spawn-restore path can look up the saved round count
@@ -301,43 +302,50 @@ local function playWork(time)
     end
 
     Wait(time)
-    ClearPedTasks(ped)
+    if a and PlayerPedId()==ped then StopAnimTask(ped,a.dict,a.clip,3.0)end
 end
 
-local function fit(weaponName, weaponHash, attachmentId)
-    if busy then return end
+local function fit(weaponName, weaponHash, attachmentId, expectedSerial, workTime)
+    if busy then return {ok=false,error='Please wait.'}end
     busy = true
+    local actor=PlayerPedId()
 
-    local result = BSB.Await('weapons:fit', 8000, weaponName, attachmentId)
+    local result = BSB.Await('weapons:fit', 8000, weaponName, attachmentId, expectedSerial)
 
     if not result or not result.ok then
         busy = false
-        return notify('warn', (result and result.error) or L('wp.wont_on'))
+        notify('warn', (result and result.error) or L('wp.wont_on'));return result or {ok=false}
     end
 
-    playWork(Weapons.Settings.workTime or 1800)
+    local work = tonumber(workTime) or Weapons.Settings.workTime or 1800
+    if work > 0 then playWork(work) end
+    if PlayerPedId()~=actor or currentWeapon()~=weaponName then busy=false;return result end
 
-    GiveWeaponComponentToPed(PlayerPedId(), weaponHash, GetHashKey(result.component))
+    if currentWeapon()==weaponName then GiveWeaponComponentToPed(PlayerPedId(),weaponHash,GetHashKey(result.component))end
 
     Fitted[weaponName] = Fitted[weaponName] or {}
     Fitted[weaponName][result.slot] = attachmentId
 
     notify('success', L('wpn.fitted', { name = result.label }), 2400)
     busy = false
+    return result
 end
 
-local function remove(weaponName, weaponHash, slot)
-    if busy then return end
+local function remove(weaponName, weaponHash, slot, expectedSerial, workTime)
+    if busy then return {ok=false,error='Please wait.'}end
     busy = true
+    local actor=PlayerPedId()
 
-    local result = BSB.Await('weapons:remove', 8000, weaponName, slot)
+    local result = BSB.Await('weapons:remove', 8000, weaponName, slot, expectedSerial)
 
     if not result or not result.ok then
         busy = false
-        return notify('warn', (result and result.error) or L('wp.wont_off'))
+        notify('warn', (result and result.error) or L('wp.wont_off'));return result or {ok=false}
     end
 
-    playWork(Weapons.Settings.workTime or 1800)
+    local work = tonumber(workTime) or Weapons.Settings.workTime or 1800
+    if work > 0 then playWork(work) end
+    if PlayerPedId()~=actor or currentWeapon()~=weaponName then busy=false;return result end
 
     local ped = PlayerPedId()
     local totalBefore = GetAmmoInPedWeapon(ped, weaponHash) or 0
@@ -367,6 +375,7 @@ local function remove(weaponName, weaponHash, slot)
 
     notify('info', L('wp.removed', { name = result.label or L('wp.attachment') }), 2400)
     busy = false
+    return result
 end
 
 local function inspect()
@@ -572,7 +581,7 @@ local function openWheel()
 end
 
 RegisterCommand(Weapons.Settings.openCommand, function()
-    CreateThread(openWheel)
+    CreateThread(function()if Weapons.OpenAttachments then Weapons.OpenAttachments()else openWheel()end end)
 end, false)
 RegisterKeyMapping(Weapons.Settings.openCommand, L('wpn.key_attach'),
     'keyboard', Weapons.Settings.openKey)
@@ -711,3 +720,18 @@ end)
 
 -- lets bs_inventory cap ammo-box top-ups at the real mag size
 exports('ClientMagSize', function(hash) return Weapons.ClientMagSize(PlayerPedId(), hash) end)
+
+Weapons.FitAttachment = fit
+Weapons.RemoveAttachment = remove
+Weapons.HeldWeapon = currentWeapon
+
+
+RegisterNetEvent('bs:weapons:instanceChanged', function(weapon)
+    SetTimeout(200, function()
+        local name, hash = currentWeapon()
+        if name == weapon then refit(name, hash) end
+    end)
+end)
+
+-- The interaction view shares the wheel's installation and ammo-return code.
+Weapons.AttachmentActions={current=currentWeapon,accepts=engineAccepts,fit=fit,remove=remove,isBusy=function()return busy end,reset=function()busy=false end}

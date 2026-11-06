@@ -1,5 +1,7 @@
 -- bs_inventory strings (es)
 return {
+    ['inv.rotate'] = 'Girar objeto',
+    ['inv.rotate_hint'] = 'R para girar',
     ['ammo.added'] = '+{n} balas',
     ['ammo.mag_full'] = 'El cargador ya está lleno.',
     ['ammo.no_gun'] = 'Nada en tus manos usa esa munición.',
@@ -680,5 +682,18 @@ return {
     ['item.rabbit_pelt'] = 'Piel de conejo',
     ['item.coyote_pelt'] = 'Piel de coyote',
     ['item.mtlion_pelt'] = 'Piel de puma',
+    -- Dark Zone (bs_darkzone)
+    ['item.dz_flare'] = 'Bengala de señales',
+    ['item.dz_intel'] = 'Inteligencia de campo',
+    ['item.dz_sample'] = 'Muestra de tejido infectado',
+    ['item.dz_pdw_warden'] = 'PDW Guardián',
+    ['item.dz_rifle_revenant'] = 'Fusil Renacido',
+    ['item.dz_shotgun_breacher'] = 'Escopeta Rompedora',
+    ['item.booster_dz_overdrive'] = 'Sobremarcha',
+    ['item.booster_dz_ironhide'] = 'Piel de hierro',
+    ['item.booster_dz_sentry'] = 'Torreta centinela',
+    ['inv.e_sealed'] = 'Contaminado: se queda en esta bolsa hasta que lo extraigas.',
+    ['inv.e_dz_full'] = 'Tu bolsa contaminada está llena.',
     ['inv.cant_sprint_heavy'] = 'Llevas demasiado peso para correr. Suelta algo.',
+    ['ui.customize_weapon'] = "PERSONALIZAR ARMA",
 }

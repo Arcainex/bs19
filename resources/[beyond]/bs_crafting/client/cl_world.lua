@@ -9,7 +9,7 @@ local function showItems(items)
     for _, it in ipairs(items) do notify('success', ('+%d %s'):format(it.amount, it.label)); Wait(120) end
 end
 
--- start -> kneel/work for the server's time -> finish
+-- start to kneel/work for the server's time to finish
 local function timed(startCb, finishCb, label, opts, ...)
     if busy then return end
     busy = true
@@ -23,9 +23,7 @@ local function timed(startCb, finishCb, label, opts, ...)
     showItems(f.items)
 end
 
---------------------------------------------------------------------------------
 -- Skinning
---------------------------------------------------------------------------------
 
 -- Zombie corpses: bs_zombies adds this option next to "Search body" with args.zid.
 AddEventHandler('bs:crafting:skinZombie', function(payload)
@@ -56,9 +54,7 @@ AddEventHandler('bs:crafting:skinAnimal', function(payload)
     end)
 end)
 
---------------------------------------------------------------------------------
 -- Foraging and salvage
---------------------------------------------------------------------------------
 
 AddEventHandler('bs:crafting:forage', function(payload)
     local ent = payload and payload.entity
@@ -88,9 +84,7 @@ CreateThread(function()
     })
 end)
 
---------------------------------------------------------------------------------
 -- Traps
---------------------------------------------------------------------------------
 
 local traps, props = {}, {}
 local myChar = nil
@@ -222,9 +216,7 @@ RegisterNetEvent('bs:crafting:alarm', function(x, y, z)
     PlaySoundFromCoord(-1, 'Beep_Red', x, y, z, 'DLC_HEIST_HACKING_SNAKE_SOUNDS', false, 60, false)
 end)
 
---------------------------------------------------------------------------------
 -- Crops on farm plots
---------------------------------------------------------------------------------
 
 local crops = {}   -- [id] = { obj, stage }
 

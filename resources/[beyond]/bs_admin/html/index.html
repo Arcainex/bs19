@@ -42,6 +42,7 @@
             <button class="mtab" data-tab="build" title="Build"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l4 4-9 9H5v-4zM13 7l4 4"/></svg><span class="mtab__t" data-i18n="admin.tab_build">BUILD</span></button>
             <span class="rail__sep" aria-hidden="true"></span>
             <button class="mtab" data-tab="power" title="Power"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.3 6.3a8 8 0 1011.4 0"/></svg><span class="mtab__t" data-i18n="admin.tab_power">POWER</span></button>
+            <button class="mtab" data-tab="link" title="Survivor Link"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11a3 3 0 100-6 3 3 0 000 6zM16 11a3 3 0 100-6 3 3 0 000 6zM2 20a6 6 0 0112 0M10 20a6 6 0 0112 0"/></svg><span class="mtab__t" data-i18n="admin.tab_link">SURVIVOR LINK</span></button>
             <button class="mtab" data-tab="debug" title="Debug"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8a3 3 0 016 0v1H9zM7 11h10v4a5 5 0 01-10 0zM3 12h4M17 12h4M4 7l3 2M20 7l-3 2M5 19l3-2M19 19l-3-2"/></svg><span class="mtab__t" data-i18n="admin.h.debug">DEBUG</span></button>
             <span class="rail__sep" aria-hidden="true"></span>
             <button class="mtab" data-tab="sanctions" title="Sanctions"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9.5 9.5l5 5M14.5 9.5l-5 5"/></svg><span class="mtab__t" data-i18n="admin.h.sanctions">SANCTIONS</span></button>
@@ -127,6 +128,7 @@
                 <button class="row" data-local="godmode"><span data-i18n="admin.h.godmode">GODMODE</span><span class="row__state" id="st-godmode">OFF</span></button>
                 <button class="row" data-local="zombieGodmode"><span data-i18n="admin.h.zombie_godmode">ZOMBIE GODMODE</span><span class="row__state" id="st-zombiegodmode">OFF</span></button>
                 <button class="row" data-local="noclip"><span data-i18n="admin.h.noclip">NOCLIP</span><span class="row__state" id="st-noclip">OFF</span></button>
+                <button class="row" data-local="noclipKey"><span data-i18n="admin.h.noclipkey">NOCLIP WITH \</span><span class="row__state" id="st-noclipkey">OFF</span></button>
                 <button class="row" data-local="invisible"><span data-i18n="admin.h.invisible">INVISIBLE</span><span class="row__state" id="st-invisible">OFF</span></button>
                 <button class="row" data-local="guardAlerts"><span data-i18n="admin.gl.alerts">GUARD ALERTS</span><span class="row__state" id="st-guardalerts">OFF</span></button>
                 <button class="row" data-server="heal"><span data-i18n="admin.h.heal_armour">HEAL &amp; ARMOUR</span></button>
@@ -324,6 +326,29 @@
                 <div id="pumpList"></div>
             </div>
 
+            <div class="mpane" data-pane="link">
+                <p class="mpane__label"><span data-i18n="admin.lk_body">YOUR COMPANION</span><span class="row__hint" data-i18n="admin.lk_body_hint"> - call one first in F5 &gt; Survivor Link</span></p>
+                <button class="row" data-server="linkTool" data-mode="god"><span data-i18n="admin.lk_god">GOD MODE (TOGGLE)</span></button>
+                <button class="row" data-server="linkTool" data-mode="ignore"><span data-i18n="admin.lk_ignore">ZOMBIES IGNORE COMPANION (TOGGLE)</span></button>
+                <button class="row" data-server="linkTool" data-mode="tp"><span data-i18n="admin.lk_tp">TELEPORT COMPANION TO ME</span></button>
+                <button class="row" data-server="linkTool" data-mode="loadout"><span data-i18n="admin.lk_loadout">GIVE TEST LOADOUT</span><span class="row__hint" data-i18n="admin.lk_loadout_hint">carbine, 90 rifle rounds, machete, medkit</span></button>
+                <p class="mpane__label" data-i18n="admin.lk_states">STATES</p>
+                <button class="row row--danger" data-server="linkTool" data-mode="down"><span data-i18n="admin.lk_down">FORCE DOWN</span></button>
+                <button class="row" data-server="linkTool" data-mode="revive"><span data-i18n="admin.lk_revive">REVIVE</span></button>
+                <button class="row row--danger" data-server="linkTool" data-mode="grab"><span data-i18n="admin.lk_grab">FORCE GRAB</span><span class="row__hint" data-i18n="admin.lk_grab_hint">nearest walker within 40 m</span></button>
+                <p class="mpane__label" data-i18n="admin.lk_orders">STANCE AND AMMO</p>
+                <button class="row" data-server="linkTool" data-mode="stance_defensive"><span data-i18n="admin.lk_st_def">STANCE: DEFENSIVE</span></button>
+                <button class="row" data-server="linkTool" data-mode="stance_aggressive"><span data-i18n="admin.lk_st_agg">STANCE: AGGRESSIVE</span></button>
+                <button class="row" data-server="linkTool" data-mode="stance_hidden"><span data-i18n="admin.lk_st_hid">STANCE: HIDDEN</span></button>
+                <button class="row" data-server="linkTool" data-mode="ammo_conserve"><span data-i18n="admin.lk_am_con">AMMO: CONSERVE</span></button>
+                <button class="row" data-server="linkTool" data-mode="ammo_normal"><span data-i18n="admin.lk_am_nor">AMMO: NORMAL</span></button>
+                <button class="row" data-server="linkTool" data-mode="ammo_free"><span data-i18n="admin.lk_am_free">AMMO: FREE FIRE</span></button>
+                <p class="mpane__label" data-i18n="admin.lk_debug">DEBUG</p>
+                <button class="row" data-server="linkTool" data-mode="reset"><span data-i18n="admin.lk_reset">RESET AI</span><span class="row__hint" data-i18n="admin.lk_reset_hint">clears tasks, back to follow</span></button>
+                <button class="row" data-server="linkTool" data-mode="dump"><span data-i18n="admin.lk_dump">DUMP STATE TO F8</span></button>
+                <button class="row" data-server="linkTool" data-mode="overlay"><span data-i18n="admin.lk_overlay">DEBUG OVERLAY (TOGGLE)</span></button>
+            </div>
+
             <div class="mpane" data-pane="debug">
                 <p class="mpane__label"><span data-i18n="admin.overlays">OVERLAYS</span><span class="row__hint" data-i18n="admin.overlays_hint"> - off after relog</span></p>
                 <button class="row" data-local="coords"><span data-i18n="admin.h.show_coords_overlay">SHOW COORDS OVERLAY</span><span class="row__state" id="st-coords">OFF</span></button>
@@ -459,9 +484,9 @@
     </aside>
 </div>
 <!-- The shared item icon set. One drawing per item, for every UI. -->
-<script src="nui://bs_ui/html/js/icons.js?v=20260930h"></script>
+<script src="nui://bs_ui/html/js/icons.js?v=20261031custom"></script>
 <datalist id="itemNames"></datalist>
-<script src="js/app.js?v=20261016b"></script>
+<script src="js/app.js?v=20261031custom"></script>
 <script src="js/staff.js?v=20261016b"></script>
 </body>
 </html>

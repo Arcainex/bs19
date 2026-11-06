@@ -1,5 +1,4 @@
--- Player faction safezone flags work like a small town: copies of the town trader and mission giver stand
--- by the flag. Only that faction gets them in its spawn list and only they can use them, so the base stays hidden.
+-- Player faction safezone flags work like a small town: copies of the town trader and mission giver stand by the flag.
 
 local Flag = {}  -- [npcId] = { factionId, x, y, z, h, template }
 local PREFIX = 'flagnpc_'

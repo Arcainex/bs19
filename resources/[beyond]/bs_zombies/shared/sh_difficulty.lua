@@ -24,6 +24,19 @@ function ZDiff.Scale(stat, t)
     return ZDiff.Mult(stat) * ZDiff.Prog(stat, t)
 end
 
+-- Area multipliers set by other resources (bs_darkzone), server side. [id] = { x, y, r2, health, damage, speed, horde }
+ZDiff.Regions = ZDiff.Regions or {}
+
+function ZDiff.Region(stat, x, y)
+    if not x or not y then return 1.0 end
+    local m = 1.0
+    for _, r in pairs(ZDiff.Regions) do
+        local dx, dy = x - r.x, y - r.y
+        if dx * dx + dy * dy <= r.r2 then m = m * math.max(0.0, tonumber(r[stat]) or 1.0) end
+    end
+    return m
+end
+
 -- Move rate after scaling, kept under the absolute ceiling.
 function ZDiff.Rate(rate, f)
     if not rate then return rate end

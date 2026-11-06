@@ -1,5 +1,7 @@
 -- bs_inventory strings (pl)
 return {
+    ['inv.rotate'] = 'Obróć przedmiot',
+    ['inv.rotate_hint'] = 'R — obrót',
     ['ammo.added'] = '+{n} naboi',
     ['ammo.mag_full'] = 'Magazynek jest już pełny.',
     ['ammo.no_gun'] = 'Nic w twoich rękach nie przyjmie tej amunicji.',
@@ -680,5 +682,18 @@ return {
     ['item.rabbit_pelt'] = 'Futro królika',
     ['item.coyote_pelt'] = 'Futro kojota',
     ['item.mtlion_pelt'] = 'Futro pumy',
+    -- Dark Zone (bs_darkzone)
+    ['item.dz_flare'] = 'Flara sygnałowa',
+    ['item.dz_intel'] = 'Dane wywiadowcze',
+    ['item.dz_sample'] = 'Próbka zakażonej tkanki',
+    ['item.dz_pdw_warden'] = 'PDW Strażnik',
+    ['item.dz_rifle_revenant'] = 'Karabin Upiór',
+    ['item.dz_shotgun_breacher'] = 'Strzelba Taran',
+    ['item.booster_dz_overdrive'] = 'Nadbieg',
+    ['item.booster_dz_ironhide'] = 'Żelazna skóra',
+    ['item.booster_dz_sentry'] = 'Wieżyczka strażnicza',
+    ['inv.e_sealed'] = 'Skażone: zostaje w tej torbie, dopóki go nie wyniesiesz.',
+    ['inv.e_dz_full'] = 'Twoja skażona torba jest pełna.',
     ['inv.cant_sprint_heavy'] = 'Za duży ciężar, żeby biec. Zostaw coś.',
+    ['ui.customize_weapon'] = "DOSTOSUJ BROŃ",
 }

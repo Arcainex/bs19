@@ -53,13 +53,22 @@ Menu.Entries = {
         icon   = 'anvil',
         kind   = 'panel',
     },
-    -- Factions: a panel rather than a resource, since it is read as often as acted on (members, your rank, who is near enough to recruit).
+    -- Factions: a panel rather than a resource, since it is read as often as acted on
     {
         id     = 'faction',
         label  = 'Faction',
         blurb  = 'Who you run with, and who runs it.',
         icon   = 'star',
         kind   = 'panel',
+    },
+    {
+        id     = 'clothing',
+        label  = 'Clothing',
+        blurb  = 'Take off or put back on what you are wearing.',
+        icon   = 'shirt',
+        kind   = 'resource',
+        resource = 'bs_emotes',
+        action = 'OpenClothingWheel',
     },
     {
         id     = 'settings',

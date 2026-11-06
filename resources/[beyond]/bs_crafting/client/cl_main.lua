@@ -7,9 +7,7 @@ local stationAnim = nil
 
 local function notify(kind, msg) TriggerEvent('bs:ui:notify', { type = kind, message = msg }) end
 
---------------------------------------------------------------------------------
 -- Animations with a hand prop
---------------------------------------------------------------------------------
 
 local function loadDict(dict)
     if not DoesAnimDictExist(dict) then return false end
@@ -53,9 +51,7 @@ function CraftPlayAnim(anims, prop, flag)
     return false
 end
 
---------------------------------------------------------------------------------
 -- The craft tab
---------------------------------------------------------------------------------
 
 local function openTab(kind, id)
     if exports.bs_inventory:IsOpen() then
@@ -132,9 +128,7 @@ RegisterNUICallback('dismantle', function(d, cb)
     end)
 end)
 
---------------------------------------------------------------------------------
 -- Hand queue feedback: bar and a light animation while you walk
---------------------------------------------------------------------------------
 
 local handShown = nil
 CreateThread(function()
@@ -161,9 +155,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Station zones
---------------------------------------------------------------------------------
 
 RegisterNetEvent('bs:crafting:openStation', function(payload)
     local a = payload and payload.args

@@ -1,6 +1,4 @@
--- bs_factions - player tags.
--- In a safe zone every player gets a tag (faction + name + level). Outside: squad mates and faction mates, each behind its own toggle. Never enemies. The server (factions:tags) decides who may be described; this file only positions them for html/tags.html.
--- Never takes focus, never fires bs:ui:opened/closed, and only sends messages while a tag is visible (plus one final clear).
+-- bs_factions - player tags. In a safe zone every player gets a tag (faction + name + level).
 
 local Cfg = Factions.Tags or {}
 local FADE_START = Cfg.fadeStart or 0.5
@@ -33,9 +31,10 @@ local myEntry = nil    -- own tag data from the server
 local mates = {}       -- [serverId] = server entry
 local sight = {}       -- [serverId] = true when last LOS check was clear
 local shown = false
+local workshopOpen = false
 
 local function inSafe() return LocalPlayer.state.bsFactionSafeZone == true end
-local function anyOn() return prefs.master and (prefs.faction or prefs.squad or prefs.self or inSafe()) end
+local function anyOn() return not workshopOpen and prefs.master and (prefs.faction or prefs.squad or prefs.self or inSafe()) end
 
 local function sendClear()
     if shown then
@@ -44,9 +43,40 @@ local function sendClear()
     end
 end
 
+AddEventHandler('bs:ui:opened',function(name)
+    if name=='weaponWorkshop'or name=='weaponAttachments'then workshopOpen=true;sendClear()end
+end)
+AddEventHandler('bs:ui:closed',function(name)
+    if name=='weaponWorkshop'or name=='weaponAttachments'then workshopOpen=false end
+end)
+AddEventHandler('onClientResourceStop',function(name)if name=='bs_weapons'then workshopOpen=false end end)
+
 CreateThread(function()
     Wait(1000)
     SendNUIMessage({ action = 'tagsConfig', colours = Cfg.colours or {} })
+end)
+
+-- Emblems for the factions on screen, asked once per faction and kept until it changes.
+local EmblemsKnown = {}
+local function askEmblems(result)
+    local want = {}
+    local function add(f) if f and f.id and EmblemsKnown[f.id] == nil then EmblemsKnown[f.id] = false; want[#want + 1] = f.id end end
+    if result.me then add(result.me.faction) end
+    for _, m in ipairs(result.mates or {}) do add(m.faction); add(m.safeFaction) end
+    if #want == 0 then return end
+    local r = BSB.Await('factions:emblems', 6000, want)
+    local out = {}
+    for _, id in ipairs(want) do
+        local e = type(r) == 'table' and r[id]
+        EmblemsKnown[id] = e and (e.emblem or false) or nil
+        out[id] = e and e.emblem or false
+    end
+    SendNUIMessage({ action = 'tagsEmblems', emblems = out })
+end
+RegisterNetEvent('bs:factions:emblem', function(fid, emblem)
+    if type(fid) ~= 'string' or EmblemsKnown[fid] == nil then return end
+    EmblemsKnown[fid] = emblem or false
+    SendNUIMessage({ action = 'tagsEmblems', emblems = { [fid] = emblem or false } })
 end)
 
 local function refresh()
@@ -59,6 +89,7 @@ local function refresh()
     end
     mates = fresh
     myEntry = result.me
+    askEmblems(result)
 end
 
 CreateThread(function()
@@ -77,6 +108,12 @@ end)
 AddEventHandler('bs:hook:player:unloaded', function() mates = {}; myEntry = nil; sendClear() end)
 
 local function pedOf(serverId)
+    -- Survivor Link companion: negative id is his body's net id.
+    if serverId < 0 then
+        local net = -serverId
+        local ped = NetworkDoesNetworkIdExist(net) and NetworkGetEntityFromNetworkId(net) or 0
+        return (ped ~= 0 and DoesEntityExist(ped)) and ped or nil
+    end
     local player = GetPlayerFromServerId(serverId)
     if not player or player == -1 then return nil end
     local ped = GetPlayerPed(player)
@@ -153,27 +190,30 @@ CreateThread(function()
                                 a = 1.0 - 0.8 * t * t,
                                 id = sid, kind = kind,
                                 name = m.name, level = m.level,
-                                down = Player(sid).state.bsDowned == true or dead == true or dead == 1,
+                                down = (sid > 0 and Player(sid).state.bsDowned == true)
+                                    or (sid < 0 and (Entity(ped).state.bsLinkLife or 'alive') ~= 'alive')
+                                    or dead == true or dead == 1,
                             }
                             if kind == 'squad' then
                                 tag.group = m.squad.name; tag.rank = m.squad.rank
                             elseif kind == 'faction' then
-                                tag.group = m.faction.short or m.faction.name; tag.rank = m.faction.rank
+                                tag.group = m.faction.short or m.faction.name; tag.rank = m.faction.rank; tag.fid = m.faction.id
                             elseif m.isMe then
                                 tag.group = L('tags.unaffiliated')
                             else
                                 local sf = m.safeFaction
                                 tag.group = sf and (sf.short or sf.name) or L('tags.unaffiliated')
+                                tag.fid = sf and sf.id or nil
                                 tag.rank = sf and sf.short and sf.name or nil
                             end
                             -- faction tag look (level cosmetics); squad keeps its own colour
-                            local st = Player(sid).state.bsFactionStyle
+                            local st = sid > 0 and Player(sid).state.bsFactionStyle
                             if type(st) == 'table' then
                                 tag.style = st.style
                                 if kind ~= 'squad' then tag.hex = st.hex end
                             end
                             -- VIP personal look (bs_vip sets it server-side) wins over the faction one
-                            local vt = Player(sid).state.bsVipTag
+                            local vt = sid > 0 and Player(sid).state.bsVipTag
                             if type(vt) == 'table' then
                                 if type(vt.style) == 'string' then tag.style = vt.style end
                                 if type(vt.hex) == 'string' then tag.hex = vt.hex end
@@ -194,10 +234,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
--- Settings (bs_menu). Keys: 'bs_tags_master'|'master', 'bs_tags_squad'|'squad',
--- 'bs_tags_faction'|'faction', 'bs_tags_range'|'range', 'bs_tags_self'|'self'.
---------------------------------------------------------------------------------
+-- Settings (bs_menu): keys: 'bs_tags_master'|'master', 'bs_tags_squad'|'squad', 'bs_tags_faction'|'faction'
 
 local function snapshot()
     return {

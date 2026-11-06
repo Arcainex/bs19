@@ -1,16 +1,31 @@
--- BeyondSurvival - cl_search.lua. Searching containers (bins, dumpsters, fridges, lockers, toolboxes, vending machines, car boots).
--- Every model in config_containers.lua is registered with the target registry at boot. The client plays the animation and progress bar; the server decides what comes out.
+-- BeyondSurvival - cl_search.lua.
 
 local searching = false
+local progressId = 0
+local progressState = { active = false }
+local function showProgress(data)
+    progressId = progressId + 1
+    data.id = progressId
+    progressState.active = true
+    TriggerEvent('bs:interactions:progress', progressState)
+    SendNUIMessage(data)
+    return progressId
+end
+RegisterNUICallback('progressState', function(data, cb)
+    cb({ ok = true })
+    if type(data) ~= 'table' then return end
+    local bottom = type(data.bottom) == 'string' and tonumber(data.bottom:match('^(%d+%.?%d*)px$'))
+    if bottom and bottom >= 0 and bottom <= 10000 then progressState.bottom = ('%gpx'):format(bottom) end
+    if tonumber(data.id) == progressId and type(data.active) == 'boolean' then progressState.active = data.active end
+    TriggerEvent('bs:interactions:progress', progressState)
+end)
+exports('GetProgressState', function() return { active = progressState.active, bottom = progressState.bottom } end)
 
---------------------------------------------------------------------------------
 -- The weapon in your hands while you are using them for something else
---------------------------------------------------------------------------------
 
 -- Hide the held weapon while searching, otherwise the search clip swings the rifle around with the hand.
--- Uses SetPedCurrentWeaponVisible instead of switching to WEAPON_UNARMED: bs_weapons reads a weapon switch as a holster, which would fire spurious ammo events for every bin. This only hides the model; the weapon stays equipped with its ammo.
 local function hideWeapon(ped, hidden)
-    -- Last args are (visible, deselectWeapon, unk, unk). The third must stay false, otherwise the weapon is put away (holster path) instead of just hidden.
+    -- Last args are (visible, deselectWeapon, unk, unk).
     SetPedCurrentWeaponVisible(ped, not hidden, true, false, false)
 end
 
@@ -27,8 +42,7 @@ local function loadDict(dict)
     return HasAnimDictLoaded(dict)
 end
 
--- Kneel pose is two clips: amb@medic@standing@kneel@base holds the kneel, and the tendtodead idle supplies the hand motion. Play the kneel first, then the idle on top.
--- Flag 1 (full-body) instead of 49, so the player is pinned while kneeling. Cancel by movement keys, see runSearch.
+-- Kneel pose is two clips: amb@medic@standing@kneel@base holds the kneel, and the tendtodead idle supplies the hand motion.
 local function playKneelAnim(duration)
     local cfg = Containers.Settings.kneelAnim
     if not cfg or not cfg.base then return false end
@@ -57,8 +71,7 @@ local function playSearchAnim(duration)
     return true
 end
 
--- Runs a timed search with a progress bar. `opts` is optional; old callers pass (label, duration).
--- opts.pose: nil/'search' standing rummage (bins, lockers, boots, fridges); 'kneel' on one knee (bodies, ground level), see playKneelAnim; 'none' plays nothing and leaves the caller's own animation alone (bs_medical's revive).
+-- Runs a timed search with a progress bar. `opts` is optional
 -- @return boolean completed
 local function runSearch(label, duration, opts)
     if searching then return false end
@@ -69,7 +82,7 @@ local function runSearch(label, duration, opts)
     local ped = PlayerPedId()
     local startCoords = GetEntityCoords(ped)
 
-    SendNUIMessage({ action = 'progress', label = label, duration = duration })
+    local id = showProgress({ action = 'progress', label = label, duration = duration })
 
     -- Hidden before the clip starts so there is no frame of the search pose with the weapon still visible.
     hideWeapon(ped, true)
@@ -92,7 +105,7 @@ local function runSearch(label, duration, opts)
 
         if Containers.Settings.cancelOnMove then
             if kneeling then
-                -- A full-body pose pins the ped, so displacement-based cancel cannot work. Watch the movement inputs instead: pressing a direction stands up and cancels, same as the standing search.
+                -- A full-body pose pins the ped, so displacement-based cancel cannot work.
                 if IsDisabledControlPressed(0, 32) or IsDisabledControlPressed(0, 33)
                     or IsDisabledControlPressed(0, 34) or IsDisabledControlPressed(0, 35)
                     or IsDisabledControlJustPressed(0, 22) then   -- jump
@@ -114,7 +127,7 @@ local function runSearch(label, duration, opts)
     -- Shown again on every exit. PlayerPedId() is re-read because death replaces the ped, and the new ped's weapon would stay hidden.
     hideWeapon(PlayerPedId(), false)
 
-    SendNUIMessage({ action = 'progress', cancel = true })
+    SendNUIMessage({ action = 'progress', cancel = true, id = id })
     searching = false
 
     return not cancelled
@@ -123,26 +136,24 @@ end
 -- On a resource restart mid-search the thread dies with the weapon still hidden. This restores it.
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
+    TriggerEvent('bs:interactions:progress', { active = false })
     if searching then hideWeapon(PlayerPedId(), false) end
 end)
 
 exports('RunSearch', runSearch)
 
 -- Standalone progress bar, no animation and no movement cancel (for machines that run on their own).
--- bs_recycler needs this here: SendNUIMessage reaches the calling resource's page, and a resource without a ui_page cannot show a bar.
 exports('Progress', function(label, duration)
-    SendNUIMessage({ action = 'progress', label = label, duration = duration, auto = true })
+    showProgress({ action = 'progress', label = label, duration = duration, auto = true })
     return true
 end)
 
 exports('CancelProgress', function()
-    SendNUIMessage({ action = 'progress', cancel = true })
+    SendNUIMessage({ action = 'progress', cancel = true, id = progressId })
     return true
 end)
 
---------------------------------------------------------------------------------
 -- Registration
---------------------------------------------------------------------------------
 
 -- A container is identified server-side by its rounded world position, so the same bin is the same for everyone and across restarts.
 local function containerKey(coords)
@@ -166,12 +177,19 @@ local function searchOption(typeId, def)
         labelKey = 'container.' .. typeId,
         icon  = def.icon,
         distance = 2.4,
+        canInteract = function(entity)
+            if not Containers.Discovery.enabled then return true end
+            local model=BS.Util.ModelOf(entity);local name=model and Registry.modelNames[model]
+            if not name then return true end
+            local value=Containers.Discovery.overrides[name]
+            return value~=false and (value==nil or value==typeId)
+        end,
         action = function(payload)
             local coords = payload.coords or GetEntityCoords(PlayerPedId())
             local key = containerKey(coords)
 
             -- Ask first: no point playing a 5 second animation on an empty bin.
-            local check = BSB.Await('containers:check', 6000, typeId, key)
+            local check = BSB.Await('containers:check', 6000, typeId, key, payload.entity and Registry.modelNames[GetEntityModel(payload.entity)] or nil)
             if not check or not check.ok then
                 return TriggerEvent('bs:ui:notify', {
                     type = 'warn',
@@ -179,7 +197,7 @@ local function searchOption(typeId, def)
                 })
             end
 
-            if not runSearch(containerLabel(typeId, def), def.time or 4000) then return end
+            if not runSearch(containerLabel(typeId, def), check.time or def.time or 4000) then TriggerServerEvent('bs:containers:cancel',key);return end
 
             local result = BSB.Await('containers:loot', 10000, typeId, key)
             if not result or not result.ok then
@@ -189,7 +207,7 @@ local function searchOption(typeId, def)
                 })
             end
 
-            -- Fuel is reported separately: it goes into a can, not a slot, so a plain '+12 diesel' with nothing in the bag would look like a bug.
+            -- Fuel is reported separately: it goes into a can, not a slot
             local fuel = result.diesel
             if fuel then
                 if (fuel.stored or 0) > 0 then
@@ -213,7 +231,7 @@ local function searchOption(typeId, def)
                 return TriggerEvent('bs:ui:notify', { type = 'info', message = L('search.empty') })
             end
 
-            -- Defensive: an entry whose `amount` is not a number throws here and aborts the loop, so later items lose their notification. Container loot resolves a numeric amount first, so this should not fire.
+            -- Defensive: an entry whose `amount` is not a number throws here and aborts the loop, so later items lose their notification.
             for _, entry in ipairs(result.items) do
                 TriggerEvent('bs:ui:notify', {
                     type = 'success',
@@ -227,10 +245,16 @@ local function searchOption(typeId, def)
     }
 end
 
+AddEventHandler('bs:scavenge:furniture',function(point)
+    searchOption('furniture',Containers.Types.furniture).action({coords=vector3(point.x,point.y,point.z)})
+end)
+
 CreateThread(function()
     for typeId, def in pairs(Containers.Types) do
         if def.models then
-            Registry.AddModel(def.models, { searchOption(typeId, def) })
+            local available={}
+            for _,model in ipairs(def.models)do if IsModelInCdimage(GetHashKey(model))then available[#available+1]=model end end
+            Registry.AddModel(available, { searchOption(typeId, def) })
         end
     end
 
@@ -241,15 +265,13 @@ CreateThread(function()
         option.canInteract = function(entity)
             if GetEntityType(entity) ~= 2 then return false end
 
-            -- Owned player vehicles are not searchable. A boot search is for abandoned vehicles; an owned car already has storage through the vehicle wheel.
-            -- bs_vehicles publishes ownership on the entity state bag (bsOwned), like bsLocked. The server refuses the search too; this only decides what is offered.
+            -- Owned player vehicles are not searchable.
             local state = Entity(entity).state
             if state and state.bsOwned then return false end
 
             if not boot.rearOnly then return true end
 
             -- Wrecks are searchable from any side. rearOnly suits an intact abandoned car, but a burnt-out shell has no boot lid.
-            -- IsVehicleDriveable is false for burnt, wrecked and undriveable vehicles, so no model list is needed and it works on other maps.
             local okDrive, driveable = pcall(IsVehicleDriveable, entity, true)
             if okDrive and not driveable then return true end
 
@@ -260,15 +282,14 @@ CreateThread(function()
         Registry.AddType('vehicle', { option })
     end
 
-    -- Wreck props matched by shape instead of name (see car_wreck.matchBySize). A model hash cannot be turned back into a name at runtime, so other maps' wrecks cannot be listed.
-    -- Registered against the OBJECT type so only static props are asked; real vehicles already have the boot search.
+    -- Wreck props matched by shape instead of name (see car_wreck.matchBySize).
     local wreck = Containers.Types.car_wreck
     local size  = wreck and wreck.matchBySize
 
     if wreck and size and size.enabled then
         local option = searchOption('car_wreck', wreck)
 
-        -- Measured once per model, not per entity. This runs inside the aim scan, so caching by hash avoids a native call per frame per prop.
+        -- Measured once per model, not per entity.
         local sized = {}
 
         option.canInteract = function(entity)
@@ -276,15 +297,13 @@ CreateThread(function()
             -- Script props (built fences, base pieces) are not map wrecks, even when their size matches
             if Registry.entities[entity] then return false end
 
--- Guarded: reading a model off an entity handle that was already deleted faults inside the streamer (native 9f47b058362c84b5 is GET_ENTITY_MODEL) and floods the console.
--- pcall catches it but the fault is still logged and costs frame time. Check the entity still exists right before reading, with nothing that can yield in between.
+-- Guarded: reading a model off an entity handle that was already deleted faults inside the streamer
             local model = BS.Util.ModelOf(entity)
             if not model then return false end
             local cached = sized[model]
 
             if cached == nil then
-                -- Guarded, because pcall does not make this cheap: GET_MODEL_DIMENSIONS faults inside the streamer when the archetype is not resident, which is common at the edge of scan range.
-                -- Ask first, answer 'not a wreck' for now and let the next scan decide. Do not cache a refusal, or the miss becomes permanent.
+                -- Guarded, because pcall does not make this cheap: GET_MODEL_DIMENSIONS faults inside the streamer when the
                 local okValid, valid = pcall(IsModelValid, model)
                 if not okValid or not valid then
                     sized[model] = false
@@ -300,7 +319,7 @@ CreateThread(function()
                     return false
                 end
 
-                -- Dimensions come back as two bounding box corners in model space, and which axis is length depends on the model. Sorting the three extents fixes that: longest is length, shortest is height.
+                -- Dimensions come back as two bounding box corners in model space, and which axis is length depends on the model.
                 local dims = { math.abs(mx.x - mn.x), math.abs(mx.y - mn.y), math.abs(mx.z - mn.z) }
                 table.sort(dims)
                 local height, width, length = dims[1], dims[2], dims[3]
@@ -320,3 +339,39 @@ CreateThread(function()
 end)
 
 -- Notifications are not re-handled here. bs_ui already listens on 'bs:ui:notify', and forwarding it again printed every toast twice.
+
+RegisterCommand('scavengecoverage',function()
+    local kinds,configured,available=0,0,0
+    for _,def in pairs(Containers.Types)do
+        kinds=kinds+1
+        for _,model in ipairs(def.models or {})do configured=configured+1;if IsModelInCdimage(GetHashKey(model))then available=available+1 end end
+    end
+    print(('[Scavenge] %d container types; %d configured model aliases; %d available in this game build. Built-in furniture requires a configured interaction zone.'):format(kinds,configured,available))
+end,false)
+
+-- Discover only the targeted model; never sweep the entire object pool for names.
+local discovered={}
+local function storageType(entity)
+    if not Containers.Discovery.enabled or type(GetEntityArchetypeName)~='function'or GetEntityType(entity)~=3 or Registry.entities[entity]then return end
+    local model=BS.Util.ModelOf(entity);if not model then return end
+    if discovered[model]~=nil then return discovered[model]or nil end
+    local name=Registry.modelNames[model]
+    if not name then local ok,value=pcall(GetEntityArchetypeName,entity);if ok then name=value end end
+    if type(name)~='string'or name==''then discovered[model]=false;return end
+    local override=Containers.Discovery.overrides[name:lower()]
+    if Containers.ByModel[model]and override==nil then discovered[model]=false;return end
+    local kind=Containers.DiscoverType(name)
+    if kind then
+        local low,high=GetModelDimensions(model)
+        if not low or not high or high.x-low.x>4.5 or high.y-low.y>4.5 or high.z-low.z>3.5 then kind=nil end
+    end
+    discovered[model]=kind or false
+    if kind then Registry.modelNames[model]=name end
+    return kind
+end
+CreateThread(function()
+    Registry.AddType('object',{{label='Search storage',icon='search',distance=2.4,
+        canInteract=function(entity)return storageType(entity)~=nil end,
+        action=function(payload)local kind=payload.entity and storageType(payload.entity);if kind then searchOption(kind,Containers.Types[kind]).action(payload)end end}})
+end)
+AddEventHandler('bs_config:changed:'..GetCurrentResourceName(),function()discovered={}end)

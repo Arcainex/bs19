@@ -33,11 +33,12 @@ client_scripts {
     'client/cl_emotes.lua',
     -- AFTER cl_emotes: uses the EmoteCore global it publishes.
     'client/cl_emotemenu.lua',
+    'client/cl_clothing_wheel.lua',
     'client/cl_seats.lua',
 }
 
 ui_page 'html/index.html'
-files { 'html/index.html' }
+files { 'html/index.html', 'html/clothing.css', 'html/clothing.js' }
 
 server_scripts { 'server/sv_main.lua' }
 

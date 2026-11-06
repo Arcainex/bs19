@@ -1,6 +1,4 @@
--- bs_medical - conditions: wounds, fractures, infection, sickness, blood.
--- The server owns all of it. Clients only report what hit them and ask to
--- treat; every result is decided here. One 5 s loop for everyone.
+-- bs_medical - conditions: wounds, fractures, infection, sickness, blood. The server owns all of it.
 
 local SYS   = Medical.System
 local PARTS = Medical.Parts
@@ -353,8 +351,7 @@ RegisterNetEvent('bs:medical:injury', function(part, kind, amount)
     if changed then touch(src) end
 end)
 
--- Zombie hits. bs_zombies still sends this; with bs_medical running it no
--- longer touches infection itself.
+-- Zombie hits. bs_zombies still sends this; with bs_medical running it no longer touches infection itself.
 local lastBite = {}
 RegisterNetEvent('bs:zombies:bitten', function(typeId)
     local src = source

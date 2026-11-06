@@ -1,4 +1,4 @@
--- BeyondSurvival - one NUI frame for the whole interface. Panels are routed by an `action` field, so there is only one browser instance.
+-- BeyondSurvival - one NUI frame for the whole interface.
 
 local Events = exports.bs_core:GetEvents()
 
@@ -68,7 +68,7 @@ AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then SetNuiFocus(false, false) end
 end)
 
--- /refreshui - panic button for every player. Drops NUI focus no matter what is thought to be open and tells every NUI-owning resource to close its panels, so a stuck panel does not need a relog.
+-- /refreshui - panic button for every player.
 RegisterCommand('refreshui', function()
     Nui.openPanel = nil
     SendNUIMessage({ action = 'close' })

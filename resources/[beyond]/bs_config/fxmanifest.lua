@@ -35,7 +35,18 @@ files {
     'html/ext_tutorial.js',
     'html/ext_pass.js',
     'html/ext_operations.js',
+    'html/ext_darkzone.js',
+    'html/ext_radio.js',
+    'html/ext_loot.js',
+    'html/ext_radio.js',
+    'html/ext_loot.js',
+    'html/ext_building.js',
+    'html/ext_themes.js',
+    'html/img/themes/*.png',
+    'html/img/themes/*.jpg',
+    'html/ext_zombies.js',
     'html/app.js',
+    'html/ext_selection.js',
 }
 
 dependencies { 'oxmysql' }

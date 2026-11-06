@@ -23,7 +23,7 @@ Economy.LootTables = {
             { item = 'water_bottle',amount = { 1, 1 }, weight = 12 },
             { item = 'bandage',     amount = { 1, 1 }, weight = 8  },
             { item = 'wood_plank',  amount = { 1, 2 }, weight = 6  },
-            -- No clothes in loot: clothing is appearance, bought at the wardrobe NPC. Backpacks and body armour are still items and drop where listed.
+            -- No clothes in loot: clothing is appearance, bought at the wardrobe NPC.
         },
     },
     kitchen = {
@@ -66,6 +66,10 @@ Economy.LootTables = {
     electrical = {
         rolls = { min = 1, max = 2 },
         entries = {  -- boosters (rare)
+            { item = 'radio', amount = {1,1}, weight = 6 },
+            { item = 'radio_advanced', amount = {1,1}, weight = 3 },
+            { item = 'radio_military', amount = {1,1}, weight = 1 },
+            { item = 'portable_antenna', amount = {1,1}, weight = 1 },
             { item = 'booster_drone', amount = { 1, 1 }, weight = 2 },
             { item = 'copper',          amount = { 1, 3 }, weight = 46 },
             { item = 'electrical_wire', amount = { 1, 2 }, weight = 24 },
@@ -101,11 +105,11 @@ Economy.LootTables = {
     },
     walker = {
         rolls = { min = 0, max = 2 },
-        -- Cash: see the loot callback in bs_zombies/server/sv_director.lua. cashChance gates whether a body has money; the amount is cubed so large finds are rare.
+        -- Cash: see the loot callback in bs_zombies/server/sv_director.lua. cashChance gates whether a body has money
         cashChance = 0.35,
         cashMax    = 800,
         entries = {
-            { item = 'pack_small',    amount = { 1, 1 }, weight = 1 },  -- rare zombie drop
+            { item = 'pack_civilian',    amount = { 1, 1 }, weight = 1 },  -- rare zombie drop
             { item = 'zombie_teeth', amount = { 1, 2 }, weight = 34 },
             { item = 'cloth',        amount = { 1, 3 }, weight = 28 },
             { item = 'canned_food',  amount = { 1, 1 }, weight = 13 },
@@ -126,8 +130,8 @@ Economy.LootTables = {
     urban = {
         rolls = { min = 1, max = 3 },
         entries = {
-            { item = 'pack_small',    amount = { 1, 1 }, weight = 2 },  -- backpack tier by area danger
-            { item = 'pack_medium',   amount = { 1, 1 }, weight = 1 },
+            { item = 'pack_civilian',    amount = { 1, 1 }, weight = 2 },  -- backpack tier by area danger
+            { item = 'pack_hiking',   amount = { 1, 1 }, weight = 1 },
             { item = 'cloth',       amount = { 1, 4 }, weight = 30 },
             { item = 'scrap_metal', amount = { 1, 3 }, weight = 30 },
             { item = 'nails',       amount = { 2, 6 }, weight = 8  },  -- building
@@ -140,7 +144,7 @@ Economy.LootTables = {
     rural = {
         rolls = { min = 1, max = 2 },
         entries = {
-            { item = 'pack_small',    amount = { 1, 1 }, weight = 2 },  -- backpack tier by area danger
+            { item = 'pack_civilian',    amount = { 1, 1 }, weight = 2 },  -- backpack tier by area danger
             { item = 'wood_plank',  amount = { 1, 3 }, weight = 30 },
             { item = 'log',         amount = { 1, 2 }, weight = 14 },  -- building
             { item = 'nails',       amount = { 2, 8 }, weight = 10 },
@@ -153,7 +157,7 @@ Economy.LootTables = {
     medical = {
         rolls = { min = 1, max = 3 },
         entries = {  -- boosters (rare)
-            { item = 'pack_small',    amount = { 1, 1 }, weight = 1 },
+            { item = 'pack_civilian',    amount = { 1, 1 }, weight = 1 },
             { item = 'booster_medic', amount = { 1, 1 }, weight = 2 },
             { item = 'booster_adrenaline', amount = { 1, 1 }, weight = 3 },
             { item = 'booster_regen', amount = { 1, 1 }, weight = 3 },
@@ -182,7 +186,7 @@ Economy.LootTables = {
         cashChance = 0.45,
         cashMax    = 800,
         entries = {  -- boosters (rare)
-            { item = 'pack_small',    amount = { 1, 1 }, weight = 1 },  -- rare zombie drop
+            { item = 'pack_civilian',    amount = { 1, 1 }, weight = 1 },  -- rare zombie drop
             { item = 'booster_adrenaline', amount = { 1, 1 }, weight = 2 },
             { item = 'zombie_teeth', amount = { 1, 3 }, weight = 42 },
             { item = 'cloth',        amount = { 1, 2 }, weight = 30 },
@@ -200,7 +204,7 @@ Economy.LootTables = {
         cashChance = 0.65,
         cashMax    = 800,
         entries = {
-            { item = 'pack_medium',   amount = { 1, 1 }, weight = 1 },  -- rare zombie drop
+            { item = 'pack_hiking',   amount = { 1, 1 }, weight = 1 },  -- rare zombie drop
             { item = 'vest_tactical', amount = { 1, 1 }, weight = 1 },
             { item = 'zombie_teeth', amount = { 2, 5 }, weight = 38 },
             { item = 'scrap_metal',  amount = { 1, 3 }, weight = 26 },
@@ -242,13 +246,133 @@ Economy.LootTables = {
             { item = 'att_flashlight',amount = { 1, 1 }, weight = 8  },
 
             -- Packs and vests by area danger: military areas hold the big ones, all rare.
-            { item = 'pack_large',    amount = { 1, 1 }, weight = 3  },
-            { item = 'pack_military', amount = { 1, 1 }, weight = 1  },
+            { item = 'pack_survival',    amount = { 1, 1 }, weight = 3  },
+            { item = 'pack_field_military', amount = { 1, 1 }, weight = 1  },
             { item = 'vest_tactical', amount = { 1, 1 }, weight = 3  },
             { item = 'vest_plate',    amount = { 1, 1 }, weight = 1  },
         },
     },
 }
+
+
+-- Storage-specific pools: their container type is the source, not the surrounding map zone.
+Economy.LootTables.travel={rolls={min=1,max=3},entries={
+    {item='cloth',weight=30,amount={1,3}},
+    {item='water_bottle',weight=24,amount={1,2}},
+    {item='canned_food',weight=20,amount={1,2}},
+    {item='bandage',weight=12,amount={1,2}},
+    {item='pack_civilian',weight=3,amount={1,1}},
+    {item='pack_hiking',weight=1,amount={1,1}},
+    {item='pistol',weight=1,amount={1,1}},
+    {item='ammo_pistol',weight=5,amount={1,2}},
+}}
+Economy.LootTables.office={rolls={min=1,max=3},entries={
+    {item='cloth',weight=25,amount={1,2}},
+    {item='scrap_metal',weight=30,amount={1,2}},
+    {item='electrical_wire',weight=16,amount={1,2}},
+    {item='battery',weight=2,amount={1,1}},
+    {item='lockpick',weight=2,amount={1,1}},
+    {item='water_bottle',weight=15,amount={1,1}},
+}}
+Economy.LootTables.parcel={rolls={min=1,max=3},entries={
+    {item='canned_food',weight=22,amount={1,2}},
+    {item='water_bottle',weight=22,amount={1,2}},
+    {item='cloth',weight=22,amount={1,3}},
+    {item='scrap_metal',weight=18,amount={1,3}},
+    {item='duct_tape',weight=10,amount={1,2}},
+    {item='bandage',weight=6,amount={1,2}},
+}}
+Economy.LootTables.warehouse={rolls={min=1,max=3},entries={
+    {item='scrap_metal',weight=30,amount={2,5}},
+    {item='wood_plank',weight=25,amount={1,3}},
+    {item='nails',weight=18,amount={3,10}},
+    {item='duct_tape',weight=15,amount={1,3}},
+    {item='toolbox',weight=5,amount={1,1}},
+    {item='gun_parts',weight=3,amount={1,2}},
+    {item='att_grip',weight=2,amount={1,1}},
+}}
+Economy.LootTables.industrial={rolls={min=1,max=3},entries={
+    {item='scrap_metal',weight=35,amount={2,5}},
+    {item='copper',weight=20,amount={1,3}},
+    {item='electrical_wire',weight=22,amount={1,3}},
+    {item='duct_tape',weight=10,amount={1,3}},
+    {item='toolbox',weight=8,amount={1,1}},
+    {item='gun_parts',weight=3,amount={1,2}},
+}}
+Economy.LootTables.fishing={rolls={min=1,max=3},entries={
+    {item='fish_bait',weight=50,amount={2,6}},
+    {item='fishing_rod',weight=6,amount={1,1}},
+    {item='water_bottle',weight=20,amount={1,1}},
+    {item='cloth',weight=20,amount={1,2}},
+}}
+Economy.LootTables.safe={rolls={min=1,max=3},entries={
+    {item='gun_parts',weight=28,amount={1,3}},
+    {item='ammo_pistol',weight=22,amount={1,3}},
+    {item='pistol',weight=3,amount={1,1}},
+    {item='revolver',weight=2,amount={1,1}},
+    {item='att_suppressor',weight=3,amount={1,1}},
+    {item='lockpick',weight=12,amount={1,1}},
+    {item='scrap_metal',weight=30,amount={1,3}},
+}}
+Economy.LootTables.police={rolls={min=1,max=3},entries={
+    {item='ammo_pistol',weight=35,amount={1,3}},
+    {item='ammo_shotgun',weight=22,amount={1,3}},
+    {item='ammo_rifle',weight=15,amount={1,2}},
+    {item='gun_parts',weight=25,amount={1,3}},
+    {item='att_flashlight',weight=10,amount={1,1}},
+    {item='att_extmag',weight=8,amount={1,1}},
+    {item='att_scope',weight=5,amount={1,1}},
+    {item='combat_pistol',weight=4,amount={1,1}},
+    {item='pump_shotgun',weight=3,amount={1,1}},
+    {item='smg',weight=2,amount={1,1}},
+    {item='carbine',weight=1,amount={1,1}},
+    {item='heavy_pistol',weight=2,amount={1,1}},
+    {item='combat_pdw',weight=1,amount={1,1}},
+    {item='pistol_mk2',weight=0.5,amount={1,1}},
+    {item='carbine_mk2',weight=0.25,amount={1,1}},
+}}
+Economy.LootTables.weapon_storage={rolls={min=1,max=3},entries={
+    {item='gun_parts',weight=35,amount={2,4}},
+    {item='ammo_pistol',weight=20,amount={1,3}},
+    {item='ammo_rifle',weight=20,amount={1,3}},
+    {item='ammo_shotgun',weight=12,amount={1,3}},
+    {item='att_scope',weight=8,amount={1,1}},
+    {item='att_suppressor',weight=8,amount={1,1}},
+    {item='att_grip',weight=8,amount={1,1}},
+    {item='att_extmag',weight=10,amount={1,1}},
+    {item='pistol',weight=3,amount={1,1}},
+    {item='smg',weight=2,amount={1,1}},
+    {item='assault_rifle',weight=2,amount={1,1}},
+    {item='pump_shotgun',weight=3,amount={1,1}},
+    {item='special_carbine',weight=1,amount={1,1}},
+}}
+Economy.LootTables.shop=Economy.LootTables.urban
+Economy.LootTables.home=Economy.LootTables.urban
+for _,entry in ipairs({
+    {item='ammo_rifle',weight=30,amount={1,4}},
+    {item='ammo_pistol',weight=18,amount={1,3}},
+    {item='ammo_shotgun',weight=15,amount={1,3}},
+    {item='ammo_magnum',weight=8,amount={1,2}},
+    {item='gun_parts',weight=28,amount={1,4}},
+    {item='assault_rifle',weight=3,amount={1,1}},
+    {item='advanced_rifle',weight=2,amount={1,1}},
+    {item='special_carbine',weight=2,amount={1,1}},
+    {item='bullpup_rifle',weight=2,amount={1,1}},
+    {item='compact_rifle',weight=2,amount={1,1}},
+    {item='assault_shotgun',weight=1,amount={1,1}},
+    {item='bullpup_shotgun',weight=1,amount={1,1}},
+    {item='mg',weight=0.6,amount={1,1}},
+    {item='combat_mg',weight=0.4,amount={1,1}},
+    {item='heavy_sniper',weight=0.25,amount={1,1}},
+    {item='military_rifle',weight=0.6,amount={1,1}},
+    {item='heavy_shotgun',weight=0.5,amount={1,1}},
+    {item='assault_rifle_mk2',weight=0.3,amount={1,1}},
+    {item='combat_mg_mk2',weight=0.2,amount={1,1}},
+    {item='heavy_sniper_mk2',weight=0.1,amount={1,1}},
+    {item='att_muzzle_brake',weight=4,amount={1,1}},
+    {item='att_reflex',weight=3,amount={1,1}},
+    {item='att_scope_long',weight=2,amount={1,1}},
+})do Economy.LootTables.military.entries[#Economy.LootTables.military.entries+1]=entry end
 
 --- Gatherable world resources.
 Economy.Gathering = {

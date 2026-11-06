@@ -6,7 +6,7 @@
 
 No ESX, no QBCore. Every system is built from scratch to work together.
 
-[![Version](https://img.shields.io/badge/version-1.0.0--beta-c0392b?style=for-the-badge)](https://github.com/Arcainex/bs19)
+[![Version](https://img.shields.io/badge/version-1.1.0-c0392b?style=for-the-badge)](https://github.com/Arcainex/bs19)
 [![FiveM](https://img.shields.io/badge/FiveM-OneSync-1a1a1a?style=for-the-badge)](https://fivem.net)
 [![txAdmin](https://img.shields.io/badge/install-txAdmin%20recipe-1a1a1a?style=for-the-badge)](#install)
 [![Languages](https://img.shields.io/badge/languages-9-1a1a1a?style=for-the-badge)](#languages)
@@ -125,7 +125,7 @@ Need a server? We run BS19 on **[24Racks](https://24racks.com/bs19)**. Good pric
 
 ## Beta
 
-This is the first public build. The newest systems (building, operations, hunting, convoys) are only lightly tested, so expect rough edges. Known issues are listed in the [changelog](CHANGELOG.md). Found a bug? Tell us on [Discord](https://discord.gg/aBkCNgmDZ).
+BS19 is still in beta. The newest systems (parkour, fighting, Survivor Link, Dark Zone, voice and radio, hybrid zombies) are only lightly tested, so expect rough edges. Known issues are listed in the [changelog](CHANGELOG.md). Found a bug? Tell us on [Discord](https://discord.gg/aBkCNgmDZ).
 
 ## License
 

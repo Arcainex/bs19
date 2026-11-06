@@ -1,4 +1,4 @@
-// bs_vip panel (F7). Tabs: overview, customise, appearance, vehicles, settings. Changes go back through Lua and the server validates them.
+// bs_vip panel (F7): tabs: overview, customise, appearance, vehicles, settings.
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Translations from nui://bs_ui/html/js/i18n.js (t is a common local name in here).

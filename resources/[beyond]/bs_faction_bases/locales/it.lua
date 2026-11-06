@@ -66,4 +66,10 @@ return {
     ['fb.sentence_lifted'] = 'La tua pena è stata revocata.',
     ['fb.released_early'] = 'Sei stato rilasciato in anticipo.',
     ['fb.sentence_served'] = 'Pena scontata. Sei libero.',
+    ['fb.i_remove_decay'] = 'Rimuovi bandiera (la base decade)',
+    ['fb.i_remove_all'] = 'Rimuovi bandiera e base',
+    ['fb.remove_decay_ask'] = 'Premi di nuovo per rimuovere la bandiera. {n} pezzi crolleranno in {h} h, il {pct}% dei materiali finisce in una cassa di recupero qui.',
+    ['fb.remove_all_ask'] = 'Premi di nuovo per rimuovere la bandiera E smontare subito {n} pezzi. Il {pct}% dei materiali e tutto ciò che era conservato finisce in una cassa di recupero qui.',
+    ['fb.removed_decay'] = 'Bandiera rimossa. La base è abbandonata e crollerà.',
+    ['fb.removed_all'] = 'Bandiera rimossa. {n} pezzi smontati, controlla la cassa di recupero.',
 }

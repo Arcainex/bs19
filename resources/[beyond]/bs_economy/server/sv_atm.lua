@@ -1,6 +1,4 @@
 -- bs_economy - blowing up a cash machine.
--- The server cannot see ATMs (they are map props, not spawned entities), but it does hear explosions with a position and a causer. So: the server hears the bang and asks the causing client whether a machine was there; the client checks with the game's object lookup; the server pays out after confirming the bang, position, distance and cooldown.
--- A client can only lie about a machine standing where its own explosion went off.
 
 local A = Economy.ATM or { enabled = false }
 
@@ -74,7 +72,7 @@ BSB.RegisterCallback('atm:crack', function(src, x, y, z)
         return { ok = false, error = 'too far from it' }
     end
 
-    -- Matched by distance, not key: the key is coords rounded to 0.1, so small nudges made new machines. Any live crack within CRACK_RADIUS is the same machine.
+    -- Matched by distance, not key: the key is coords rounded to 0.1, so small nudges made new machines.
     local now = os.time()
     for _, c in pairs(cracked) do
         if now < c.ready then

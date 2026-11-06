@@ -66,4 +66,10 @@ return {
     ['fb.sentence_lifted'] = 'Twój wyrok został uchylony.',
     ['fb.released_early'] = 'Zostałeś zwolniony przed czasem.',
     ['fb.sentence_served'] = 'Wyrok odbyty. Możesz odejść.',
+    ['fb.i_remove_decay'] = 'Usuń flagę (baza niszczeje)',
+    ['fb.i_remove_all'] = 'Usuń flagę i bazę',
+    ['fb.remove_decay_ask'] = 'Naciśnij ponownie, aby usunąć flagę. {n} elementów rozpadnie się w ciągu {h} godz., {pct}% materiałów trafi do skrzyni z odzyskiem tutaj.',
+    ['fb.remove_all_ask'] = 'Naciśnij ponownie, aby usunąć flagę I od razu rozebrać {n} elementów. {pct}% materiałów i wszystko z magazynów trafi do skrzyni z odzyskiem tutaj.',
+    ['fb.removed_decay'] = 'Flaga usunięta. Baza jest porzucona i się rozpadnie.',
+    ['fb.removed_all'] = 'Flaga usunięta. Rozebrano {n} elementów, sprawdź skrzynię z odzyskiem.',
 }

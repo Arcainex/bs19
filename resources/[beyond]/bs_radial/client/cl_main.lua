@@ -1,5 +1,4 @@
--- bs_radial - Lua side of the wheel.
--- `Open` blocks the calling thread until the player picks or cancels, and returns the slice id. Only plain data crosses the resource boundary. Only one wheel exists at a time; opening a second closes the first.
+-- bs_radial - Lua side of the wheel. `Open` blocks the calling thread until the player picks or cancels
 
 local S = Radial.Settings
 
@@ -11,7 +10,7 @@ local State = {
     owner    = nil,
 }
 
--- One waiter per call, keyed by token, so one wheel closing can only answer itself. A shared State.answered let a second Open (e.g. a mashed keybind) wake the first caller's cleanup while the second wheel was still up.
+-- One waiter per call, keyed by token, so one wheel closing can only answer itself.
 local Waiters = {}
 
 local function send(payload) SendNUIMessage(payload) end
@@ -24,6 +23,11 @@ local function anchorFor(spec)
     return ANCHORS[want] and want or 'centre'
 end
 
+local function holdFor(spec)
+    if spec.hold ~= nil then return spec.hold == true end
+    return S.holdToPick ~= false
+end
+
 local function blurFor(spec)
     if spec and spec.blur ~= nil then return spec.blur and true or false end
     return S.blurWorld and true or false
@@ -34,7 +38,7 @@ local function setFocus(on)
     SetNuiFocusKeepInput(false)
 end
 
--- Sanitising what a caller sends: everything that reaches the NUI is rebuilt here, so no markup, functions or deep nesting get through.
+-- Sanitising what a caller sends: everything that reaches the NUI is rebuilt here, so no markup
 
 local function sanitise(items, depth)
     depth = depth or 1
@@ -66,16 +70,14 @@ local function sanitise(items, depth)
     return out
 end
 
---------------------------------------------------------------------------------
 -- Open / close
---------------------------------------------------------------------------------
 
 -- @param result string|nil the slice that was picked, or nil
 -- @param token number|nil which wheel this answer belongs to. nil means whatever is open now (internal pre-empt); the NUI passes its own token so answers from a replaced wheel are dropped.
 local function close(result, token)
     if not State.open then return end
 
-    -- NUI callbacks are asynchronous, so a late 'pick' from a replaced wheel could resolve the new wheel with the old slice. Drop answers whose token does not match.
+    -- NUI callbacks are asynchronous, so a late 'pick' from a replaced wheel could resolve the new wheel with the old slice.
     if token ~= nil and token ~= State.token then return end
 
     local waiter = Waiters[State.token]
@@ -134,7 +136,7 @@ function Radial.Open(spec)
         geometry = {
             outer = S.outerRadius, inner = S.innerRadius, dead = S.deadZone,
         },
-        hold = (spec.hold ~= nil) and spec.hold or S.holdToPick,
+        hold = holdFor(spec),
         anchor = anchorFor(spec),
     })
 
@@ -145,7 +147,7 @@ function Radial.Open(spec)
     end
     TriggerEvent('bs:ui:opened', 'radial')
 
-    -- Hold to pick. If opened from a held key, the wheel stays up while the key is down and the slice under the cursor is taken on release. NUI focus swallows the keyboard, so the key is read here. Without a control id it is click-to-pick.
+    -- Hold to pick: if opened from a held key, the wheel stays up while the key is down and the slice under the
     if spec.holdControl then
         CreateThread(function()
             local held = false
@@ -189,9 +191,7 @@ function Radial.Open(spec)
     return waiter.result
 end
 
---------------------------------------------------------------------------------
 -- From the wheel
---------------------------------------------------------------------------------
 
 RegisterNUICallback('pick', function(data, cb)
     close(data and data.id or nil, data and tonumber(data.token) or nil)
@@ -203,9 +203,7 @@ RegisterNUICallback('cancel', function(data, cb)
     cb({ ok = true })
 end)
 
---------------------------------------------------------------------------------
 -- Safety
---------------------------------------------------------------------------------
 
 -- Anything else opening a menu closes this one, so no wheel is left holding NUI focus.
 AddEventHandler('bs:ui:opened', function(what)
@@ -230,8 +228,7 @@ CreateThread(function()
     end
 end)
 
--- Exports. Use Begin/Poll, not Open: an export called from another resource cannot yield across the resource boundary, so Open's Wait would throw and leave the wheel up with NUI focus and blur.
--- `Begin` returns a token immediately, `Poll` returns plain data, and the waiting happens in the caller's resource (see BSB.Radial in sh_bridge.lua).
+-- Exports: use Begin/Poll, not Open: an export called from another resource cannot yield across the resource
 
 -- Opens the wheel and returns at once.
 -- @return number|nil token  pass to Poll; nil if the spec had nothing in it
@@ -262,7 +259,7 @@ exports('Begin', function(spec)
         geometry = {
             outer = S.outerRadius, inner = S.innerRadius, dead = S.deadZone,
         },
-        hold = (spec.hold ~= nil) and spec.hold or S.holdToPick,
+        hold = holdFor(spec),
         anchor = anchorFor(spec),
     })
 
@@ -273,7 +270,7 @@ exports('Begin', function(spec)
     end
     TriggerEvent('bs:ui:opened', 'radial')
 
-    -- Hold to pick, same as Open. It lives here because the key can only be read from a thread that disables and re-reads the control every frame under NUI focus.
+    -- Hold to pick, same as Open.
     if spec.holdControl then
         CreateThread(function()
             local held = false
@@ -331,7 +328,7 @@ CreateThread(function()
             close(nil)
         end
 
-        -- Do not clear NUI focus here when the wheel is shut. IsNuiFocused is client-wide and the inventory or hub may hold it; the wheel only releases focus it took itself, in close().
+        -- Do not clear NUI focus here when the wheel is shut.
     end
 end)
 

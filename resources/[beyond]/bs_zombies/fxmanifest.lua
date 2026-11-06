@@ -32,8 +32,12 @@ shared_scripts {
     'config/config_sim.lua',
     -- Networked-walker mode + tunables. After config_sim.lua (scales its density).
     'config/config_net.lua',
+    'shared/sh_archetypes.lua',
     -- Difficulty multipliers (Zombies.Difficulty). After the config files.
     'shared/sh_difficulty.lua',
+    -- Hybrid population: filler config and helpers (regions and hot zones live in config_zones.lua)
+    'config/config_filler.lua',
+    'shared/sh_filler.lua',
 }
 
 client_scripts {
@@ -49,6 +53,8 @@ client_scripts {
     -- After cl_combat (reports through its hitmarker event) and after cl_sync
     'client/cl_damage.lua',
     'client/cl_execute.lua',
+    -- Hooks for bs_fighting freeflow (Zombies.Combat)
+    'client/cl_fight_hooks.lua',
     'client/cl_finisher.lua',
     'client/cl_horde.lua',
     'client/cl_crawl.lua',
@@ -60,11 +66,15 @@ client_scripts {
     'client/cl_safezones.lua',
     -- Settings first: cl_healthbar and cl_hitmarker listen to its broadcast.
     'client/cl_options.lua',
+    'client/cl_noisehud.lua',
     'client/cl_healthbar.lua',
     'client/cl_hitmarker.lua',
+    'client/cl_combat_feedback.lua',
     -- Stance report
     -- The server's sense ladder cannot see crouch/prone (bs_emotes state machines on the client, not a networked ped flag)
     'client/cl_sim_stance.lua',
+    -- Hybrid population: local filler walkers that promote into networked ones
+    'client/cl_filler.lua',
     -- Last: the pool watchdog reaches into Zed.live and the corpse table, so what it culls must exist first.
     'client/cl_pools.lua',
 }
@@ -98,6 +108,8 @@ server_scripts {
     'server/sv_net.lua',
     -- After sv_net.lua: reads ZNet.ents and wraps ZSimSense.ReportDamage.
     'server/sv_net_target.lua',
+    -- After sv_net_target.lua: promotions mark who the new walker chases
+    'server/sv_filler.lua',
     'server/sv_flagzones.lua',
 }
 

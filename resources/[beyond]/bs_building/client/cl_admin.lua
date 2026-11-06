@@ -44,19 +44,27 @@ RegisterNUICallback('adminAct', function(data, cb)
     end)
 end)
 
--- /buildmodels: prints which model each piece really uses here and its size, to check fallbacks in game (F8)
+-- /buildmodels: prints which model each piece and tier really uses here and its size, to check props in game (F8)
 RegisterCommand('buildmodels', function() CreateThread(function()
-    for id, d in pairs(Building.Pieces) do
-        local picked
-        for _, m in ipairs(d.models or {}) do
-            local ok = IsModelInCdimage(GetHashKey(m))
-            print(('[bs_building] %-14s %-24s %s'):format(id, m, ok and 'OK' or 'missing'))
-            if ok and not picked then picked = m end
-        end
-        if picked then
-            Building.LoadModel(GetHashKey(picked))
-            local mn, mx = GetModelDimensions(GetHashKey(picked))
-            print(('[bs_building] %-14s -> %s  %.2f x %.2f x %.2f m'):format(id, picked, mx.x - mn.x, mx.y - mn.y, mx.z - mn.z))
+    local ids = {}
+    for id in pairs(Building.Pieces) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local d = Building.Pieces[id]
+        local tiers = Building.TierList(d)
+        if #tiers == 0 then tiers = { false } end
+        for _, t in ipairs(tiers) do
+            local sp = Building.Spec(d, t or nil) or d
+            local picked
+            for _, m in ipairs(sp.models or {}) do
+                local ok = IsModelInCdimage(GetHashKey(m))
+                print(('[bs_building] %-16s %-9s %-26s %s'):format(id, t or '-', m, ok and 'OK' or 'MISSING'))
+                if ok and not picked then picked = m end
+            end
+            if picked then
+                local mn, mx = Building.Dims(GetHashKey(picked))
+                print(('[bs_building] %-16s %-9s -> %s  %.2f x %.2f x %.2f m'):format(id, t or '-', picked, mx.x - mn.x, mx.y - mn.y, mx.z - mn.z))
+            end
         end
     end
 end) end, false)

@@ -6,7 +6,6 @@ Radial = {}
 
 Radial.Settings = {
     -- Hold this to keep it open; releasing picks whatever is under the cursor.
-    -- Set to nil for click-to-pick menus opened from code.
     holdToPick   = true,
 
     -- Fade in / out, ms.
@@ -34,6 +33,8 @@ Radial.Settings = {
 
 -- Icons: inline SVG paths, so there are no image files to stream. A slice names one of these; unknown names fall back to `dot`.
 Radial.Icons = {
+    radio = 'M7 7h10v14H7V7zM9 7V2m5 5V5h2v2M9 10h6v4H9v-4zm0 7h1m2 0h1m2 0h1M9 19h1m2 0h1m2 0h1',
+    star = 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3z',
     dot      = 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
     hat      = 'M4 17h16M7 17V9a5 5 0 0 1 10 0v8',
     glasses  = 'M2 12h4m12 0h4M6 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0zm6 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0z',

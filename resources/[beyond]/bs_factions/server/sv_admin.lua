@@ -1,4 +1,4 @@
--- bs_factions - staff console behind the hub's ADMIN tab. Every callback re-checks the ACE (bs.admin / bs.superadmin) and logs one audit line.
+-- bs_factions - staff console behind the hub's ADMIN tab.
 
 local C, G = FactionsCore, FactionsProg
 local MARKS = { wolf = true, skull = true, claw = true, shield = true, eye = true, bolt = true, crown = true, serpent = true }
@@ -56,14 +56,14 @@ local function admin(name, needFaction, fn)
     end)
 end
 
---------------------------------------------------------------------- reads
+-- reads
 admin('overview', false, function()
     local counts = {}
     for _, r in ipairs(C.q('SELECT faction_id, COUNT(*) AS n FROM bs_faction_members GROUP BY faction_id')) do counts[r.faction_id] = tonumber(r.n) or 0 end
     local list = {}
     for id, f in pairs(C.Registry) do
         local d = G and G.ready() and G.load(id)
-        list[#list + 1] = { id = id, label = f.label, short = f.short, logo = f.logo, isConfig = f.config, members = counts[id] or 0, level = d and d.level or 1 }
+        list[#list + 1] = { id = id, label = f.label, short = f.short, logo = f.logo, emblem = FactionEmblem and FactionEmblem(id), isConfig = f.config, members = counts[id] or 0, level = d and d.level or 1 }
     end
     table.sort(list, function(a, b) if a.isConfig ~= b.isConfig then return a.isConfig end return a.label < b.label end)
     local online = {}
@@ -82,7 +82,7 @@ admin('detail', true, function(_, _, f)
         local st = m.src and C.State[m.src]
         m.rep = (st and st.rep) or reps[m.charId] or 0
     end
-    local out = { ok = true, id = f.id, label = f.label, short = f.short, description = f.description or '', logo = f.logo,
+    local out = { ok = true, id = f.id, label = f.label, short = f.short, description = f.description or '', logo = f.logo, emblem = FactionEmblem and FactionEmblem(f.id), custom = f.emblem ~= nil,
         isConfig = f.config, owner = f.owner, members = roster, treasury = C.treasury(f.id).balance, ranks = {} }
     for _, r in ipairs(C.ranksOf(f.id)) do out.ranks[#out.ranks + 1] = { id = r.id, label = r.label } end
     local d = progress(f.id)
@@ -100,7 +100,7 @@ admin('detail', true, function(_, _, f)
     return out
 end)
 
------------------------------------------------------------------ progression
+-- progression
 admin('progress', true, function(_, a, f)
     local d = progress(f.id); if not d then return fail('fac.adm.progstart') end
     local op, v = tostring(a.op or ''), int(a.value)
@@ -177,7 +177,7 @@ admin('treasury', true, function(src, a, f)
     return { ok = true, balance = want }
 end)
 
---------------------------------------------------------------------- members
+-- members
 local function detach(cid)
     C.x('DELETE FROM bs_faction_members WHERE character_id=?', { cid })
     if SquadRemoveChar then pcall(SquadRemoveChar, cid) end
@@ -264,7 +264,7 @@ admin('disband', true, function(_, _, f)
     return { ok = true, removed = true }
 end)
 
---------------------------------------------------------------------- missions
+-- missions
 admin('reroll', true, function(_, a, f)
     local d = progress(f.id); if not d then return fail('fac.adm.progstart') end
     local period = tostring(a.period or '')
@@ -291,7 +291,7 @@ admin('resetCooldowns', true, function(_, _, f)
     return { ok = true }
 end)
 
------------------------------------------------------------------------- flags
+-- flags
 admin('flagTeleport', false, function(src, a)
     local ok, flags = pcall(function() return exports.bs_faction_bases:ListFlags() end)
     if not ok then return fail('fac.adm.nobases') end
@@ -313,7 +313,7 @@ admin('flagRemove', false, function(_, a)
     return done and { ok = true } or fail('fac.adm.noflag')
 end)
 
---------------------------------------------------------------------- identity
+-- identity
 admin('identity', true, function(_, a, f)
     local label = tostring(a.label or f.label):gsub('[%c]', ''):sub(1, 48)
     local short = tostring(a.short or f.short):upper():gsub('[^A-Z0-9]', ''):sub(1, 8)
@@ -342,8 +342,7 @@ admin('clearBriefing', true, function(_, _, f)
     return { ok = true }
 end)
 
--------------------------------------------------------- bs_admin F10 exports
--- Plain data for the staff menu's PLAYER view. bs_admin does the staff check and the logging; these only apply.
+-- bs_admin F10 exports: plain data for the staff menu's PLAYER view. bs_admin does the staff check and the
 exports('AdminFactionList', function()
     local out = {}
     for id, f in pairs(C.Registry) do

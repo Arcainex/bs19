@@ -1,11 +1,11 @@
-// BeyondSurvival - menu palette shared by every NUI page. Polls bs_ui for the player's palette and writes the colour variables menus use. Loaded by scale.js, or directly by pages without scaling.
+// BeyondSurvival - menu palette shared by every NUI page.
 (function () {
     'use strict';
     if (window.BSPalette) return;
     var root = document.documentElement;
     var current = '';
 
-    // palette key -> every custom property that page families use for that role
+    // palette key to every custom property that page families use for that role
     var MAP = {
         accent: ['--bs-accent', '--amber', '--acc', '--accent', '--copper', '--rust', '--hx-rust'],
         hi:     ['--acc2', '--hx-rust-hi'],
@@ -15,7 +15,9 @@
         blood:  ['--blood', '--bs-blood', '--hx-blood']
     };
 
+    var TOKENS = {accent:['--t-acc','--t-acc2'],bg:['--t-bg','--t-panel','--t-panel2'],text:['--t-ink','--t-ink2'],muted:['--t-dim'],blood:['--t-bad','--t-bad2']};
     function clear() {
+        Object.values(TOKENS).flat().forEach(function(k){root.style.removeProperty(k);});
         Object.keys(MAP).forEach(function (k) {
             MAP[k].forEach(function (v) { root.style.removeProperty(v); });
         });
@@ -30,6 +32,11 @@
         if (!vars) return;
         Object.keys(MAP).forEach(function (k) {
             if (vars[k]) MAP[k].forEach(function (v) { root.style.setProperty(v, vars[k]); });
+        });
+        Object.keys(TOKENS).forEach(function(k){
+            var hex=vars[k]; if(!/^#[0-9a-f]{6}$/i.test(hex||''))return;
+            var rgb=[1,3,5].map(function(i){return parseInt(hex.slice(i,i+2),16);}).join(',');
+            TOKENS[k].forEach(function(name){root.style.setProperty(name,rgb);});
         });
         if (id) root.setAttribute('data-bs-palette', id);
     }

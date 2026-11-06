@@ -1,7 +1,4 @@
-// Shared NUI translations. Load with <script src="nui://bs_ui/html/js/i18n.js"></script> before the page script.
-// The Lua side (@bs_core/shared/sh_locale.lua) sends { action: 'bs_i18n', lang, dict } and answers the bs_i18n callback.
-// Markup: data-i18n="key" sets textContent, data-i18n-html="key" sets innerHTML, data-i18n-attr="placeholder:key;title:key2".
-// Script: t('key', { name: 'x' }). BSI18n.onChange(fn) re-renders dynamic text when the language changes.
+// Shared NUI translations: load with <script src="nui://bs_ui/html/js/i18n.js"></script> before the page script.
 (function () {
     const res = (typeof GetParentResourceName === 'function') ? GetParentResourceName() : null;
     let dict = {};

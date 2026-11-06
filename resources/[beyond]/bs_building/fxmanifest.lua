@@ -4,8 +4,8 @@ lua54 'yes'
 
 name 'bs_building'
 author 'BeyondSurvival'
-description 'BeyondSurvival - player bases: snap building, code and faction locks, storage, vending crates'
-version '2.1.0'
+description 'BeyondSurvival - player bases: snap building, tiers, power and wires, code and faction locks, storage, vending crates'
+version '3.0.0'
 
 ui_page 'html/index.html'
 
@@ -14,6 +14,8 @@ files {
     'html/app.js',
     'html/style.css',
     'html/hammer.wav',
+    'html/gen_loop.ogg',
+    'html/pour.ogg',
     'locales/*.lua',
 }
 
@@ -28,6 +30,7 @@ shared_scripts {
 client_scripts {
     'client/cl_world.lua',
     'client/cl_place.lua',
+    'client/cl_menu.lua',
     'client/cl_tools.lua',
     'client/cl_admin.lua',
     'client/cl_vending.lua',
@@ -36,6 +39,8 @@ client_scripts {
 server_scripts {
     'server/sv_store.lua',
     'server/sv_main.lua',
+    'server/sv_power.lua',
+    'server/sv_flags.lua',
     'server/sv_raids.lua',
     'server/sv_zones.lua',
     'server/sv_vending.lua',

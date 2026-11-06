@@ -1,9 +1,17 @@
--- Bilateral player trade. Offers refer to original inventory rows, never to client-supplied item names. Only complete stacks can be offered; split a stack with the inventory split gesture before trading.
+-- Bilateral player trade: offers refer to original inventory rows, never to client-supplied item names.
 local T = Inv.TradeInternals
 local sessions = {} -- [source] = shared session
 local nextId = 0
 
+-- A Survivor Link companion trades as side b with id -charId. He has no player source and accepts on his own.
+local function isLink(id) return type(id) == 'number' and id < 0 end
+local function sideInv(id)
+    if isLink(id) then return T.character(-id, 40) end
+    return T.of(id)
+end
+
 local function nearby(a, b)
+    if isLink(b) then return Inv.LinkNear ~= nil and Inv.LinkNear(a, -b) == true end
     if not GetPlayerName(a) or not GetPlayerName(b) then return false end
     local pa, pb = exports.bs_core:GetPlayer(a), exports.bs_core:GetPlayer(b)
     if not pa or not pb or not pa.charId or not pb.charId then return false end
@@ -39,7 +47,7 @@ local function view(s, src)
     return {
         id = s.id, phase = s.phase, peer = peer,
         invitedToYou = s.b == src,
-        peerName = (exports.bs_core:GetPlayer(peer) or {}).name or Lp(src, 'trade.survivor_name'),
+        peerName = (isLink(peer) and s.linkName) or (exports.bs_core:GetPlayer(peer) or {}).name or Lp(src, 'trade.survivor_name'),
         mine = mine, theirs = theirs,
         myCash = s.cash[src], peerCash = s.cash[peer],
         availableCash = (function()
@@ -52,7 +60,7 @@ end
 
 local function push(s)
     for _, src in ipairs({ s.a, s.b }) do
-        if GetPlayerName(src) then
+        if not isLink(src) and GetPlayerName(src) then
             TriggerClientEvent('bs:inventory:tradeState', src, view(s, src))
         end
     end
@@ -95,6 +103,8 @@ local function finish(s, reason, complete)
             T.evict(expected)
         end
     end
+    -- The companion re-equips from what he got.
+    if isLink(s.b) and complete then TriggerEvent('bs:inventory:characterChanged', s.charB, s.a) end
 end
 
 local function cancel(s, reason)
@@ -250,7 +260,7 @@ BSB.RegisterCallback('inventory:tradeOffer', function(src, slot, add)
 end)
 
 local function plan(s)
-    local invs = { [s.a] = T.of(s.a), [s.b] = T.of(s.b) }
+    local invs = { [s.a] = sideInv(s.a), [s.b] = sideInv(s.b) }
     if not invs[s.a] or not invs[s.b] then return nil, 'character unavailable' end
     if not idle(invs[s.a]) or not idle(invs[s.b]) then return nil, 'inventory is busy' end
 
@@ -324,7 +334,13 @@ local function commit(s)
     local p, reason = plan(s)
     if not p then return false, reason end
     if not nearby(s.a, s.b) or s.cancelled then return false, 'Trade cancelled' end
-    local pa, pb = exports.bs_core:GetPlayer(s.a), exports.bs_core:GetPlayer(s.b)
+    local pa, pb = exports.bs_core:GetPlayer(s.a), nil
+    if isLink(s.b) then
+        -- Not loaded in core: his cash is whatever the database holds.
+        pb = { charId = s.charB, accounts = { cash = tonumber(MySQL.scalar.await('SELECT cash FROM bs_characters WHERE id = ?', { s.charB })) or 0 } }
+    else
+        pb = exports.bs_core:GetPlayer(s.b)
+    end
     if not pa or not pb or pa.charId ~= s.charA or pb.charId ~= s.charB then
         return false, 'character changed'
     end
@@ -334,7 +350,7 @@ local function commit(s)
         return false, 'not enough cash'
     end
 
-    -- startTransaction's callback runs outside a Lua thread, so query() returns an unresolved promise there. Check first with plain awaits, then write everything in one atomic transaction. The trade holds both caches (busy + idle + TradeLockedOwner), so nothing else writes these rows meanwhile.
+    -- startTransaction's callback runs outside a Lua thread, so query() returns an unresolved promise there.
     local function fail(why)
         print(('^3[BeyondSurvival]^7 trade %s refused: %s'):format(s.id, why))
         return false
@@ -404,12 +420,14 @@ local function commit(s)
         end
     end
     -- Keep core's live account/HUD in step with the committed rows. Delta APIs also write the cash audit trail.
+    -- A companion's cash only lives in the row the transaction already wrote.
+    local liveB = not isLink(s.b)
     if s.cash[s.a] > 0 then
         exports.bs_core:RemoveMoney(s.a, 'cash', s.cash[s.a], 'player trade')
-        exports.bs_core:AddMoney(s.b, 'cash', s.cash[s.a], 'player trade')
+        if liveB then exports.bs_core:AddMoney(s.b, 'cash', s.cash[s.a], 'player trade') end
     end
     if s.cash[s.b] > 0 then
-        exports.bs_core:RemoveMoney(s.b, 'cash', s.cash[s.b], 'player trade')
+        if liveB then exports.bs_core:RemoveMoney(s.b, 'cash', s.cash[s.b], 'player trade') end
         exports.bs_core:AddMoney(s.a, 'cash', s.cash[s.b], 'player trade')
     end
     return true
@@ -425,6 +443,7 @@ BSB.RegisterCallback('inventory:tradeConfirm', function(src)
         return { ok = false, error = Lp(src, 'trade.e_closer') }
     end
     s.confirmed[src] = true
+    if isLink(other(s, src)) then s.confirmed[other(s, src)] = true end
     push(s)
     if not s.confirmed[other(s, src)] then return { ok = true } end
     s.busy = true
@@ -432,7 +451,6 @@ BSB.RegisterCallback('inventory:tradeConfirm', function(src)
     s.busy = false
     if not callOk then
         print(('^1[BeyondSurvival]^7 trade %s failed: %s'):format(s.id, tostring(ok)))
-        -- Failure may have happened after a database commit, so discard both caches; the next push reads committed data.
         T.evict(s.charA)
         T.evict(s.charB)
         reason, ok = 'Trade failed; inventory reloaded', false
@@ -467,7 +485,8 @@ CreateThread(function()
                 if GetGameTimer() > s.expires then cancel(s, 'Trade timed out')
                 elseif not nearby(s.a, s.b) then cancel(s, 'Too far apart')
                 else
-                    local a, b = exports.bs_core:GetPlayer(s.a), exports.bs_core:GetPlayer(s.b)
+                    local a = exports.bs_core:GetPlayer(s.a)
+                    local b = isLink(s.b) and { charId = s.charB } or exports.bs_core:GetPlayer(s.b)
                     if not a or not b or a.charId ~= s.charA or b.charId ~= s.charB then
                         cancel(s, 'Character changed')
                     end
@@ -475,4 +494,32 @@ CreateThread(function()
             end
         end
     end
+end)
+
+-- Survivor Link: open the normal trade window with your own companion. He accepts straight away.
+exports('LinkTradeStart', function(src, charId, name)
+    if GetInvokingResource() ~= 'bs_survivor_link' then return { ok = false } end
+    src, charId = tonumber(src), tonumber(charId)
+    local peer = charId and -charId
+    if not src or not peer or sessions[src] or sessions[peer] then return { ok = false, error = Lp(src, 'trade.e_already') } end
+    if not nearby(src, peer) then return { ok = false, error = Lp(src, 'trade.e_3m') } end
+    local a, pa = T.of(src)
+    local b = sideInv(peer)
+    if not a or not b or pa.charId == charId or Inv.MutationOwners[tostring(charId)] then return { ok = false, error = Lp(src, 'trade.e_char') } end
+    if not idle(a) or not idle(b) then return { ok = false, error = Lp(src, 'trade.e_busy') } end
+    if sessions[src] or sessions[peer] then return { ok = false, error = Lp(src, 'trade.e_unavail') } end
+    nextId = nextId + 1
+    local s = {
+        id = nextId, a = src, b = peer, charA = pa.charId, charB = charId, linkName = name,
+        phase = 'offering', offers = { [src] = {}, [peer] = {} },
+        cash = { [src] = 0, [peer] = 0 },
+        confirmed = { [src] = false, [peer] = false },
+        expires = GetGameTimer() + 120000,
+    }
+    sessions[src], sessions[peer] = s, s
+    Inv.TradeLock[src] = true
+    Inv.TradeLockedOwner[tostring(s.charA)] = true
+    Inv.TradeLockedOwner[tostring(s.charB)] = true
+    push(s)
+    return { ok = true }
 end)

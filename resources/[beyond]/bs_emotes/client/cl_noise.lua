@@ -1,11 +1,8 @@
 -- bs_emotes - everything the world can hear.
--- Decides that something loud happened here, this far out, and tells the
--- server. bs_zombies listens to 'bs:world:noise'.
 
 Noise = {}
 
--- Throttle is per noise kind, so one kind cannot swallow another. It exists to
--- stop a weapon bridge and the shooting watcher publishing the same shot twice.
+-- Throttle is per noise kind, so one kind cannot swallow another.
 local lastSent = {}
 
 --- @param kind string   key in Emotes.Noise
@@ -17,8 +14,7 @@ function Noise.Make(kind, coords, radiusOverride)
     local radius = radiusOverride or Emotes.Noise[kind] or 20.0
     coords = coords or GetEntityCoords(PlayerPedId())
 
-    -- One accepted noise feeds both local simulation and the server. The throttle
-    -- runs before the local event so the same shot is not published twice.
+    -- One accepted noise feeds both local simulation and the server.
     local now = GetGameTimer()
     if now - (lastSent[kind] or 0) < 220 then return end
     lastSent[kind] = now
@@ -49,8 +45,7 @@ CreateThread(function()
     while true do
         Wait(0)
 
-        -- A disarmed watcher costs one table lookup per frame. Config is read every
-        -- pass so a reload takes effect.
+        -- A disarmed watcher costs one table lookup per frame. Config is read every pass so a reload takes effect.
         local sources = Emotes.NoiseSources
         if sources and sources.gunfire == false then
             Wait(1000)
@@ -63,8 +58,7 @@ CreateThread(function()
             if IsPedShooting(ped) then
                 local _, weapon = GetCurrentPedWeapon(ped, true)
 
-                -- The engine knows a suppressor is fitted whoever fitted it. This only picks
-                -- the kind; silence is decided below by bs_weapons.
+                -- The engine knows a suppressor is fitted whoever fitted it.
                 local silenced = weapon and IsPedCurrentWeaponSilenced(ped)
                 local kind = silenced and 'silenced' or 'gunshot'
                 local radius = Emotes.Noise[kind] or 20.0
@@ -79,8 +73,7 @@ CreateThread(function()
                     -- Fitted suppressor or native silencer: no attraction.
                     Wait(120)
                 else
-                    -- Extra scaling from bs_weapons on top. Only reached when the weapon is not
-                    -- fully suppressed, so config can say 'this muzzle device halves it'.
+                    -- Extra scaling from bs_weapons on top.
                     if GetResourceState('bs_weapons') == 'started' then
                         local ok, scale = pcall(function() return exports.bs_weapons:NoiseScale() end)
                         if ok and type(scale) == 'number' and scale < 1.0 and not silenced then
@@ -100,8 +93,7 @@ CreateThread(function()
     end
 end)
 
--- Catches firearm implementations where IsPedShooting does not stay true long
--- enough for the generic watcher above.
+-- Catches firearm implementations where IsPedShooting does not stay true long enough for the generic watcher above.
 AddEventHandler('bs:weapons:shot', function()
     local ped = PlayerPedId()
     local _, weapon = GetCurrentPedWeapon(ped, true)
@@ -130,9 +122,7 @@ CreateThread(function()
     end
 end)
 
--- Melee noise is off by default (Emotes.NoiseSources.melee). Melee is the
--- quiet answer to a walker. If you turn it on, make it per swing - this loop
--- fires every 250ms for the whole fight.
+-- Melee noise is off by default (Emotes.NoiseSources.melee). Melee is the quiet answer to a walker.
 CreateThread(function()
     while true do
         Wait(250)

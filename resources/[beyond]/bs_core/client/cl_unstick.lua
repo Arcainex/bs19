@@ -1,5 +1,4 @@
--- Unstick watchdog. If the player is asking to move, is allowed to move, and is not moving for long enough, it clears the ped's tasks and logs it to the console.
--- It ignores every legitimate reason to be still (downed, prone, grabbed, in a menu, ragdolled, in a vehicle, dead, frozen by spawn code).
+-- Unstick watchdog: if the player is asking to move, is allowed to move, and is not moving for long enough
 
 local STUCK_AFTER = 1500     -- ms of "asking and not moving" before we act
 local COOLDOWN    = 4000     -- do not fight the same state twice a second
@@ -16,7 +15,7 @@ local function allowedToBeStill(ped)
     if IsEntityPositionFrozen(ped) then return true end
     if IsPedJumping(ped) or IsPedClimbing(ped) or IsPedVaulting(ped) then return true end
 
-    -- Our own systems that stop you on purpose.
+    -- Our own systems that stop you.
     if GetResourceState('bs_medical') == 'started' then
         local ok, downed = pcall(function() return exports.bs_medical:IsDowned() end)
         if ok and downed then return true end

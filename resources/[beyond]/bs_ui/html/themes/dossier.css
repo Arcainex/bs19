@@ -1,0 +1,27 @@
+/* Theme pack: Dossier (default): gritty survivor file. Stencil headers, hazard tape, amber on charcoal and worn grain. */
+html[data-theme="dossier"] {
+    --t-bg: 13,12,10;
+    --t-panel: 24,22,18;
+    --t-panel2: 38,35,29;
+    --t-ink: 236,229,211;
+    --t-ink2: 207,199,182;
+    --t-dim: 163,156,139;
+    --t-acc: 224,140,70;
+    --t-acc2: 240,163,92;
+    --t-bad: 142,42,31;
+    --t-bad2: 228,136,118;
+    --t-ok: 127,212,162;
+    --t-warn: 217,164,65;
+    --t-shade: 0,0,0;
+    --t-shade-k: 1;
+    --t-head-ls: .16em;
+    --t-head-w: 700;
+    --t-head-bg: none;
+    --t-head-pad: 0;
+    --t-head-ink: rgb(var(--t-acc));
+    --t-title-ls: .08em;
+    --t-ui-ls: .12em;
+    --t-deco: repeating-linear-gradient(-45deg, rgb(var(--t-acc)) 0 10px, rgb(23, 21, 15) 10px 20px) 0 0 / 100% 4px no-repeat;
+}
+
+html[data-theme="dossier"] .main h1, html[data-theme="dossier"] .brand b, html[data-theme="dossier"] .skillbook h1 { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='80'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -6 4.6'/%3E%3C/filter%3E%3Crect width='160' height='80' filter='url(%23w)'/%3E%3C/svg%3E"); -webkit-mask-size: 160px 80px; }

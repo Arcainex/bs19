@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_multichar server: validates the creator choices (identity, kit, outfit, faction) and creates characters through bs_core.
+-- BeyondSurvival - bs_multichar server: validates the creator choices (identity, kit, outfit, faction) and
 
 -- Creator data and validation. The client only ever sends choices (ids); every list below is checked against config here.
 
@@ -13,8 +13,43 @@ local function clothingOn()
     return Multichar.Creator and Multichar.Creator.clothingStep ~= false
 end
 
+local function emblemOf(fid)
+    if not fid or GetResourceState('bs_factions') ~= 'started' then return nil end
+    local ok, e = pcall(function() return exports.bs_factions:GetEmblem(fid) end)
+    return ok and e or nil
+end
+
+local function mottoOf(fid)
+    if not fid or GetResourceState('bs_factions') ~= 'started' then return nil end
+    local ok, id = pcall(function() return exports.bs_factions:GetIdentity(fid) end)
+    return ok and type(id) == 'table' and id.motto or nil
+end
+
+-- Faction and emblem for each of this account's characters, for the selection cards.
+BSB.RegisterCallback('multichar:cards', function(src)
+    local ok, list = pcall(function() return exports.bs_core:ListCharacters(src) end)
+    if not ok or type(list) ~= 'table' or #list == 0 then return { ok = true, cards = {} } end
+    local ids, marks = {}, {}
+    for _, c in ipairs(list) do
+        local id = tonumber(c.id)
+        if id then ids[#ids + 1] = id; marks[#marks + 1] = '?' end
+    end
+    if #ids == 0 then return { ok = true, cards = {} } end
+    local query = ('SELECT m.character_id, m.faction_id, m.rank, r.label, r.short, r.logo FROM bs_faction_members m LEFT JOIN bs_faction_registry r ON r.faction_id = m.faction_id WHERE m.character_id IN (%s)'):format(table.concat(marks, ','))
+    local okq, res = pcall(function() return exports.oxmysql:query_async(query, ids) end)
+    local cards = {}
+    for _, r in ipairs(okq and type(res) == 'table' and res or {}) do
+        local fid = r.faction_id
+        cards[tostring(r.character_id)] = { faction = fid, label = r.label or fid, short = r.short or '', logo = r.logo, emblem = emblemOf(fid), motto = mottoOf(fid) }
+    end
+    return { ok = true, cards = cards }
+end)
+
 BSB.RegisterCallback('multichar:creatorData', function(src)
     local fac = creatorFactions()
+    for _, f in ipairs(fac.factions or {}) do
+        if type(f) == 'table' and f.id then f.emblem = f.emblem or emblemOf(f.id); f.motto = f.motto or mottoOf(f.id) end
+    end
     return {
         ok = true,
         clothingStep = clothingOn(),
@@ -28,7 +63,7 @@ BSB.RegisterCallback('multichar:creatorData', function(src)
     }
 end)
 
--- Text field: control characters and angle brackets removed, whitespace collapsed, length counted in characters (accents count once).
+-- Text field: control characters and angle brackets removed, whitespace collapsed
 local function cleanText(v, maxChars)
     if type(v) ~= 'string' then return '' end
     v = v:gsub('[%c<>]', ' '):gsub('%s+', ' '):gsub('^%s+', ''):gsub('%s+$', '')
@@ -190,7 +225,7 @@ BSB.RegisterCallback('multichar:create', function(src, payload)
     return { ok = true, charId = result.charId, characters = exports.bs_core:ListCharacters(src) }
 end)
 
--- In-game appearance edit. bs_vip decides who may (monthly VIP change or staff ticket); bs_core sanitises and stores. Checked again on save.
+-- Checked again on save.
 
 local function canChange(src)
     if GetResourceState('bs_vip') ~= 'started' then return false, Lp(src, 'mc.na') end
@@ -228,3 +263,30 @@ BSB.RegisterCallback('multichar:appearanceSave', function(src, appearance)
 end)
 
 exports.bs_core:RegisterModule('multichar', { side = 'server', version = '0.1.0' })
+
+
+-- A character-selection bucket is temporary; it never makes the map location a safezone.
+local selectionBuckets = {}
+local function leaveSelection(src)
+    local entry=selectionBuckets[src]
+    if not entry then return end
+    selectionBuckets[src]=nil
+    if GetPlayerRoutingBucket(src)==entry.bucket then SetPlayerRoutingBucket(src,entry.previous)end
+end
+BSB.RegisterCallback('multichar:sceneEnter',function(src)
+    if exports.bs_core:GetPlayer(src) then return {ok=false,error='A character is already loaded.'}end
+    if not selectionBuckets[src] then
+        local bucket=900000+src
+        selectionBuckets[src]={bucket=bucket,previous=GetPlayerRoutingBucket(src)}
+        SetRoutingBucketPopulationEnabled(bucket,false)
+        SetRoutingBucketEntityLockdownMode(bucket,'strict')
+        SetPlayerRoutingBucket(src,bucket)
+    end
+    return {ok=true}
+end)
+RegisterNetEvent('bs:multichar:sceneLeave',function()leaveSelection(source)end)
+AddEventHandler('bs:hook:player:loaded',function(player)leaveSelection(player.source)end)
+AddEventHandler('playerDropped',function()selectionBuckets[source]=nil end)
+AddEventHandler('onResourceStop',function(resource)
+    if resource==GetCurrentResourceName()then for src in pairs(selectionBuckets)do leaveSelection(src)end end
+end)

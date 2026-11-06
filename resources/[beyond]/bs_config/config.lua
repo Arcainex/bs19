@@ -10,6 +10,7 @@ BSConfig.Settings = {
 
 -- Categories shown in the left rail, in order.
 BSConfig.Categories = {
+    { id = 'survivorlink', label = 'Survivor Link' },
     { id = 'zombies',   label = 'Zombies' },
     { id = 'economy',   label = 'Economy & Loot' },
     { id = 'survival',  label = 'Survival & Medical' },
@@ -23,15 +24,19 @@ BSConfig.Categories = {
     { id = 'factionsafe', label = 'Vanilla Faction Safezones' },
     { id = 'vehicles',  label = 'Vehicles' },
     { id = 'ui',        label = 'Keybinds & UI' },
+    { id = 'themes',    label = 'Themes & UI' },
     { id = 'events',    label = 'World Events' },
     { id = 'anticheat', label = 'Anti-cheat' },
     { id = 'crafting',  label = 'Crafting & Recycling' },
     { id = 'jobs',      label = 'Faction Jobs' },
     { id = 'hunting',   label = 'Hunting' },
+    { id = 'parkour',   label = 'Parkour' },
+    { id = 'fighting',  label = 'Fighting' },
     { id = 'gates',     label = 'Map Gates' },
     { id = 'tutorial',  label = 'Tutorial & Pause Menu' },
     { id = 'pass',      label = 'Wasteland Pass' },
     { id = 'operations', label = 'Operations' },
+    { id = 'darkzone',  label = 'Dark Zone' },
     { id = 'testserver', label = 'Test server' },
 }
 
@@ -39,4 +44,4 @@ BSConfig.Categories = {
 BSConfig.Builtin = { 'Default', 'Easy', 'Hardcore', 'PvP' }
 
 -- Resources with their own F1 page (html/ext_*.js draws it, the resource's ConfigExt export answers).
-BSConfig.Extensions = { bs_crafting = true, bs_recycler = true, bs_pass = true, bs_tutorial = true, bs_operations = true }
+BSConfig.Extensions = { bs_crafting = true, bs_recycler = true, bs_pass = true, bs_tutorial = true, bs_operations = true, bs_darkzone = true, bs_radio = true, bs_interactions = true, bs_economy = true, bs_building = true }

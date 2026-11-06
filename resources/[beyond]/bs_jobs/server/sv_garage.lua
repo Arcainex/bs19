@@ -1,11 +1,10 @@
--- bs_jobs mechanic garage. The server checks the job, the place, the vehicle type and takes the materials;
--- the mechanic's client paints and bolts things on. Owned cars keep everything.
+-- bs_jobs mechanic garage: the server checks the job, the place, the vehicle type and takes the materials
 
 local G = Jobs.Garage
 local q, x = J.q, J.x
 local INV = exports.bs_inventory
 
-local Cosmetics = {}   -- [plate] = { paint = { p1, p2 }, props = { id = true } }
+local Cosmetics = {}
 local Bills = {}       -- [customerSrc] = { mech, amount, at }
 
 local function def(list, id) for _, o in ipairs(list) do if o.id == id then return o end end end
@@ -132,9 +131,7 @@ end)
 
 BSB.RegisterCallback('jobs:cosmetics', function() return { ok = true, list = Cosmetics } end)
 
---------------------------------------------------------------------------------
--- Bills: the mechanic asks the owner (or the driver) to pay. They answer with Y or N.
---------------------------------------------------------------------------------
+-- They answer with Y or N.
 
 BSB.RegisterCallback('jobs:garage:bill', function(src, a)
     a = type(a) == 'table' and a or {}

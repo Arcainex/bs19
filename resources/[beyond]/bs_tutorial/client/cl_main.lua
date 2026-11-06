@@ -1,5 +1,4 @@
 -- bs_tutorial client: the guided tour (/tutorial, pause menu, first-spawn offer), the first mission tracker and the spawn flow.
--- While it plays the ped is frozen and hidden in a private bucket (server side); ESC leaves at any time.
 
 local S = Tutorial.Settings
 local Tour = { on = false, idx = 1, list = {}, token = 0, ents = {}, done = {} }
@@ -279,7 +278,7 @@ end)
 
 RegisterNUICallback('tourExit', function(_, cb) cb({}); CreateThread(stopTour) end)
 
--- First mission
+-- Mission
 
 local function startMission()
     local r = BSB.Await('tutorial:missionStart', 8000)

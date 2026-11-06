@@ -16,7 +16,7 @@ local MOVE_INTERVAL_MS     = math.max(50, math.floor(tonumber(A.moveInterval) or
 local LISTENER_IDLE_MS     = math.max(50, math.floor(tonumber(A.listenerIdleInterval) or 500))
 local VOICE_TIMEOUT_MS     = math.max(1000, math.floor(tonumber(A.voiceTimeout) or 30000))
 
--- Default zombie voice level 0.15, deliberately quiet: many overlapping HRTF sources at 1.0 become a wall of noise. Only a default; the Settings slider (`zombieVoiceVolume`) spans 0..1 and is not clamped here.
+-- Default zombie voice level 0.15, quiet: many overlapping HRTF sources at 1.0 become a wall of noise.
 local DEFAULT_ZOMBIE_VOLUME = 0.15
 
 local function clamp01(n, fallback)
@@ -31,8 +31,7 @@ local zombieVoiceVolume = clamp01(
     (type(UI) == 'table' and type(UI.Settings) == 'table') and UI.Settings.zombieVoiceVolume or nil,
     DEFAULT_ZOMBIE_VOLUME)
 
--- Player preferences arrive after the HUD state is restored. Keep this mixer
--- local: it changes only custom zombie voices, never menus or world ambience.
+-- Player preferences arrive after the HUD state is restored.
 AddEventHandler('bs:ui:settingsChanged', function(settings)
     local fromPlayer = settings and settings.zombieVoiceVolume
     local fromConfig = (type(UI) == 'table' and type(UI.Settings) == 'table')
@@ -41,9 +40,8 @@ AddEventHandler('bs:ui:settingsChanged', function(settings)
     zombieVoiceVolume = clamp01(fromPlayer, clamp01(fromConfig, DEFAULT_ZOMBIE_VOLUME))
 end)
 
--- Live sources: everything believed to be making noise, keyed by caller id. The page is the authority on what plays (it reports ends via the soundEnded NUI callback); this side keeps its own view to cull, cap and send position updates.
--- Each entry also has an expiry (voiceTimeout) so a lost soundEnded callback cannot hold a voice slot forever.
-local active = {}       -- id -> { x, y, z, distance, expires, spatial }
+-- Live sources: everything believed to be making noise, keyed by caller id.
+local active = {}       -- id to { x, y, z, distance, expires, spatial }
 local activeCount = 0
 
 local function forget(id)
@@ -67,7 +65,7 @@ RegisterNUICallback('soundEnded', function(data, cb)
     local id = data and data.id and tostring(data.id) or nil
     if id then
         forget(id)
-        -- Announced as an event so bs_zombies knows when to stop moving a playing voice with its walker (no need to model clip lengths). Other resources can listen too.
+        -- Announced as an event so bs_zombies knows when to stop moving a playing voice with its walker
         TriggerEvent('bs:ui:soundEnded', id)
     end
     cb('ok')
@@ -85,8 +83,7 @@ RegisterNUICallback('soundMissing', function(data, cb)
     cb('ok')
 end)
 
--- The listener: position plus forward and up vectors, taken from the camera rather than the ped (in third person they differ, so sounds would land on the wrong side). Sent every frame while anything plays, otherwise on a slow heartbeat.
--- GetGameplayCamRot(2) gives the ZXY euler rotation; forward and up are derived from it since no native returns a camera basis.
+-- The listener: position plus forward and up vectors
 local function cameraBasis()
     local rot = GetGameplayCamRot(2)
     local pitch = math.rad(rot.x)
@@ -102,7 +99,7 @@ local function cameraBasis()
     local fy =  cy * cp
     local fz =  sp
 
-    -- Up vector: forward rotated 90 degrees vertically, plus roll (cinematic and some vehicle cameras roll, and a mismatched up vector puts sounds above you).
+    -- Up vector: forward rotated 90 degrees vertically
     local ux0 =  sy * sp
     local uy0 = -cy * sp
     local uz0 =  cp
@@ -139,11 +136,9 @@ local function pushListener()
     })
 end
 
---------------------------------------------------------------------------------
 -- Playing
---------------------------------------------------------------------------------
 
--- Culling stays here: a sound that will never be heard should not cost a NUI message, fetch, decode and panner. Anything past maxDistance is not sent. This is a yes/no cut, the falloff curve is the panner's job (see sound.js).
+-- Culling stays here: a sound that will never be heard should not cost a NUI message, fetch, decode and panner.
 
 --- @param file string   file name inside bs_ui/html/sound/
 --- @param coords vector3|nil  where it happens; nil means "not in the world"
@@ -191,7 +186,7 @@ function Sound.PlayAt(file, coords, opts)
         volume = volume,
         rate   = tonumber(opts.rate) or 1.0,
         loop   = opts.loop and true or false,
-        pos    = pos,   -- absent => a UI sound, NOT spatialised. See sound.js.
+        pos    = pos,   -- absent to a UI sound, NOT spatialised. See sound.js.
         id     = id,
         maxDistance   = tonumber(opts.maxDistance) or nil,
         refDistance   = tonumber(opts.refDistance) or nil,
@@ -318,11 +313,9 @@ if BS.Provide then
     })
 end
 
---------------------------------------------------------------------------------
 -- Diagnostics
---------------------------------------------------------------------------------
 
--- /soundtest <file> [distance] - plays a file to check it is present and audible. With a distance it is placed in front of the camera and swept around you, which shows whether HRTF works on this machine (a sound stuck in the middle of your head means fallback to equal power).
+-- /soundtest <file> [distance] - plays a file to check it is present and audible.
 RegisterCommand('soundtest', function(_, args)
     local file = args[1]
     if not file then

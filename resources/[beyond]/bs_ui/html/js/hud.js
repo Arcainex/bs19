@@ -117,7 +117,10 @@ BS.on('hudData', ({ data }) => {
         const raw = Math.max(0, Math.min(100, Math.round(data[key] ?? 0)));
         node.fill.style.width = `${raw}%`;
         // Every bar reads as a percent so the columns line up; real HP (e.g. 190/190) lives in the tooltip.
-        node.value.textContent = `${raw}%`;
+        // The noise row reads in metres of carry, not percent.
+        node.value.textContent = node.cfg.unit === 'm'
+            ? (data.noiseMetres === false ? '' : `${data.noiseRadius ?? 0}m`)
+            : `${raw}%`;
         node.row.style.setProperty('--bs-fill', `${raw}%`);
         if (key === 'health' && data.healthMax > 0) {
             node.row.title = `${Math.round(data.healthNow)}/${Math.round(data.healthMax)} HP`;
@@ -132,7 +135,8 @@ BS.on('hudData', ({ data }) => {
 
         // Armour and infection vanish at zero rather than sitting there empty.
         const hide = (cfg.hideAtZero && raw === 0) ||
-                     (SETTINGS.hideWhenFull && !cfg.inverted && raw >= 100);
+                     (SETTINGS.hideWhenFull && !cfg.inverted && raw >= 100) ||
+                     (key === 'noise' && !data.noiseShow);
         node.row.classList.toggle('is-hidden', !!hide);
     }
 
@@ -202,7 +206,7 @@ BS.on('levelUp', ({ level, from, skill }) => {
     el.classList.toggle('is-skill', skill === true);
     el.classList.remove('hidden');
 
-    // Restart every animation on the card. `animation: none` on the parent does not retrigger children, so each element is reset and offsetWidth is read in between to force a reflow.
+    // Restart every animation on the card. `animation: none` on the parent does not retrigger children
     [el, fromEl, toEl].forEach((node) => {
         node.style.animation = 'none';
         void node.offsetWidth;
@@ -228,8 +232,7 @@ function wake() {
     idleTimer = setTimeout(() => xpEl.classList.add('is-idle'), XPCFG.idleFade);
 }
 
-// Hotbar
-// Five slots driven by bs_inventory. Drawn here because it must be visible while the bag is closed.
+// Hotbar: five slots driven by bs_inventory. Drawn here because it must be visible while the bag is closed.
 
 const hotbarEl = document.getElementById('hotbar');
 
@@ -260,12 +263,11 @@ BS.on('hotbar', ({ slots, visible }) => {
 
     hotbarEl.innerHTML = html;
 
-    // Always five slots. Empty slots show the keys and right-clicking an item in the bag offers to fill one. Hidden only when a menu is up.
+    // Always five slots: empty slots show the keys and right-clicking an item in the bag offers to fill one.
     hotbarEl.classList.toggle('hidden', visible === false);
 });
 
-// Map frame
-// Follows the radar's visibility. Pure overlay around the map, so nothing else to do.
+// Map frame: follows the radar's visibility. Pure overlay around the map, so nothing else to do.
 
 const mapEl = document.getElementById('mapframe');
 
@@ -274,8 +276,7 @@ BS.on('mapframe', ({ show }) => {
     mapEl.classList.toggle('hidden', !show);
 });
 
-// Field map
-// The M-key full map; cl_fieldmap.lua moves a live minimap behind this frame, so only show/hide is needed.
+// Field map: the M-key full map; cl_fieldmap.lua moves a live minimap behind this frame, so only show/hide is needed.
 
 const fieldmapEl = document.getElementById('fieldmap');
 
@@ -284,8 +285,7 @@ BS.on('fieldmap', ({ show }) => {
     fieldmapEl.classList.toggle('hidden', !show);
 });
 
-// Dash HUD
-// Speed, RPM, gear, heading, status icons, fuel and condition while driving, as a compact technical panel. bs_vehicles (cl_hud.lua) sends one message per frame while driving; this only draws what it is given.
+// Dash HUD: speed, RPM, gear, heading, status icons, fuel and condition while driving
 
 const dashEl = document.getElementById('dashhud');
 const dashCtx = dashEl && dashEl.getContext('2d');
@@ -450,8 +450,7 @@ function dashRow(x, y, w, label, value, valueColor, frac, barColor) {
     }
 }
 
-// Dash styles. The player picks one in the inventory Settings tab; bs_vehicles sends it as data.style.
-// Each style draws the same facts its own way. All are plain fills and strokes, no shadows or filters, so a frame stays cheap.
+// Dash styles: the player picks one in the inventory Settings tab; bs_vehicles sends it as data.style.
 
 // Field: the technical panel (default).
 function dashDrawField(data, W, H) {
@@ -548,7 +547,7 @@ function dashDrawField(data, W, H) {
 
 // Classic: the old round dial with the readout strip under it.
 function dashDrawClassic(data, W, H) {
-    // Layout: the dial holds the big speed number and the RPM sweep; facts (engine, hull, gear, fuel) sit below in a labelled readout strip.
+    // Layout: the dial holds the big speed number and the RPM sweep
 
     const cx = W / 2;
     const dialR = W * 0.47;
@@ -840,7 +839,7 @@ function dashDrawTactical(data, W, H) {
     dashCtx.textBaseline = 'alphabetic';
 }
 
-// ---- Extra dash styles: gauge, slate, cipher (VIP), hologram (VIP). SVG icons are Path2D (24x24 box).
+// Extra dash styles: gauge, slate, cipher (VIP), hologram (VIP). SVG icons are Path2D (24x24 box).
 const DASH_SVG = {
     fuel:   'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M6 7h6v4H6zM14 9h2.5a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V8l-3-3',
     engine: 'M3 11v4M6.5 9h3l1.5-2.5h5V9H19l2 2v5l-2 2H9l-2.5-2.5z',

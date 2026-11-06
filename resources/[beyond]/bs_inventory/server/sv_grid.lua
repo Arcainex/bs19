@@ -1,9 +1,4 @@
 -- bs_inventory - 2D grid placement: where an item sits in a container.
--- Pure geometry (no state, database or natives), so it can be tested off-server.
--- NOTE: not wired in yet, nothing in sv_main calls it.
--- Coordinates are 1-based, (1,1) is top-left; 0 in the database means 'not placed'.
--- An entry is { id, w, h, rot }; a rotated item swaps its footprint (1x3 -> 3x1)
--- and footprint() is the only place that happens.
 
 Grid = Grid or {}
 
@@ -18,8 +13,7 @@ function Grid.Footprint(entry)
     return w, h
 end
 
--- Do two axis-aligned rectangles overlap? They miss if one is entirely left of,
--- right of, above or below the other.
+-- Do two axis-aligned rectangles overlap?
 local function overlaps(ax, ay, aw, ah, bx, by, bw, bh)
     if ax + aw - 1 < bx then return false end
     if bx + bw - 1 < ax then return false end
@@ -32,9 +26,7 @@ Grid.Overlaps = overlaps
 
 -- Fitting
 
--- Can `entry` sit with its top-left at (x, y)?
--- `ignoreId` lets an item be moved onto cells it currently occupies; pass the
--- id when repositioning. Returns false plus a reason (off the edge vs no room).
+-- Can `entry` sit with its top-left at (x, y)? `ignoreId` lets an item be moved onto cells it currently occupies
 -- @return boolean ok, string? reason
 function Grid.Fits(container, entries, entry, x, y, ignoreId)
     local w, h = Grid.Footprint(entry)
@@ -56,8 +48,7 @@ function Grid.Fits(container, entries, entry, x, y, ignoreId)
     return true
 end
 
--- First free spot, scanning left to right then top to bottom. Rotation is a
--- second pass over the whole grid, so items stay upright wherever possible.
+-- Free spot, scanning left to right then top to bottom.
 -- @return integer? x, integer? y, boolean rotated
 function Grid.FirstFit(container, entries, entry, allowRotate)
     local upright = { w = entry.w, h = entry.h, rot = false }
@@ -86,8 +77,7 @@ end
 
 -- Occupancy, for the UI and diagnostics
 
--- A width x height map of which entry id owns each cell, nil for empty.
--- Indexed [y][x].
+-- A width x height map of which entry id owns each cell, nil for empty. Indexed [y][x].
 function Grid.Occupancy(container, entries)
     local map = {}
     for y = 1, container.height do

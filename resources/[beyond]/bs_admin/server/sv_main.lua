@@ -819,6 +819,22 @@ function actions.giveitem(src, args)
     return { ok = true, label = label, amount = amount }
 end
 
+function actions.givecustomattachments(src,args)
+    if GetResourceState('bs_inventory')~='started'then return {ok=false,error='Inventory is unavailable.'}end
+    local target=tonumber(args.target)or src
+    local list={}
+    for item,def in pairs(exports.bs_inventory:GetItems()or {})do if def.data and def.data.customWeaponAttachment then list[#list+1]=item end end
+    table.sort(list)
+    local given={}
+    for _,item in ipairs(list)do
+        local ok,why=exports.bs_inventory:GiveItem(target,item,1)
+        if not ok then return {ok=false,error=('Gave %d/%d attachments. %s Make room before spawning the remaining items individually.'):format(#given,#list,tostring(why or 'Inventory full.')),given=given}end
+        given[#given+1]=item
+    end
+    guardLog(src,('custom attachment test pack: %d items to %d'):format(#given,target))
+    return {ok=true,note=('Gave one of each custom attachment (%d items).'):format(#given),given=given}
+end
+
 -- Undo a clothing-bench session without a relog
 function actions.clothRestore(src)
     if GetResourceState('bs_inventory') ~= 'started' then
@@ -836,8 +852,9 @@ function actions.items(src)
     for name, def in pairs(exports.bs_inventory:GetItems() or {}) do
         -- equipSlot lets the CLOTHING panel group garments by body slot.
         out[#out + 1] = { item = name, label = def.label or name,
-            category = def.category, equipSlot = def.equipSlot }
+            category = def.data and def.data.customWeaponAttachment and 'custom_weapon_attachments'or def.category, equipSlot = def.equipSlot }
     end
+    out[#out+1]={item='__custom_attachment_pack',label='Complete custom attachment test pack',category='custom_weapon_attachments'}
     table.sort(out, function(a, b) return a.label < b.label end)
     return { ok = true, items = out }
 end

@@ -2,7 +2,7 @@
 
 local pid = PlayerId()
 local function now() return GetGameTimer() end
-local effects = {}        -- drug -> { untilAt = GetGameTimer ms, s = quality effect scale, q, dur }
+local effects = {}        -- drug to { untilAt = GetGameTimer ms, s = quality effect scale, q, dur }
 local wd = 0              -- withdrawal level from server
 DrugActive = effects      -- read by cl_fx.lua
 function DrugWithdrawal() return wd end
@@ -62,7 +62,7 @@ local function pushMods()
     end
 end
 
---------------------------------------------------------------- cigarette
+-- cigarette
 
 local function startSmoking(duration)
     smoking = true
@@ -95,7 +95,7 @@ local function startSmoking(duration)
     end)
 end
 
------------------------------------------------------------------- events
+-- events
 
 RegisterNetEvent('bs:drugs:apply', function(drug, q, duration)
     local t, qual = Drugs.Types[drug], Drugs.Quality[q]
@@ -135,7 +135,7 @@ end)
 RegisterNetEvent('bs:player:loaded', function() Wait(2000); TriggerServerEvent('bs:drugs:request') end)
 CreateThread(function() Wait(4000); TriggerServerEvent('bs:drugs:request') end)
 
------------------------------------------------------------- effect loop
+-- effect loop
 
 CreateThread(function()
     local lastHp, nextFx, sprintOn = nil, 0, false
@@ -189,4 +189,12 @@ AddEventHandler('onResourceStop', function(res)
     SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
     SetPlayerHealthRechargeMultiplier(PlayerId(), 1.0)
     LocalPlayer.state:set('bsDrugMods', nil, false)
+end)
+
+AddEventHandler('bs:hook:player:unloaded',function()
+    for drug in pairs(effects)do effects[drug]=nil end
+    wd=0;smoking=false;lastMods=nil
+    SetRunSprintMultiplierForPlayer(PlayerId(),1.0)
+    SetPlayerHealthRechargeMultiplier(PlayerId(),1.0)
+    LocalPlayer.state:set('bsDrugMods',nil,false);pushHud()
 end)

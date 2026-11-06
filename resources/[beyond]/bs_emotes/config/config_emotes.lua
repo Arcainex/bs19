@@ -1,4 +1,4 @@
--- bs_emotes - small survival emote set: surrender, point, whistle, get down. Upper-body animations where possible so you can keep walking.
+-- bs_emotes - small survival emote set: surrender, point, whistle, get down.
 
 Emotes = {}
 
@@ -13,8 +13,7 @@ Emotes.Keys = {
     focus   = 'TAB',
 }
 
--- Crouch: two clipset names and two blend times (see cl_crouch.lua).
--- `strafeClipset` is needed because aiming switches the ped to a different animation tree; without it the crouch drops when you raise a weapon.
+-- Crouch: two clipset names and two blend times (see cl_crouch.lua). `strafeClipset` is needed because aiming
 Emotes.Crouch = {
     clipset       = 'move_ped_crouched',
     strafeClipset = 'move_ped_crouched_strafing',
@@ -46,7 +45,7 @@ Emotes.Prone = {
     idle      = 'onfront_fwd',
     forward   = 'onfront_fwd',
     backward  = 'onfront_bwd',
-    -- Base crawl speed. Slow on purpose.
+    -- Base crawl speed. Slow.
     speed     = 0.22,
     -- Survival skill raises it: final speed = speed * (1 + skillLevel * speedPerSkillLevel), capped by maxSpeed.
     speedPerSkillLevel = 0.055,
@@ -60,7 +59,7 @@ Emotes.Focus = {
     holdMs      = 180,
     -- Field of view to ease into. Lower = tighter.
     fov         = 32.0,
-    -- Each Survival level tightens the lens by this much, down to fovMin (level 20: 32 -> 21, about 1.5x magnification).
+    -- Each Survival level tightens the lens by this much, down to fovMin (level 20: 32 to 21, about 1.5x magnification).
     fovPerSkillLevel = 0.55,
     fovMin      = 16.0,
     -- While aiming, focus goes to this fraction of the aim FOV (0.55 = about 1.8x past the aim zoom).
@@ -78,7 +77,6 @@ Emotes.Focus = {
 }
 
 -- Sounds the world makes and how far they carry, in metres. bs_zombies reads this.
--- The whole stealth layer is balanced on these numbers. A sector is a square kilometre, so values far below that mean most walkers in the sector never hear a fight.
 Emotes.Noise = {
     whistle  = 110.0,
     footstep = 6.0,
@@ -90,13 +88,13 @@ Emotes.Noise = {
     melee    = 14.0,
     shout    = 90.0,
 
-    -- Vehicles. Three engine kinds because a vehicle differs on two axes: the radius here is how far the sound pulls walkers from, the weight in config_sectors.lua is how much it raises the sector's population target. A horn is deliberate and carries almost as far as a gunshot.
+    -- Vehicles: three engine kinds because a vehicle differs on two axes: the radius here is how far the sound
     horn        = 260.0,
     engine      = 120.0,   -- an ordinary car at speed
     engine_loud = 210.0,   -- bikes, trucks, offroad, anything with no silencing
     heli        = 520.0,   -- the loudest thing a player can arrive in
 
-    -- Work noise (gathering). Standing still making noise is the risk of gathering, so the radius matters: a pickaxe on rock carries further than a hatchet on wood. Well under a gunshot (340): mining draws the street, not the district.
+    -- Work noise (gathering): standing still making noise is the risk of gathering
     mining   = 95.0,
     chopping = 60.0,
     -- Digging is the quiet one; a loud noise would make hiding things impossible.
@@ -176,7 +174,7 @@ Emotes.List = {
     },
 }
 
--- VIP emotes (bs_vip perk 'exclusiveEmotes'), cosmetic only. All dicts/clips/scenarios are already used elsewhere in this repo, so they exist on this build.
+-- VIP emotes (bs_vip perk 'exclusiveEmotes'), cosmetic only.
 table.insert(Emotes.List, {
     id = 'vip', group = 'emotes', label = 'Supporter',
     items = {
@@ -187,7 +185,7 @@ table.insert(Emotes.List, {
     },
 })
 
--- Walks and expressions (the other two dpEmotes tabs). A walk is a movement clipset that persists until reset; an expression is a facial idle override. `reset` entries restore the default.
+-- Walks and expressions (the other two dpEmotes tabs).
 Emotes.Walks = {
     { id = 'walk_reset',  label = 'Default',   reset = true },
     { id = 'walk_injured',label = 'Injured',   clipset = 'move_m@injured' },
@@ -214,7 +212,7 @@ Emotes.Expressions = {
     { id = 'face_focused',  label = 'Focused',  mood = 'mood_aiming_1' },
 }
 
--- The menu. F6 and COMMA were checked against every RegisterKeyMapping in resources/ (F3, the dpEmotes default, is bs_cinecam; B is point here).
+-- The menu: f6 and COMMA were checked against every RegisterKeyMapping in resources/
 Emotes.Menu = {
     command    = 'emotemenu',
     key        = 'F6',
@@ -237,7 +235,7 @@ Emotes.Settings = {
 
 -- Clothing take-off/put-on was removed; appearance is bought at the tailor.
 
--- Which automatic noise sources are armed. cl_noise.lua watches the player and raises noises on its own; turn individual watchers off here.
+-- Which automatic noise sources are armed. cl_noise.lua watches the player and raises noises on its own
 
 Emotes.NoiseSources = {
     -- Gunfire. Stays on. When bs_weapons reports a silent weapon, the whole event is skipped (see cl_noise.lua).
@@ -246,6 +244,6 @@ Emotes.NoiseSources = {
     -- Sprinting. Small; the quiet-movement logic depends on it.
     sprint = true,
 
-    -- Melee. Off: the watcher fired Noise.Make('melee') every 250ms for the whole fight, adding up to more than a rifle shot and defeating melee as the stealth option. Set true only if swinging should be as loud as firing, and lower the 250ms cadence with it.
+    -- Melee: off: the watcher fired Noise.Make('melee') every 250ms for the whole fight
     melee = false,
 }

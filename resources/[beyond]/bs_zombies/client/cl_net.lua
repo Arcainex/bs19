@@ -1,11 +1,18 @@
 -- bs_zombies - client side of networked walkers (Zombies.Mode = 'networked')
 
-if (Zombies.Mode or 'networked') ~= 'networked' then return end
+if Zombies.Mode == 'legacy' then return end
 
 local function N() return Zombies.Net or {} end
 local ENGINE_HP = (Zombies.Detector and Zombies.Detector.engineHealthPool) or 20000
 
 Zed.netRemoved = Zed.netRemoved or {}   -- [id] = true: server said rm/dead; do not re-adopt
+Zed.deadIds = Zed.deadIds or {}         -- [id] = ms: died; never a live walker again, whatever its bags say
+local blockedLog = {}
+local function respawnBlocked(id, why)
+    if blockedLog[id] then return end
+    blockedLog[id] = true
+    print(('[BS ZOMBIES] RESPAWN BLOCKED id=%s (%s)'):format(tostring(id), why))
+end
 
 -- Identification
 
@@ -53,7 +60,26 @@ local function try(id, name, fn, ...)
     return ok
 end
 
+local function applyLook(ped, look)
+    if type(look) ~= 'table' or type(look.c) ~= 'table' or #look.c < 12 then return false end
+    for comp = 0, 11 do
+        local e = look.c[comp + 1]
+        local d, t = tonumber(e and e[1]), tonumber(e and e[2])
+        if d and t and IsPedComponentVariationValid(ped, comp, d, t) then SetPedComponentVariation(ped, comp, d, t, 0) end
+    end
+    for _, e in ipairs(type(look.p) == 'table' and look.p or {}) do
+        local prop, d, t = tonumber(e[1]), tonumber(e[2]), tonumber(e[3])
+        if prop then
+            if d and d >= 0 then SetPedPropIndex(ped, prop, d, math.max(0, t or 0), true) else ClearPedProp(ped, prop) end
+        end
+    end
+    return true
+end
+
 local function applyAppearance(ped, id)
+    -- A promoted filler walker keeps the exact look it had as filler
+    local st = Entity(ped).state
+    if st and st.zLook and applyLook(ped, st.zLook) then return end
     pcall(SetPedDefaultComponentVariation, ped)
     pcall(function()
         -- Same seeded generator as cl_sync spawn(): a walker keeps its look.
@@ -222,10 +248,6 @@ local function groundIt(entry)
             end
             local found, z = GetGroundZFor_3dCoord(at.x, at.y, at.z + 3.0, false)
             if found and z and z > -100.0 then gz = z break end
-            if GetGameTimer() > untilT - 4000 then
-                found, z = GetGroundZFor_3dCoord(at.x, at.y, 1000.0, false)
-                if found and z and z > -100.0 then gz = z break end
-            end
             Wait(250)
         end
         if gz and DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) then
@@ -233,6 +255,8 @@ local function groundIt(entry)
             SetEntityCoordsNoOffset(ped, at.x, at.y, gz + 0.05, false, false, false)
             FreezeEntityPosition(ped, false)
             TriggerServerEvent('bs:z:net:grounded', id, gz + 0.05)
+        elseif DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) then
+            TriggerServerEvent('bs:z:net:groundFailed', id)
         end
         grounding[ped] = nil
     end)
@@ -270,6 +294,7 @@ local function adopt(ped, id)
         bornAt = GetGameTimer(),
         typeId = rec.t, model = rec.m, key = tostring(id),
         gait = st.zGait or nil,
+        pace = Zombies.Mode == 'networked_plus' and st.zPace or nil,
         voiceLurk = voiceLurk, voiceEat = voiceEat, voicePitch = voicePitch,
         reacher = rec.r == 1 or st.zReach == true,
         path = 'net',
@@ -313,9 +338,29 @@ CreateThread(function()
         local ok, pool = pcall(GetGamePool, 'CPed')
         if ok and type(pool) == 'table' then
             for _, ped in ipairs(pool) do
+                -- A recycled handle still claimed by a walker that is gone would hide this ped forever
+                local claim = Zed.owned[ped]
+                if claim and NetworkGetEntityIsNetworked(ped) then
+                    local bagId = Zed.NetIdOf(ped, false)
+                    if bagId and bagId ~= claim then
+                        -- A recycled handle: the claim (and a live entry pointing at it) belongs to a walker that is gone.
+                        -- Hits on this ped were reported under the wrong id and never counted.
+                        local stale = Zed.live[claim]
+                        if stale and stale.ped == ped then
+                            Zed.live[claim] = nil
+                            Zed.hosted[claim] = nil
+                            Zed.count = math.max(0, (Zed.count or 0) - 1)
+                        end
+                        Zed.owned[ped] = nil
+                    end
+                end
                 if NetworkGetEntityIsNetworked(ped) and not Zed.owned[ped]
-                   and IsPedHuman(ped) and GetPedType(ped) ~= 28 then
+                   and IsPedHuman(ped) and GetPedType(ped) ~= 28 and not IsEntityDead(ped) then
                     local id = Zed.NetIdOf(ped, false)
+                    if id and Zed.deadIds[id] then
+                        respawnBlocked(id, 'client: a dead walker id showed up alive')
+                        id = nil
+                    end
                     if id and Zed.netRemoved[id] and NetworkGetEntityOwner(ped) == PlayerId() then
                         Zed.netRemoved[id] = nil
                     end
@@ -365,6 +410,7 @@ CreateThread(function()
                         end
                     end
                     if st then
+                        entry.pace = Zombies.Mode == 'networked_plus' and st.zPace or nil
                         local g = st.zGait
                         if g == false then g = nil end
                         if g ~= entry.gait then entry.gait = g end
@@ -401,9 +447,71 @@ AddEventHandler('bs:z:rm', function(ids, reason)
         if id then Zed.netRemoved[id] = true end
     end
 end)
-AddEventHandler('bs:z:dead', function(id)
+-- Death on this client: the owner makes sure the ped really dies and tells the server (bs:z:net:deadAck).
+-- Runs for every death, also for a ped that never became a live entry here (cl_combat only handles those).
+local function pedFor(net, id)
+    net = tonumber(net)
+    if net and net > 0 and NetworkDoesNetworkIdExist(net) then
+        local p = NetToPed(net)
+        if p and p ~= 0 and DoesEntityExist(p) then return p end
+    end
+    local e = id and Zed.live[id]
+    if e and e.ped and DoesEntityExist(e.ped) then return e.ped end
+    return nil
+end
+
+-- Net ids are reused: only act on a ped that still carries this walker's id
+local function isWalker(ped, id)
+    if not ped or not id then return false end
+    local st = bags(ped)
+    return st ~= nil and tonumber(st.bsZombie) == id
+end
+
+local function killPed(ped)
+    if not DoesEntityExist(ped) or IsEntityDead(ped) then return end
+    if NetworkGetEntityIsNetworked(ped) and not NetworkHasControlOfEntity(ped) then return end
+    -- Anything that could keep it standing goes first
+    pcall(SetEntityInvincible, ped, false)
+    pcall(SetEntityCanBeDamaged, ped, true)
+    pcall(SetEntityProofs, ped, false, false, false, false, false, false, false, false)
+    pcall(FreezeEntityPosition, ped, false)
+    pcall(ClearPedTasks, ped)
+    pcall(SetEntityHealth, ped, 0)
+end
+
+local confirming = {}
+local function confirmDeath(id, net)
+    if confirming[id] then return end
+    confirming[id] = true
+    CreateThread(function()
+        -- cl_combat's death queue kills it first with the proper ragdoll; this only finishes the job
+        Wait(300)
+        local untilAt = GetGameTimer() + 4000
+        while GetGameTimer() < untilAt do
+            local ped = pedFor(net, id)
+            if not ped then break end
+            if not NetworkGetEntityIsNetworked(ped) or not isWalker(ped, id) then break end
+            if NetworkHasControlOfEntity(ped) then
+                if not IsEntityDead(ped) then killPed(ped) end
+                if IsEntityDead(ped) or GetEntityHealth(ped) <= 0 then
+                    TriggerServerEvent('bs:z:net:deadAck', id, NetworkGetNetworkIdFromEntity(ped))
+                    break
+                end
+            end
+            Wait(150)
+        end
+        confirming[id] = nil
+    end)
+end
+
+AddEventHandler('bs:z:dead', function(id, info)
     id = tonumber(id)
-    if id then Zed.netRemoved[id] = true end
+    if not id then return end
+    Zed.netRemoved[id] = true
+    Zed.deadIds[id] = GetGameTimer()
+    local e = Zed.live[id]
+    local net = (type(info) == 'table' and tonumber(info.net)) or (e and e.net) or nil
+    confirmDeath(id, net)
 end)
 AddEventHandler('bs:z:add', function(list)
     for _, rec in ipairs(list or {}) do
@@ -411,15 +519,122 @@ AddEventHandler('bs:z:add', function(list)
     end
 end)
 
--- A corpse that nobody killed: the server asks its owner to.
-RegisterNetEvent('bs:z:netkill', function(netId)
-    netId = tonumber(netId)
+-- The server killed this walker and nobody confirmed the ped died: whoever controls it kills it,
+-- everyone else stops treating it as a live walker. The server deletes it if that is still not enough.
+RegisterNetEvent('bs:z:netkill', function(netId, id)
+    netId, id = tonumber(netId), tonumber(id)
+    if id then
+        Zed.netRemoved[id] = true
+        -- Still a live entry here: our bs:z:dead never ran for it, so run the normal death (body, loot) now
+        local e = Zed.live[id]
+        if e and not e.dying then TriggerEvent('bs:z:dead', id, { net = netId, forced = true }) end
+    end
     if not netId or not NetworkDoesNetworkIdExist(netId) then return end
     local ped = NetToPed(netId)
-    if ped ~= 0 and DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) and not IsEntityDead(ped) then
-        ClearPedTasks(ped)
-        SetEntityHealth(ped, 0)
+    if id and not isWalker(ped, id) then return end
+    if ped ~= 0 and DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) then
+        killPed(ped)
+        if IsEntityDead(ped) or GetEntityHealth(ped) <= 0 then
+            TriggerServerEvent('bs:z:net:deadAck', id or 0, netId)
+        end
     end
+end)
+
+-- The server has no record for a walker we shot: the ped is a leftover. Drop it, and delete it if it is ours.
+RegisterNetEvent('bs:z:nosuch', function(id)
+    id = tonumber(id)
+    local e = id and Zed.live[id]
+    if not e or not e.net then return end
+    local ped = e.ped
+    Zed.netRemoved[id] = true
+    Zed.nosuchDropped = (Zed.nosuchDropped or 0) + 1
+    if not (ped and DoesEntityExist(ped) and isWalker(ped, id)) then
+        -- The entry is stale and its handle now belongs to another walker: drop the entry, leave that ped alone
+        Zed.live[id] = nil
+        Zed.hosted[id] = nil
+        Zed.count = math.max(0, (Zed.count or 0) - 1)
+        if ped and Zed.owned[ped] == id then Zed.owned[ped] = nil end
+        return
+    end
+    print(('[BS ZNET] walker %d has no server record - dropped the leftover ped'):format(id))
+    drop(id, e)
+    if ped and DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) and not IsEntityDead(ped) then
+        pcall(SetEntityAsMissionEntity, ped, true, true)
+        pcall(DeleteEntity, ped)
+    end
+end)
+
+-- /zinspect: this client's view of one walker
+local function inspectView(id)
+    local e = Zed.live[id]
+    local ped = e and e.ped
+    if not (ped and DoesEntityExist(ped)) then
+        ped = nil
+        local ok, pool = pcall(GetGamePool, 'CPed')
+        for _, p in ipairs(ok and pool or {}) do
+            local st = NetworkGetEntityIsNetworked(p) and bags(p)
+            if st and tonumber(st.bsZombie) == id then ped = p break end
+        end
+    end
+    local head = ('live entry %s hosted %s dying %s state %s entry.hp %s | removed flag %s')
+        :format(tostring(e ~= nil), tostring(e and e.hosted), tostring(e and e.dying), tostring(e and e.state),
+                tostring(e and e.hp), tostring(Zed.netRemoved[id] == true))
+    if not ped then return head .. ' | no ped with this id here' end
+    local st = bags(ped) or {}
+    local okD, canDmg = pcall(function() return GetEntityCanBeDamaged(ped) end)
+    local proofs = '?'
+    pcall(function()
+        local r = table.pack(GetEntityProofs(ped))
+        local t = {}
+        for i = 2, math.min(r.n, 9) do t[#t + 1] = (r[i] == true or r[i] == 1) and '1' or '0' end
+        if #t > 0 then proofs = table.concat(t) end
+    end)
+    local me = PlayerId()
+    return head .. (' | ped net %s owner me %s control %s | dead %s health %d/%d | canBeDamaged %s proofs(b,f,e,c,m,s,..) %s | ragdoll %s frozen? %s anim %s | bags zHp %s zMhp %s dead %s zFeed %s zCrawl %s | claim %s')
+        :format(tostring(NetworkGetEntityIsNetworked(ped) and NetworkGetNetworkIdFromEntity(ped) or 'local'),
+                tostring(NetworkGetEntityOwner(ped) == me), tostring(NetworkHasControlOfEntity(ped)),
+                tostring(IsEntityDead(ped)), GetEntityHealth(ped), GetEntityMaxHealth(ped),
+                okD and tostring(canDmg) or '?', proofs, tostring(IsPedRagdoll(ped)),
+                tostring(IsEntityPositionFrozen and IsEntityPositionFrozen(ped) or '?'),
+                tostring(GetScriptTaskStatus(ped, GetHashKey('SCRIPT_TASK_PLAY_ANIM')) ~= 7),
+                tostring(st.zHp), tostring(st.zMhp), tostring(st.bsZombieDead), tostring(st.zFeed), tostring(st.zCrawl),
+                tostring(Zed.owned[ped]))
+end
+
+RegisterNetEvent('bs:z:inspectq', function(id, requester)
+    id = tonumber(id)
+    if not id then return end
+    local ok, view = pcall(inspectView, id)
+    TriggerServerEvent('bs:z:inspecta', id, requester, ok and view or ('error: ' .. tostring(view)))
+end)
+
+-- No id given: the walker in the crosshair (prone and feeding walkers miss a plain ray, so the nearest one to the ray counts too)
+RegisterNetEvent('bs:z:inspectcast', function()
+    local from = GetGameplayCamCoord()
+    local rot = GetGameplayCamRot(2)
+    local rx, rz = math.rad(rot.x), math.rad(rot.z)
+    local dir = vector3(-math.sin(rz) * math.abs(math.cos(rx)), math.cos(rz) * math.abs(math.cos(rx)), math.sin(rx))
+    local to = from + dir * 80.0
+    local ray = StartExpensiveSynchronousShapeTestLosProbe(from.x, from.y, from.z, to.x, to.y, to.z, -1, PlayerPedId(), 4)
+    local _, hit, _, _, ent = GetShapeTestResult(ray)
+    local id
+    if (hit == 1 or hit == true) and ent and ent ~= 0 and IsEntityAPed(ent) then
+        id = Zed.owned[ent] or Zed.NetIdOf(ent, true)
+    end
+    if not id then
+        local best = 1.5
+        for wid, e in pairs(Zed.live) do
+            if e.ped and DoesEntityExist(e.ped) then
+                local p = GetEntityCoords(e.ped)
+                local t = (p - from).x * dir.x + (p - from).y * dir.y + (p - from).z * dir.z
+                if t > 0.0 and t < 80.0 then
+                    local d = #(p - (from + dir * t))
+                    if d < best then best, id = d, wid end
+                end
+            end
+        end
+    end
+    TriggerServerEvent('bs:z:inspecthit', id or 0)
 end)
 
 -- FPS report (server caps zombies around low-FPS clients)
@@ -442,6 +657,31 @@ CreateThread(function()
     end
 end)
 
+-- Why bsZombie peds near this client are not live entries (F10 diagnostics)
+function Zed.NetDiag(radius)
+    local me = GetEntityCoords(PlayerPedId())
+    local r2 = (radius or 120.0) ^ 2
+    local out = { bagged = 0, adopted = 0, removed = 0, claimed = 0, notHuman = 0, dead = 0 }
+    local ok, pool = pcall(GetGamePool, 'CPed')
+    for _, ped in ipairs(ok and pool or {}) do
+        local c = GetEntityCoords(ped)
+        if (c.x - me.x) ^ 2 + (c.y - me.y) ^ 2 <= r2 then
+            local id = Zed.NetIdOf(ped, false)
+            if id then
+                out.bagged = out.bagged + 1
+                local e = Zed.live[id]
+                if e and e.ped == ped then out.adopted = out.adopted + 1
+                elseif Zed.netRemoved[id] then out.removed = out.removed + 1
+                elseif Zed.owned[ped] then out.claimed = out.claimed + 1
+                elseif not IsPedHuman(ped) or GetPedType(ped) == 28 then out.notHuman = out.notHuman + 1 end
+                if IsEntityDead(ped) then out.dead = out.dead + 1 end
+            end
+        end
+    end
+    return out
+end
+exports('NetDiag', function(radius) return Zed.NetDiag(radius) end)
+
 -- /znetc - this client's view
 
 RegisterCommand('znetc', function()
@@ -461,3 +701,18 @@ RegisterCommand('znetc', function()
     print(('[znet] adopted %d networked walker(s), %d owned by me, %d bsZombie peds in pool')
         :format(n, mine, Zed.NetVisibleCount()))
 end, false)
+
+-- F1 validates custom ped choices locally before submitting a population recipe.
+exports('ValidateArchetypeModels', function(models)
+    local invalid = {}
+    if type(models) ~= 'table' then return { ok=false, invalid={'Invalid model list'} } end
+    for _, name in ipairs(models) do
+        if type(name) ~= 'string' or #name > 99 or not name:match('^[%w_]+$') then
+            invalid[#invalid+1] = tostring(name)
+        else
+            local hash=GetHashKey(name)
+            if not IsModelInCdimage(hash) or not IsModelValid(hash) or not IsModelAPed(hash) then invalid[#invalid+1]=name end
+        end
+    end
+    return {ok=#invalid==0,invalid=invalid}
+end)

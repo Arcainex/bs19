@@ -1,0 +1,61 @@
+/* Theme pack: Field Radio: army signals kit. Olive drab canvas, khaki label tape on headers, map contour lines, stitched webbing edges, clean stencil titles. */
+html[data-theme="fieldradio"] {
+    --bs-f-stencil: 'BS Stencil', Impact, sans-serif;
+    --bs-f-cond: 'BS Cond', 'Arial Narrow', sans-serif;
+    --bs-f-text: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-f-mono: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.471 0 0 0 0 0.502 0 0 0 0 0.314 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+    --bs-scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cg fill='none' stroke='%23d8cf9e' stroke-width='.8' opacity='.07'%3E%3Cpath d='M-20 80c80-40 160 30 250 0s170-60 260-10 120 40 140 20'/%3E%3Cpath d='M-20 120c90-30 150 40 250 10s180-60 260-10 120 40 140 25'/%3E%3Cpath d='M-20 165c100-25 150 45 255 15s170-55 255-5 120 40 140 30'/%3E%3Cpath d='M120 300c40-50 130-60 170-20s20 90-50 100-160-20-120-80z'/%3E%3Cpath d='M150 300c30-30 95-38 120-12s12 60-35 66-110-14-85-54z'/%3E%3Cpath d='M420 330c50-30 140-20 150 30'/%3E%3C/g%3E%3Cg stroke='%23d8cf9e' stroke-width='.6' opacity='.05'%3E%3Cpath d='M0 .5h600M0 200.5h600M.5 0v400M300.5 0v400'/%3E%3C/g%3E%3C/svg%3E");
+    --bs-stain: radial-gradient(ellipse 50% 35% at 80% 15%, rgba(60, 66, 30, .25), transparent 70%);
+    --t-bg: 24,26,17;
+    --t-panel: 36,39,26;
+    --t-panel2: 52,56,37;
+    --t-ink: 230,223,196;
+    --t-ink2: 203,196,166;
+    --t-dim: 168,165,134;
+    --t-acc: 206,184,112;
+    --t-acc2: 230,211,150;
+    --t-bad: 170,72,52;
+    --t-bad2: 230,140,118;
+    --t-ok: 150,182,100;
+    --t-warn: 218,184,84;
+    --t-shade: 9,10,6;
+    --t-shade-k: 1;
+    --t-head-ls: .2em;
+    --t-head-w: 700;
+    --t-head-bg: linear-gradient(180deg, rgb(214, 199, 146), rgb(190, 174, 120));
+    --t-head-pad: 3px 9px 2px;
+    --t-head-ink: rgb(30, 32, 20);
+    --t-title-ls: .14em;
+    --t-ui-ls: .14em;
+    --t-deco: linear-gradient(rgb(var(--t-acc)), rgb(var(--t-acc))) 0 0 / 100% 3px no-repeat, repeating-linear-gradient(90deg, rgba(var(--t-acc), .55) 0 9px, transparent 9px 15px) 0 7px / 100% 1px no-repeat;
+}
+
+/* HUD over the world: its own dark set, and it only replaces the config colours when the player has no menu palette. */
+html[data-theme="fieldradio"] {
+    --t-h-ink: 232,226,200;
+    --t-h-dim: 170,166,134;
+    --t-h-acc: 214,192,120;
+    --t-h-bad: 206,96,74;
+    --t-h-ok: 160,190,110;
+    --t-h-bg: 20,22,14;
+}
+html[data-theme="fieldradio"]:not([data-bs-palette]) {
+    --t-hud-acc: rgb(var(--t-h-acc));
+    --t-hud-ink: rgb(var(--t-h-ink));
+    --t-hud-dim: rgb(var(--t-h-dim));
+    --t-hud-bad: rgb(var(--t-h-bad));
+    --t-hud-ok: rgb(var(--t-h-ok));
+    --t-hud-bg: rgb(var(--t-h-bg));
+    --t-hud-font: 'BS Cond', 'Arial Narrow', sans-serif;
+    --t-hud-head: 'BS Stencil', Impact, sans-serif;
+}
+
+/* selector: olive webbing strap instead of hazard tape, title painted clean */
+html[data-theme="fieldradio"] .panel::before { width: 8px; background: linear-gradient(90deg, rgb(70, 76, 46), rgb(52, 57, 34)); box-shadow: inset -1px 0 rgba(var(--t-acc), .6); }
+html[data-theme="fieldradio"] .sel__title, html[data-theme="fieldradio"] .bs-stencil { -webkit-mask-image: none; }
+html[data-theme="fieldradio"] .sel__play { clip-path: none; border-radius: 0; box-shadow: inset 0 0 0 2px rgba(var(--t-bg), .5); }
+html[data-theme="fieldradio"] .sel__play::before, html[data-theme="fieldradio"] .sel__play::after { display: none; }
+html[data-theme="fieldradio"] .slot, html[data-theme="fieldradio"] .dossier { clip-path: none; }
+html[data-theme="fieldradio"] .slot.is-active::after { display: none; }
+html[data-theme="fieldradio"] .tab.is-active { box-shadow: inset 0 -3px rgba(var(--t-bg), .35); }

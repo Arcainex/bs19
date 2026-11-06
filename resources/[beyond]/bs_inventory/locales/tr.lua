@@ -1,5 +1,7 @@
 -- bs_inventory strings (tr)
 return {
+    ['inv.rotate'] = 'Eşyayı döndür',
+    ['inv.rotate_hint'] = 'R ile döndür',
     ['ammo.added'] = '+{n} mermi',
     ['ammo.mag_full'] = 'Şarjör zaten dolu.',
     ['ammo.no_gun'] = 'Elindeki hiçbir şey bu mermiyi almıyor.',
@@ -680,5 +682,18 @@ return {
     ['item.rabbit_pelt'] = 'Tavşan kürkü',
     ['item.coyote_pelt'] = 'Çakal kürkü',
     ['item.mtlion_pelt'] = 'Puma postu',
+    -- Dark Zone (bs_darkzone)
+    ['item.dz_flare'] = 'İşaret fişeği',
+    ['item.dz_intel'] = 'Saha istihbaratı',
+    ['item.dz_sample'] = 'Enfekte doku örneği',
+    ['item.dz_pdw_warden'] = 'Muhafız PDW',
+    ['item.dz_rifle_revenant'] = 'Hortlak tüfeği',
+    ['item.dz_shotgun_breacher'] = 'Kapı Kırıcı pompalı',
+    ['item.booster_dz_overdrive'] = 'Aşırı Hız',
+    ['item.booster_dz_ironhide'] = 'Demir Deri',
+    ['item.booster_dz_sentry'] = 'Nöbetçi taret',
+    ['inv.e_sealed'] = 'Kirlenmiş: çıkarana kadar bu çantada kalır.',
+    ['inv.e_dz_full'] = 'Kirlenmiş çantan dolu.',
     ['inv.cant_sprint_heavy'] = 'Koşmak için çok ağır yük taşıyorsun. Biraz bırak.',
+    ['ui.customize_weapon'] = "SİLAHI ÖZELLEŞTİR",
 }

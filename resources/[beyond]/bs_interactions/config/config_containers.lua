@@ -1,5 +1,4 @@
 -- bs_interactions - searchable containers.
--- Each entry maps prop models to a bs_economy loot table, plus search time and refill time. Search state is per container, kept on the server by world position.
 
 Containers = {}
 
@@ -8,7 +7,7 @@ Containers.Settings = {
     defaultRespawn   = 1800,
     -- Movement cancels the search.
     cancelOnMove     = true,
-    -- Search animations: `search` is a standing rummage (bins, lockers, boots, fridges). `kneel` is for things on the ground, like bodies, and layers two full-body clips (a kneel base plus the hand motion). See the movement cancel note in cl_search.lua.
+    -- Search animations: `search` is a standing rummage (bins, lockers, boots, fridges). `kneel` is for things on
     anim             = { dict = 'anim@gangops@facility@servers@bodysearch@', clip = 'player_search' },
 
     kneelAnim        = {
@@ -20,6 +19,9 @@ Containers.Settings = {
 }
 
 Containers.Types = {
+    furniture = {label='Search furniture',icon='search',time=4500,lootTable='urban',respawn=1800},
+    drawers = {label='Search drawers',icon='search',time=4000,lootTable='kitchen',respawn=1800,
+        models={'prop_ld_int_safe_01','v_res_tre_storagebox','v_res_mconsolemod','v_res_mconsolemove','v_res_tre_bedside','v_res_tre_draws','v_res_tre_wardrobe','v_res_mcupboard'}},
     trash = {
         label     = 'Search the bin',
         icon      = 'search',
@@ -111,7 +113,7 @@ Containers.Types = {
         },
     },
 
-    -- Barrels and drums: small chance of a small amount of diesel, kept low on purpose (hundreds of props). Read by the bs_interactions loot path, not the loot table. See Containers.Diesel below.
+    -- Barrels and drums: small chance of a small amount of diesel, kept low (hundreds of props).
     barrel = {
         label     = 'Scrap the barrel',
         icon      = 'barrel',
@@ -193,7 +195,7 @@ Containers.Types = {
         rearOnly   = true,
     },
 
-    -- Wreck props: car_boot only matches real vehicle entities, so decorative wrecks (scrapyards, crash scenes) are static objects matched by model, like the bins.
+    -- Wreck props: car_boot only matches real vehicle entities
     car_wreck = {
         label     = 'Pick through the wreck',
         icon      = 'bag',
@@ -209,7 +211,7 @@ Containers.Types = {
             'ex_prop_ex_wreck_car01',
         },
 
-        -- Size-based wreck match for models not in the list above (map mods ship their own names; a hash cannot be turned back into a name). Uses GetModelDimensions: roughly 3-6.5m long, 1.5-2.5m wide, under 2m tall. enabled = false -> explicit list only. The staff PROP ID overlay shows model names to add.
+        -- Size-based wreck match for models not in the list above (map mods ship their own names; a hash cannot be turned back into a name). Uses GetModelDimensions: roughly 3-6.5m long, 1.5-2.5m wide, under 2m tall. enabled = false to explicit list only. The staff PROP ID overlay shows model names to add.
         matchBySize = {
             enabled   = true,
             minLength = 3.0,
@@ -221,7 +223,7 @@ Containers.Types = {
     },
 }
 
--- Diesel: one rule shared by the barrel, siphon and pump - fuel goes into containers, never pockets. `chance` is per search, not per barrel.
+-- Diesel: one rule shared by the barrel, siphon and pump - fuel goes into containers
 Containers.Diesel = {
     chance     = 0.22,
     amount     = { 5, 18 },     -- units, out of a jerrycan's 100
@@ -229,10 +231,89 @@ Containers.Diesel = {
     containers = { 'fuel_can', 'empty_bottle' },
 }
 
---- Flattened model -> type lookup, built once at load.
+-- Storage families. Only real loaded models are registered by cl_search.
+-- Unavailable DLC/custom model names are skipped rather than turned into proximity targets.
+Containers.Types.backpack={label="Search backpack",icon='search',time=3200,lootTable='travel',respawn=2400,models={"prop_michael_backpack","p_michael_backpack_s","prop_cs_backpack_01"}}
+Containers.Types.duffel={label="Search duffel bag",icon='search',time=3500,lootTable='travel',respawn=2400,models={"prop_cs_heist_bag_01","prop_cs_heist_bag_02","prop_cs_duffel_01","prop_cs_duffel_01b","p_ld_heist_bag_s","p_ld_heist_bag_s_1"}}
+Containers.Types.suitcase={label="Search suitcase",icon='search',time=3500,lootTable='travel',respawn=2400,models={"prop_ld_suitcase_01","prop_ld_suitcase_02","prop_luggage_01a","prop_luggage_02a","prop_luggage_03a","prop_luggage_04a","prop_luggage_05a","prop_luggage_06a","prop_luggage_07a","prop_luggage_08a","prop_luggage_09a"}}
+Containers.Types.briefcase={label="Search briefcase",icon='search',time=4000,lootTable='office',respawn=2400,models={"prop_ld_case_01","prop_ld_case_02","prop_security_case_01"}}
+Containers.Types.cardboard_box={label="Search parcel",icon='search',time=3500,lootTable='parcel',respawn=2400,models={"prop_cs_cardbox_01","prop_cardbordbox_01a","prop_cardbordbox_02a","prop_cardbordbox_03a","prop_cardbordbox_04a","prop_box_01a","prop_box_02a","prop_box_03a","prop_box_04a","prop_box_05a","prop_box_06a","prop_box_07a","prop_box_08a"}}
+Containers.Types.wooden_crate={label="Search wooden crate",icon='search',time=4500,lootTable='warehouse',respawn=2400,models={"prop_box_wood01a","prop_box_wood02a","prop_box_wood03a","prop_box_wood04a","prop_box_wood05a","prop_box_wood02a_pu","prop_box_wood05b","prop_box_wood06a"}}
+Containers.Types.plastic_crate={label="Search storage crate",icon='search',time=4000,lootTable='warehouse',respawn=2400,models={"prop_crate_01a","prop_crate_02a","prop_crate_03a","prop_crate_04a","prop_crate_05a","prop_crate_06a","prop_crate_07a","prop_crate_08a","prop_crate_09a","prop_crate_10a","prop_crate_11a"}}
+Containers.Types.military_crate={label="Search military supplies",icon='search',time=6500,lootTable='military',respawn=2400,models={"prop_mil_crate_01","prop_mil_crate_02","prop_box_ammo01a","prop_box_ammo02a","prop_box_ammo03a","prop_box_ammo04a","prop_box_ammo05a","prop_box_ammo06a","prop_box_ammo07a"}}
+Containers.Types.police_armory={label="Search police weapon storage",icon='search',time=6500,lootTable='police',respawn=2400,models={"v_ilev_ph_gunlocker","prop_gun_case_01","prop_box_guncase_01a","prop_ld_guncase_01"}}
+Containers.Types.weapon_rack={label="Search weapon rack",icon='search',time=6000,lootTable='military',respawn=2400,models={"prop_gunrack","prop_gunrack_01","prop_gunrack_02","prop_gunrack_03","gr_prop_gr_gunsmithsupl_02a"}}
+Containers.Types.gun_case={label="Search gun case",icon='search',time=6000,lootTable='weapon_storage',respawn=2400,models={"gr_prop_gr_guncase_01a","gr_prop_gr_guncase_02a","gr_prop_gr_guncase_03a"}}
+Containers.Types.office_storage={label="Search office storage",icon='search',time=4000,lootTable='office',respawn=2400,models={"prop_cabinet_01","prop_cabinet_01b","prop_cabinet_02b","v_corp_cabinet","v_corp_filecablow","v_corp_filecabtall","v_corp_offshelf","v_corp_offshelf_01"}}
+Containers.Types.safe={label="Search safe",icon='search',time=7000,lootTable='safe',respawn=2400,models={"prop_ld_int_safe_01","prop_ld_int_safe_01b","prop_safe_01","prop_safe_02","prop_safe_03","prop_ld_int_safe_door"}}
+Containers.Types.wardrobe={label="Search wardrobe",icon='search',time=4500,lootTable='travel',respawn=2400,models={"v_res_tre_wardrobe","v_res_mcupboard","v_res_tre_wdunits","v_res_tre_wdunitsc","v_res_j_wardrobe","v_res_m_wardrobe"}}
+Containers.Types.bedside_storage={label="Search bedside storage",icon='search',time=3500,lootTable='home',respawn=2400,models={"v_res_tre_bedside","v_res_mbbedtable","v_res_mdbedtable","v_res_tre_draws","v_res_d_dressingtable","v_res_mconsolemod","v_res_mconsolemove"}}
+Containers.Types.kitchen_cupboard={label="Search kitchen cupboard",icon='search',time=4000,lootTable='kitchen',respawn=2400,models={"v_res_mcabinet","v_res_mcounter","v_res_tre_cupboard","v_res_fa_cabinet","v_res_mchest"}}
+Containers.Types.shelf_storage={label="Search shelf supplies",icon='search',time=4500,lootTable='warehouse',respawn=2400,models={"v_ilev_shelf_02","prop_shelves_01","prop_shelves_02","prop_shelves_03","prop_shelf_01","prop_shelf_02","prop_shelf_03","prop_rub_cabinet01","prop_rub_cabinet02"}}
+Containers.Types.shop_till={label="Search shop till",icon='search',time=5000,lootTable='shop',respawn=2400,models={"prop_till_01","prop_till_02","prop_till_03","prop_cash_register_01"}}
+Containers.Types.shop_basket={label="Search basket",icon='search',time=3000,lootTable='shop',respawn=2400,models={"prop_shopping_bags01","prop_shopping_bags02","prop_shop_basket_01","prop_shop_basket_02","prop_fruit_basket"}}
+Containers.Types.food_crate={label="Search food crate",icon='search',time=3500,lootTable='kitchen',respawn=2400,models={"prop_fruitstand_01","prop_fruitstand_02","prop_crate_11e","prop_crate_11d","prop_crate_11c","prop_crate_11b"}}
+Containers.Types.cooler={label="Search cooler",icon='search',time=3500,lootTable='kitchen',respawn=2400,models={"prop_coolbox_01","prop_coolbox_02","prop_coolbox_03","prop_coolbox_04","prop_coolbox_05","prop_coolbox_06"}}
+Containers.Types.medical_bag={label="Search medical supplies",icon='search',time=4500,lootTable='medical',respawn=2400,models={"prop_ld_health_pack","prop_ld_health_pack_01","prop_med_bag_01","xm_prop_x17_bag_med_01a"}}
+Containers.Types.medicine_cabinet={label="Search medicine cabinet",icon='search',time=4500,lootTable='medical',respawn=2400,models={"v_med_cabinet1","v_med_cabinet2","v_med_cabinet3","v_res_mmedcab","v_res_tre_medicinecabinet","prop_medstation_01","prop_medstation_02","prop_medstation_03","prop_medstation_04"}}
+Containers.Types.first_aid_box={label="Search first-aid box",icon='search',time=4000,lootTable='medical',respawn=2400,models={"prop_medstation_01a","prop_firstaid_01","prop_firstaid_02"}}
+Containers.Types.industrial_case={label="Search equipment case",icon='search',time=5000,lootTable='industrial',respawn=2400,models={"prop_box_elec01a","prop_box_elec01b","prop_box_elec02a","prop_box_elec02b","prop_box_elec03a","prop_box_elec04a","prop_box_elec05a","prop_box_elec06a","prop_box_elec07a"}}
+Containers.Types.parts_storage={label="Search spare parts",icon='search',time=5000,lootTable='vehicle',respawn=2400,models={"prop_toolchest_01","prop_toolchest_02","prop_toolchest_03"}}
+Containers.Types.tool_case={label="Search tool case",icon='search',time=4500,lootTable='workshop',respawn=2400,models={"prop_tool_box_01","prop_tool_box_02","prop_tool_box_03","prop_tool_box_04","prop_tool_box_05","prop_toolchest_04","prop_toolchest_05"}}
+Containers.Types.fishing_storage={label="Search fishing supplies",icon='search',time=4000,lootTable='fishing',respawn=2400,models={"prop_fishing_bait_01"}}
+Containers.Types.camp_storage={label="Search camping supplies",icon='search',time=4000,lootTable='travel',respawn=2400,models={"prop_cs_sack_01","prop_cs_sack_02"}}
+-- Generic lockers do not become military containers merely because of their location.
+Containers.Types.locker.lootTable='urban'
+local excluded={prop_ld_ferris_wheel=true,v_med_bed2=true}
+local owner={}
+local order={}
+for id in pairs(Containers.Types)do order[#order+1]=id end
+table.sort(order)
+-- Later explicit families own aliases that appeared in older generic lists.
+local preferred={"backpack","duffel","suitcase","briefcase","cardboard_box","wooden_crate","plastic_crate","military_crate","police_armory","weapon_rack","gun_case","office_storage","safe","wardrobe","bedside_storage","kitchen_cupboard","shelf_storage","shop_till","shop_basket","food_crate","cooler","medical_bag","medicine_cabinet","first_aid_box","industrial_case","parts_storage","tool_case","fishing_storage","camp_storage"}
+for _,id in ipairs(preferred)do for _,model in ipairs(Containers.Types[id].models or {})do owner[model]=id end end
+for _,id in ipairs(order)do
+    local def=Containers.Types[id];local clean={}
+    for _,model in ipairs(def.models or {})do
+        if not excluded[model]and (not owner[model]or owner[model]==id)then
+            if not owner[model]then owner[model]=id end
+            local duplicate=false;for _,known in ipairs(clean)do if known==model then duplicate=true;break end end
+            if not duplicate then clean[#clean+1]=model end
+        end
+    end
+    if def.models then def.models=clean end
+end
+
+--- Flattened model to type lookup, built once at load.
 Containers.ByModel = {}
 for typeId, def in pairs(Containers.Types) do
     for _, model in ipairs(def.models or {}) do
         Containers.ByModel[GetHashKey(model)] = typeId
     end
+end
+
+-- Optional installed-model discovery. Explicit names remain the first choice.
+Containers.Discovery={enabled=false,overrides={}}
+function Containers.DiscoverType(name)
+    if type(name)~='string'or #name>128 then return end
+    name=name:lower()
+    local cfg=Containers.Discovery
+    local override=cfg.overrides and cfg.overrides[name]
+    if override==false then return end
+    if type(override)=='string'then return Containers.Types[override]and override or nil end
+    local known=Containers.ByModel[GetHashKey(name)];if known then return known end
+    if not cfg.enabled then return end
+    for _,excluded in ipairs({'door','strap','handle','debris','fragment','_lod','_glass','_wheel'})do if name:find(excluded,1,true)then return end end
+    local families={
+        {'gunlocker','police_armory'},{'gunrack','weapon_rack'},{'guncase','gun_case'},{'gun_case','gun_case'},
+        {'mil_crate','military_crate'},{'ammo_box','military_crate'},{'box_ammo','military_crate'},
+        {'backpack','backpack'},{'suitcase','suitcase'},{'luggage','suitcase'},{'duffel','duffel'},
+        {'briefcase','briefcase'},{'tool_box','tool_case'},{'toolbox','tool_case'},{'toolchest','tool_case'},
+        {'med_cabinet','medicine_cabinet'},{'medical_cabinet','medicine_cabinet'},{'med_bag','medical_bag'},
+        {'firstaid','first_aid_box'},{'coolbox','cooler'},{'cooler_box','cooler'},{'filingcab','office_storage'},
+        {'wardrobe','wardrobe'},{'bedside','bedside_storage'},{'locker','locker'},{'cabinet','office_storage'},
+        {'wood_crate','wooden_crate'},{'box_wood','wooden_crate'},{'cardboard','cardboard_box'},{'cardbord','cardboard_box'},
+        {'storagebox','plastic_crate'},{'storage_box','plastic_crate'},{'storagebin','plastic_crate'},
+    }
+    for _,pair in ipairs(families)do if name:find(pair[1],1,true)then return pair[2]end end
 end

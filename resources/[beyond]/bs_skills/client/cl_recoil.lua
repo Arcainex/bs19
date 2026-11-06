@@ -1,5 +1,4 @@
 -- Per-shot recoil + camera shake. Tunables: config/config_recoil.lua, notes: docs/RECOIL.md.
--- Only runs per-frame while a firearm is in hand; idles at 300ms otherwise.
 
 local cfg
 local UNARMED = GetHashKey('WEAPON_UNARMED')
@@ -14,7 +13,7 @@ local GROUPS = {
     [GetHashKey('GROUP_HEAVY')]   = 'heavy',
 }
 
-local profileCache = {}          -- weapon hash -> merged profile (false = not a gun)
+local profileCache = {}          -- weapon hash to merged profile (false = not a gun)
 local suppHashes, gripHashes = {}, {}
 
 local burst       = 0.0          -- climb applied this burst (deg)
@@ -44,13 +43,14 @@ local function hasAny(ped, weapon, list)
     return false
 end
 
-local function skillMult()
+local function skillMult(handling)
     local level, max = 0, 20
     pcall(function() level = exports.bs_skills:GetSkillLevel(cfg.tree) or 0 end)
     local tree = Skills.Trees and Skills.Trees[cfg.tree]
     if tree and tree.maxLevel then max = tree.maxLevel end
     local t = math.max(0.0, math.min(1.0, level / math.max(1, max)))
-    local m = cfg.lowSkillMult + (cfg.highSkillMult - cfg.lowSkillMult) * t
+    local high=handling and handling.highSkillRecoil or cfg.highSkillMult
+    local m = cfg.lowSkillMult + (high - cfg.lowSkillMult) * t
     local ok, perk = pcall(function() return exports.bs_skills:HasPerk(cfg.tree, 'steady_hands') end)
     if ok and perk == true then m = m * (cfg.steadyHandsMult or 1.0) end
     -- bs_drugs interface: same sway modifier cl_sway uses
@@ -69,7 +69,12 @@ local function onShot(ped, weapon, p, now)
     if now - lastShotAt > 600 then burst = 0.0 end
     lastShotAt = now
 
-    local m = skillMult() * (BSConfigGet and tonumber(BSConfigGet('Global.recoilMultiplier', 1.0)) or 1.0)
+    local handling
+    if GetResourceState('bs_inventory')=='started'then
+        local ok,value=pcall(function()return exports.bs_inventory:GetFirstPersonHandling()end)
+        if ok then handling=value end
+    end
+    local m = skillMult(handling) * (BSConfigGet and tonumber(BSConfigGet('Global.recoilMultiplier', 1.0)) or 1.0)
     local climbCut, shakeCut = 0.0, 0.0
     if hasAny(ped, weapon, suppHashes) then climbCut = climbCut + cfg.suppressor.climb; shakeCut = shakeCut + cfg.suppressor.shake end
     if hasAny(ped, weapon, gripHashes) then climbCut = climbCut + cfg.grip.climb; shakeCut = shakeCut + cfg.grip.shake end
@@ -87,9 +92,11 @@ local function onShot(ped, weapon, p, now)
         SetGameplayCamRelativeHeading(GetGameplayCamRelativeHeading() + drift)
     end)
 
+    TriggerEvent('bs:camera:recoil',kick,drift)
+
     -- Don't stomp a shake someone else started (bs_drugs withdrawal).
     if IsGameplayCamShaking() and now > ourShakeUntil then return end
-    local amp = math.min(cfg.shakeMax, p.shake * (1.0 - math.min(0.9, shakeCut)) * math.min(m, 1.2))
+    local amp = math.min(cfg.shakeMax, (handling and handling.shake or 1.0) * p.shake * (1.0 - math.min(0.9, shakeCut)) * math.min(m, 1.2))
     if amp > 0.0 then
         local name = p.shake >= cfg.bigShakeFrom and cfg.bigShakeName or cfg.shakeName
         ShakeGameplayCam(name, amp)
@@ -112,6 +119,7 @@ local function stepRecovery(now)
     local d = target - recDone
     if d > 0.0 then
         pcall(function() SetGameplayCamRelativePitch(GetGameplayCamRelativePitch() - d, 1.0) end)
+        TriggerEvent('bs:camera:recoil',-d,0.0)
         recDone = target
     end
     if t >= 1.0 then recovering, burst = false, 0.0 end

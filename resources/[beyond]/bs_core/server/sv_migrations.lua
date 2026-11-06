@@ -1,5 +1,4 @@
--- BeyondSurvival - applies sql/*.sql in filename order, once each, tracked in bs_migrations.
--- a new 0XX_description.sql must ALSO be added to the hardcoded list below, otherwise it is silently never run.
+-- BeyondSurvival - applies sql/*.sql in filename order, once each
 
 BS.Migrations = {}
 local M = BS.Migrations
@@ -27,7 +26,7 @@ M.files = {
     '018_zombie_nodes.sql',
     -- Staff menu toggles per staff identifier (bs_admin_prefs). Without this line they stop persisting.
     '019_admin_prefs.sql',
-    -- bs_traders: mission state/history and the /traderdebug override tables. Table names still use the old bs_npcs naming on purpose, since 020_npcs.sql already holds live data.
+    -- bs_traders: mission state/history and the /traderdebug override tables.
     '020_npcs.sql',
     '021_retire_inventory_clothing.sql',
     -- Squads (bs_factions).
@@ -65,12 +64,18 @@ M.files = {
     '038_tutorial.sql',
     '039_tutorial_flags.sql',
     -- 040: retired (faction NPCs were removed). Numbers are kept so 041+ stay valid. No drop-table migration.
-    -- Convoy routes recorded in-game (bs_events).
     '041_convoy_routes.sql',
     -- Build zones added in game, owner index for per-player piece limits (bs_building).
     '042_build_zones.sql',
     -- Power station, control points, mission chains and their F1 editor rows (bs_operations).
     '044_operations.sql',
+    -- Dark Zone: rotation state, zone edits, DZ level, extraction log (bs_darkzone).
+    '045_darkzone.sql',
+    -- Building v2: replaced piece ids renamed, power wires (bs_building).
+    '046_building_v2.sql',
+    -- Faction emblems on the registry row, safezone banner poles (bs_factions).
+    '047_faction_emblems.sql',
+    '048_backpack_refresh.sql',
 }
 
 local function ensureTrackingTable()

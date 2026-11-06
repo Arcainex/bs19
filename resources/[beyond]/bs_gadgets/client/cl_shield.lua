@@ -1,5 +1,4 @@
--- Riot shield gadget. Idea and model choice from "Shield Mod" by winject (gta5-mods.com/scripts/shield-mod); this is a Lua rewrite of the behaviour, not the mod.
--- Networked prop with collision on the left forearm: bullets stop on it, bites from the front are soaked (bs_zombies asks via bs_boosters).
+-- Riot shield gadget: idea and model choice from "Shield Mod" by winject (gta5-mods.com/scripts/shield-mod)
 
 local G = GadgetCl
 local S = { prop = nil, hp = 0, cfg = nil, slot = nil, item = nil }

@@ -1,0 +1,67 @@
+/* bs_fighting HUD. Transparent, theme tokens from bs_ui, nothing solid behind the text. */
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; width: 100%; height: 100%; }
+.fight {
+    --acc: rgb(var(--t-acc, 224, 140, 70));
+    --ink: rgb(var(--t-ink, 236, 229, 211));
+    --dim: rgb(var(--t-dim, 163, 156, 139));
+    --bad: rgb(var(--t-bad2, 228, 136, 118));
+    --ok: rgb(var(--t-ok, 127, 212, 162));
+    position: fixed; inset: 0; pointer-events: none;
+    font-family: var(--bs-f-cond, 'Bahnschrift Condensed', 'Arial Narrow', sans-serif);
+    color: var(--ink);
+    text-shadow: 0 1px 2px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
+}
+.fight.mode-off { display: none; }
+
+/* style tag, bottom centre */
+.fstyle {
+    position: absolute; left: 50%; bottom: 11vh; transform: translateX(-50%) translateY(6px);
+    display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity .25s, transform .25s;
+    font-family: var(--bs-f-stencil, Impact, sans-serif); letter-spacing: .18em; font-size: 15px; text-transform: uppercase;
+}
+.fstyle::before, .fstyle::after { content: ''; width: 26px; height: 2px; background: var(--acc); opacity: .7; }
+.fstyle.show { opacity: .92; transform: translateX(-50%) translateY(0); }
+.fstyle i { width: 18px; height: 18px; display: inline-block; background: var(--acc);
+    -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+.mode-minimal .fstyle.show:not(.sticky) { opacity: .8; }
+
+/* combo counter, right of the crosshair */
+.fcombo {
+    position: absolute; left: calc(50% + 70px); top: calc(50% - 18px); opacity: 0;
+    display: flex; align-items: baseline; gap: 5px; transition: opacity .2s;
+}
+.fcombo.show { opacity: 1; }
+.fcombo b { font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 34px; color: var(--acc); line-height: 1; }
+.fcombo small { font-size: 12px; letter-spacing: .2em; color: var(--dim); }
+.fcombo.pop b { animation: pop .18s ease-out; }
+@keyframes pop { from { transform: scale(1.35); } to { transform: scale(1); } }
+.mode-minimal .fcombo b { font-size: 26px; }
+
+/* block / parry flash: thin bracket around the crosshair and a word */
+.fflash {
+    position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; opacity: 0;
+    border-left: 2px solid currentColor; border-right: 2px solid currentColor; border-radius: 50%;
+    display: flex; align-items: flex-end; justify-content: center; font-size: 12px; letter-spacing: .25em;
+    font-family: var(--bs-f-stencil, Impact, sans-serif); text-transform: uppercase;
+}
+.fflash.k-parry, .fflash.k-counter { color: var(--acc); }
+.fflash.k-block { color: var(--dim); }
+.fflash.k-escape { color: var(--ok); }
+.fflash.k-broken { color: var(--bad); }
+.fflash.go { animation: flash .55s ease-out; }
+.mode-minimal .fflash { width: 90px; height: 90px; margin: -45px 0 0 -45px; }
+.mode-minimal .fflash.k-block { font-size: 0; }
+@keyframes flash { 0% { opacity: 0; transform: scale(.8); } 20% { opacity: .95; transform: scale(1); } 100% { opacity: 0; transform: scale(1.12); } }
+
+/* charge meter under the crosshair */
+.fcharge { position: absolute; left: 50%; top: calc(50% + 34px); width: 64px; height: 3px; margin-left: -32px;
+    background: rgba(0,0,0,.35); opacity: 0; transition: opacity .12s; }
+.fcharge.show { opacity: .95; }
+.fcharge i { display: block; height: 100%; width: 0; background: var(--acc); }
+.fcharge.full i { background: var(--ink); box-shadow: 0 0 8px var(--acc); }
+
+/* context prompt */
+.fprompt { position: absolute; left: 50%; top: calc(50% + 48px); transform: translateX(-50%); opacity: 0;
+    font-family: var(--bs-f-stencil, Impact, sans-serif); letter-spacing: .2em; font-size: 13px; text-transform: uppercase;
+    color: var(--acc); transition: opacity .12s; white-space: nowrap; }
+.fprompt.show { opacity: .95; }

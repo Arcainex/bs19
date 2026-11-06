@@ -1,0 +1,70 @@
+/* Theme pack: Classic: the earlier look. Flat tinted panels, monospace and serif type, no grain or tape. */
+html[data-theme="classic"] {
+    --bs-f-stencil: 'Times New Roman', Georgia, serif;
+    --bs-f-cond: 'Courier New', 'Consolas', monospace;
+    --bs-f-text: 'Courier New', 'Consolas', monospace;
+    --bs-f-mono: 'Courier New', 'Consolas', monospace;
+    --bs-grain: none;
+    --bs-scratch: none;
+    --bs-stain: none;
+    --t-bg: 10,10,9;
+    --t-panel: 20,19,17;
+    --t-panel2: 32,30,27;
+    --t-ink: 240,235,221;
+    --t-ink2: 207,200,184;
+    --t-dim: 168,162,147;
+    --t-acc: 224,140,70;
+    --t-acc2: 240,160,96;
+    --t-bad: 110,43,33;
+    --t-bad2: 228,140,124;
+    --t-ok: 127,212,162;
+    --t-warn: 217,164,65;
+    --t-shade: 0,0,0;
+    --t-shade-k: 1;
+    --t-head-ls: .2em;
+    --t-head-w: 700;
+    --t-head-bg: none;
+    --t-head-pad: 0;
+    --t-head-ink: inherit;
+    --t-title-ls: .24em;
+    --t-ui-ls: .1em;
+    --t-deco: linear-gradient(transparent, transparent);
+}
+
+/* selector, survivor record and faction hub */
+html[data-theme="classic"] {
+    --soot: #0a0a09;
+    --panel: rgba(9, 9, 8, .66);
+    --bone: #f0ebdd;
+    --dust: #a8a293;
+    --blood: #6e2b21;
+    --amber: #e08c46;
+    --line: rgba(240, 235, 221, .12);
+    --line2: rgba(240, 235, 221, .2);
+}
+html[data-theme="classic"] body { font-family: 'Courier New', 'Consolas', monospace; }
+
+/* tape strips off */
+html[data-theme="classic"] .panel::before,
+html[data-theme="classic"] .sel__play::before,
+html[data-theme="classic"] .sel__play::after,
+html[data-theme="classic"] .sv::before,
+html[data-theme="classic"] body.faction-only .hub::before { display: none; }
+
+/* flat panels, no worn lettering */
+html[data-theme="classic"] .panel,
+html[data-theme="classic"] .sel { background: var(--panel); border-radius: 2px; }
+html[data-theme="classic"] .sel__title,
+html[data-theme="classic"] .sv-title,
+html[data-theme="classic"] .bs-stencil {
+    -webkit-mask-image: none; mask-image: none; letter-spacing: .24em; font-weight: 700;
+    font-family: 'Times New Roman', Georgia, serif;
+}
+html[data-theme="classic"] .sel__title { font-size: 44px; }
+html[data-theme="classic"] .sv { background: linear-gradient(160deg, #11100e, #0a0a09); }
+html[data-theme="classic"] .hub, html[data-theme="classic"] body.faction-only .hub { background: rgba(9, 9, 8, .88); }
+html[data-theme="classic"] .sel__play { background: transparent; border: 1px solid var(--amber); color: var(--amber); border-radius: 2px; }
+html[data-theme="classic"] .sel__play:not(:disabled):hover { background: var(--amber); color: #0a0a09; }
+html[data-theme="classic"] .dossier { background: rgba(9, 9, 8, .78); border-radius: 2px; }
+html[data-theme="classic"] .card__bar > i,
+html[data-theme="classic"] .sv-xp i { background: var(--amber); }

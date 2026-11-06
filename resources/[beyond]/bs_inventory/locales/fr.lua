@@ -1,5 +1,7 @@
 -- bs_inventory strings (fr)
 return {
+    ['inv.rotate'] = 'Pivoter l’objet',
+    ['inv.rotate_hint'] = 'R pour pivoter',
     ['ammo.added'] = '+{n} munitions',
     ['ammo.mag_full'] = 'Le chargeur est déjà plein.',
     ['ammo.no_gun'] = 'Rien dans tes mains ne prend ces munitions.',
@@ -680,5 +682,18 @@ return {
     ['item.rabbit_pelt'] = 'Fourrure de lapin',
     ['item.coyote_pelt'] = 'Fourrure de coyote',
     ['item.mtlion_pelt'] = 'Fourrure de puma',
+    -- Dark Zone (bs_darkzone)
+    ['item.dz_flare'] = 'Fusée de détresse',
+    ['item.dz_intel'] = 'Renseignements de terrain',
+    ['item.dz_sample'] = 'Échantillon de tissu infecté',
+    ['item.dz_pdw_warden'] = 'PDW Gardien',
+    ['item.dz_rifle_revenant'] = 'Fusil Revenant',
+    ['item.dz_shotgun_breacher'] = 'Fusil à pompe Enfonceur',
+    ['item.booster_dz_overdrive'] = 'Surrégime',
+    ['item.booster_dz_ironhide'] = 'Peau de fer',
+    ['item.booster_dz_sentry'] = 'Tourelle sentinelle',
+    ['inv.e_sealed'] = 'Contaminé : il reste dans ce sac jusqu\'à son extraction.',
+    ['inv.e_dz_full'] = 'Votre sac contaminé est plein.',
     ['inv.cant_sprint_heavy'] = 'Trop chargé pour courir. Allège ton sac.',
+    ['ui.customize_weapon'] = "PERSONNALISER L'ARME",
 }

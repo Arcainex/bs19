@@ -133,6 +133,12 @@ end)
 
 -- What staff can do to it
 
+-- Current in-game hour, for systems that change with day and night
+exports('GetClockHours', function()
+    local h = clockParts()
+    return h
+end)
+
 -- Set the time and let it run; freezing is a separate choice.
 exports('SetTime', function(hour, minute)
     hour = math.floor(tonumber(hour) or 0) % 24

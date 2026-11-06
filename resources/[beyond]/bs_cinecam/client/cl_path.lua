@@ -1,6 +1,4 @@
 -- bs_cinecam - keyframes and playback.
--- Playing back keyframes gives the same move every time, including straight or
--- circular dollies that are hard to do by hand.
 
 CinePath = {
     nodes   = {},
@@ -39,9 +37,7 @@ end
 
 -- Interpolation
 
--- Catmull-Rom for position only. It passes through every keyframe with a
--- continuous tangent, so there is no corner at each point. It needs a point
--- before the first and after the last; both are made by mirroring the neighbour.
+-- Catmull-Rom for position only.
 local function catmull(p0, p1, p2, p3, t)
     local t2 = t * t
     local t3 = t2 * t
@@ -61,8 +57,7 @@ local function nodeAt(index)
     return n[index]
 end
 
--- Easing: a sine ease over the first and last `ease` fraction of the run, constant
--- speed in the middle, so the dolly does not start and stop with a jerk.
+-- Easing: a sine ease over the first and last `ease` fraction of the run, constant speed in the middle
 local function easeProgress(t, ease)
     if ease <= 0.0 then return t end
     ease = math.min(0.5, ease)
@@ -106,10 +101,7 @@ function CinePath.Sample(t)
         p3 = { x = p2.x * 2 - p1.x, y = p2.y * 2 - p1.y, z = p2.z * 2 - p1.z }
     end
 
-    -- Angles are lerped, not splined: a Catmull-Rom overshoots each keyframe, which
-    -- looks like the camera changing its mind on a heading. Shortest-arc lerp (plus
-    -- the smoothing in cl_camera) gives a clean pan and avoids a 359 degree spin
-    -- through north.
+    -- Angles are lerped, not splined: a Catmull-Rom overshoots each keyframe
     local lerpAngle = CineCam.LerpAngle
     local lerp = CineCam.Lerp
 
@@ -133,8 +125,7 @@ function CinePath.Stop()
     CinePath.token = CinePath.token + 1
     CineCam.scripted = false
 
-    -- Hand the manual controls back at the position the path ended on, not where
-    -- playback started.
+    -- Hand the manual controls back at the position the path ended on, not where playback started.
     CineCam.tPitch = CineCam.pitch
     CineCam.tYaw   = CineCam.yaw
     CineCam.tRoll  = CineCam.roll
@@ -163,8 +154,6 @@ function CinePath.Play()
             Wait(0)
 
             -- Wall-clock time, not accumulated frame times (those drift per machine).
-            -- GetGameTimer() is scaled by SetTimeScale, so slow motion plays the same move
-            -- over more real seconds.
             local elapsed = (GetGameTimer() - started) / 1000.0
             local raw = elapsed / duration
 
@@ -205,8 +194,7 @@ function CinePath.Toggle()
     return CinePath.Play()
 end
 
--- What the menu shows. A count is not enough: 'no keyframes' and 'one keyframe'
--- are different reasons play does nothing.
+-- What the menu shows: a count is not enough: 'no keyframes' and 'one keyframe' are different reasons play does nothing.
 function CinePath.Summary()
     return {
         count    = #CinePath.nodes,
@@ -219,9 +207,7 @@ end
 
 -- Keys, while flying
 
--- G and Y are read from the camera loop's enabled controls (CineLock.CameraControls)
--- rather than key mappings, because commands are what lockout blocks. They only
--- work while the camera is active.
+-- G and Y are read from the camera loop's enabled controls (CineLock.CameraControls) rather than key mappings
 CreateThread(function()
     while true do
         if CineCam.active then

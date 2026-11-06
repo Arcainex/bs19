@@ -15,6 +15,7 @@ return {
     ['ui.bar_stamina'] = 'Stamina',
     ['ui.bar_hunger'] = 'Hunger',
     ['ui.bar_thirst'] = 'Thirst',
+    ['ui.bar_noise'] = 'Noise',
     ['ui.bar_infection'] = 'Infection',
     ['ui.xp'] = 'XP',
     ['ui.dash_fuel'] = 'FUEL',

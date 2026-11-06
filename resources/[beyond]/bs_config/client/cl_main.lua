@@ -23,7 +23,6 @@ CreateThread(function()
     TriggerServerEvent('bs_config:hello')
 end)
 
---------------------------------------------------------------------------------
 -- RPC to the server
 
 RegisterNetEvent('bs_config:rpc:res', function(id, res)
@@ -49,7 +48,6 @@ local function notify(msg)
     EndTextCommandThefeedPostTicker(false, false)
 end
 
---------------------------------------------------------------------------------
 -- Open / close
 
 local function close()
@@ -82,6 +80,11 @@ RegisterNUICallback('close', function(_, cb) close(); cb({ ok = true }) end)
 -- generic bridge: the page names the action, the server checks the rights
 RegisterNUICallback('rpc', function(d, cb)
     if type(d) ~= 'table' or type(d.action) ~= 'string' then return cb({ ok = false }) end
+    if d.action == 'zombieModels' then
+        if not isOpen or type(d.a) ~= 'table' or #d.a > 256 or GetResourceState('bs_zombies') ~= 'started' then return cb({ok=false,error='Zombie model validation is unavailable.'}) end
+        local ok,result=pcall(function() return exports.bs_zombies:ValidateArchetypeModels(d.a) end)
+        return cb(ok and result or {ok=false,error='Could not validate ped models.'})
+    end
     cb(rpc(d.action, d.a, d.b, d.c) or { ok = false })
 end)
 
@@ -95,4 +98,10 @@ AddEventHandler('onResourceStop', function(res)
         SetNuiFocus(false, false)
         TriggerEvent('bs:ui:closed', 'config')
     end
+end)
+
+RegisterNUICallback('selectionPosition', function(_, cb)
+    if not isOpen then return cb({ok=false}) end
+    local ped=PlayerPedId();local at=GetEntityCoords(ped)
+    cb({ok=true,x=at.x,y=at.y,z=at.z,h=GetEntityHeading(ped)})
 end)

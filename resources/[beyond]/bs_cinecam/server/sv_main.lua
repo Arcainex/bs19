@@ -1,4 +1,4 @@
--- bs_cinecam - answers whether a player may fly the camera. A free camera sees through walls, so the check is server-side. It can't stop a client injecting its own camera.
+-- bs_cinecam - answers whether a player may fly the camera.
 
 local function mayUse(src)
     if not Cine.Settings.requirePermission then return true end

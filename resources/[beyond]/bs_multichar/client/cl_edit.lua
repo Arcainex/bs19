@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_multichar appearance edit mode: the creator's LOOK tab on your live character. Opened by bs_vip (monthly VIP change or staff ticket); the server checks entitlement on open and on save. Only face/hair change, clothes are restored after each preview.
+-- BeyondSurvival - bs_multichar appearance edit mode: the creator's LOOK tab on your live character.
 
 AppearanceEdit = { active = false }
 local E = AppearanceEdit

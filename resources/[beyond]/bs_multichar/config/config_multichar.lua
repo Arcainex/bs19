@@ -8,8 +8,7 @@ Multichar.Scene = {
     -- Entered in two steps (z = 30 first so the column caches, then dropped). z is -99.0 not -98.5 because the preview ped is frozen and would hover half a metre up.
     ped     = { x = 402.88, y = -996.45, z = -99.0, h = 180.0 },
 
-    -- The cache-in point directly above the shell. Never a spawn point; the
-    -- ped is here for a second on the way down.
+    -- The cache-in point directly above the shell.
     precache = { x = 402.88, y = -996.45, z = 30.0 },
 
     -- Camera framing. A ped's origin is at its feet and an adult is ~1.8m, so every z is measured up from the ground.
@@ -26,17 +25,15 @@ Multichar.Scene = {
     zoomMin     = 0.75,
     zoomMax     = 2.2,
 
-    -- Max camera distance from the ped. The camera sits focus.offset.y * zoom metres south of the ped and the room has walls: FULL at max zoom needs 6.05m, through the south wall. 3.4m is safely short of it. Raise it if the stage moves somewhere roomier; /camdebug prints the distance used.
+    -- Max camera distance from the ped.
     maxCamDistance = 3.4,
 
-    -- Mood while choosing. Local only - does not touch the server's weather.
-    -- Underground there is no sky to speak of, but the clock still drives the
-    -- ambient tone, and a dead hour reads better than noon.
+    -- Mood while choosing: local only - does not touch the server's weather.
     weather = 'OVERCAST',
     hour    = 21,
     minute  = 40,
 
-    -- Lights: the world blackout kills every map light, but the lineup shell has no daylight. These are local lights around the stage only; bs_world leaves its blackout off while the scene is up.
+    -- Lights: the world blackout kills every map light, but the lineup shell has no daylight.
     lights  = {
         enabled = true,
         -- Key light, in front and above: the direction the camera looks from.
@@ -52,13 +49,9 @@ Multichar.Scene = {
 }
 
 Multichar.Settings = {
-    -- Camera angles the UI can jump to.
-    --- y is metres back, z is a fraction of the measured body height, and
-    --- x is a fraction of the visible half-width. See the note on
-    --- Multichar.Scene.cam above for where each distance comes from.
+    --- Camera angles the UI can jump to. y is metres back, z is a fraction of the measured body height
     focus = {
         -- z is a fraction of the measured body, 0 at the soles and 1 at the crown (taken from bones, see bodySpan() in cl_scene.lua).
-        -- Distances and fov: see Multichar.Scene.cam above. Long lens close by fits in the room.
 
         -- head to toe, with headroom: 2.57m of subject, centred at mid-body
         full = { offset = { x = -0.27, y = 2.75, z = 0.50 }, look = { x = 0.0, y = 0.0, z = 0.50 }, fov = 50.0 },
@@ -73,9 +66,7 @@ Multichar.Settings = {
     showLastWeapon = true,
 }
 
---------------------------------------------------------------------------------
 -- Character creator rework
---------------------------------------------------------------------------------
 
 -- F1 setting: show the CLOTHING step. Off = the step is hidden and the default outfit is used.
 Multichar.Creator = {
@@ -92,8 +83,7 @@ Multichar.Identity = {
     occupations = { 'unemployed', 'mechanic', 'nurse', 'teacher', 'soldier', 'farmer', 'police', 'cook', 'driver', 'student', 'office', 'builder' },
 }
 
--- Starting kit: one melee weapon and up to maxGoodies basic extras. item is a bs_inventory item name; labels are locale keys item.<item>. No firearms here.
--- Food and water picks give x5 (amount below). The server rebuilds the loadout from these ids only.
+-- Starting kit: one melee weapon and up to maxGoodies basic extras. item is a bs_inventory item name
 Multichar.Kit = {
     enabled    = true,
     maxGoodies = 5,
@@ -118,9 +108,7 @@ Multichar.Kit = {
     },
 }
 
--- Clothing slots in the creator: top, legs, shoes and gloves/arms only. Freemode drawable ids per sex (base game), plain everyday pieces only. none is the bare / empty value.
--- top: arms (component 3) follow the top (same id unless armsFor has a row), the player may still adjust arms by hand inside armsRange.
--- Tune any list here, the server only accepts what is listed.
+-- Clothing slots in the creator: top, legs, shoes and gloves/arms only.
 local function R(a, b) local t = {} for i = a, b do t[#t + 1] = i end return t end
 local function cat(...) local t = {} for _, l in ipairs({ ... }) do for _, v in ipairs(l) do t[#t + 1] = v end end return t end
 
@@ -179,4 +167,23 @@ Multichar.Roll = {
         beard = { chance = 0.0 },
         lipstick = { chance = 0.0, styles = { 0 }, colors = { 5 } },
     },
+}
+
+
+-- Selection scenery is client-local and lives in its own server routing bucket.
+Multichar.Selection = {
+    preset = 'grapeseed', weather = 'CLEAR', hour = 16, minute = 0,
+    lineup = true, arrival = false, arrivalMs = 1400,
+    sound = true, reducedMotion = false,
+    -- Screen grade while choosing: 'crisp' (no grade), 'cinematic' (light filmic contrast) or 'legacy' (the old soft haze).
+    grade = 'crisp',
+    -- Slow ease-in and a few centimetres of drift on the camera. Players can still turn motion off on the screen.
+    cameraMotion = true,
+    presets = {
+        grapeseed = { label='Grapeseed main street', ped={x=1666.28,y=4861.68,z=42.06,h=185.0}, cameraHeading=5.0, outdoor=true, props={} },
+        motel = { label='Abandoned motel', ped={x=966.0,y=-207.0,z=73.0,h=150.0}, cameraHeading=330.0, outdoor=true, props={} },
+        lineup = { label='Original lineup room', ped={x=402.88,y=-996.45,z=-99.0,h=180.0}, cameraHeading=0.0, outdoor=false, props={} },
+    },
+    factions = {},
+    props = {},
 }

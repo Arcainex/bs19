@@ -1,4 +1,4 @@
--- bs_faction_bases - jail client: teleport to the cell, keep the inmate in the radius, draw a timer. The server owns the clock and release.
+-- bs_faction_bases - jail client: teleport to the cell, keep the inmate in the radius, draw a timer.
 
 local Jail = nil        -- { cell, origin, radius, remaining, scope, cellNo }
 local EndsAt = 0        -- GetGameTimer() ms when the local timer runs out

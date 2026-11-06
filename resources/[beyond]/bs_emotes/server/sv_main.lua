@@ -2,7 +2,7 @@
 
 local RELAY_PADDING = 40.0   -- relay a bit past the radius; zombies drift
 
--- Server-side throttle: the client throttle alone can be bypassed with a direct TriggerServerEvent, forcing GetPlayers() scans and broadcasts.
+-- Server-side throttle: the client throttle alone can be bypassed with a direct TriggerServerEvent
 local NOISE_COOLDOWN_MS = 200
 local lastNoise = {} -- [src] = GetGameTimer() of the last accepted report
 

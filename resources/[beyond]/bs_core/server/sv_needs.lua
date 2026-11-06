@@ -1,4 +1,4 @@
--- Needs are simulated client-side and validated/persisted here. A client can only lower its own needs; raising goes through server-side consumables.
+-- Needs are simulated client-side and validated/persisted here.
 
 local lastPersist = {}
 

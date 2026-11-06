@@ -48,8 +48,7 @@ local function restockOne(npcId)
     shelf.nextAt = os.time() + intervalOf(npc)
 end
 
---- Refills one npc's shelf from its current definition. Called after an
---- editor save, duplicate or reset.
+--- Refills one npc's shelf from its current definition. Called after an editor save, duplicate or reset.
 function Stock.Reseed(npcId)
     seedOne(npcId)
 end
@@ -66,8 +65,7 @@ function Stock.Get(npcId, item)
     return shelf and shelf[item]
 end
 
---- Attempts to take `qty` off the shelf. Returns true and decrements if
---- unlimited or sufficient; returns false and changes nothing otherwise.
+--- Attempts to take `qty` off the shelf.
 function Stock.Take(npcId, item, qty)
     local shelf = shelfOf(npcId)
     if not shelf then return false end

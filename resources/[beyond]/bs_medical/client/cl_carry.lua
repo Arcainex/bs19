@@ -1,10 +1,8 @@
--- bs_medical - moving the wounded.
--- Anyone can drag a downed survivor (slow, backwards). Carrying needs the Fireman carry perk (bs_skills Survival tree): L1 slow shuffle (move rate ~0.6), L2 normal walk, L3 can jog.
--- The server validates downed state, distance and perk (medical:carryStart) and tells the victim's client to attach; each client only moves its own ped. Drop with the same key, or on ragdoll, death, vehicle or the victim getting up. Bleedout while carried uses Medical.Carry.bleedoutRate.
+-- bs_medical - moving the wounded. Anyone can drag a downed survivor (slow, backwards).
 
 local C = Medical.Carry or {}
 local Carry = nil     -- carrier side: { target = serverId, mode, level, since }
-local Victim = nil    -- victim side:  { carrier = serverId, mode }
+local Victim = nil    -- victim side: { carrier = serverId, mode }
 
 local function notify(kind, message, duration)
     TriggerEvent('bs:ui:notify', { type = kind, message = message, duration = duration })
@@ -51,9 +49,7 @@ local function hint(text)
     DrawText(0.5, 0.88)
 end
 
---------------------------------------------------------------------------------
 -- Carrier side
---------------------------------------------------------------------------------
 
 local function cleanupCarrier()
     if not Carry then return end
@@ -145,9 +141,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Victim side
---------------------------------------------------------------------------------
 
 local function cleanupVictim()
     if not Victim then return end
@@ -158,9 +152,7 @@ local function cleanupVictim()
     SetPedCanRagdoll(ped, true)
     Victim = nil
     Medical.BeingCarried = false
-    -- Still down: put the writhe pose straight back (the downed loop would
-    -- within a frame anyway, this just avoids a T-pose flash). If we were
-    -- revived, leaveDowned/standUp owns the ped and this is skipped.
+    -- Still down: put the writhe pose straight back (the downed loop would within a frame anyway, this just avoids a T-pose flash).
     if exports.bs_medical:IsDowned() then
         ClearPedTasksImmediately(ped)
         local a = Medical.Anims.downed
@@ -192,9 +184,7 @@ RegisterNetEvent('bs:medical:carry:victim', function(carrier, mode)
         end
         local carrierPed = GetPlayerPed(idx)
         local flag = cfg.victimFlag or 1
-        -- Load BEFORE clearing: the downed writhe/ragdoll must be replaced by
-        -- the drag/carry clip in the same frame, or the ped is attached in
-        -- its stiff floor pose and floats sideways off the carrier's hip.
+        -- Load BEFORE clearing: the downed writhe/ragdoll must be replaced by the drag/carry clip in the same frame
         loadDict(cfg.victim.dict)
         if not Victim then return end
         if IsPedRagdoll(me) then SetPedToRagdoll(me, 1, 1, 0, false, false, false) end
@@ -231,9 +221,7 @@ AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() then cleanupCarrier() cleanupVictim() end
 end)
 
---------------------------------------------------------------------------------
 -- The dot
---------------------------------------------------------------------------------
 
 CreateThread(function()
     if not C.enabled then return end

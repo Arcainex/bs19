@@ -1,6 +1,4 @@
--- Scout drone: a real networked drone, flown from a scripted camera while the
--- pilot stands still with a tablet (and can be bitten). Every exit path goes
--- through restore(), which is safe to call more than once.
+-- Scout drone: a real networked drone, flown from a scripted camera while the pilot stands still with a tablet
 
 local G = GadgetCl
 
@@ -21,9 +19,9 @@ local function forwardOf(yaw, pitch)
     return vector3(-math.sin(y) * c, math.cos(y) * c, math.sin(p))
 end
 
---------------------------------------------------------------- marks
+-- marks
 
-local marks = {}    -- entity -> { blip, untilAt }
+local marks = {}    -- entity to { blip, untilAt }
 
 local function mark(ent, sprite, colour, label, secs)
     if marks[ent] then marks[ent].untilAt = GetGameTimer() + secs * 1000; return end
@@ -81,7 +79,7 @@ local function scan(t, camPos)
     return n
 end
 
--------------------------------------------------------------- restore
+-- restore
 
 local function restore()
     if not D then return end
@@ -119,8 +117,7 @@ local function drop(d, reason)
     end)
 end
 
--- Flies back to the pilot, then packs away.
--- battery-weighted seconds used (hover counts less, boost more)
+-- Flies back to the pilot, then packs away. battery-weighted seconds used (hover counts less, boost more)
 local function flown(d) return d.used or (GetGameTimer() - (d.startedAt or GetGameTimer())) / 1000.0 end
 
 local function recall(d)
@@ -326,8 +323,7 @@ G.DroneStart = function(t, extra)
             SetCamCoord(d.cam, pos.x + cf.x, pos.y + cf.y, pos.z - (t.camDown or 0.35))
             SetCamRot(d.cam, pitch, 0.0, yaw, 2)
 
-            -- zoom: hold ALT (control 19, the same key as the ALT dot / hotbar
-            -- peek, which stand down while bsDrone is set) narrows the FOV
+            -- zoom: hold ALT (control 19, the same key as the ALT dot / hotbar peek, which stand down while bsDrone is set) narrows the FOV
             local baseFov = (t.fov or 70.0) + 0.0
             local zFov = clamp((t.zoomFov or 25.0) + 0.0, 5.0, baseFov)
             local wantFov = IsDisabledControlPressed(0, 19) and zFov or baseFov

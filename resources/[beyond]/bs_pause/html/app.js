@@ -20,6 +20,12 @@
       { k: 'hudAnchor', type: 'seg', opts: [['bottom-left', 'o.left'], ['bottom-right', 'o.right']] },
       RANGE('hudOpacity', 0, 1, 0.05),
       { k: 'hudStyle', type: 'choice', list: 'styles', pre: 'st.hs_', def: 'classic' },
+      { k:'targetStyle',type:'seg',opts:[['panel','Panel'],['compact','Compact'],['bracket','Bracket']] },
+      RANGE('targetOpacity',.55,1,.05),RANGE('targetScale',.75,1.5,.05),
+      {k:'themeAccent',type:'colour'},
+      {k:'themeBackground',type:'colour'},
+      {k:'themeText',type:'colour'},
+      {k:'themeMuted',type:'colour'},
       { k: 'menuPalette', type: 'choice', list: 'palettes', pre: 'st.pal_', def: 'default' },
       { k: 'xpPosition', type: 'seg', opts: [['top', 'o.top'], ['bottom', 'o.bottom']] },
       RANGE('xpOpacity', 0, 1, 0.05),
@@ -37,17 +43,34 @@
     ] },
     { g: 'st.g_gameplay', items: [
       { k: 'dodge', type: 'seg', opts: ON_OFF },
+      { k: 'fightHud', type: 'seg', opts: [['minimal', 'o.minimal'], ['full', 'o.full'], ['off', 'o.off']] },
+      { k: 'fightCombo', type: 'seg', opts: SHOW_HIDE },
+      { k: 'fightParry', type: 'seg', opts: SHOW_HIDE },
+      { k: 'fightStyle', type: 'seg', opts: SHOW_HIDE },
       { k: 'missionTracker', type: 'seg', opts: SHOW_HIDE },
       { k: 'safeZoneMarkers', type: 'seg', opts: SHOW_HIDE },
       { k: 'damageNumbers', type: 'seg', opts: SHOW_HIDE },
+      { k: 'buildMenu', type: 'seg', opts: [['wheel', 'o.wheel'], ['bar', 'o.bar'], ['catalogue', 'o.catalogue']] },
     ] },
     { g: 'st.g_camera', items: [
+      { k: 'fpsEnabled', type: 'seg', opts: ON_OFF },
+      RANGE('fpsFov',55,100,1), RANGE('fpsBob',0,100,5), RANGE('fpsAimZoom',100,150,5),
+      { k: 'fpsCrosshair', type: 'seg', opts: [['off','o.off'],['dot','o.fpsDot'],['cross','o.fpsCross'],['t','o.fpsT']] },
+      RANGE('fpsSide',-8,8,1), RANGE('fpsForward',-8,8,1), RANGE('fpsHeight',-6,6,1),
+
       { k: 'camSmooth', type: 'seg', opts: ON_OFF },
       RANGE('camSmoothAmount', 0, 100, 5),
       { k: 'camSmoothAim', type: 'seg', opts: [['reduced', 'o.reduced'], ['off', 'o.off']] },
       { k: 'camSway', type: 'seg', opts: ON_OFF },
       { k: 'camFov', type: 'seg', opts: ON_OFF },
       { k: 'camChase', type: 'seg', opts: ON_OFF },
+      { k: 'bcEnabled', type: 'seg', opts: ON_OFF },
+      RANGE('bcFov', 70, 120, 1), RANGE('bcMotion', 0, 100, 5), RANGE('bcShake', 0, 100, 5),
+      RANGE('bcGrade', 0, 100, 5), RANGE('bcFilm', 0, 100, 5),
+      { k: 'bcChroma', type: 'seg', opts: ON_OFF },
+      { k: 'bcStamp', type: 'seg', opts: SHOW_HIDE },
+      { k: 'bcRealisticAim', type: 'seg', opts: ON_OFF },
+      { k: 'bcVehicle', type: 'seg', opts: ON_OFF },
     ] },
     { g: 'st.g_chat', items: [
       { k: 'chatMode', type: 'seg', opts: [['fade', 'o.fade'], ['always', 'o.always'], ['hidden', 'o.hidden']] },
@@ -87,7 +110,7 @@
     const ext = S.tabs.map((x) => `<button data-tab="${esc(x.id)}"><span class="ic">${iconHtml(x.icon)}</span>${esc(x.label)}${x.badge ? `<span class="badge">${esc(x.badge)}</span>` : ''}</button>`).join('');
     $('nav').innerHTML = base.map((b) => `<button data-v="${b.id}" class="${S.view === b.id ? 'on' : ''}"><span class="ic">${b.icon}</span>${esc(t(b.label))}</button>`).join('')
       + (ext ? '<hr>' + ext : '')
-      + `<hr><button data-v="gta"><span class="ic">&#9638;</span>${esc(t('p.gta'))}</button><button data-v="quit" class="quit"><span class="ic">&#10005;</span>${esc(t('p.quit'))}</button>`;
+      + `<hr><button data-v="gta"><span class="ic">&#9638;</span>${esc(t('p.gta'))}</button><button data-v="switch"><span class="ic">&#8644;</span>${esc(t('p.change_char'))}</button><button data-v="quit" class="quit"><span class="ic">&#10005;</span>${esc(t('p.quit'))}</button>`;
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t, el.textContent); });
   }
 
@@ -97,6 +120,7 @@
     return d && !locked(d) ? d.id : it.def;
   }
   const optLabel = (l) => (S.strings[l] ? S.strings[l] : l);
+  function customPalette(){return {accent:S.settings.themeAccent||'#e08c46',hi:S.settings.themeAccent||'#e08c46',bg:S.settings.themeBackground||'#0a0a09',text:S.settings.themeText||'#f0ebdd',muted:S.settings.themeMuted||'#a8a293',blood:'#a63d32'};}
   function control(it) {
     const v = S.settings[it.k];
     if (v === undefined && it.type !== 'lang') return null;
@@ -108,6 +132,7 @@
       const cur = activeChoice(it, list);
       return `<div class="seg" data-set="${it.k}">${list.map((d) => `<button data-val="${esc(d.id)}" class="${cur === d.id ? 'on' : ''}${locked(d) ? ' lock' : ''}">${d.sw ? `<span class="swatch">${d.sw.map((c) => `<i style="background:${esc(c)}"></i>`).join('')}</span>` : ''}${esc(String(t(it.pre + d.id, d.label)).toLocaleUpperCase())}</button>`).join('')}</div>`;
     }
+    if(it.type==='colour')return `<input type="color" data-set="${it.k}" value="${/^#[0-9a-f]{6}$/i.test(v)?v:'#e08c46'}">`;
     if (it.type === 'seg') {
       return `<div class="seg" data-set="${it.k}">${it.opts.map(([val, l]) => `<button data-val="${esc(String(val))}" class="${String(v) === String(val) ? 'on' : ''}">${esc(optLabel(l))}</button>`).join('')}</div>`;
     }
@@ -216,6 +241,7 @@
       if (id === 'resume') return close();
       if (id === 'map') return post('map');
       if (id === 'gta') return post('gta');
+      if (id === 'switch') return confirmBox(t('p.change_char_confirm'), () => post('switchChar'));
       if (id === 'quit') return confirmBox(t('p.quit_confirm'), () => post('quit'));
       S.view = id; return render();
     }
@@ -225,7 +251,7 @@
       const key = segBtn.parentElement.dataset.set; let val = segBtn.dataset.val;
       if (key === 'menuPalette' && window.BSPalette) {
         const d = ((S.choices && S.choices.palettes) || []).filter((x) => x.id === val)[0];
-        BSPalette.apply((d && d.vars) || null, val);
+        BSPalette.apply(val==='custom'?customPalette():(d && d.vars) || null, val);
       }
       if (val === 'true') val = true; else if (val === 'false') val = false;
       S.settings[key] = val; render();
@@ -249,9 +275,9 @@
     if (e.target.matches('input[type=range][data-set]')) { const s = e.target.nextElementSibling; if (s) s.textContent = e.target.value; if (e.target.dataset.set === 'chatBgOpacity') post('settings', { patch: { chatBgOpacity: Number(e.target.value) } }); }
   });
   document.addEventListener('change', (e) => {
-    if (e.target.matches('input[type=range][data-set]')) {
-      const key = e.target.dataset.set, val = Number(e.target.value);
-      S.settings[key] = val; post('settings', { patch: { [key]: val } });
+    if (e.target.matches('input[data-set]')) {
+      const key = e.target.dataset.set, val = e.target.type==='color'?e.target.value:Number(e.target.value);
+      S.settings[key] = val;if(e.target.type==='color'&&S.settings.menuPalette==='custom'&&window.BSPalette)BSPalette.apply(customPalette(),'custom'); post('settings', { patch: { [key]: val } });
     }
   });
 

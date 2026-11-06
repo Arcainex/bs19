@@ -6,9 +6,7 @@ local INV = exports.bs_inventory
 
 Craft = {}
 
---------------------------------------------------------------------------------
 -- Small helpers
---------------------------------------------------------------------------------
 
 local function now() return os.time() end
 
@@ -87,9 +85,7 @@ function Craft.Roll(list, mult)
     return out
 end
 
---------------------------------------------------------------------------------
 -- Recipes (config + F1 overrides)
---------------------------------------------------------------------------------
 
 local OVERRIDE_FILE = 'data/recipes.json'
 local overrides = {}
@@ -142,9 +138,7 @@ local function recipeAllowed(src, recipe)
     return true
 end
 
---------------------------------------------------------------------------------
 -- Stations (bs_building pieces) and their storage
---------------------------------------------------------------------------------
 
 local St = {}          -- [pieceId] = { type, queue = {}, burn = {} }
 local dbReady = false
@@ -260,9 +254,7 @@ local function takeCost(src, srcs, cost, times)
     return taken
 end
 
---------------------------------------------------------------------------------
 -- Queues
---------------------------------------------------------------------------------
 
 local Hand = {}        -- [src] = { jobs }
 local nextJob = 0
@@ -367,9 +359,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Callbacks used by the craft panel (bs_inventory/html/js/craft.js through our client)
---------------------------------------------------------------------------------
 
 local function recipeList(src, stationType, srcs)
     local out, items = {}, {}
@@ -561,9 +551,7 @@ BSB.RegisterCallback('crafting:nearStations', function(src)
     return { ok = true, list = out }
 end)
 
---------------------------------------------------------------------------------
 -- Lifecycle
---------------------------------------------------------------------------------
 
 -- A station that is torn down gives its queue back to whoever queued it.
 AddEventHandler('bs:building:pieceRemoved', function(id, defId)
@@ -622,9 +610,7 @@ CreateThread(function()
     print(('^2[BeyondSurvival]^7 (crafting) %d station(s) loaded'):format(#rows))
 end)
 
---------------------------------------------------------------------------------
 -- Exports
---------------------------------------------------------------------------------
 
 -- Station defs for bs_building's RegisterPlaceable.
 exports('StationDefs', function()

@@ -106,8 +106,7 @@
 
     // rendering
 
-    // grade
-    // Built from bs_ui's look list (sent in the open payload). 'Mine' is the empty string: camera keeps your own filter. 'off' strips it for a clean plate.
+    // grade: built from bs_ui's look list (sent in the open payload). 'Mine' is the empty string: camera keeps your
 
     var gradesBuilt = false;
 
@@ -206,8 +205,7 @@
             var b = document.createElement('button');
             b.textContent = preset.label;
             b.addEventListener('click', function () {
-                /* Lua tables are 1-indexed and this list came straight from
-                   one, so the index sent back has to be too. */
+                /* Lua tables are 1-indexed and this list came straight from one, so the index sent back has to be too. */
                 post('preset', { index: i + 1 }, function (r) {
                     applySettings(r && r.settings);
                     flash(preset.label);
@@ -271,9 +269,7 @@
         }
     });
 
-    /* ESC closes. F3 does too - but only as a courtesy, because while the
-       page has focus the game never sees the key at all, so the Lua side
-       cannot be the one to handle it. */
+    /* ESC closes: f3 does too - but only as a courtesy */
     document.addEventListener('keyup', function (e) {
         if (e.key === 'Escape' || e.key === 'F3') { post('close', {}); }
     });

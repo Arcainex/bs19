@@ -79,8 +79,7 @@ local function sit(entity, seat)
         })
     end
 
-    -- Seat point in the bench's own space, so it works at any heading. Using the
-    -- player's position would land on the arm rest when approaching from the side.
+    -- Seat point in the bench's own space, so it works at any heading.
     local at = GetOffsetFromEntityInWorldCoords(entity,
         0.0, seat.depth or 0.0, seat.height or 0.5)
 
@@ -127,10 +126,7 @@ AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then stand() end
 end)
 
--- Dot options
--- Data only: closures do not survive an export boundary, so the condition is a
--- `filters` table that bs_interactions evaluates and the action is an event
--- name handled here. The matching SEATS entry is found from the model.
+-- Dot options: data only: closures do not survive an export boundary
 
 -- The SEATS entry for a model, or nil.
 local function seatFor(entity)
@@ -155,8 +151,7 @@ AddEventHandler('bs:emotes:dot:sit', function(payload)
     CreateThread(function() sit(payload.entity, seat) end)
 end)
 
--- Sitting is kept on the player's state bag so the filter can hide the option
--- while already seated.
+-- Sitting is kept on the player's state bag so the filter can hide the option while already seated.
 local function publish()
     LocalPlayer.state:set('bsSitting', Seats.active and true or false, false)
 end

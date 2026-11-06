@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Безопасная зона',
     ['zed.search_body'] = 'Обыскать тело',
     ['zed.skin'] = 'Освежевать тело',
-    ['zed.take_down'] = '[E]  ДОБИТЬ',
+    ['zed.takedown_opt'] = 'Устранить',
     ['zed.they_here'] = 'Они здесь.',
     ['zed.unknown_opt'] = 'Неизвестный параметр.',
     ['zed.vip_colours'] = 'Свои цвета - привилегия VIP.',

@@ -3,6 +3,8 @@
 
 Zombies = {}
 
+Zombies.CombatEffects = { enabled = true, blood = true }
+
 Zombies.Settings = {
     enabled             = true,
 
@@ -869,26 +871,60 @@ Zombies.Reach = {
     whileHunting = true,
 }
 
--- Executions: press E next to a walker for a one-hit kill. Animation depends on the weapon in hand.
--- Works best from behind; refused once the walker has committed to you
+-- Takedowns: offered in the ALT menu on a walker that is down, staggered by a fighting hit,
+-- or has not noticed you standing behind it. One-hit kill through the server.
+local UC, KN, SW, LW, HT = 'melee@unarmed@streamed_core', 'melee@knife@streamed_core',
+    'melee@small_wpn@streamed_core', 'melee@large_wpn@streamed_core', 'melee@hatchet@streamed_core'
 Zombies.Execute = {
     enabled   = true,
-    key       = 38,        -- E (INPUT_PICKUP)
-    range     = 1.8,
+    range     = 2.0,
     -- Rear arc counted as behind it. 1.0 = directly behind.
     behindDot = -0.1,
-    -- Refuse once it is actively hunting you.
+    -- Standing walkers only from behind and before they notice you.
     onlyUnaware = true,
     cooldown  = 1200,
+    -- How long a fighting stagger or knockdown keeps a walker open to a takedown, ms.
+    staggerWindow = 3000,
 
-    anims = {
-        knife = { dict = 'melee@knife@streamed_core', clip = 'ground_attack_on_spot', time = 1100 },
-        fists = { dict = 'melee@unarmed@streamed_core', clip = 'ground_attack_on_spot', time = 1500 },
+    -- Clip pairs played together (plyr on you, victim on the walker). The first pair that loads is used;
+    -- /ztakedownanims lists what loads on your client.
+    takedown = {
+        killAt    = 0.75,     -- fraction of the clip where the kill is reported
+        controlMs = 350,      -- how long to wait for control of the walker before using the short clip
+        sceneOffset = vector3(0.0, 0.0, -1.0),
+        rear = {
+            fists   = { { dict = UC, plyr = 'plyr_stealth_kill_unarmed_a', victim = 'victim_stealth_kill_unarmed_a' },
+                        { dict = UC, plyr = 'plyr_takedown_rear_lefthook', victim = 'victim_takedown_rear_lefthook' },
+                        { dict = UC, plyr = 'plyr_stealth_kill_unarmed_hook_r', victim = 'victim_stealth_kill_unarmed_hook_r' } },
+            knife   = { { dict = KN, plyr = 'plyr_knife_rear_takedown', victim = 'victim_knife_rear_takedown' } },
+            small   = { { dict = SW, plyr = 'plyr_rear_takedown', victim = 'victim_rear_takedown' } },
+            hatchet = { { dict = HT, plyr = 'plyr_rear_takedown', victim = 'victim_rear_takedown' },
+                        { dict = SW, plyr = 'plyr_rear_takedown', victim = 'victim_rear_takedown' } },
+            large   = { { dict = LW, plyr = 'plyr_rear_takedown_bat_r_facehit', victim = 'victim_rear_takedown_bat_r_facehit' } },
+        },
+        -- Staggered walker facing you
+        front = {
+            fists   = { { dict = UC, plyr = 'plyr_takedown_front_uppercut', victim = 'victim_takedown_front_uppercut' },
+                        { dict = UC, plyr = 'plyr_takedown_front_elbow', victim = 'victim_takedown_front_elbow' } },
+            knife   = { { dict = KN, plyr = 'plyr_knife_front_takedown', victim = 'victim_knife_front_takedown' } },
+            small   = { { dict = SW, plyr = 'plyr_front_takedown', victim = 'victim_front_takedown' } },
+            hatchet = { { dict = HT, plyr = 'plyr_front_takedown', victim = 'victim_front_takedown' } },
+            large   = { { dict = LW, plyr = 'plyr_front_takedown_bat_headhit', victim = 'victim_front_takedown_bat_headhit' } },
+        },
+        -- Walker on the ground: player clip only
+        ground = {
+            knife = { { dict = KN, clip = 'ground_attack_on_spot', time = 1100 } },
+            fists = { { dict = UC, clip = 'ground_attack_on_spot', time = 1500 } },
+        },
+        -- Used when no pair loads or the walker could not be lined up
+        fallback = { { dict = KN, clip = 'ground_attack_on_spot', time = 1100 },
+                     { dict = UC, clip = 'ground_attack_on_spot', time = 1500 } },
+        weapons = {
+            hatchet = { 'WEAPON_HATCHET', 'WEAPON_STONE_HATCHET', 'WEAPON_MACHETE', 'WEAPON_BATTLEAXE' },
+            knife   = { 'WEAPON_KNIFE', 'WEAPON_SWITCHBLADE', 'WEAPON_DAGGER', 'WEAPON_BOTTLE' },
+            small   = { 'WEAPON_HAMMER', 'WEAPON_WRENCH', 'WEAPON_NIGHTSTICK', 'WEAPON_FLASHLIGHT', 'WEAPON_KNUCKLE' },
+        },
     },
-
-    -- Weapons that count as a blade for the animation choice.
-    blades = { 'WEAPON_KNIFE', 'WEAPON_MACHETE', 'WEAPON_HATCHET', 'WEAPON_SWITCHBLADE',
-               'WEAPON_DAGGER', 'WEAPON_BOTTLE', 'WEAPON_STONE_HATCHET' },
 }
 
 -- Aimed melee finisher: hold aim (RMB) with a melee weapon and attack a walker in front for a head strike kill.
@@ -988,6 +1024,8 @@ Zombies.Damage = {
     -- Nearest walker in the cone takes the hit, one walker per swing
     meleeRange     = 2.4,
     meleeHalfAngle = 60.0,
+    -- Extra metres the server allows on a melee hit, because its positions trail the clients
+    meleeServerSlack = 4.0,
 
     -- Server anti-cheat headroom: a reported hit is clamped to the weapon's raw damage times this, anything above is refused and counted
     serverHeadroom = 1.6,
@@ -1090,4 +1128,27 @@ Zombies.Vehicle = {
     serverMinKmh   = 1.0,
     serverKillFrac = 0.6,    -- a ram kill needs car speed >= this * killKmh (crush exempt)
     proofRadius    = 15.0,   -- walkers this close to a moving car ignore engine crash damage
+}
+
+-- Hooks for bs_fighting freeflow combat. enabled = false turns all of them off.
+Zombies.Combat = {
+    enabled       = true,
+    maxAttackers  = 2,       -- different walkers allowed to take turns on one player; 0 = no limit
+    tokenHoldMs   = 900,     -- a walker keeps its turn this long after its swing
+    windupEvent   = true,    -- raises bs:z:windup on the victim's client before a swing lands
+    windupLeadMs  = 300,     -- extra telegraph before the swing clip, so a counter has time; 0 = off
+    victimControl = true,    -- RequestVictim export (paired clips)
+    victimHoldMs  = 3000,    -- AI pauses at most this long on a held walker
+    -- Melee hits to kill a standard walker (scaled to its max health). Blades kill in one, blunt takes 2-4, fists 5+.
+    -- A head hit counts meleeHeadMult times. Finishers always kill. Weapons not listed keep the old rule.
+    meleeHeadMult = 1.5,
+    meleeHits = {
+        WEAPON_KNIFE = 1, WEAPON_MACHETE = 1, WEAPON_HATCHET = 1, WEAPON_BATTLEAXE = 1, WEAPON_STONE_HATCHET = 1,
+        WEAPON_SWITCHBLADE = 1, WEAPON_DAGGER = 1,
+        WEAPON_BAT = 3, WEAPON_CROWBAR = 3, WEAPON_HAMMER = 3, WEAPON_WRENCH = 3, WEAPON_NIGHTSTICK = 3,
+        WEAPON_GOLFCLUB = 4, WEAPON_POOLCUE = 4, WEAPON_FLASHLIGHT = 4, WEAPON_KNUCKLE = 4, WEAPON_BOTTLE = 4,
+        WEAPON_UNARMED = 6,
+    },
+    stagger       = true,    -- SetStaggered export
+    staggerAnim   = { dict = 'melee@unarmed@streamed_core', clip = 'hit_heavy_punch_a', ms = 900 },
 }

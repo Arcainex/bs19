@@ -33,6 +33,7 @@ server_scripts {
     -- After sv_main: both read the BSAdmin table it publishes.
     'server/sv_staff.lua',
     'server/sv_commands.lua',
+    'server/sv_link.lua',   -- Survivor Link test tools
 }
 
 ui_page 'html/index.html'

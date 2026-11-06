@@ -3,7 +3,7 @@
 BS.Identity = {}
 local I = BS.Identity
 
---- Returns a map of identifier type -> value for a source.
+--- Returns a map of identifier type to value for a source.
 function I.GetIdentifiers(src)
     local out = {}
     for i = 0, GetNumPlayerIdentifiers(src) - 1 do

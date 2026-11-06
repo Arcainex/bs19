@@ -136,7 +136,7 @@ local function purge(entity, isVehicle)
     if not DoesEntityExist(entity) then return true end
     if not isVehicle then
         local state=Entity(entity).state
-        if IsPedAPlayer(entity)or IsEntityAMissionEntity(entity)or (state and (state.bsProtected or state.bsZombie or state.bsConvoy))then return false end
+        if IsPedAPlayer(entity)or IsEntityAMissionEntity(entity)or (state and (state.bsProtected or state.bsZombie or state.bsConvoy or state.bsSurvivorLink))then return false end
     end
 
     -- Rule 1. A networked entity we do not own cannot be deleted, and tagging it would waste a slot.
@@ -237,7 +237,7 @@ CreateThread(function()
 
             if not IsPedAPlayer(ped) and DoesEntityExist(ped) then
                 local state = Entity(ped).state
-                local ours = IsEntityAMissionEntity(ped)or (state and (state.bsZombie or state.bsProtected or state.bsConvoy))
+                local ours = IsEntityAMissionEntity(ped)or (state and (state.bsZombie or state.bsProtected or state.bsConvoy or state.bsSurvivorLink))
 
                 -- The state bag tag is only a hint
                 if not ours and GetResourceState('bs_zombies') == 'started' then

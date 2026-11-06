@@ -5,11 +5,11 @@ name 'bs_factions'
 author 'BeyondSurvival'
 description 'BeyondSurvival faction service'
 version '2.0.0'
-shared_scripts { '@bs_core/shared/sh_bridge.lua', '@bs_core/shared/sh_services.lua', 'config/config_factions.lua', 'config/config_progression.lua' }
-client_scripts { 'client/cl_main.lua', 'client/cl_tags.lua', 'client/cl_squad.lua' }
-server_scripts { 'server/sv_service.lua', 'server/sv_tags.lua', 'server/sv_squad.lua', 'server/sv_roster.lua', 'server/sv_progression.lua', 'server/sv_admin.lua' }
+shared_scripts { '@bs_core/shared/sh_bridge.lua', '@bs_core/shared/sh_services.lua', 'config/config_factions.lua', 'config/config_progression.lua', 'shared/sh_emblem.lua' }
+client_scripts { 'client/cl_main.lua', 'client/cl_tags.lua', 'client/cl_squad.lua', 'client/cl_banners.lua' }
+server_scripts { 'server/sv_service.lua', 'server/sv_tags.lua', 'server/sv_squad.lua', 'server/sv_roster.lua', 'server/sv_progression.lua', 'server/sv_admin.lua', 'server/sv_emblem.lua' }
 ui_page 'html/tags.html'
-files { 'html/tags.html', 'html/squad.css', 'html/squad.js' }
+files { 'html/tags.html', 'html/squad.css', 'html/squad.js', 'html/banner.html' }
 dependencies { 'bs_core' }
 
 -- live overrides from the F1 config console (bs_config); after the config files

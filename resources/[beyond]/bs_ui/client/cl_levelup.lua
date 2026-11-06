@@ -1,13 +1,13 @@
--- BeyondSurvival - bs_ui level-up: card, boom and music in one place so their timing stays in sync. The card first shows the old level, then flips.
+-- BeyondSurvival - bs_ui level-up: card, boom and music in one place so their timing stays in sync.
 
 local CFG = {
     appear     = 'level_appear.ogg',
     music      = 'level_music.ogg',
 
-    -- How long the card holds the old number before it flips. The CSS delays its number animations by the same amount, so change both together.
+    -- How long the card holds the old number before it flips.
     transitionAt = 380,
 
-    -- Delay before the music comes in. LevelAppear has 5.4s of audio, so this is slightly before its middle, so the swell arrives while the boom is still going.
+    -- Delay before the music comes in.
     musicAt      = 2400,
 
     appearVolume = 0.85,

@@ -49,7 +49,7 @@ local function factionOfChar(charId)
     return c
 end
 
----------------------------------------------------------------------- lookups
+-- lookups
 local function live(row, now) return row and not row.liftedAt and row.endsAt > now end
 local function hasFactionWide()
     for _, r in pairs(Active) do if not r.charId then return true end end
@@ -98,7 +98,7 @@ exports('XpMultiplier', function(src) return pct(src, 'xp_penalty') end)
 exports('DropMultiplier', function(src) return pct(src, 'drop_penalty') end)
 exports('IsJailed', function(charId) return Inmates[tonumber(charId) or -1] ~= nil end)
 
------------------------------------------------------------------------ jails
+-- jails
 local function jailOf(scope) return Jails[scope] end
 local function cellCount(j) local n = 0; for _ in pairs(j and j.cells or {}) do n = n + 1 end; return n end
 local function usableScope(scope)
@@ -154,7 +154,7 @@ local function jailChar(charId, sanctionId, scope, seconds)
     return true
 end
 
---------------------------------------------------------------- issue / lift
+-- issue / lift
 local function rowOut(r, names)
     local t = template(r.template)
     local name = names and names[r.charId or -1] or nil

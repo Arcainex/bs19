@@ -1,4 +1,4 @@
--- One entry point for rewards: exports.bs_core:AwardAction(src, 'zombie_kill_headshot'). Pays XP and money from Config.Rewards and forwards the skill part to bs_skills when running.
+-- One entry point for rewards: exports.bs_core:AwardAction(src, 'zombie_kill_headshot').
 
 --- @param src number
 --- @param actionId string   key in Config.Rewards
@@ -26,7 +26,6 @@ function BS.AwardAction(src, actionId, multiplier)
     end
 
     -- Power station buff (bs_operations): extra XP while the faction holds it.
-    -- Asked from the server, the player statebag can be written by the client.
     local xpMult = 1.0
     if GetResourceState('bs_operations') == 'started' then
         local ok, pct = pcall(function() return exports.bs_operations:XpBuffPct(src) end)

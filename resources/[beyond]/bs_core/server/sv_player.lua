@@ -1,13 +1,11 @@
--- bs_core - server Player object, the single source of truth for a logged-in character. Other modules change players only through these methods so replication and persistence stay consistent.
+-- bs_core - server Player object, the single source of truth for a logged-in character.
 
 BS.Players = {}          -- [source] = Player
 local Player = {}
 Player.__index = Player
 BS.PlayerClass = Player
 
---------------------------------------------------------------------------------
 -- Construction
---------------------------------------------------------------------------------
 
 --- @param src number
 --- @param user table   bs_users row
@@ -51,9 +49,7 @@ function BS.CreatePlayer(src, user, char)
     return self
 end
 
---------------------------------------------------------------------------------
 -- Lookup helpers
---------------------------------------------------------------------------------
 
 function BS.GetPlayer(src)          return BS.Players[tonumber(src)] end
 function BS.GetPlayerByCharId(id)
@@ -65,9 +61,7 @@ end
 function BS.GetPlayers()            return BS.Players end
 function BS.GetPlayerCount()        return BS.Util.TableLength(BS.Players) end
 
---------------------------------------------------------------------------------
 -- Replication
---------------------------------------------------------------------------------
 
 --- Pushes an arbitrary key to this player's client-side mirror.
 function Player:Replicate(key, value)
@@ -101,9 +95,7 @@ function Player:GetClientPayload()
     }
 end
 
---------------------------------------------------------------------------------
 -- Money
---------------------------------------------------------------------------------
 
 local function validAccount(account)
     return BS.Util.Contains(Config.Economy.accounts, account)
@@ -158,9 +150,7 @@ function BS.LogTransaction(player, account, delta, reason)
     ]], { player.charId, account, delta, player:GetMoney(account), reason or 'unspecified' })
 end
 
---------------------------------------------------------------------------------
 -- Progression
---------------------------------------------------------------------------------
 
 function Player:GetXPToNext()
     return Config.Progression.xpCurve(self.level)
@@ -216,7 +206,7 @@ function Player:AddXP(amount, reason)
     return gained
 end
 
--- Removes banked XP (not yet in a level). Never delevels: if there is not enough banked, the caller should refuse as 'cannot afford'. Use this (e.g. skill respec) instead of touching player.xp directly.
+-- Removes banked XP (not yet in a level).
 function Player:SpendXP(amount)
     amount = math.floor(tonumber(amount) or 0)
     if amount <= 0 then return true end
@@ -229,9 +219,7 @@ function Player:SpendXP(amount)
     return true
 end
 
---------------------------------------------------------------------------------
 -- Needs
---------------------------------------------------------------------------------
 
 function Player:SetNeeds(hunger, thirst, infection)
     self.needs.hunger    = BS.Util.Clamp(tonumber(hunger) or self.needs.hunger, 0.0, 100.0)
@@ -249,9 +237,7 @@ function Player:SetHudSettings(settings)
     return true
 end
 
---------------------------------------------------------------------------------
 -- Metadata (free-form, persisted as JSON)
---------------------------------------------------------------------------------
 
 function Player:GetMeta(key, fallback)
     if key == nil then return self.metadata end
@@ -266,18 +252,14 @@ function Player:SetMeta(key, value)
     self:Replicate('metadata', self.metadata)
 end
 
---------------------------------------------------------------------------------
 -- Position
---------------------------------------------------------------------------------
 
 function Player:SetPosition(x, y, z, h)
     self.position = { x = x, y = y, z = z, h = h or self.position.h or 0.0 }
     self.dirty = true
 end
 
---------------------------------------------------------------------------------
 -- Permissions
---------------------------------------------------------------------------------
 
 local function hasAnyAce(src, aces)
     for _, ace in ipairs(aces or {}) do
@@ -302,15 +284,13 @@ function Player:GetRole()
     return 'player'
 end
 
---------------------------------------------------------------------------------
 -- Persistence
---------------------------------------------------------------------------------
 
 --- Writes the character row. force skips the dirty check.
 function Player:Save(force)
     if not force and not self.dirty then return false end
     local pos = self.position or {}
-    BS.DB.Update([[
+    local written=BS.DB.Update([[
         UPDATE `bs_characters` SET
             `class` = ?, `level` = ?, `xp` = ?, `skill_points` = ?,
             `cash` = ?, `bank` = ?,
@@ -330,6 +310,7 @@ function Player:Save(force)
         math.max(0, BS.Util.Now() - (self.lastSavedAt or self.loadedAt)),
         self.charId,
     })
+    if written==nil then return false end
     self.lastSavedAt = BS.Util.Now()
     self.dirty = false
     BS.Emit('player:saved', self)
@@ -359,8 +340,7 @@ exports('GetPlayer', BS.GetPlayer)
 exports('GetPlayers', BS.GetPlayers)
 exports('GetPlayerByCharId', BS.GetPlayerByCharId)
 
--- Skill points
--- bs_skills owns the trees but points live on the character row, so spending happens here. Both calls are all-or-nothing.
+-- Skill points. bs_skills owns the trees but points live on the character row, so spending happens here.
 
 --- @return boolean spent
 exports('SpendSkillPoints', function(src, amount)
@@ -394,8 +374,7 @@ exports('GetSkillPoints', function(src)
     return player and player.skillPoints or 0
 end)
 
--- Plain-data surface
--- Exports return a serialised copy of a table, so methods do not survive (exports.bs_core:GetPlayer(src):AddXP(50) errors in another resource). Everything another resource needs to change a player has a function here taking a source and plain values.
+-- Plain-data surface: exports return a serialised copy of a table
 
 -- Everything a UI needs about a player, flattened: no methods, config lookups or second call.
 exports('GetPlayerSummary', function(src)
@@ -482,7 +461,7 @@ exports('SetNeedsFor', function(src, hunger, thirst, infection)
     return true
 end)
 
--- Character metadata, for resources that need to store something per character without their own table (e.g. bs_inventory's starting loadout flag).
+-- Character metadata, for resources that need to store something per character without their own table
 exports('GetPlayerMeta', function(src, key, fallback)
     local player = BS.Players[tonumber(src)]
     if not player then return fallback end
@@ -502,7 +481,7 @@ exports('SavePlayer', function(src, force)
     return player:Save(force ~= false) and true or false
 end)
 
--- Staff tool (bs_admin 'Change class'): swaps a live character's class. Only the class and its stats change; starting items/skills are not re-granted. Saved immediately and replicated to the client (cl_player.lua re-applies max health/armour).
+-- Staff tool (bs_admin 'Change class'): swaps a live character's class.
 exports('SetClass', function(src, classId)
     local player = BS.Players[tonumber(src)]
     if not player then return false, 'player not loaded' end

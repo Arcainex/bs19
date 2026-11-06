@@ -1,0 +1,34 @@
+/* Shared menu fonts. Load as nui://bs_ui/html/css/fonts.css. All three are SIL OFL (licences in html/fonts/). */
+/* No Cyrillic in these files: Russian falls back to the next font in each stack. */
+
+@font-face { font-family: 'BS Stencil'; src: url('../fonts/SairaStencilOne-Regular.ttf') format('truetype'); font-weight: 400; font-display: block; }
+
+@font-face { font-family: 'BS Cond'; src: url('../fonts/BarlowCondensed-Medium.ttf') format('truetype'); font-weight: 500; font-display: block; }
+@font-face { font-family: 'BS Cond'; src: url('../fonts/BarlowCondensed-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: block; }
+@font-face { font-family: 'BS Cond'; src: url('../fonts/BarlowCondensed-Bold.ttf') format('truetype'); font-weight: 700; font-display: block; }
+
+@font-face { font-family: 'BS Text'; src: url('../fonts/Barlow-Regular.ttf') format('truetype'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'BS Text'; src: url('../fonts/Barlow-Medium.ttf') format('truetype'); font-weight: 500; font-display: block; }
+@font-face { font-family: 'BS Text'; src: url('../fonts/Barlow-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: block; }
+
+:root {
+    --bs-f-stencil: 'BS Stencil', 'Bahnschrift Condensed', Impact, 'Arial Narrow', sans-serif;
+    --bs-f-cond: 'BS Cond', 'Bahnschrift Condensed', 'Arial Narrow', 'Segoe UI', sans-serif;
+    --bs-f-text: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-f-mono: Consolas, 'Courier New', monospace;
+
+    /* Grain and scratches as data URIs, so every page can lay them over a panel without extra files. */
+    --bs-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .47 0 0 0 0 .42 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+    --bs-scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cg stroke='%23f0ebdd' stroke-linecap='round' fill='none'%3E%3Cpath d='M30 60l140-18M410 30l120 30M80 310l60-90M300 360l190-44M520 200l50 90M160 150l14 3M240 250l70-8' stroke-width='.7' opacity='.16'/%3E%3Cpath d='M20 200q90-14 160 6M350 120l90-60M450 300l100 30' stroke-width='.4' opacity='.12'/%3E%3C/g%3E%3C/svg%3E");
+    --bs-stain: radial-gradient(ellipse 60% 40% at 18% 20%, rgba(110, 72, 30, .16), transparent 70%), radial-gradient(ellipse 45% 35% at 85% 85%, rgba(60, 40, 20, .2), transparent 70%);
+}
+
+/* Worn spray-paint look for stencil headings. */
+.bs-stencil {
+    font-family: var(--bs-f-stencil);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='80'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -6 4.6'/%3E%3C/filter%3E%3Crect width='160' height='80' filter='url(%23w)'/%3E%3C/svg%3E");
+    -webkit-mask-size: 160px 80px;
+}

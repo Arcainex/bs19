@@ -1,0 +1,112 @@
+/* Shared skin for every theme pack. Loaded by shared/theme.js before the pack sheet.
+   Screens keep their own layout; this only wires their headers, buttons and panel surfaces to the pack tokens.
+   Pack sheets set the tokens on html[data-theme="name"] (colours as "r,g,b" triplets). */
+
+/* Same faces as css/fonts.css, so pages that never load that sheet still get them. */
+@font-face { font-family: 'BS Stencil'; src: url('../fonts/SairaStencilOne-Regular.ttf') format('truetype'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'BS Cond'; src: url('../fonts/BarlowCondensed-Medium.ttf') format('truetype'); font-weight: 500; font-display: block; }
+@font-face { font-family: 'BS Cond'; src: url('../fonts/BarlowCondensed-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: block; }
+@font-face { font-family: 'BS Cond'; src: url('../fonts/BarlowCondensed-Bold.ttf') format('truetype'); font-weight: 700; font-display: block; }
+@font-face { font-family: 'BS Text'; src: url('../fonts/Barlow-Regular.ttf') format('truetype'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'BS Text'; src: url('../fonts/Barlow-Medium.ttf') format('truetype'); font-weight: 500; font-display: block; }
+@font-face { font-family: 'BS Text'; src: url('../fonts/Barlow-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: block; }
+
+html[data-theme] {
+    /* type */
+    --bs-f-stencil: 'BS Stencil', 'Bahnschrift Condensed', Impact, 'Arial Narrow', sans-serif;
+    --bs-f-cond: 'BS Cond', 'Bahnschrift Condensed', 'Arial Narrow', 'Segoe UI', sans-serif;
+    --bs-f-text: 'BS Text', 'Segoe UI', Arial, sans-serif;
+    --bs-f-mono: Consolas, 'Courier New', monospace;
+    --bs-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .47 0 0 0 0 .42 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+    --bs-scratch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='400'%3E%3Cg stroke='%23f0ebdd' stroke-linecap='round' fill='none'%3E%3Cpath d='M30 60l140-18M410 30l120 30M80 310l60-90M300 360l190-44M520 200l50 90M160 150l14 3M240 250l70-8' stroke-width='.7' opacity='.16'/%3E%3Cpath d='M20 200q90-14 160 6M350 120l90-60M450 300l100 30' stroke-width='.4' opacity='.12'/%3E%3C/g%3E%3C/svg%3E");
+    --bs-stain: radial-gradient(ellipse 60% 40% at 18% 20%, rgba(110, 72, 30, .16), transparent 70%), radial-gradient(ellipse 45% 35% at 85% 85%, rgba(60, 40, 20, .2), transparent 70%);
+    --t-f-title: var(--bs-f-stencil);
+    --t-f-head: var(--bs-f-cond);
+    --t-f-ui: var(--bs-f-cond);
+    --t-f-text: var(--bs-f-text);
+    --t-f-mono: var(--bs-f-mono);
+    --t-title-ls: .06em;
+    --t-head-ls: .16em;
+    --t-head-w: 700;
+    --t-head-ink: inherit;
+    --t-head-bg: none;
+    --t-head-pad: 0;
+    --t-ui-ls: .12em;
+    /* surfaces: tex tiles over every panel, deco is the edge strip and corner marks */
+    --t-tex: var(--bs-scratch) 0 0 / 600px 400px, var(--bs-grain) 0 0 / 220px 220px;
+    --t-deco: linear-gradient(transparent, transparent);
+    --t-shade-k: 1;
+}
+
+/* Pause menu */
+html[data-theme] .brand b,
+html[data-theme] .main h1 { font-family: var(--t-f-title); font-weight: 400; letter-spacing: var(--t-title-ls); }
+html[data-theme] .brand span,
+html[data-theme] .paused,
+html[data-theme] .stat span { font-family: var(--t-f-head); letter-spacing: var(--t-head-ls); }
+html[data-theme] .card h3 {
+    font-family: var(--t-f-head); font-weight: var(--t-head-w); letter-spacing: var(--t-head-ls);
+    background: var(--t-head-bg); padding: var(--t-head-pad); color: var(--t-head-ink, var(--acc)); display: inline-block;
+}
+html[data-theme] nav button,
+html[data-theme] .seg button,
+html[data-theme] .btn,
+html[data-theme] kbd { font-family: var(--t-f-ui); letter-spacing: var(--t-ui-ls); }
+html[data-theme] .stat b { font-family: var(--t-f-mono); }
+
+/* F1 console */
+html[data-theme] .brand { font-family: var(--t-f-title); font-weight: 400; letter-spacing: var(--t-title-ls); }
+html[data-theme] h2.cat,
+html[data-theme] .modal h3 { font-family: var(--t-f-head); font-weight: var(--t-head-w); letter-spacing: var(--t-head-ls); }
+html[data-theme] .card h4 { font-family: var(--t-f-head); font-weight: var(--t-head-w); letter-spacing: var(--t-head-ls); }
+html[data-theme] .card h4 > :first-child:not(button),
+html[data-theme] h2.cat { background: var(--t-head-bg); padding: var(--t-head-pad); color: var(--t-head-ink, var(--rust)); }
+html[data-theme] .rail .it,
+html[data-theme] .chip,
+html[data-theme] .mode button { font-family: var(--t-f-ui); }
+
+/* Inventory */
+html[data-theme] .tab,
+html[data-theme] .catfilter button,
+html[data-theme] .cbtn,
+html[data-theme] .ccat,
+html[data-theme] .mlog__chip { font-family: var(--t-f-ui); letter-spacing: var(--t-ui-ls); }
+html[data-theme] .topbar__title { font-family: var(--t-f-title); letter-spacing: var(--t-title-ls); font-size: 15px; }
+html[data-theme] .board__head h2,
+html[data-theme] .sheet__title,
+html[data-theme] .stats__name,
+html[data-theme] .fieldmed__title,
+html[data-theme] .boosters__title,
+html[data-theme] .sgroup__title,
+html[data-theme] .bagbox__title,
+html[data-theme] .modal__box h3,
+html[data-theme] .ctx__head,
+html[data-theme] .tip__head {
+    font-family: var(--t-f-head); font-weight: var(--t-head-w); letter-spacing: var(--t-head-ls);
+}
+html[data-theme] .board__head h2,
+html[data-theme] .sheet__title,
+html[data-theme] .fieldmed__title,
+html[data-theme] .boosters__title { background: var(--t-head-bg); padding: var(--t-head-pad); color: var(--t-head-ink, var(--bone)); font-size: 12px; }
+html[data-theme] .skillbook,
+html[data-theme] .skillbook button,
+html[data-theme] .skillbook p { font-family: var(--t-f-text); }
+html[data-theme] .skillbook h1,
+html[data-theme] .skillbook h2 { font-family: var(--t-f-title); font-weight: 400; letter-spacing: var(--t-title-ls); }
+html[data-theme] .skillbook__eyebrow,
+html[data-theme] .skillbook__node > span,
+html[data-theme] .skillbook__category > span { font-family: var(--t-f-head); letter-spacing: var(--t-head-ls); }
+html[data-theme] .skillbook__node h3 { font-family: var(--t-f-head); font-weight: var(--t-head-w); }
+html[data-theme] .skillbook__head strong { font-family: var(--t-f-mono); }
+
+/* Character select and creator */
+html[data-theme] .sel__title,
+html[data-theme] .panel__title,
+html[data-theme] .modal__title,
+html[data-theme] .dossier__txt b { font-family: var(--t-f-title); letter-spacing: var(--t-title-ls); }
+html[data-theme] .sel__kicker b,
+html[data-theme] .group__title { background: var(--t-head-bg); padding: var(--t-head-pad); color: var(--t-head-ink, var(--amber)); }
+html[data-theme] .slot__name { font-family: var(--t-f-head); }
+
+/* HUD */
+html[data-theme] .hud__name { font-family: var(--t-hud-head, var(--t-f-head)); }

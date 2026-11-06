@@ -116,7 +116,7 @@ end
 -- So this is the one accessor: it checks, pcalls, and logs which resource asked (at most once per ten seconds). Returns nil on failure, not 0, since 0 is a valid hash.
 local modelFailAt, modelFails = 0, 0
 
--- Per-entity memoization. Some entities (e.g. bs_traders peds: frozen, invincible, not targetable) fault on every call for their whole lifetime, and ALT target scans re-ask hundreds of times a minute. A faulting entity is remembered and not asked again for RECHECK_MS: long enough to stop the flood, short enough that a transient streaming failure recovers. The table cannot grow unbounded because DoesEntityExist turns away dead handles first.
+-- Per-entity memoization: some entities (e.g. bs_traders peds: frozen, invincible, not targetable) fault on
 local RECHECK_MS = 15000
 local knownFaulty = {}   -- [entity] = gameTimer it can be retried at
 

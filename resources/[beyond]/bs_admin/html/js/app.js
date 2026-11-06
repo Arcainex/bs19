@@ -70,6 +70,7 @@ document.querySelectorAll('[data-local]').forEach((b) => {
         if ('zombieGodmode' in res) setToggle('zombiegodmode', res.zombieGodmode);
         if ('guardAlerts' in res) setToggle('guardalerts', res.guardAlerts);
         if ('noclip' in res)    setToggle('noclip', res.noclip);
+        if ('noclipKey' in res) setToggle('noclipkey', res.noclipKey);
         if ('invisible' in res) setToggle('invisible', res.invisible);
         if ('coords' in res)    setToggle('coords', res.coords);
         if ('propid' in res)    setToggle('propid', res.propid);
@@ -370,7 +371,7 @@ function renderItemTabs() {
     if (ITEM_CAT !== 'all' && !cats.includes(ITEM_CAT)) ITEM_CAT = 'all';
     $('itemTabs').innerHTML = ['all', ...cats].map((c) => {
         const n = c === 'all' ? ITEMS.length : ITEMS.filter((i) => (i.category || 'misc') === c).length;
-        const label = c === 'all' ? tt('admin.all', 'ALL') : c.toUpperCase();
+        const label = c === 'all' ? tt('admin.all', 'ALL') : c === 'custom_weapon_attachments' ? 'CUSTOM WEAPON ATTACHMENTS' : c.toUpperCase();
         return `<button class="itab${c === ITEM_CAT ? ' is-on' : ''}" data-icat="${esc(c)}">${esc(label)} <small>${n}</small></button>`;
     }).join('');
     $('itemTabs').querySelectorAll('[data-icat]').forEach((b) => b.addEventListener('click', () => {
@@ -392,7 +393,7 @@ function renderItems() {
         async (i) => {
             const amount = Math.max(1, Number($('itemAmount').value) || 1);
             report(await post('server',
-                { action: 'giveitem', args: withTarget({ item: i.item, amount }) }),
+                { action: i.item==='__custom_attachment_pack'?'givecustomattachments':'giveitem', args: withTarget({ item: i.item, amount }) }),
                 `gave ${amount}x ${i.label}`);
         });
 }
@@ -809,6 +810,7 @@ window.addEventListener('message', (e) => {
             setToggle('godmode', d.state.godmode);
             setToggle('zombiegodmode', d.state.zombieGodmode);
             setToggle('noclip', d.state.noclip);
+            setToggle('noclipkey', d.state.noclipKey);
             setToggle('invisible', d.state.invisible);
             setToggle('coords', d.state.coords);
             setToggle('propid', d.state.propid);

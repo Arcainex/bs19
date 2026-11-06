@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_interactions config. A dot in the screen centre that opens into a ring of options for what you look at. Own system, feeds loot and containers directly.
+-- BeyondSurvival - bs_interactions config.
 
 Interactions = {}
 
@@ -12,14 +12,14 @@ Interactions.Settings = {
     -- Raycast shape flags: peds, vehicles, objects, world, foliage.
     traceFlags       = 4294967295,
 
-    -- Debug overlay reach. Separate from `maxDistance` (3.2m, interaction reach) so the overlay can inspect any prop in the game, ymap or not.
+    -- Debug overlay reach: separate from `maxDistance` (3.2m, interaction reach) so the overlay can inspect any
     debugDistance    = 250.0,
     -- Milliseconds between rays while aiming. 0 = every frame (smoothest).
     scanInterval     = 50,
 
-    -- Fallback search numbers. The camera ray is one of four ways the dot finds a target; the other three are proximity based (see `fallbackWhenNoOptions` in cl_target.lua).
+    -- Fallback search numbers: the camera ray is one of four ways the dot finds a target
 
-    -- Milliseconds between refreshes of the entity pool snapshot for the proximity fallback. The object pool is large, so 250 is a good balance.
+    -- Milliseconds between refreshes of the entity pool snapshot for the proximity fallback.
     poolInterval     = 250,
 
     -- Downward fan of probes cast from the player when the camera ray finds nothing usable.
@@ -39,12 +39,14 @@ Interactions.Settings = {
 
     -- Outline the entity under the dot.
     useOutline       = true,
+    -- Vehicles look broken with the native outline (thick blob through the cabin), so they are skipped
+    outlineVehicles  = false,
     outline          = { r = 200, g = 118, b = 58, a = 190 },
 
     -- Do not target while these are true.
     blockInVehicle   = false,
 
-    -- The ALT dot is disabled while a firearm is aimed or fired. Crash fix: the probe caches an entity handle across frames and shooting walkers deletes those entities (see blocked() in cl_target.lua).
+    -- The ALT dot is disabled while a firearm is aimed or fired.
     blockWhileAiming = true,
     blockWhenDead    = true,
     blockWhenCuffed  = true,
@@ -53,12 +55,12 @@ Interactions.Settings = {
 -- Options are matched against what the ray hit; the first matching group is shown and every entry is re-validated on the server.
 -- model: name or list of names | entityType: 'ped'|'vehicle'|'object'
 -- zone: { coords = vector3, radius = number }
--- canInteract(entity, distance, data) -> boolean (client pre-filter)
+-- canInteract(entity, distance, data) to boolean (client pre-filter)
 -- event / serverEvent: fired on pick (server gets the entity net id)
 -- item: required item | job/class: required character class
 Interactions.Options = {}
 
 --- Registers options at runtime:
----   exports.bs_interactions:AddModel({ 'prop_bin_01a' }, { ... })
+--- exports.bs_interactions:AddModel({ 'prop_bin_01a' }, { ... })
 Interactions.Models = {}
 Interactions.Zones  = {}

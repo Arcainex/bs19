@@ -1,10 +1,9 @@
--- Per-shot recoil (camera climb) and camera shake. Read by client/cl_recoil.lua.
--- Degrees are camera pitch. Keep kicks small.
+-- Per-shot recoil (camera climb) and camera shake. Read by client/cl_recoil.lua. Degrees are camera pitch.
 Skills.Recoil = {
     enabled = true,
     tree    = 'combat',
 
-    -- Skill scaling: level 0 -> lowSkillMult, maxLevel -> highSkillMult (linear).
+    -- Skill scaling: level 0 to lowSkillMult, maxLevel to highSkillMult (linear).
     lowSkillMult  = 1.35,
     highSkillMult = 0.70,
     steadyHandsMult = 0.90,     -- extra if the Steady Hands perk is owned
@@ -44,8 +43,7 @@ Skills.Recoil = {
         WEAPON_MINIGUN         = { kick = 0.10, drift = 0.20, shake = 0.18 },
     },
 
-    -- One-shot shake per shot. SMALL_EXPLOSION_SHAKE is a short, valid jolt.
-    -- Big calibers (shake >= bigShakeFrom) use bigShakeName.
+    -- One-shot shake per shot: sMALL_EXPLOSION_SHAKE is a short, valid jolt.
     shakeName    = 'SMALL_EXPLOSION_SHAKE',
     bigShakeName = 'JOLT_SHAKE',
     bigShakeFrom = 0.20,

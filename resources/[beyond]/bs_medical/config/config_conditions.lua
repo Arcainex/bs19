@@ -37,8 +37,7 @@ Medical.System = {
     coughNoise       = 30.0,
     vomitLoss        = 12.0,   -- hunger and thirst lost per vomit
 
-    -- Pain (0-100) from wounds, breaks, bullets and heavy hits. Shakes the
-    -- screen and the aim. Painkillers mask it for a while.
+    -- Pain (0-100) from wounds, breaks, bullets and heavy hits. Shakes the screen and the aim.
     painMult         = 1.0,
     painkillerMinutes = 10,
     hitPainDecay     = 6.0,    -- per minute, pain from hits fading

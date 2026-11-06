@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_factions client. A local mirror of the last 'bs:factions:sync' payload so exports.bs_factions:Current() is instant. Nothing is computed here; actions go through BSB.Await to the server.
+-- BeyondSurvival - bs_factions client.
 
 local current = { factionId = nil, reputation = 0, unlocks = {} }
 
@@ -13,16 +13,12 @@ AddEventHandler('bs:hook:player:loaded', function()
     -- for this connection; nothing to request here.
 end)
 
---------------------------------------------------------------------------------
--- Exports - plain data only, read by bs_ui (nameplate/title), bs_emotes and
--- bs_inventory (cosmetic gating) once they choose to wire into it.
---------------------------------------------------------------------------------
+-- Exports - plain data only, read by bs_ui (nameplate/title)
 
 exports('Current', function() return current end)
 exports('IsMember', function(factionId) return current.factionId == factionId end)
 exports('GetTitle', function()
-    -- Highest unlocked title for the CURRENT faction only; matches the
-    -- server's GetTitle export.
+    -- Highest unlocked title for the CURRENT faction only; matches the server's GetTitle export.
     local faction = current.factionId and Factions.Get(current.factionId)
     if not faction then return nil end
     local best = nil
@@ -34,10 +30,7 @@ exports('GetTitle', function()
     return best
 end)
 
---------------------------------------------------------------------------------
--- Convenience wrappers other client scripts can call instead of hand-rolling
--- BSB.Await every time.
---------------------------------------------------------------------------------
+-- Convenience wrappers other client scripts can call instead of hand-rolling BSB.Await every time.
 
 exports('Join', function(factionId)
     return BSB.Await('factions:join', 6000, factionId)
@@ -51,13 +44,7 @@ exports('Status', function()
     return BSB.Await('factions:status', 6000)
 end)
 
---------------------------------------------------------------------------------
--- ALT recruiting
---
--- Officers and owners get an interaction option on nearby players while holding
--- ALT. The client only presents the option; the server still checks faction,
--- rank, target membership, and range before an invitation is created.
---------------------------------------------------------------------------------
+-- ALT recruiting: officers and owners get an interaction option on nearby players while holding ALT.
 
 local inviteOptionRegistered = false
 local function registerInviteOption()
@@ -118,7 +105,6 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 -- GTA can suppress hits between player peds even without a faction rule.
--- Keep that engine switch on; the server protects only the actual safe zones.
 CreateThread(function()
     local previousPed = 0
     while true do

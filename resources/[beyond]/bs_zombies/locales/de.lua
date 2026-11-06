@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Sicherheitszone',
     ['zed.search_body'] = 'Leiche durchsuchen',
     ['zed.skin'] = 'Leiche häuten',
-    ['zed.take_down'] = '[E]  ERLEDIGEN',
+    ['zed.takedown_opt'] = 'Ausschalten',
     ['zed.they_here'] = 'Sie sind da.',
     ['zed.unknown_opt'] = 'Unbekannte Option.',
     ['zed.vip_colours'] = 'Eigene Farben sind ein VIP-Vorteil.',

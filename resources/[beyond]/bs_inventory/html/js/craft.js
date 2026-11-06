@@ -22,7 +22,7 @@
 
   const S = { ctx: null, data: null, cat: 'all', q: '', sel: null, qty: 1, timer: null, tick: null, busy: false, lastFetch: 0 };
 
-  // ---------------------------------------------------------------- loading
+  // loading
   async function load() {
     const r = await call('bs_crafting', 'state');
     if (!r) { root.innerHTML = '<div class="cempty">...</div>'; return; }
@@ -58,7 +58,7 @@
     });
   }
 
-  // ---------------------------------------------------------------- hand / station
+  // hand / station
   function head() {
     const d = S.data, st = d.station;
     const faster = Math.round(Math.min(0.5, (d.level || 0) * 0.025) * 100);
@@ -173,7 +173,7 @@
     if (keepFocus) { const s = document.getElementById('cSearch'); s.focus(); s.setSelectionRange(caret, caret); }
   }
 
-  // ---------------------------------------------------------------- recycler machine
+  // recycler machine
   function machineSlots(list, attr) {
     const cells = (list || []).map(s => `<div class="cslot" data-cat="${esc(s.category)}" ${attr}="${esc(s.item)}" title="${esc(s.label)}">${icon(s.item, s.category)}<b>${s.amount}</b></div>`);
     while (cells.length < 12) cells.push('<div class="cslot cslot--empty"></div>');
@@ -222,7 +222,7 @@
     el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2600);
   }
 
-  // ---------------------------------------------------------------- input
+  // input
   root.addEventListener('click', async (e) => {
     const el = e.target.closest('[data-ccat],[data-rec],[data-qty],#cGo,[data-cancel],[data-take],[data-dis],[data-farm],[data-load],[data-unload],[data-mtake],[data-mact]');
     if (!el) return;

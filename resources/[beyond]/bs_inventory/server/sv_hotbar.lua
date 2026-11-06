@@ -1,6 +1,4 @@
 -- bs_inventory - the five hotbar slots hold the actual items.
--- The bar is slots 41-45 of the same inventory (see BAR_SLOTS in sv_main.lua), not a second store. Moving an item onto the bar is the normal inventory move, so stacking, durability, fill level, weight and saving all apply. This file only tells the client what is in those slots and fires one of them.
--- The old name-based bindings in character metadata are cleared on first load, not migrated, since a name cannot say which bandage.
 
 local MAX_SLOTS = 5
 
@@ -42,7 +40,7 @@ function Hotbar.Payload(src)
         local entry = inv.slots[slotFor(inv, index)]
         local key = tostring(index)
 
-        -- Keyed by string, never by number: a Lua table keyed 1..5 serialises as a JSON array and JS arrays are 0-indexed, which shifts every reader by one.
+        -- Keyed by string, never by number: a Lua table keyed 1..5 serialises as a JSON array and JS arrays are
         if entry then
             local def = Items.Get(entry.item) or {}
 
@@ -73,8 +71,7 @@ function Hotbar.Wipe(src)
     Hotbar.Push(src)
 end
 
--- Firing a slot
--- No hotbar:set / hotbar:swap: putting something on the bar is an ordinary inventory move between two slots, so there is only one way to move an item.
+-- Firing a slot: no hotbar:set / hotbar:swap: putting something on the bar is an ordinary inventory move
 
 BSB.RegisterCallback('hotbar:use', function(src, index)
     index = math.floor(tonumber(index) or 0)
@@ -88,7 +85,7 @@ BSB.RegisterCallback('hotbar:use', function(src, index)
 
     if not entry then return { ok = false, error = 'nothing there' } end
 
-    -- The slot is unambiguous: the item in the slot is the item used. No lookup by name, so pressing 2 cannot pick a different stack than the one the bar shows.
+    -- The slot is unambiguous: the item in the slot is the item used.
     local def = Items.Get(entry.item)
     local weapon = def and def.data and def.data.weapon or nil
 

@@ -66,6 +66,10 @@ local function playersNow()
             end
         end
     end
+    if GetResourceState('bs_survivor_link')=='started'then
+        local ok,companions=pcall(function()return exports.bs_survivor_link:Targets()end)
+        if ok then for _,c in ipairs(companions or {})do out[#out+1]=c end end
+    end
     return out
 end
 
@@ -93,19 +97,22 @@ local function pick(record, ent, plist, now)
         local d = sqrt(dx * dx + dy * dy + dz * dz * 0.25)
         local why
 
+        -- Survivor Link companions in defensive stance carry a stealth factor (bsLinkStealth); players have none.
+        local hide = tonumber(p.link) or 1.0
         local hitAt = hurt and hurt[p.src]
         if hitAt and (now - hitAt) <= dmgWindow and d <= dmgRange then
             why = 'damage'
         else
             local low = p.prone or p.crouched or p.stealth
             local contact = low and num(SG.crouchedContactRadius, 1.2) or num(DET.contactRadius, 3.5)
+            if hide < 1.0 then contact = math.max(0.6, contact * hide) end
             if d <= contact then
                 why = 'contact'
             else
                 local stance = p.prone and num(SG.prone, 6.0)
                     or ((p.crouched or p.stealth) and num(SG.crouched, 10.0))
                     or num(SG.standing, 50.0)
-                local reach = stance * typeScale * feedScale * (p.mult or 1.0)
+                local reach = stance * typeScale * feedScale * (p.mult or 1.0) * hide
                 if d <= reach and angleOk(zx, zy, zh, p.x, p.y, half) then
                     local until_ = blocked and blocked[p.src]
                     if not (until_ and now < until_) then why = 'sight' end

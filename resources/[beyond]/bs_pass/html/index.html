@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="style.css">
+<script src="nui://bs_ui/html/shared/palette.js"></script>
+</head>
+<body>
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="sign">
+      <div class="ttl" id="title">WASTELAND PASS</div>
+      <div class="sub" id="seasonInfo"></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span id="lTier">TIER</span><b id="tier">0</b></div>
+      <div class="stat"><span id="lTokens">TOKENS</span><b id="tokens">0</b></div>
+      <div class="stat"><span id="lToday">TODAY</span><b id="dayxp">0</b></div>
+    </div>
+    <button class="x" id="close">&#10005;</button>
+  </header>
+  <div class="xpbar"><div id="xpfill"></div><span id="xptext"></span></div>
+  <nav id="tabs">
+    <button data-tab="road" class="on" id="tRoad">ROAD</button>
+    <button data-tab="ch" id="tCh">CHALLENGES</button>
+    <button data-tab="slot" id="tSlot">SLOTS</button>
+    <button data-tab="lb" id="tLb">LEADERBOARD</button>
+  </nav>
+  <main>
+    <section id="road" class="tab on">
+      <div class="roadbar">
+        <button class="btn pri" id="claimAll">CLAIM ALL</button>
+        <button class="btn" id="mailbox">MAILBOX</button>
+        <div id="cars"></div>
+      </div>
+      <div class="road" id="roadWrap"><div class="track" id="ladder"></div></div>
+    </section>
+    <section id="ch" class="tab">
+      <h3 id="hDaily">DAILY</h3><div id="daily" class="chlist"></div>
+      <h3 id="hWeekly">WEEKLY</h3><div id="weekly" class="chlist"></div>
+    </section>
+    <section id="slot" class="tab">
+      <!-- Cabinet: marquee, bulb frame, reel window with win line, lever on the right, coin tray. -->
+      <div class="cabinet" id="cabinet">
+        <div class="slottitle" id="slotTitle">LUCKY SCRAP</div>
+        <div class="window">
+          <div class="reels"><div class="reel"><div class="strip" id="r0"></div></div><div class="reel"><div class="strip" id="r1"></div></div><div class="reel"><div class="strip" id="r2"></div></div></div>
+          <div class="winline"></div><div class="glass"></div>
+        </div>
+        <div class="lever" id="lever" title="PULL"><div class="lever__arm"><div class="lever__ball"></div></div><div class="lever__base"></div></div>
+        <div id="slotResult" class="result"></div>
+        <button class="btn pri big" id="spin">SPIN</button>
+        <div class="tray" id="tray"></div>
+        <div class="paytable" id="paytable"></div>
+      </div>
+      <div id="fx" class="fx"></div>
+    </section>
+    <section id="lb" class="tab"><table id="board"></table></section>
+  </main>
+  <div id="toast"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

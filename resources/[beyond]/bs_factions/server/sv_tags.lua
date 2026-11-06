@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_factions name tags. 'factions:tags' returns squad and faction mates anywhere, plus (only while the asker is in a safe zone) other players in a safe zone within Factions.Tags.safeRadius metres.
+-- BeyondSurvival - bs_factions name tags. 'factions:tags' returns squad and faction mates anywhere
 
 local function summaryOf(src)
     local ok, s = pcall(function() return exports.bs_core:GetPlayerSummary(src) end)
@@ -48,7 +48,7 @@ BSB.RegisterCallback('factions:tags', function(src)
     if ms then
         local me = { src = src, name = ms.name or ((ms.firstName or '') .. ' ' .. (ms.lastName or '')), level = tonumber(ms.level) or 1 }
         if mySquad then me.squad = { name = mySquad.name or 'SQUAD', rank = mySquad.rankLabel or rankLabel(cfg.squadRankLabels, mySquad.rankId) } end
-        if mine then me.faction = { name = mine.label or mine.short or 'FACTION', short = mine.short, rank = mine.rankLabel and mine.rankLabel:upper() or rankLabel(cfg.rankLabels, mine.rank) } end
+        if mine then me.faction = { id = mine.factionId, name = mine.label or mine.short or 'FACTION', short = mine.short, rank = mine.rankLabel and mine.rankLabel:upper() or rankLabel(cfg.rankLabels, mine.rank) } end
         out.me = me
     end
     if not mine and not mySquad and not meSafe then return out end
@@ -68,12 +68,12 @@ BSB.RegisterCallback('factions:tags', function(src)
                 end
             end
             if mine and f and f.factionId == mine.factionId then
-                entry.faction = { name = f.label or f.short or 'FACTION', short = f.short, rank = f.rankLabel and f.rankLabel:upper() or rankLabel(cfg.rankLabels, f.rank) }
+                entry.faction = { id = f.factionId, name = f.label or f.short or 'FACTION', short = f.short, rank = f.rankLabel and f.rankLabel:upper() or rankLabel(cfg.rankLabels, f.rank) }
                 keep = true
             end
             if meSafe and inSafe(t) and near(src, t, safeRadius) then
                 entry.safe = true
-                if f then entry.safeFaction = { name = f.label or 'FACTION', short = f.short } end
+                if f then entry.safeFaction = { id = f.factionId, name = f.label or 'FACTION', short = f.short } end
                 keep = true
             end
             if keep then
@@ -83,6 +83,28 @@ BSB.RegisterCallback('factions:tags', function(src)
                     entry.level = tonumber(s.level) or 1
                     out.mates[#out.mates + 1] = entry
                 end
+            end
+        end
+    end
+    -- Survivor Link companions get the same tag as a player mate, keyed by -netId (no player source).
+    if GetResourceState('bs_survivor_link') == 'started' and (mine or mySquad) then
+        for _, v in ipairs(GetPlayers()) do
+            local okL, link = pcall(function() return exports.bs_survivor_link:GetCompanion(tonumber(v)) end)
+            if okL and type(link) == 'table' and link.net and link.life and link.life.status ~= 'dead' then
+                local row = exports.oxmysql:single_async([[SELECT m.faction_id, m.`rank`, c.level FROM bs_characters c
+                    LEFT JOIN bs_faction_members m ON m.character_id = c.id WHERE c.id = ? LIMIT 1]], { link.id })
+                local entry = { src = -link.net, net = link.net, linked = true, name = link.name or '?', level = row and tonumber(row.level) or 1 }
+                local keep = false
+                local okS, sq = pcall(function() return exports.bs_factions:LinkedSquadOf(link.id) end)
+                if mySquad and okS and sq and sq.id == mySquad.id then
+                    entry.squad = { name = mySquad.name or 'SQUAD', rank = sq.rankLabel or rankLabel(cfg.squadRankLabels, sq.rankId) }
+                    keep = true
+                end
+                if mine and row and row.faction_id == mine.factionId then
+                    entry.faction = { id = mine.factionId, name = mine.label or mine.short or 'FACTION', short = mine.short, rank = rankLabel(cfg.rankLabels, row.rank) }
+                    keep = true
+                end
+                if keep then out.mates[#out.mates + 1] = entry end
             end
         end
     end

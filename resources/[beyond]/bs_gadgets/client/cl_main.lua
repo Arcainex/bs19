@@ -5,7 +5,7 @@ local G = GadgetCl
 
 G.Loadout = {}
 G.Busy = false          -- placing or flying: keys ignored
-G.Stops = {}            -- kind -> function(reason) that tears that gadget down locally
+G.Stops = {}            -- kind to function(reason) that tears that gadget down locally
 G.Spawned = {}          -- every entity we made, for resource stop
 G.Blips = {}
 
@@ -95,7 +95,7 @@ function G.Los(a, b, ignore)
     return hit == 0 or hit == false
 end
 
--------------------------------------------------------------------- keys
+-- keys
 
 local function keyLabels()
     local out = {}
@@ -136,7 +136,7 @@ CreateThread(function()
     TriggerServerEvent('bs:gadgets:request')
 end)
 
---------------------------------------------------------------- dispatch
+-- dispatch
 
 RegisterNetEvent('bs:gadgets:begin', function(item, t, token)
     if type(t) ~= 'table' or G.Busy then TriggerServerEvent('bs:gadgets:cancel'); return end
@@ -180,7 +180,7 @@ RegisterNetEvent('bs:gadgets:active', function(list)
     G.Nui({ action = 'active', list = type(list) == 'table' and list or {} })
 end)
 
--------------------------------------------------------------------- heal
+-- heal
 
 RegisterNetEvent('bs:gadgets:heal', function(amount)
     local ped = PlayerPedId()
@@ -189,7 +189,7 @@ RegisterNetEvent('bs:gadgets:heal', function(amount)
     if hp < max then SetEntityHealth(ped, math.min(max, hp + (tonumber(amount) or 0))) end
 end)
 
--------------------------------------------------------------------- pings
+-- pings
 
 RegisterNetEvent('bs:gadgets:pinged', function(pos, name, secs)
     if type(pos) ~= 'vector3' and type(pos) ~= 'table' then return end
@@ -205,7 +205,7 @@ RegisterNetEvent('bs:gadgets:pinged', function(pos, name, secs)
     end)
 end)
 
------------------------------------------------------------------- cleanup
+-- cleanup
 
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end

@@ -2,11 +2,9 @@
 -- 1. Re-broadcasts bs_core hooks as ESX events (esx:playerLoaded, esx:onPlayerLogout).
 -- 2. Provides the getSharedObject export for scripts that can't add a shared_script line.
 
---------------------------------------------------------------------------------
 -- Standard event re-broadcast
---------------------------------------------------------------------------------
 
--- The hook payload is a serialised copy across resources (fields only, no methods). It only identifies who, then an xPlayer is built via ESX.GetPlayerFromId.
+-- The hook payload is a serialised copy across resources (fields only, no methods).
 AddEventHandler('bs:hook:player:loaded', function(player)
     local src = tonumber(type(player) == 'table' and player.source)
     if not src then return end
@@ -14,7 +12,12 @@ AddEventHandler('bs:hook:player:loaded', function(player)
     local xPlayer = ESX.GetPlayerFromId(src)
     if not xPlayer then return end
 
-    TriggerClientEvent('esx:playerLoaded', src, xPlayer, false)
+    local summary = exports.bs_core:GetPlayerSummary(src)
+    TriggerClientEvent('esx:playerLoaded', src, {
+        identifier = xPlayer.getIdentifier(),
+        firstName = summary.firstName, lastName = summary.lastName,
+        accounts = xPlayer.getAccounts(), job = xPlayer.getJob(),
+    }, false)
     TriggerEvent('esx:playerLoaded', src, xPlayer)
 end)
 
@@ -37,16 +40,13 @@ AddEventHandler('bs:hook:player:money', function(player, account, amount, reason
         { name = (account == 'bank') and 'bank' or 'money', money = xPlayer.getAccount(account == 'bank' and 'bank' or 'money').money })
 end)
 
---------------------------------------------------------------------------------
 -- Fallback export path - see shared/sh_esx.lua's header comment
---------------------------------------------------------------------------------
 
 exports('getSharedObject', function() return ESX end)
 
 
 CreateThread(function()
-    -- Waits one tick so bs_core has had the chance to finish its own
-    -- resource-start registration first.
+    -- Waits one tick so bs_core has had the chance to finish its own resource-start registration first.
     Wait(0)
     local ok = pcall(function() return exports.bs_core:RegisterModule('esx_bridge', { side = 'server', version = '0.1.0', ready = true }) end)
     if not ok then

@@ -111,7 +111,7 @@
     </div>
 </div>
 
-<!-- Objective tracker. Outside #root on purpose: #root is the trader menu and is mostly hidden. pointer-events:none so it never eats clicks meant for the world. -->
+<!-- Objective tracker: outside #root: #root is the trader menu and is mostly hidden. pointer-events:none so it -->
 <div id="tracker" class="hidden">
     <div class="tkhead">
         <span class="tktitle" data-i18n="ui.contracts">Contracts</span>
@@ -186,7 +186,7 @@
                     title="Swing the camera round to their back" data-i18n-attr="title:ui.swing_the_camera_round_to_their_back">&#8635;</button>
         </div>
 
-        <!-- Poses. Sleeve clipping only shows when arms are raised. Filled from Wardrobe.Poses; a pose whose clip does not resolve removes its own button. -->
+        <!-- Poses: sleeve clipping only shows when arms are raised. -->
         <div class="wdposes" id="wdPoses"></div>
 
         <div class="wdturn wdturn--hint">
@@ -200,7 +200,7 @@
     </footer>
 </div>
 
-<!-- /traderdebug. Separate root with a deliberate staff-tool look so it is not mistaken for the player panel. See client/cl_debug.lua and js/debug.js. -->
+<!-- /traderdebug: separate root with a deliberate staff-tool look so it is not mistaken for the player panel. -->
 <div id="dbgRoot" class="hidden">
     <div id="dbgPanel">
 
@@ -270,7 +270,7 @@
                             <span data-i18n="ui.dbg_sells_clothes">sells clothes (adds "Change Clothes" to their ALT menu)</span>
                         </label>
                     </div>
-                    <!-- No HTML thumbnail on purpose; preview is a real ped next to you (see showPreview() in client/cl_debug.lua). -->
+                    <!-- No HTML thumbnail; preview is a real ped next to you (see showPreview() in client/cl_debug.lua). -->
                     <div class="dbgHint" id="fPreviewHint"></div>
 
                     <div class="dbgSubhead"><span data-i18n="ui.dbg_access">Access and pricing</span></div>
@@ -405,7 +405,7 @@
     </div>
 </template>
 
-<!-- Shared item icon set from bs_ui, loaded cross-resource like bs_inventory/bs_menu/bs_admin. Must load before app.js, which reads window.BSIcons at render time. -->
+<!-- Shared item icon set from bs_ui, loaded cross-resource like bs_inventory/bs_menu/bs_admin. -->
 <script src="nui://bs_ui/html/js/icons.js?v=20260930h"></script>
 <script src="js/app.js?v=20261016b"></script>
 <!-- Garment names from the game data (generated; see the file's own header), loaded before the panel that reads them. -->

@@ -1,4 +1,4 @@
-/* No backdrop-filter anywhere in this project. NUI is composited over the game and has no game pixels to sample, so backdrop-filter: blur() paints an opaque black slab. Real blur comes from the game side (TriggerScreenblurFadeIn). */
+/* No backdrop-filter anywhere in this project. */
 
 /* interactions - the dot, its option list and the search bar */
 
@@ -158,7 +158,7 @@ html, body {
     background: linear-gradient(90deg, var(--blood), var(--amber));
 }
 
-/* Readability in bright light without a background: text carries its own dark halo (tight opaque edge plus a wider soft one) and SVG icons get a drop-shadow, so nothing paints a rectangle. Applied to the whole document and inherited, so new elements are readable by default. */
+/* Readability in bright light without a background: text carries its own dark halo */
 :root {
     --bs-halo:
         0 0 1px rgba(0, 0, 0, 1),
@@ -189,3 +189,21 @@ svg, .icon, .ico { filter: var(--bs-ink-shadow); }
 
 /* Hairline rules and borders vanish over bright ground; give them an edge. */
 hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
+
+
+/* Target surfaces follow the active pack and optional personal palette. */
+:root {
+    --soot: rgb(var(--t-bg,10,10,9)); --bone: rgb(var(--t-ink,240,235,221));
+    --dust: rgb(var(--t-dim,168,162,147)); --amber: rgb(var(--t-acc,224,140,70));
+    --blood: rgb(var(--t-bad,180,65,50)); --mono: var(--t-f-ui,'Courier New',monospace);
+}
+.options { transform:translateY(-50%) scale(var(--target-scale,1)); transform-origin:left center; max-width:min(440px,42vw); }
+.opt { background:rgba(var(--t-bg,10,10,9),var(--target-opacity,.94)); color:var(--bone); letter-spacing:.05em; text-shadow:none; border-color:rgba(var(--t-ink,240,235,221),.2); }
+.opt.is-active { background:rgb(var(--t-panel,24,23,20)); color:var(--bone); border-color:var(--amber); border-left-width:3px; box-shadow:inset 3px 0 var(--amber); }
+.opt__hint { color:var(--dust); } .opt svg { filter:none; flex-shrink:0; }
+.opt__key { color:var(--bone); border-color:var(--dust); }
+html[data-target-style='compact'] .opt { padding:.32rem .55rem; font-size:.85rem; }
+html[data-target-style='bracket'] .opt { border-width:0 0 0 2px; border-left-color:var(--dust); }
+html[data-target-style='bracket'] .opt.is-active { border-left-color:var(--amber); box-shadow:inset 0 -1px var(--amber); }
+.progress {background:rgba(var(--t-bg,10,10,9),.96);color:var(--bone);text-shadow:none;}
+@media(prefers-reduced-motion:reduce){.options,.dot__ring{animation:none}.opt{transition:none}}

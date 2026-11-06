@@ -4,12 +4,15 @@
 Weapons = {}
 
 Weapons.Settings = {
+    editorEnabled = true,
     -- O. Opens the wheel for whatever is in your hands.
     openKey     = 'O',
     openCommand = 'weaponwheel',
 
     -- How long fitting or removing takes, ms.
     workTime    = 1800,
+    -- Same, from the O attachment view. 0 = the part goes on the moment you drop it.
+    viewWorkTime = 0,
 
     -- You cannot work on a weapon while running, in a vehicle, or in a fight you are losing
     requireStill = true,
@@ -185,6 +188,7 @@ Weapons.Known = {
     'WEAPON_BULLPUPSHOTGUN', 'WEAPON_MUSKET', 'WEAPON_DBSHOTGUN',
     'WEAPON_SNIPERRIFLE', 'WEAPON_HEAVYSNIPER', 'WEAPON_MARKSMANRIFLE',
     'WEAPON_MG', 'WEAPON_COMBATMG',
+    'WEAPON_COMBATPDW', 'WEAPON_MILITARYRIFLE', 'WEAPON_HEAVYSHOTGUN',
     'WEAPON_BAT', 'WEAPON_CROWBAR', 'WEAPON_HAMMER', 'WEAPON_GOLFCLUB',
     'WEAPON_KNIFE', 'WEAPON_MACHETE', 'WEAPON_HATCHET', 'WEAPON_BATTLEAXE',
     'WEAPON_WRENCH', 'WEAPON_POOLCUE', 'WEAPON_SWITCHBLADE', 'WEAPON_DAGGER',
@@ -283,6 +287,31 @@ Weapons.Preview = {
 
     -- Hard ceiling on camera time in ms. A last-resort guard so a scripted camera can never stay up.
     maxHold  = 90000,
+
+    -- O attachment view: front three-quarter camera facing the player, aimed at the gun in their hands.
+    -- yaw: degrees from straight in front toward the weapon (right) side. pitch: degrees above the gun.
+    -- Zoom 1 fits the whole weapon between the side panels; maxZoom is how far out the wheel can go.
+    -- Uses the ped's own heading, so it frames the same way in first person.
+    shoulder = {
+        yaw = 38.0, pitch = 12.0, minPitch = -15.0, maxPitch = 60.0, orbitLimit = 75.0,
+        fov = 38.0, margin = 1.08, usableWidth = 0.55, minDistance = 0.55, maxZoom = 1.9,
+        follow = 0.22,
+    },
+}
+
+-- O menu sounds: 'gear' = the game's weapon-mod clicks on fit and remove, 'off' = silent.
+-- (A separate setting, not Weapons.Attachments.sounds: that table is the attachment list itself.)
+Weapons.AttachmentSounds = 'gear'
+
+-- Experimental: left hand onto a fitted foregrip (third person), applied to every nearby player holding one.
+-- ikPart is the SET_IK_TARGET arm index; offset is metres from the weapon's WAPGrip bone.
+Weapons.GripPose = {
+    enabled = true,
+    ikPart = 3,
+    offset = { x = 0.0, y = 0.0, z = -0.035 },
+    blendIn = 180, blendOut = 180,
+    distance = 40.0,
+    skipSprint = true,
 }
 
 -- Noise: what a muzzle device does
@@ -337,6 +366,10 @@ Weapons.Magazines = {
     -- machine guns
     WEAPON_MG            = { base = 54, ext = 81, ammo = 'ammo_rifle' },            -- GTA 54/100
     WEAPON_COMBATMG      = { base = 100, ext = 150, ammo = 'ammo_rifle' },          -- GTA 100/200
+    -- Dark Zone named weapons (bs_darkzone)
+    WEAPON_COMBATPDW     = { base = 30, ext = 45, ammo = 'ammo_pistol' },           -- GTA 30/60
+    WEAPON_MILITARYRIFLE = { base = 30, ext = 45, ammo = 'ammo_rifle' },            -- GTA 30/45
+    WEAPON_HEAVYSHOTGUN  = { base = 6,  ext = 12, ammo = 'ammo_shotgun' },          -- GTA 6/12
 }
 
 -- Mag size from config for a weapon name and its fitted set ({ mag = 'extmag' })
@@ -347,3 +380,237 @@ function Weapons.MagSizeFor(weaponName, fitted)
     if fitted and fitted.mag == 'extmag' and m.ext then return m.ext end
     return m.base
 end
+
+-- Dark Zone named weapons (bs_darkzone). A pair a gun does not take is never offered by the wheel.
+do
+    local add = {
+        suppressor = { WEAPON_COMBATPDW = 'COMPONENT_AT_AR_SUPP', WEAPON_MILITARYRIFLE = 'COMPONENT_AT_AR_SUPP', WEAPON_HEAVYSHOTGUN = 'COMPONENT_AT_AR_SUPP_02' },
+        scope      = { WEAPON_COMBATPDW = 'COMPONENT_AT_SCOPE_SMALL', WEAPON_MILITARYRIFLE = 'COMPONENT_AT_SCOPE_SMALL' },
+        grip       = { WEAPON_COMBATPDW = 'COMPONENT_AT_AR_AFGRIP', WEAPON_HEAVYSHOTGUN = 'COMPONENT_AT_AR_AFGRIP' },
+        flashlight = { WEAPON_COMBATPDW = 'COMPONENT_AT_AR_FLSH', WEAPON_MILITARYRIFLE = 'COMPONENT_AT_AR_FLSH', WEAPON_HEAVYSHOTGUN = 'COMPONENT_AT_AR_FLSH' },
+        extmag     = { WEAPON_COMBATPDW = 'COMPONENT_COMBATPDW_CLIP_02', WEAPON_MILITARYRIFLE = 'COMPONENT_MILITARYRIFLE_CLIP_02', WEAPON_HEAVYSHOTGUN = 'COMPONENT_HEAVYSHOTGUN_CLIP_02' },
+    }
+    for att, list in pairs(add) do
+        local a = Weapons.Attachments[att]
+        if a then
+            a.components = a.components or {}
+            for w, c in pairs(list) do if a.components[w] == nil then a.components[w] = c end end
+        end
+    end
+end
+
+-- Native attachment choices for the expanded firearm catalogue.
+do
+    Weapons.Attachments.muzzle_brake = {item='att_muzzle_brake',label='Muzzle brake',slot='muzzle',icon='silencer',blurb='A native muzzle brake or compensator for supported weapons.',components={}}
+    Weapons.Attachments.reflex = {item='att_reflex',label='Reflex sight',slot='scope',icon='scope',blurb='An open sight for supported Mk II weapons.',components={}}
+    Weapons.Attachments.scope_long = {item='att_scope_long',label='Long-range scope',slot='scope',icon='scope',blurb='Higher magnification where the weapon supports a separate scope.',components={}}
+    local components = {
+        suppressor = {
+            WEAPON_ADVANCEDRIFLE = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_APPISTOL = 'COMPONENT_AT_PI_SUPP',
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_ASSAULTSHOTGUN = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_ASSAULTSMG = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_BULLPUPRIFLE = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_BULLPUPSHOTGUN = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_HEAVYPISTOL = 'COMPONENT_AT_PI_SUPP',
+            WEAPON_HEAVYSHOTGUN = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_HEAVYSNIPER_MK2 = 'COMPONENT_AT_SR_SUPP_03',
+            WEAPON_MACHINEPISTOL = 'COMPONENT_AT_PI_SUPP',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_MICROSMG = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_MILITARYRIFLE = 'COMPONENT_AT_AR_SUPP',
+            WEAPON_PISTOL50 = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_PISTOL_MK2 = 'COMPONENT_AT_PI_SUPP_02',
+            WEAPON_PUMPSHOTGUN_MK2 = 'COMPONENT_AT_SR_SUPP_03',
+            WEAPON_SMG_MK2 = 'COMPONENT_AT_PI_SUPP',
+            WEAPON_SNSPISTOL_MK2 = 'COMPONENT_AT_PI_SUPP_02',
+            WEAPON_SPECIALCARBINE = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_AT_AR_SUPP_02',
+            WEAPON_VINTAGEPISTOL = 'COMPONENT_AT_PI_SUPP',
+        },
+        scope = {
+            WEAPON_ADVANCEDRIFLE = 'COMPONENT_AT_SCOPE_SMALL',
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_AT_SCOPE_MEDIUM_MK2',
+            WEAPON_ASSAULTSMG = 'COMPONENT_AT_SCOPE_MACRO',
+            WEAPON_BULLPUPRIFLE = 'COMPONENT_AT_SCOPE_SMALL',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_AT_SCOPE_SMALL_MK2',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_AT_SCOPE_MEDIUM_MK2',
+            WEAPON_COMBATMG = 'COMPONENT_AT_SCOPE_MEDIUM',
+            WEAPON_COMBATMG_MK2 = 'COMPONENT_AT_SCOPE_MEDIUM_MK2',
+            WEAPON_COMBATPDW = 'COMPONENT_AT_SCOPE_SMALL',
+            WEAPON_HEAVYSNIPER = 'COMPONENT_AT_SCOPE_LARGE',
+            WEAPON_HEAVYSNIPER_MK2 = 'COMPONENT_AT_SCOPE_LARGE_MK2',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_SCOPE_MEDIUM_MK2',
+            WEAPON_MICROSMG = 'COMPONENT_AT_SCOPE_MACRO',
+            WEAPON_MILITARYRIFLE = 'COMPONENT_AT_SCOPE_SMALL',
+            WEAPON_PUMPSHOTGUN_MK2 = 'COMPONENT_AT_SCOPE_SMALL_MK2',
+            WEAPON_REVOLVER_MK2 = 'COMPONENT_AT_SCOPE_MACRO_MK2',
+            WEAPON_SMG_MK2 = 'COMPONENT_AT_SCOPE_SMALL_SMG_MK2',
+            WEAPON_SPECIALCARBINE = 'COMPONENT_AT_SCOPE_MEDIUM',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_AT_SCOPE_MEDIUM_MK2',
+        },
+        grip = {
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_AT_AR_AFGRIP_02',
+            WEAPON_ASSAULTSHOTGUN = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_BULLPUPRIFLE = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_AT_AR_AFGRIP_02',
+            WEAPON_BULLPUPSHOTGUN = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_AT_AR_AFGRIP_02',
+            WEAPON_COMBATMG = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_COMBATMG_MK2 = 'COMPONENT_AT_AR_AFGRIP_02',
+            WEAPON_COMBATPDW = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_HEAVYSHOTGUN = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_AR_AFGRIP_02',
+            WEAPON_SPECIALCARBINE = 'COMPONENT_AT_AR_AFGRIP',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_AT_AR_AFGRIP_02',
+        },
+        flashlight = {
+            WEAPON_ADVANCEDRIFLE = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_APPISTOL = 'COMPONENT_AT_PI_FLSH',
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_ASSAULTSHOTGUN = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_ASSAULTSMG = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_BULLPUPRIFLE = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_BULLPUPSHOTGUN = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_COMBATPDW = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_HEAVYPISTOL = 'COMPONENT_AT_PI_FLSH',
+            WEAPON_HEAVYSHOTGUN = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_MICROSMG = 'COMPONENT_AT_PI_FLSH',
+            WEAPON_MILITARYRIFLE = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_PISTOL50 = 'COMPONENT_AT_PI_FLSH',
+            WEAPON_PISTOL_MK2 = 'COMPONENT_AT_PI_FLSH_02',
+            WEAPON_PUMPSHOTGUN_MK2 = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_REVOLVER_MK2 = 'COMPONENT_AT_PI_FLSH',
+            WEAPON_SMG_MK2 = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_SNSPISTOL_MK2 = 'COMPONENT_AT_PI_FLSH_03',
+            WEAPON_SPECIALCARBINE = 'COMPONENT_AT_AR_FLSH',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_AT_AR_FLSH',
+        },
+        extmag = {
+            WEAPON_ADVANCEDRIFLE = 'COMPONENT_ADVANCEDRIFLE_CLIP_02',
+            WEAPON_APPISTOL = 'COMPONENT_APPISTOL_CLIP_02',
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_ASSAULTRIFLE_MK2_CLIP_02',
+            WEAPON_ASSAULTSHOTGUN = 'COMPONENT_ASSAULTSHOTGUN_CLIP_02',
+            WEAPON_ASSAULTSMG = 'COMPONENT_ASSAULTSMG_CLIP_02',
+            WEAPON_BULLPUPRIFLE = 'COMPONENT_BULLPUPRIFLE_CLIP_02',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_BULLPUPRIFLE_MK2_CLIP_02',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_CARBINERIFLE_MK2_CLIP_02',
+            WEAPON_COMBATMG = 'COMPONENT_COMBATMG_CLIP_02',
+            WEAPON_COMBATMG_MK2 = 'COMPONENT_COMBATMG_MK2_CLIP_02',
+            WEAPON_COMBATPDW = 'COMPONENT_COMBATPDW_CLIP_02',
+            WEAPON_COMPACTRIFLE = 'COMPONENT_COMPACTRIFLE_CLIP_02',
+            WEAPON_GUSENBERG = 'COMPONENT_GUSENBERG_CLIP_02',
+            WEAPON_HEAVYPISTOL = 'COMPONENT_HEAVYPISTOL_CLIP_02',
+            WEAPON_HEAVYSHOTGUN = 'COMPONENT_HEAVYSHOTGUN_CLIP_02',
+            WEAPON_HEAVYSNIPER_MK2 = 'COMPONENT_HEAVYSNIPER_MK2_CLIP_02',
+            WEAPON_MACHINEPISTOL = 'COMPONENT_MACHINEPISTOL_CLIP_02',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_MARKSMANRIFLE_MK2_CLIP_02',
+            WEAPON_MG = 'COMPONENT_MG_CLIP_02',
+            WEAPON_MICROSMG = 'COMPONENT_MICROSMG_CLIP_02',
+            WEAPON_MILITARYRIFLE = 'COMPONENT_MILITARYRIFLE_CLIP_02',
+            WEAPON_PISTOL50 = 'COMPONENT_PISTOL50_CLIP_02',
+            WEAPON_PISTOL_MK2 = 'COMPONENT_PISTOL_MK2_CLIP_02',
+            WEAPON_SMG_MK2 = 'COMPONENT_SMG_MK2_CLIP_02',
+            WEAPON_SNSPISTOL_MK2 = 'COMPONENT_SNSPISTOL_MK2_CLIP_02',
+            WEAPON_SPECIALCARBINE = 'COMPONENT_SPECIALCARBINE_CLIP_02',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_SPECIALCARBINE_MK2_CLIP_02',
+            WEAPON_VINTAGEPISTOL = 'COMPONENT_VINTAGEPISTOL_CLIP_02',
+        },
+        muzzle_brake = {
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_AT_MUZZLE_01',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_AT_MUZZLE_01',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_AT_MUZZLE_01',
+            WEAPON_COMBATMG_MK2 = 'COMPONENT_AT_MUZZLE_01',
+            WEAPON_HEAVYSNIPER_MK2 = 'COMPONENT_AT_MUZZLE_08',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_MUZZLE_01',
+            WEAPON_PISTOL_MK2 = 'COMPONENT_AT_PI_COMP',
+            WEAPON_PUMPSHOTGUN_MK2 = 'COMPONENT_AT_MUZZLE_08',
+            WEAPON_REVOLVER_MK2 = 'COMPONENT_AT_PI_COMP_03',
+            WEAPON_SMG_MK2 = 'COMPONENT_AT_MUZZLE_01',
+            WEAPON_SNSPISTOL_MK2 = 'COMPONENT_AT_PI_COMP_02',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_AT_MUZZLE_01',
+        },
+        reflex = {
+            WEAPON_ASSAULTRIFLE_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_BULLPUPRIFLE_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_CARBINERIFLE_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_COMBATMG_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_PISTOL_MK2 = 'COMPONENT_AT_PI_RAIL',
+            WEAPON_PUMPSHOTGUN_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_REVOLVER_MK2 = 'COMPONENT_AT_SIGHTS',
+            WEAPON_SMG_MK2 = 'COMPONENT_AT_SIGHTS_SMG',
+            WEAPON_SNSPISTOL_MK2 = 'COMPONENT_AT_PI_RAIL_02',
+            WEAPON_SPECIALCARBINE_MK2 = 'COMPONENT_AT_SIGHTS',
+        },
+        scope_long = {
+            WEAPON_HEAVYSNIPER = 'COMPONENT_AT_SCOPE_MAX',
+            WEAPON_HEAVYSNIPER_MK2 = 'COMPONENT_AT_SCOPE_MAX',
+            WEAPON_MARKSMANRIFLE_MK2 = 'COMPONENT_AT_SCOPE_LARGE_FIXED_ZOOM_MK2',
+        },
+    }
+    for id,mapping in pairs(components)do
+        for weapon,component in pairs(mapping)do Weapons.Attachments[id].components[weapon]=component end
+    end
+    local known={};for _,weapon in ipairs(Weapons.Known)do known[weapon]=true end
+    local magazines={
+        WEAPON_GUSENBERG = {base=30,ext=50,ammo='ammo_pistol'},
+        WEAPON_PISTOL_MK2 = {base=12,ext=16,ammo='ammo_pistol'},
+        WEAPON_SNSPISTOL_MK2 = {base=6,ext=12,ammo='ammo_pistol'},
+        WEAPON_REVOLVER_MK2 = {base=6,ammo='ammo_magnum'},
+        WEAPON_SMG_MK2 = {base=30,ext=45,ammo='ammo_pistol'},
+        WEAPON_ASSAULTRIFLE_MK2 = {base=30,ext=45,ammo='ammo_rifle'},
+        WEAPON_CARBINERIFLE_MK2 = {base=30,ext=45,ammo='ammo_rifle'},
+        WEAPON_SPECIALCARBINE_MK2 = {base=30,ext=45,ammo='ammo_rifle'},
+        WEAPON_BULLPUPRIFLE_MK2 = {base=30,ext=45,ammo='ammo_rifle'},
+        WEAPON_COMBATMG_MK2 = {base=100,ext=150,ammo='ammo_rifle'},
+        WEAPON_PUMPSHOTGUN_MK2 = {base=8,ammo='ammo_shotgun'},
+        WEAPON_HEAVYSNIPER_MK2 = {base=6,ext=8,ammo='ammo_rifle'},
+        WEAPON_MARKSMANRIFLE_MK2 = {base=8,ext=12,ammo='ammo_rifle'},
+    }
+    for weapon,definition in pairs(magazines)do
+        Weapons.Magazines[weapon]=definition
+        if not known[weapon]then Weapons.Known[#Weapons.Known+1]=weapon;known[weapon]=true end
+    end
+    Weapons.Effects.muzzle_brake={}
+    Weapons.Effects.reflex={zoom=1.0}
+    Weapons.Effects.scope_long={zoom=1.0}
+end
+
+-- Optics and grips also remain available on the original firearm catalogue.
+do
+    local add={
+        scope={WEAPON_MG='COMPONENT_AT_SCOPE_SMALL_02'},
+        scope_long={WEAPON_SNIPERRIFLE='COMPONENT_AT_SCOPE_MAX'},
+    }
+    for id,mapping in pairs(add)do for weapon,component in pairs(mapping)do Weapons.Attachments[id].components[weapon]=component end end
+end
+
+-- Customize Weapon workbench backdrops. A place is streamed in behind the gun, thrown out of focus (camera depth of
+-- field) and darkened by a see-through veil behind the weapon, so only a dark hint of it shows.
+-- camera / lookAt: where the backdrop camera stands and what it looks at. darkness: 0 (none) to 1 (black).
+-- blur: depth-of-field strength 0-1. interior = true pins the interior at lookAt while open.
+-- solid = plain black. capture = the older blurred snapshot of where you stand.
+-- Coordinates are vanilla GTA spots; move them to places on your own map.
+Weapons.Workbench = {
+    backdrop = 'workshop',
+    backdrops = {
+        { id = 'workshop',  label = 'Workshop',
+          camera = { x = -338.6, y = -136.9, z = 39.6 }, lookAt = { x = -330.0, y = -139.5, z = 38.9 },
+          interior = true, darkness = 0.72, blur = 1.0 },
+        { id = 'grapeseed', label = 'Grapeseed street',
+          camera = { x = 1666.0, y = 4857.8, z = 43.2 }, lookAt = { x = 1667.4, y = 4874.0, z = 42.4 },
+          darkness = 0.78, blur = 1.0 },
+        { id = 'bunker',    label = 'Bunker',
+          camera = { x = -2145.5, y = 3146.0, z = 33.6 }, lookAt = { x = -2135.0, y = 3156.0, z = 33.0 },
+          darkness = 0.80, blur = 1.0 },
+        { id = 'here',      label = 'Where I stand', capture = true },
+        { id = 'black',     label = 'Black', solid = true },
+    },
+}

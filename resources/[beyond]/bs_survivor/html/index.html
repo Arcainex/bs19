@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/shared/theme.js?v=20261027t2"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="nui://bs_ui/html/js/i18n.js?v=20261027"></script>
+<script src="nui://bs_ui/html/shared/scale.js?v=20261027"></script>
+<script src="nui://bs_ui/html/shared/palette.js?v=20261027"></script>
+<title>Survivor</title>
+<link rel="stylesheet" href="nui://bs_ui/html/css/fonts.css?v=20261027">
+<link rel="stylesheet" href="style.css?v=20261027t2">
+</head>
+<body>
+<div id="veil" class="veil" hidden></div>
+<main id="screen" class="sv" hidden>
+    <!-- Left: the dossier card. Photo, name, class, level and what the class gives you. -->
+    <aside class="sv-id">
+        <figure class="sv-photo">
+            <svg class="sv-photo__ghost" viewBox="0 0 200 240" aria-hidden="true"><path d="M100 34c22 0 38 19 38 43s-16 45-38 45-38-21-38-45 16-43 38-43zM22 240c2-58 30-96 78-96s76 38 78 96z"/></svg>
+            <img id="portrait" alt="" hidden>
+            <span class="sv-photo__tape" aria-hidden="true"></span>
+            <figcaption id="classTag" class="sv-stamp sv-stamp--class">-</figcaption>
+        </figure>
+        <h1 id="name" class="sv-name">-</h1>
+
+        <div class="sv-level">
+            <div class="sv-level__num"><span data-i18n="sv.level">Level</span><b id="level">-</b></div>
+            <div class="sv-level__side">
+                <div class="sv-xp"><i id="xpbar"></i></div>
+                <small id="xp">-</small>
+            </div>
+        </div>
+        <div class="sv-points"><b id="points">0</b><span data-i18n="sv.points">Skill points</span></div>
+
+        <dl id="baseline" class="sv-spec"></dl>
+    </aside>
+
+    <section class="sv-main">
+        <header class="sv-head">
+            <h2 class="sv-title" data-i18n="sv.title">Survivor</h2>
+            <span id="stamp" class="sv-stamp">-</span>
+            <div class="sv-tools">
+                <button id="refresh" class="sv-btn" data-i18n="sv.refresh">Refresh</button>
+                <button id="close" class="sv-btn sv-btn--x" data-i18n-attr="aria-label:sv.close" aria-label="Close">&#x2715;</button>
+            </div>
+        </header>
+
+        <div class="sv-row">
+            <section class="sv-block sv-block--cond">
+                <h3 class="sv-kicker" data-i18n="sv.condition">Condition</h3>
+                <div id="vitals" class="sv-bars"></div>
+                <p id="warning" class="sv-warn" hidden></p>
+            </section>
+            <section class="sv-block sv-block--rec">
+                <h3 class="sv-kicker" data-i18n="sv.record">Field record</h3>
+                <div id="record" class="sv-record"></div>
+            </section>
+        </div>
+
+        <section class="sv-block sv-block--skills">
+            <h3 class="sv-kicker"><span data-i18n="sv.skills">Skills</span><em id="skillcount"></em></h3>
+            <div id="skills" class="sv-skills"></div>
+        </section>
+
+        <section class="sv-block">
+            <h3 class="sv-kicker" data-i18n="sv.perks">Perk effects</h3>
+            <div id="effects" class="sv-effects"></div>
+        </section>
+    </section>
+
+    <div style="padding:8px 22px"><button id="openSurvivorLink" style="padding:8px 14px">Survivor Link</button></div>
+    <footer class="sv-foot"><span id="updated"></span><span data-i18n="sv.close_hint">ESC to close</span></footer>
+</main>
+<script src="app.js?v=20261027a"></script>
+</body>
+</html>

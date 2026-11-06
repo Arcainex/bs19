@@ -3,7 +3,7 @@ local Registry, State, Invites, BankBalances, Ready = {}, {}, {}, {}, false
 local function q(sql,p) return exports.oxmysql:query_async(sql,p or {}) or {} end
 local function one(sql,p) return q(sql,p)[1] end
 local function x(sql,p) return exports.oxmysql:execute_async(sql,p or {}) end
--- Cross-resource player exports are data snapshots; their Lua methods do not travel. Keep the snapshot for identity only and use the bs_core money exports for cash.
+-- Cross-resource player exports are data snapshots; their Lua methods do not travel.
 local function p(src) return exports.bs_core:GetPlayer(tonumber(src)) end
 local function playerSummary(src) return exports.bs_core:GetPlayerSummary(tonumber(src)) end
 local ranksOf, rankIdx, rankLabel, rankHas
@@ -51,7 +51,7 @@ local function directory()
  for _,v in ipairs(rows) do
   local faction=Registry[v.faction_id]
   if faction then
-   local d=byId[v.faction_id] or {id=faction.id,label=faction.label,short=faction.short,description=faction.description or '',logo=faction.logo,members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={}}
+   local d=byId[v.faction_id] or {id=faction.id,label=faction.label,short=faction.short,description=faction.description or '',logo=faction.logo,emblem=FactionEmblem and FactionEmblem(faction.id),isConfig=faction.config,members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={}}
    byId[v.faction_id]=d
    local zombies=math.max(0,tonumber(v.zombie_kills) or 0);local survivors=math.max(0,tonumber(v.player_kills) or 0);local xp=math.max(0,tonumber(v.xp) or 0);local level=math.max(1,tonumber(v.level) or 1)
    local score=zombies+(survivors*10)+math.floor(xp/100)+level
@@ -61,7 +61,7 @@ local function directory()
  end
  local out={}
  -- Vanilla factions are always listed, even with nobody in them.
- for _,fid in ipairs(Factions.Order or {}) do local f=Registry[fid]; if f and f.config and not byId[fid] then byId[fid]={id=f.id,label=f.label,short=f.short,description=f.description or '',logo=f.logo,members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={}} end end
+ for _,fid in ipairs(Factions.Order or {}) do local f=Registry[fid]; if f and f.config and not byId[fid] then byId[fid]={id=f.id,label=f.label,short=f.short,description=f.description or '',logo=f.logo,emblem=FactionEmblem and FactionEmblem(f.id),isConfig=true,members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={}} end end
  for _,d in pairs(byId) do
   if d.members>0 or (Registry[d.id] and Registry[d.id].config) then
    table.sort(d.memberList,function(a,b) local i,j=rankIdx(d.id,a.rank),rankIdx(d.id,b.rank); if i~=j then return i<j end; return a.score>b.score end)
@@ -73,14 +73,14 @@ local function directory()
 end
 
 local function adminDirectory(public)
- -- Never mutate the public ranking (score-sorted, empty factions excluded). Admin management gets its own copy plus empty vanilla factions.
+ -- Never mutate the public ranking (score-sorted, empty factions excluded).
  local out,known={},{}
  for _,v in ipairs(public) do
-  local copy={id=v.id,label=v.label,short=v.short,description=v.description,logo=v.logo,members=v.members,reputation=v.reputation,zombieKills=v.zombieKills,survivorKills=v.survivorKills,xp=v.xp,memberList=v.memberList,isConfig=v.isConfig}
+  local copy={id=v.id,label=v.label,short=v.short,description=v.description,logo=v.logo,emblem=v.emblem,members=v.members,reputation=v.reputation,zombieKills=v.zombieKills,survivorKills=v.survivorKills,xp=v.xp,memberList=v.memberList,isConfig=v.isConfig}
   out[#out+1]=copy;known[copy.id]=copy
  end
  for id,f in pairs(Registry) do
-  if not known[id] then out[#out+1]={id=id,label=f.label,short=f.short,description=f.description or '',logo=f.logo,members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={},isConfig=f.config}
+  if not known[id] then out[#out+1]={id=id,label=f.label,short=f.short,description=f.description or '',logo=f.logo,emblem=FactionEmblem and FactionEmblem(id),members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={},isConfig=f.config}
   else known[id].isConfig=f.config end
  end
  table.sort(out,function(a,b) if a.isConfig~=b.isConfig then return a.isConfig end return a.label<b.label end)
@@ -92,11 +92,8 @@ local function sanctioned(id,effect) local ok,r=pcall(function() return exports.
 -- Per-player sanctions (bs_faction_bases/sv_sanctions.lua). failOpen for soft effects.
 local function psanctioned(cid,effect,failOpen) local ok,r=pcall(function() return exports.bs_faction_bases:PlayerSanctioned(cid,effect) end);if not ok then return not failOpen end;return r==true end
 
--- Ranks. Each faction has its own ordered list; the first is always 'owner' (the Leader), who holds every
--- permission and can't be moved or deleted. Leaders add, rename, reorder and delete the others, and set
--- what each one may do. Rows live in bs_faction_ranks; the old fixed three (and their bs_faction_rank_perms
--- settings) are copied over the first time a faction is read. Vanilla factions start from Factions.DefaultRanks.
-local PERMS = { 'deposit','withdraw','invite','kick','promote','sanction','build','demolish','storage','jail','squad_manage','skills','raid','jobs' }
+-- Ranks: each faction has its own ordered list; the first is always 'owner' (the Leader)
+local PERMS = { 'deposit','withdraw','invite','kick','promote','sanction','build','demolish','storage','jail','squad_manage','skills','raid','jobs','emblem_edit' }
 local PermSet = {}; for _,k in ipairs(PERMS) do PermSet[k]=true end
 local DefaultPerms = {
  officer = { deposit=true, withdraw=false, invite=true, kick=true, promote=false, sanction=true, build=true, demolish=true, storage=true, jail=true, squad_manage=true, skills=true, raid=true, jobs=true },
@@ -252,7 +249,7 @@ local function panel(src)
  local f=Registry[s.id];if not f then return {ok=false,error=Lp(src, 'fac.faction_data_is_missing')} end
  local details=nil;for _,entry in ipairs(public) do if entry.id==s.id then details=entry;break end end
  details=details or {members=0,reputation=0,zombieKills=0,survivorKills=0,xp=0,memberList={}}
- out.rank=s.rank;out.rankLabel=rankLabel(s.id,s.rank);out.ranks=rankListOf(s.id);out.myPerms=myPerms(s);out.myRankIdx=rankIdx(s.id,s.rank);out.faction={id=f.id,label=f.label,short=f.short,blurb=(f.description and f.description~='' and f.description or 'No faction description has been written yet.'),description=f.description or '',lore=f.config,reputation=details.reputation,bank=treasury(s.id),cash=((summary.accounts or {}).cash or 0),logo=f.logo,scoreboard={members=details.members,zombieKills=details.zombieKills,survivorKills=details.survivorKills,xp=details.xp}}
+ out.rank=s.rank;out.rankLabel=rankLabel(s.id,s.rank);out.ranks=rankListOf(s.id);out.myPerms=myPerms(s);out.myRankIdx=rankIdx(s.id,s.rank);out.faction={id=f.id,label=f.label,short=f.short,blurb=(f.description and f.description~='' and f.description or 'No faction description has been written yet.'),description=f.description or '',lore=f.config,identity=f.config and FactionIdentity and FactionIdentity(f.id) or nil,emblem=FactionEmblem and FactionEmblem(f.id),emblemCustom=f.emblem~=nil,canEditEmblem=(s.rank=='owner' or permOk(s,'emblem_edit')),reputation=details.reputation,bank=treasury(s.id),cash=((summary.accounts or {}).cash or 0),logo=f.logo,scoreboard={members=details.members,zombieKills=details.zombieKills,survivorKills=details.survivorKills,xp=details.xp}}
  for _,m in ipairs(details.memberList or {}) do m.you=m.charId==s.cid;out.members[#out.members+1]=m end
  if permOk(s,'invite') then local ped=GetPlayerPed(src);if ped and ped~=0 then local at=GetEntityCoords(ped);for _,v in ipairs(GetPlayers()) do local t=tonumber(v);local ts=state(t);local tp=GetPlayerPed(t);if t~=src and ts and not ts.id and tp and tp~=0 and #(GetEntityCoords(tp)-at)<=25.0 then out.nearby[#out.nearby+1]={src=t,name=GetPlayerName(t) or 'Survivor'} end end end end
  return out
@@ -382,7 +379,6 @@ BSB.RegisterCallback('factions:ranks:delete',function(src,...)
 end)
 
 -- Promote / kick by character id, so offline members can be managed too.
--- Online targets go through the normal rank()/kick() path; same checks either way.
 local function srcOfChar(cid) for _,v in ipairs(GetPlayers()) do local t=State[tonumber(v)]; if t and t.cid==cid then return tonumber(v) end end end
 local function offlineRow(s,cid)
     if not s or not s.id or not cid or cid==s.cid then return nil end
@@ -517,7 +513,7 @@ CreateThread(function()
     end
 end)
 
--- Faction/squad membership never changes PvP. A safe zone protects a player inside it and anyone that player could shoot from inside.
+-- Faction/squad membership never changes PvP.
 local function inPvpSafeZone(src, zones)
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then return false end
@@ -573,9 +569,7 @@ FactionsCore = {
 }
 
 
--- Vanilla factions (config ones): always open. Joining makes you a Member, leaving starts a
--- cooldown before you can join another vanilla faction, and only an admin can set the Leader
--- (Admin panel -> assign vanilla owner). Player-made factions stay invitation only.
+-- Vanilla factions (config ones): always open.
 local function isVanillaId(id) return id and Registry[id] and Registry[id].config end
 
 local function cooldownLeft(cid)
@@ -622,7 +616,7 @@ local function panelPlus(src)
         local list = {}
         for _, id in ipairs(Factions.Order or {}) do
             local f = Registry[id]
-            if f and f.config then list[#list + 1] = { id = id, label = f.label, short = f.short } end
+            if f and f.config then list[#list + 1] = { id = id, label = f.label, short = f.short, emblem = FactionEmblem and FactionEmblem(id), identity = FactionIdentity and FactionIdentity(id) } end
         end
         r.vanilla = list
         local s = state(src)
@@ -690,4 +684,56 @@ CreateThread(function()
     -- Move every faction onto the rank list now (old fixed ranks are copied over the first time).
     for fid in pairs(Registry) do ranksOf(fid) end
     for _, v in ipairs(GetPlayers()) do load(tonumber(v)) end
+end)
+
+-- Linked survivors keep ordinary character memberships; they never occupy a fake player source.
+local linkedRecruiting = {}
+local function linkedCharacter(src, charId)
+    local ok, link = pcall(function() return exports.bs_survivor_link:GetCompanion(src) end)
+    if not ok or not link or link.id ~= tonumber(charId) or not link.life or link.life.status ~= 'alive' then return nil end
+    local ped = NetworkGetEntityFromNetworkId(link.net or 0)
+    local me = GetPlayerPed(src)
+    if ped == 0 or me == 0 or not DoesEntityExist(ped) or GetEntityRoutingBucket(ped) ~= GetPlayerRoutingBucket(src)
+        or #(GetEntityCoords(ped) - GetEntityCoords(me)) > 25.0 then return nil end
+    local owner = p(src)
+    if not owner then return nil end
+    local char = one('SELECT id,first_name,last_name FROM bs_characters WHERE id=? AND user_id=? AND deleted_at IS NULL LIMIT 1', { tonumber(charId), owner.userId })
+    return char, ped
+end
+exports('GetLinkedFactionSummary', function(charId)
+    if GetInvokingResource() ~= 'bs_survivor_link' then return nil end
+    local m = one('SELECT faction_id,rank FROM bs_faction_members WHERE character_id=? LIMIT 1', { tonumber(charId) })
+    local f = m and Registry[m.faction_id]
+    return m and { factionId=m.faction_id, label=f and f.label or m.faction_id, short=f and f.short, rank=m.rank,
+        rankLabel=rankLabel(m.faction_id,m.rank) } or nil
+end)
+exports('RecruitLinkedCharacter', function(src, charId)
+    src, charId = tonumber(src), tonumber(charId)
+    if GetInvokingResource() ~= 'bs_survivor_link' or not src or not charId or linkedRecruiting[charId] then return {ok=false,error='This survivor is unavailable.'} end
+    linkedRecruiting[charId] = true
+    local ok, result = pcall(function()
+        local s = state(src)
+        if not s or not s.id or not permOk(s,'invite') then return {ok=false,error='Your faction rank cannot invite members.'} end
+        local char, ped = linkedCharacter(src,charId)
+        if not char then return {ok=false,error='Move beside your living linked survivor.'} end
+        local current = one('SELECT faction_id,rank FROM bs_faction_members WHERE character_id=? LIMIT 1',{charId})
+        if current then return {ok=false,error=current.faction_id==s.id and 'This survivor is already in your faction.' or 'This survivor already belongs to another faction.'} end
+        if cooldownLeft(charId)>0 then return {ok=false,error='This survivor is still on a faction rejoin cooldown.'} end
+        local inviter=state(src)
+        local linkedNow=exports.bs_survivor_link:GetCompanion(src)
+        if not inviter or inviter.cid~=s.cid or inviter.id~=s.id or not permOk(inviter,'invite')then return {ok=false,error='Your faction permissions changed.'}end
+        if not linkedNow or linkedNow.id~=charId or not DoesEntityExist(ped)or #(GetEntityCoords(ped)-GetEntityCoords(GetPlayerPed(src)))>25.0 then return {ok=false,error='Your linked survivor moved away.'}end
+        local rank = lowestRank(s.id)
+        x('INSERT INTO bs_faction_members(character_id,faction_id,rank) VALUES(?,?,?)',{charId,s.id,rank})
+        local check = one('SELECT faction_id FROM bs_faction_members WHERE character_id=? LIMIT 1',{charId})
+        if not check or check.faction_id~=s.id then return {ok=false,error='The faction membership could not be saved.'} end
+        if DoesEntityExist(ped) then
+            local f=Registry[s.id]
+            Entity(ped).state:set('bsFactionTag',{tag=f.short,name=f.label,rank=rank,rankLabel=rankLabel(s.id,rank)},true)
+        end
+        return {ok=true,label=Registry[s.id].label,rank=rank}
+    end)
+    linkedRecruiting[charId]=nil
+    if not ok then print('[bs_factions] linked recruitment failed: '..tostring(result));return {ok=false,error='Faction recruitment failed.'}end
+    return result
 end)

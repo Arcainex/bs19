@@ -1,13 +1,9 @@
--- bs_emotes - the emote layer.
--- An animation is loaded, played and cleaned up here. A scenario is handed to the engine (loops properly, brings its own props), which is why resting/working emotes are scenarios.
--- Everything cancels the same way: move (unless upper body), cancel key, damage, or death.
+-- bs_emotes - the emote layer. An animation is loaded, played and cleaned up here.
 
 local Playing = nil     -- { id, upper, dict }
 local cancelHeld = false
 
---------------------------------------------------------------------------------
 -- Lookup
---------------------------------------------------------------------------------
 
 local index = {}
 
@@ -19,9 +15,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Playing
---------------------------------------------------------------------------------
 
 local function dropProps()
     if not Playing or not Playing.props then return end
@@ -126,9 +120,7 @@ local function play(id)
     return true
 end
 
--- Shared with cl_emotemenu.lua (same resource, same Lua state): the menu and
--- the favourites wheel play through exactly this code, so every rule above -
--- vehicle, dead, second press stops - applies to them too.
+-- Shared with cl_emotemenu.lua (same resource, same Lua state): the menu and the favourites wheel play through
 EmoteCore = {
     play    = play,
     stop    = stop,
@@ -136,9 +128,7 @@ EmoteCore = {
     current = function() return Playing and Playing.id or nil end,
 }
 
---------------------------------------------------------------------------------
 -- Cancelling
---------------------------------------------------------------------------------
 
 CreateThread(function()
     while true do
@@ -156,8 +146,7 @@ CreateThread(function()
             elseif not Playing then
                 -- ended by stop() elsewhere during the Wait above
             elseif Emotes.Settings.cancelOnMove and not Playing.upper then
-                -- Check actual movement, not just the keys: cars, walkers and ragdolls can move the ped, and a held key the engine ignores should not cancel.
-                -- A key press is intent (honour it at once) and real speed is fact; either ends a full-body emote.
+                -- Check actual movement, not just the keys: cars, walkers and ragdolls can move the ped
                 local moved = GetEntitySpeed(ped) > 0.4
                     or IsPedRagdoll(ped)
                     or IsControlPressed(0, 32) or IsControlPressed(0, 33)
@@ -254,13 +243,9 @@ AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then stop() end
 end)
 
---------------------------------------------------------------------------------
 -- Exports
---------------------------------------------------------------------------------
 
---- Returns ONE table, never two values: multiple return values do not survive
---- an export call reliably, and a silently dropped error message is worse than
---- a slightly wordier signature.
+--- Returns ONE table, never two values: multiple return values do not survive an export call reliably
 exports('PlayEmote', function(id)
     local ok, err = play(id)
     return { ok = ok and true or false, error = err }

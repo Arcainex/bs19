@@ -1,9 +1,9 @@
--- bs_inventory - hotbar. Five slots on keys 1-5 with a take-out animation. The slot is resolved server-side and the item goes through the normal use path, so the same checks apply as from the bag.
+-- bs_inventory - hotbar: five slots on keys 1-5 with a take-out animation.
 
 -- `visible` = may the bar be on screen at all (false while a menu is up). `peek` = player is holding ALT. They are ANDed in push(); keep them separate flags.
 local Bar = { slots = {}, busy = false, visible = true, peek = false }
 
--- Bar shows only while ALT (control 19) is held; the `alwaysOn` setting pins it. ALT is shared with the bs_interactions look-at menu and is only read here, never disabled. The setting is stored per client in KVP, not in the database.
+-- Bar shows only while ALT (control 19) is held; the `alwaysOn` setting pins it.
 
 local PEEK_CONTROL = 19          -- INPUT_CHARACTER_WHEEL, i.e. left ALT
 local KVP_ALWAYS = 'bs_hotbar_always'
@@ -24,9 +24,7 @@ local function send(payload)
     pcall(function() exports.bs_ui:Send(payload) end)
 end
 
---------------------------------------------------------------------------------
 -- Drawing it
---------------------------------------------------------------------------------
 
 local function push()
     -- Drawn while playing if allowed on screen and either alwaysOn is set or ALT is held.
@@ -43,9 +41,7 @@ RegisterNetEvent('bs:hotbar:state', function(slots)
     push()
 end)
 
---------------------------------------------------------------------------------
 -- Using a slot
---------------------------------------------------------------------------------
 
 local function playDraw()
     local ped = PlayerPedId()
@@ -65,7 +61,7 @@ local function cinematicCameraActive()
     return ok and active == true
 end
 
--- Key a mapping command is bound to right now ("t_5" -> "5").
+-- Key a mapping command is bound to right now ("t_5" to "5").
 local function boundKey(cmd)
     local raw = GetControlInstructionalButton(0, joaat(cmd) | 0x80000000, true) or ''
     return (raw:gsub('^t_', ''):upper())
@@ -112,7 +108,7 @@ local function useSlot(index)
 
     send({ action = 'hotbarFire', index = index })
 
-    -- A weapon slot is a toggle: pressing the slot of the gun in your hands holsters it, pressing again draws it. bs_weapons owns holstering; this only says which weapon the slot is.
+    -- A weapon slot is a toggle: pressing the slot of the gun in your hands holsters it
     if found.weapon and GetResourceState('bs_weapons') == 'started' then
         local ped = PlayerPedId()
         local _, current = GetCurrentPedWeapon(ped, true)
@@ -158,11 +154,9 @@ for index = 1, 5 do
         L('hotbar.keymap', { n = index }), 'keyboard', tostring(index))
 end
 
---------------------------------------------------------------------------------
 -- Visibility
---------------------------------------------------------------------------------
 
--- Hidden while any menu is up. A set of open panels (like bs_chat's blockingPanels) is used instead of one boolean, so the bar only returns when the last one closes.
+-- Hidden while any menu is up.
 local openPanels = {}
 
 AddEventHandler('bs:ui:opened', function(name)
@@ -187,7 +181,7 @@ AddEventHandler('bs:hook:player:unloaded', function()
     push()
 end)
 
--- Safety net: bs:ui:opened/closed can get out of step if a menu closes another way, leaving the bar hidden. If nothing holds NUI focus, the bar is shown again.
+-- Safety net: bs:ui:opened/closed can get out of step if a menu closes another way, leaving the bar hidden.
 CreateThread(function()
     while true do
         Wait(1500)
@@ -212,7 +206,7 @@ end)
 
 -- Binding from the inventory context menu
 
--- The bar holds real items (slots 41-45 of the same inventory), so set/swap/split are the normal inventory MOVE. No separate hotbar set/swap events, two ways to move an item would duplicate things.
+-- The bar holds real items (slots 41-45 of the same inventory), so set/swap/split are the normal inventory MOVE.
 
 exports('UseSlot', function(index) CreateThread(function() useSlot(index) end) end)
 exports('Slots', function() return Bar.slots end)
@@ -220,7 +214,7 @@ exports('Slots', function() return Bar.slots end)
 
 -- Hold ALT to see it
 
--- Polled instead of key-mapped: a missed key release (alt-tab while held) would leave the bar stuck on. Reads the current control state and only pushes on a change.
+-- Polled instead of key-mapped: a missed key release (alt-tab while held) would leave the bar stuck on.
 CreateThread(function()
     while true do
         Wait(0)
@@ -230,7 +224,7 @@ CreateThread(function()
             if Bar.peek then Bar.peek = false end
             Wait(500)
         else
-            -- Check both forms: cl_target.lua disables control 19 every frame (ALT is its look-at key), and a disabled control reads as not pressed in IsControlPressed. IsDisabledControlPressed covers it.
+            -- Check both forms: cl_target.lua disables control 19 every frame (ALT is its look-at key)
             local held = (IsDisabledControlPressed(0, PEEK_CONTROL)
                       or IsControlPressed(0, PEEK_CONTROL))
                       and not LocalPlayer.state.bsDrone

@@ -11,11 +11,11 @@ Config.Needs = {
     thirstPerTick = 0.80,
     -- Extra drain multiplier while sprinting.
     sprintMultiplier = 1.75,
-    -- Standing still drains slower. Each tick is split by time spent moving, the still part drains at idleMultiplier. With no movement or input for afkAfter seconds the whole tick drains at afkMultiplier.
+    -- Standing still drains slower.
     idleMultiplier = 0.35,
     afkMultiplier  = 0.10,
     afkAfter       = 120,
-    -- Starving/dehydrated thresholds: below these values the player takes damage. Must be above 0, otherwise there is no starving state, only a cliff at zero.
+    -- Starving/dehydrated thresholds: below these values the player takes damage.
     starvingAt  = 20.0,
     dehydratedAt = 20.0,
     -- Health lost per tick while starving or dehydrated.
@@ -46,7 +46,7 @@ Config.Stamina = {
     regenPerSecond  = 9.0,
     regenDelay      = 1.5,
 
-    -- Being winded slows you down but never stops sprinting. At windedAt and above you run at full speed; below it the move rate tapers to windedMoveRate at zero stamina.
+    -- Being winded slows you down but never stops sprinting.
     windedAt        = 5.0,
     -- Speed at zero stamina as a fraction of a normal sprint. Slow, but a walker still cannot catch you on the flat.
     windedMoveRate  = 0.72,

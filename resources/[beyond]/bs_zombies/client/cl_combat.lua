@@ -83,7 +83,7 @@ local function releaseCorpse(ped)
     -- A recycled corpse handle can now belong to a trader or another script.
     if DoesEntityExist(ped)then
         local state=Entity(ped).state
-        if IsPedAPlayer(ped)or (state and (state.bsProtected or state.bsConvoy))then return end
+        if IsPedAPlayer(ped)or (state and (state.bsProtected or state.bsConvoy or state.bsSurvivorLink))then return end
     end
     -- Fallback for a load order where cl_sync has not defined it yet
     if GetResourceState('bs_interactions') == 'started' then

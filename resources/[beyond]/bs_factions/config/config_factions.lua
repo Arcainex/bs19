@@ -1,8 +1,4 @@
 -- bs_factions - four RP-only factions.
--- Joining or standing with one has no gameplay effect (no damage, speed, loot
--- or XP). Reputation buys titles, cosmetic clothing and exclusive emotes. VIP
--- may speed reputation gain but never grant a gameplay advantage.
--- Unlocks are kept forever, even after leaving the faction.
 
 Factions = {}
 
@@ -19,16 +15,18 @@ Factions.Settings = {
     listCommand   = 'factions',
 }
 
--- The factions. `unlocks` is an ordered list of { rep, type, id, label }.
--- `type` ('title' | 'clothing' | 'emote') is informational; bs_factions only
--- tracks whether an id was earned, not what it means to the owning resource.
+-- The factions. `unlocks` is an ordered list of { rep, type, id
 Factions.List = {
     military = {
         id     = 'military',
         label  = 'Military',
         short  = 'MIL',
-        colour = { r = 107, g = 122, b = 74 },
+        colour = { r = 124, g = 143, b = 82 },
         blurb  = 'What is left of the army. Order, discipline and firepower.',
+        -- Identity shown in the hub, the character screen and on the safezone banner. Text is translated through the locale files.
+        motto  = 'Hold the line.',
+        lore   = 'The last company that never got the order to stand down. They run Sandy Shores like a forward base: drills at dawn, rationed ammo, and a radio that still calls in every hour.',
+        emblem = { shape = 'patch', pattern = 'chief', symbol = 'crossed_rifles', border = 'stitched', wear = 'scuffed', primary = '#4b5531', secondary = '#323a20', accent = '#d8c690', tag = 'MIL' },
         unlocks = {
             { rep = 300,   type = 'title', id = 'military_1', label = 'Private' },
             { rep = 4500,  type = 'title', id = 'military_2', label = 'Sergeant' },
@@ -40,8 +38,11 @@ Factions.List = {
         id     = 'rebels',
         label  = 'Rebels',
         short  = 'REB',
-        colour = { r = 160, g = 60, b = 50 },
+        colour = { r = 168, g = 69, b = 58 },
         blurb  = 'Took what the old world left behind and never gave it back.',
+        motto  = 'Nothing is owed. Everything is taken.',
+        lore   = 'Convicts, deserters and kids who grew up after the fall. They hold Mirror Park and a camp in the northern woods, and they answer to whoever is strong enough to lead.',
+        emblem = { shape = 'kite', pattern = 'bend', symbol = 'skull', border = 'barbed', wear = 'battered', primary = '#7e221b', secondary = '#1c1514', accent = '#ece2cf', tag = 'REB' },
         unlocks = {
             { rep = 300,   type = 'title', id = 'rebels_1', label = 'Recruit' },
             { rep = 4500,  type = 'title', id = 'rebels_2', label = 'Raider' },
@@ -53,8 +54,11 @@ Factions.List = {
         id     = 'civilians',
         label  = 'Civilians',
         short  = 'CIV',
-        colour = { r = 170, g = 160, b = 130 },
+        colour = { r = 201, g = 162, b = 77 },
         blurb  = 'Ordinary people trying to rebuild something worth living in.',
+        motto  = 'We plant. We build. We stay.',
+        lore   = 'Farmers, nurses, teachers and dock workers who refused to run. Their walled yard by the port grows food, trades fairly and takes in anyone who keeps the peace.',
+        emblem = { shape = 'round', pattern = 'orle', symbol = 'sprout', border = 'thick', wear = 'weathered', primary = '#c9a24d', secondary = '#8f6f2a', accent = '#2c2b20', tag = 'CIV' },
         unlocks = {
             { rep = 300,   type = 'title', id = 'civilians_1', label = 'Survivor' },
             { rep = 4500,  type = 'title', id = 'civilians_2', label = 'Settler' },
@@ -66,8 +70,11 @@ Factions.List = {
         id     = 'bikers',
         label  = 'Bikers',
         short  = 'BKR',
-        colour = { r = 96, g = 110, b = 130 },
+        colour = { r = 90, g = 111, b = 138 },
         blurb  = 'Road crews that keep the highways open and the engines running.',
+        motto  = 'Keep the roads open.',
+        lore   = 'A riding club that turned into a supply line. They clear wrecks, run fuel between camps and charge a fair toll, from their garage in the hills and the old desert bar.',
+        emblem = { shape = 'circle', pattern = 'rays', symbol = 'winged_wheel', border = 'rivets', wear = 'rust', primary = '#27303c', secondary = '#3c4b5f', accent = '#d9d4c7', tag = 'BKR' },
         unlocks = {
             { rep = 300,   type = 'title', id = 'bikers_1', label = 'Prospect' },
             { rep = 4500,  type = 'title', id = 'bikers_2', label = 'Patched' },
@@ -77,14 +84,27 @@ Factions.List = {
     },
 }
 
+-- Emblem edits: the leader always may, plus ranks with the 'emblem_edit' permission. Seconds between saves per player.
+Factions.EmblemCooldown = 5
+
+-- Safezone banners: a pole with the faction emblem flying from it. Admins add more in game with /factionbanner.
+-- pos is the foot of the pole. Leave a list empty to show none for that faction.
+Factions.Banners = {
+    enabled   = true,
+    drawRange = 90.0,           -- metres at which the cloth is drawn
+    poleModels = { 'prop_flagpole_2a', 'prop_flagpole_1a', 'prop_flagpole_2b' }, -- first one this game has; none = cloth only
+    defaults = {
+        military  = { { pos = vector3(1748.0, 3262.0, 41.2), heading = 105.0 } },
+        rebels    = { { pos = vector3(1019.0, -315.0, 66.9), heading = 0.0 } },
+        civilians = { { pos = vector3(-262.0, -2046.0, 27.0), heading = 0.0 } },
+        bikers    = { { pos = vector3(961.0, -203.0, 72.1), heading = 0.0 } },
+    },
+}
+
 -- Ordered id list, for /factions and validation.
 Factions.Order = { 'military', 'rebels', 'civilians', 'bikers' }
 
 -- Starting ranks for the vanilla factions, top to bottom. 'owner' is always the Leader (every permission).
--- `base` picks the default permission set (officer or member), `perms` overrides single ones.
--- Keep the ids 'officer' and 'member': existing members already hold them. Leaders can change all of this
--- in the hub (RANKS tab); this only applies the first time a faction is read.
--- Permissions: deposit withdraw invite kick promote sanction build demolish storage jail squad_manage skills raid jobs
 Factions.DefaultRanks = {
     military = {
         { id = 'owner',   label = 'Commander' },
@@ -116,9 +136,7 @@ Factions.DefaultRanks = {
 Factions.Renamed = { militia = 'military', mechanics = 'bikers' }
 Factions.Removed = { 'medics', 'farmers' }
 
--- Factions have nothing to do with player classes: a medic, mechanic or engineer can join any
--- of them. Every rewarded action below gives reputation to the player's OWN faction.
--- Keys are the action ids in bs_core's Config.Rewards.
+-- Factions have nothing to do with player classes: a medic, mechanic or engineer can join any of them.
 Factions.ActionRewards = {
     zombie_kill          = { rep = 2 },
     zombie_kill_headshot = { rep = 3 },
@@ -141,8 +159,7 @@ function Factions.IsValid(id)
     return Factions.List[tostring(id or '')] ~= nil
 end
 
--- Name tags over your own people. Opt-in per player from the Faction menu. Only
--- squad and faction mates are sent by the server, and tags hide behind walls.
+-- Name tags over your own people. Opt-in per player from the Faction menu.
 Factions.Tags = {
     range         = 50.0,   -- default metres (player slider bs_tags_range, 10..150)
     rangeMin      = 10, rangeMax = 150,

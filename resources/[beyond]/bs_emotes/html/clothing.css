@@ -1,0 +1,69 @@
+/* Clothing wheel. Same family as the survivor dossier, the faction hub and the O attachment view:
+   soot panels, amber accents, stencil titles, condensed labels, hazard tape and the cut corner.
+   Colours read the bs_ui pack tokens when a page sets them and fall back to the Dossier values.
+   Sizes are px of the 1920x1080 layout (bs_ui scale.js scales the page for 1440p and up). */
+#cw{
+  --c-acc:rgb(var(--t-acc,224,140,70));--c-acc2:rgb(var(--t-acc2,240,163,92));
+  --c-ink:rgb(var(--t-ink,236,229,211));--c-ink2:rgb(var(--t-ink2,207,199,182));--c-dim:rgb(var(--t-dim,163,156,139));
+  --c-ok:rgb(var(--t-ok,127,212,162));--c-bad:rgb(var(--t-bad2,228,136,118));
+  --c-soot:rgb(var(--t-bg,13,12,10));--c-panel:rgba(var(--t-panel,24,22,18),.96);--c-panel2:rgba(var(--t-panel2,38,35,29),.92);
+  --c-line:rgba(var(--t-ink,236,229,211),.12);--c-line2:rgba(var(--t-ink,236,229,211),.22);
+  --c-title:var(--t-f-title,var(--bs-f-stencil,Impact,sans-serif));--c-head:var(--t-f-head,var(--bs-f-cond,'Arial Narrow',sans-serif));
+  --c-text:var(--t-f-text,var(--bs-f-text,'Segoe UI',Arial,sans-serif));
+  display:none;position:fixed;inset:0;z-index:40;color:var(--c-ink);font:400 15px/1.4 var(--c-text);user-select:none
+}
+#cw.show{display:block}
+#cw *{box-sizing:border-box}
+.cw-veil{position:absolute;inset:0;background:rgba(var(--t-shade,0,0,0),.42)}
+.cw-stage{position:absolute;left:50%;top:50%;width:640px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;animation:cwIn .2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes cwIn{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+
+/* title plate */
+.cw-plate{position:relative;width:360px;margin-bottom:18px;padding:18px 22px 14px;border:1px solid var(--c-line2);border-top:0;
+  background:var(--bs-scratch,none),var(--bs-grain,none),var(--c-panel);background-size:600px 400px,220px 220px,auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.55);
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%);text-align:left}
+.cw-plate::before{content:'';position:absolute;left:0;right:0;top:0;height:5px;background:repeating-linear-gradient(-45deg,var(--c-acc) 0 12px,var(--c-soot) 12px 24px)}
+.cw-kicker{font:600 12px/1 var(--c-head);letter-spacing:var(--t-head-ls,.16em);color:var(--t-head-ink,var(--c-acc));text-transform:uppercase}
+.cw-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px}
+.cw-title h1{margin:0;font:400 32px/1 var(--c-title);letter-spacing:var(--t-title-ls,.06em);text-transform:uppercase;text-shadow:0 2px 0 rgba(0,0,0,.6)}
+.cw-count{font:13px/1 var(--t-f-mono,Consolas,monospace);color:var(--c-dim);letter-spacing:.04em;white-space:nowrap}
+.cw-count b{color:var(--c-acc2);font-weight:400}
+
+/* wheel */
+.cw-wheel{position:relative;width:560px;height:560px}
+.cw-wheel svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.cw-disc{fill:rgba(var(--t-bg,13,12,10),.86);stroke:var(--c-line2);stroke-width:1}
+.cw-seg path.cw-face{fill:var(--c-panel);stroke:var(--c-line2);stroke-width:1;transition:fill .12s,stroke .12s}
+.cw-seg path.cw-edge{fill:none;stroke:transparent;stroke-width:4;transition:stroke .12s}
+.cw-seg .cw-icon{fill:none;stroke:var(--c-ink2);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .12s}
+.cw-seg text{font:600 13px var(--c-head);letter-spacing:.14em;text-transform:uppercase;fill:var(--c-dim);text-anchor:middle}
+.cw-seg .cw-pip{fill:var(--c-ok)}
+.cw-seg.is-off .cw-pip{fill:none;stroke:var(--c-bad);stroke-width:1.4}
+.cw-seg.is-off .cw-icon{stroke:var(--c-dim)}
+.cw-seg.is-off .cw-strike{stroke:var(--c-bad);stroke-width:1.6;stroke-linecap:round}
+.cw-seg .cw-strike{stroke:none}
+.cw-seg.is-none{opacity:.38}
+.cw-seg.is-none .cw-pip{fill:var(--c-dim)}
+.cw-seg.is-hover path.cw-face{fill:rgba(var(--t-acc,224,140,70),.16);stroke:var(--c-acc)}
+.cw-seg.is-hover path.cw-edge{stroke:var(--c-acc)}
+.cw-seg.is-hover .cw-icon{stroke:var(--c-acc2)}
+.cw-seg.is-hover text{fill:var(--c-ink)}
+.cw-seg.is-none.is-hover path.cw-face{fill:var(--c-panel2);stroke:var(--c-line2)}
+.cw-seg.is-none.is-hover path.cw-edge{stroke:var(--c-dim)}
+.cw-tick{stroke:var(--c-line2);stroke-width:1}
+
+/* centre */
+.cw-hub{position:absolute;left:50%;top:50%;width:212px;height:212px;transform:translate(-50%,-50%);border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 22px;
+  background:var(--bs-grain,none),var(--c-panel);background-size:220px 220px,auto;border:1px solid var(--c-line2);box-shadow:inset 0 0 0 6px rgba(0,0,0,.35)}
+.cw-hub__kicker{font:600 11px/1 var(--c-head);letter-spacing:.2em;text-transform:uppercase;color:var(--c-dim)}
+.cw-hub__name{margin:10px 0 12px;max-width:100%;font:400 25px/1.04 var(--c-title);letter-spacing:.05em;text-transform:uppercase;color:var(--c-ink);
+  overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cw-stamp{display:inline-block;min-width:64px;padding:3px 10px;border:3px double currentColor;font:400 15px/1.15 var(--c-title);letter-spacing:.12em;text-transform:uppercase;color:var(--c-acc)}
+.cw-stamp.is-on{color:var(--c-ok)}.cw-stamp.is-off{color:var(--c-bad)}.cw-stamp.is-none{color:var(--c-dim)}
+.cw-hub__act{margin-top:10px;min-height:16px;font:500 13px/1.2 var(--c-head);letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink2)}
+
+/* key strip */
+.cw-keys{margin-top:18px;display:flex;gap:18px;font:500 13px/1 var(--c-head);letter-spacing:.12em;text-transform:uppercase;color:var(--c-dim)}
+.cw-keys kbd{display:inline-block;margin-right:6px;padding:3px 7px;border:1px solid var(--c-line2);background:rgba(0,0,0,.4);color:var(--c-ink);font:600 12px/1 var(--c-head);letter-spacing:.08em}

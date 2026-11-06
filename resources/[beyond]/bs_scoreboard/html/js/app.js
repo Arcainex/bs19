@@ -11,11 +11,20 @@ const num = (n) => Number(n || 0).toLocaleString('en-GB');
 // only plain colours from bs_vip, nothing that could break out of style=""
 const safeColour = (c) => (/^#[0-9a-f]{3,8}$|^[a-z]{3,20}$|^rgba?\([\d.,\s%]+\)$/i.test(String(c || '')) ? c : null);
 
+// Faction mark next to tags; the drawing comes from nui://bs_ui/html/shared/emblem.js.
+let EMBLEMS = {};
+function mark(fid) {
+    if (!fid || !window.BSEmblem) return '';
+    const e = EMBLEMS[fid];
+    const spec = e ? BSEmblem.normalize(e) : BSEmblem.fallback(fid);
+    return `<i class="mark">${BSEmblem.render(spec)}</i>`;
+}
+
 function playerRow(p, self) {
     const bars = p.ping < 80 ? 3 : p.ping < 160 ? 2 : 1;
     const col = p.vip ? safeColour(p.vipColour) : null;
     const nameStyle = col ? ` style="color:${col}"` : '';
-    const tag = p.factionTag ? `<b class="tag">${esc(p.factionTag)}</b>` : '';
+    const tag = p.factionTag ? `${mark(p.factionId)}<b class="tag">${esc(p.factionTag)}</b>` : '';
     const vip = p.vip ? `<i class="badge badge--vip"${col ? ` style="border-color:${col};color:${col}"` : ''}>${esc(p.vipLabel || 'VIP')}</i>` : '';
     return `
     <div class="prow row${p.id === self ? ' is-self' : ''}${p.vip ? ' is-vip' : ''}">
@@ -37,6 +46,7 @@ function board(label, rows, fmt) {
 }
 
 function render(d) {
+    EMBLEMS = d.emblems || {};
     $('title').textContent = String(d.title || 'BEYOND SURVIVAL');
     $('subtitle').textContent = String(d.subtitle || '');
     $('count').textContent = d.count ?? 0;
@@ -67,7 +77,7 @@ function render(d) {
             <span class="r mono val">${num(r.value)}<small>${esc((b.suffix || '').trim())}</small></span>`));
 
     boards.push(board(t('ui.faction_rankings', { fallback: 'FACTION RANKINGS' }), d.factions || [], (f) => `
-            <span class="cell">${f.tag ? `<b class="tag">${esc(f.tag)}</b>` : ''}<span class="ell">${esc(f.name)}</span></span>
+            <span class="cell">${mark(f.id)}${f.tag ? `<b class="tag">${esc(f.tag)}</b>` : ''}<span class="ell">${esc(f.name)}</span></span>
             <span class="r mono val"><i class="badge">LV ${esc(f.level)}</i> ${num(f.xp)}<small>XP</small> <em class="dim">${esc(f.members)}&#9679;</em></span>`));
 
     $('boards').innerHTML = boards.join('');

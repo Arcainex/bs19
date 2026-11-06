@@ -1,11 +1,10 @@
 -- Gadgets: deployable utility + riot shield, 2 slots (default 9 / 0), PvE only.
--- Item ids keep their booster_ names so existing saves work. Item defs: bs_inventory/config/config_items.lua (category 'gadget').
 
 Gadgets = {}
 
 Gadgets.Slots = 2
 -- 9/0: hotbar is 1-5, boosters 6/7/8. G is the downed bandage key, H is whistle.
-Gadgets.DefaultKeys = { '9', '0' }
+Gadgets.DefaultKeys = { 'F9', '0' }
 Gadgets.Command = 'bs_gadget%d'    -- renamed so the new defaults reach players who had gadget1/2 saved
 Gadgets.MetaKey = 'gadgets'        -- character metadata { ['1']=item, ['2']=item }
 Gadgets.CdKey = 'gadget_cd'        -- character metadata { [item] = readyAt (os.time) }
@@ -15,7 +14,7 @@ Gadgets.PickupDist = 2.0
 Gadgets.ShieldKey = 'shield_hp'    -- character metadata: durability left on a stowed shield
 
 Gadgets.Types = {
-    -- Riot shield. Model/idea from "Shield Mod" by winject (gta5-mods.com/scripts/shield-mod); that mod is a SHVDN script, this is a Lua rewrite.
+    -- Riot shield: model/idea from "Shield Mod" by winject (gta5-mods.com/scripts/shield-mod)
     booster_shield = {
         kind = 'shield', label = 'Riot Shield', cooldown = 5,
         enabled = false,       -- shield parked: prop does not show on the arm yet; set true to re-enable
@@ -25,7 +24,7 @@ Gadgets.Types = {
         bulletHp = 4,          -- durability lost per bullet that hits it
         -- left forearm (bone 61163)
         bone = 61163, offset = vector3(0.1, -0.05, 0.0), rot = vector3(-80.0, 180.0, 10.0),
-        -- Optional upper-body loop while unarmed/melee. Off by default (the original mod only uses weapons@pistol_1h@gang/aim_med_loop for aiming).
+        -- Optional upper-body loop while unarmed/melee.
         pose = nil,            -- e.g. { dict = 'weapons@pistol_1h@gang', name = 'aim_med_loop' }
     },
     booster_drone = {
@@ -52,7 +51,7 @@ Gadgets.Types = {
         health = 60,           -- a couple of hits
         markRadius = 120.0, markSecs = 60, markEveryMs = 1500, markLoot = true,
         pingSecs = 30,
-        exitOnHit = true,      -- pilot gets hurt -> back to your own eyes
+        exitOnHit = true,      -- pilot gets hurt to back to your own eyes
         fallMs = 4000,         -- battery out: drops, then despawns
     },
     booster_turret = {
@@ -132,7 +131,6 @@ Gadgets.Fx = {
 }
 
 -- Other players can shoot, hit or blow up placed gadgets and flying drones.
--- The server applies it (weaponDamageEvent / explosionEvent); never inside safe zones.
 Gadgets.PvP = {
     enabled = true,
     maxDist = 250.0,       -- attacker must be this close to the gadget
@@ -143,3 +141,14 @@ Gadgets.PvP = {
 }
 
 function Gadgets.IsGadget(item) return Gadgets.Types[item] ~= nil end
+
+-- Dark Zone sentry (bs_darkzone): a tougher mini turret, same behaviour.
+do
+    local base = Gadgets.Types.booster_turret
+    if base then
+        local t = {}
+        for k, v in pairs(base) do t[k] = v end
+        t.label, t.cooldown, t.duration, t.ammo, t.damage, t.health, t.range = 'Sentry turret', 300, 180, 140, 45, 450, 30.0
+        Gadgets.Types.booster_dz_sentry = t
+    end
+end

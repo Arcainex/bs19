@@ -4,7 +4,7 @@ local Cfg = Factions.Squad or {}
 local BlipCfg = Cfg.blip or {}
 local Squad = nil
 local Pending = nil
-local Blips = {} -- serverId -> blip
+local Blips = {} -- serverId to blip
 local ConsoleOpen = false
 local UI_KEY = Cfg.uiKey or 'F3'
 local UI_CMD = Cfg.uiCommand or 'squadconsole'
@@ -31,12 +31,17 @@ local function refreshBlips()
     local me = GetPlayerServerId(PlayerId())
     local want = {}
     for _, m in ipairs(Squad.members or {}) do
+        -- Linked survivors have no player id: their blip follows the companion body, keyed by its net id.
+        local key, ped = m.src, 0
         if m.online and m.src and m.src ~= me then
             local pl = GetPlayerFromServerId(m.src)
-            local ped = pl ~= -1 and GetPlayerPed(pl) or 0
-            if ped ~= 0 and DoesEntityExist(ped) then
-                want[m.src] = true
-                local b = Blips[m.src]
+            ped = pl ~= -1 and GetPlayerPed(pl) or 0
+        elseif m.linked and m.net and NetworkDoesNetworkIdExist(m.net) then
+            key, ped = 'n' .. m.net, NetworkGetEntityFromNetworkId(m.net)
+        end
+        if key and ped ~= 0 and DoesEntityExist(ped) then
+                want[key] = true
+                local b = Blips[key]
                 if not b or not DoesBlipExist(b) or GetBlipInfoIdEntityIndex(b) ~= ped then
                     if b and DoesBlipExist(b) then RemoveBlip(b) end
                     b = AddBlipForEntity(ped)
@@ -47,10 +52,9 @@ local function refreshBlips()
                     BeginTextCommandSetBlipName('STRING')
                     AddTextComponentSubstringPlayerName(('[%s] %s'):format(m.rankLabel or L('squad.blip'), m.name or '?'))
                     EndTextCommandSetBlipName(b)
-                    Blips[m.src] = b
+                    Blips[key] = b
                 end
-                SetBlipColour(b, blipColourFor(m.src))
-            end
+                SetBlipColour(b, m.src and blipColourFor(m.src) or (BlipCfg.colour or 2))
         end
     end
     for id, b in pairs(Blips) do
@@ -73,7 +77,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------- invitations
+-- invitations
 local function answer(yes)
     if not Pending then return notify('warn', L('squad.no_pending')) end
     Pending = nil
@@ -127,7 +131,7 @@ CreateThread(function()
     })
 end)
 
---------------------------------------------------------------------------- exports
+-- exports
 exports('GetSquadState', function() return Squad end)
 exports('GetSquadBlips', function() return blipsEnabled() end)
 exports('SetSquadBlips', function(on)
@@ -135,8 +139,7 @@ exports('SetSquadBlips', function(on)
     refreshBlips()
 end)
 
--- console
--- Only squad callbacks get through the page.
+-- console: only squad callbacks get through the page.
 local FX = {}
 for _, n in ipairs({ 'squad:get', 'squad:create', 'squad:invite', 'squad:accept', 'squad:decline', 'squad:leave', 'squad:kick',
     'squad:setRank', 'squad:saveRanks', 'squad:rename', 'squad:disband', 'squad:transfer', 'squad:nearby' }) do FX[n] = true end
@@ -159,7 +162,6 @@ local function openConsole()
 end
 
 -- F2 opened this console because old 'squad' / 'squadmenu' binds were still saved on F2 by FiveM.
--- Those commands are gone on purpose, so the stale binds do nothing and F2 is the build wheel only.
 RegisterCommand(UI_CMD, openConsole, false)
 RegisterKeyMapping(UI_CMD, L('squad.keymap'), 'keyboard', UI_KEY)
 

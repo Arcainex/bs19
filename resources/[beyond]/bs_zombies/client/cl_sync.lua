@@ -66,7 +66,7 @@ function Zed.DestroyPed(ped)
     if not ped or ped == 0 then return false end
     if DoesEntityExist(ped)then
         local state=Entity(ped).state
-        if IsPedAPlayer(ped)or (state and (state.bsProtected or state.bsConvoy))then
+        if IsPedAPlayer(ped)or (state and (state.bsProtected or state.bsConvoy or state.bsSurvivorLink))then
             Zed.owned[ped]=nil
             return false
         end
@@ -944,7 +944,7 @@ end
 
 RegisterNetEvent('bs:z:add', function(list)
     -- Networked mode: nothing is built here. cl_net.lua adopts the server ped when it streams in and reads fields from shadow.
-    if Zombies.Mode == 'networked' then
+    if Zombies.Mode == 'networked' or Zombies.Mode == 'networked_plus' then
         for _, rec in ipairs(list or {}) do
             if rec and rec.id then shadow[rec.id] = rec end
         end
@@ -1167,7 +1167,7 @@ RegisterNetEvent('bs:z:host', function(list)
         end
     end
 
-    if Zombies.Mode == 'networked' then
+    if Zombies.Mode == 'networked' or Zombies.Mode == 'networked_plus' then
         now = {}
         for id, entry in pairs(Zed.live) do
             if entry.hosted then now[id] = true end

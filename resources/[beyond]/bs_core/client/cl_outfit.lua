@@ -13,7 +13,7 @@ local COMPONENTS = {
 local PARACHUTE_COMPONENT = 5
 local PROPS = { [0] = 'hat', [1] = 'glasses', [2] = 'ear', [6] = 'watch', [7] = 'bracelet' }
 
--- Starting clothes: jbib 0 with matching arms 0, undershirt/none 15 (same bare value as bs_traders), jeans, plain worn shoes per sex (shoe drawable 0 on both models is a checkered skate shoe).
+-- Starting clothes: jbib 0 with matching arms 0, undershirt/none 15 (same bare value as bs_traders), jeans
 local DEFAULTS_BY_SEX = {
     male   = { [3] = 0, [4] = 0, [6] = 1, [8] = 15, [11] = 0 },
     female = { [3] = 0, [4] = 0, [6] = 1, [8] = 15, [11] = 0 },
@@ -35,7 +35,7 @@ function BS.Outfit.ApplyDefaults(ped)
     end
 end
 
--- Repairs a saved outfit in a copy. Old creator saved 3/8/11 all at 0 (arms and undershirt not matching), which leaves the chest bare.
+-- Repairs a saved outfit in a copy.
 local function repaired(ped, outfit)
     local comps = {}
     for id, v in pairs(outfit.components or {}) do comps[id] = v end
@@ -96,8 +96,7 @@ function BS.Outfit.UpperSnapshot(ped)
     return snap
 end
 
---- Makes sure a freemode ped has a complete upper body.
---- fixArms: also replace arms that only copy the top id (old creator bug) with the matching torso.
+--- Makes sure a freemode ped has a complete upper body. fixArms: also replace arms that only copy the top id
 --- @return string|nil what was changed
 function BS.Outfit.EnsureUpper(ped, outfit, fixArms)
     if not ped or not DoesEntityExist(ped) then return nil end
@@ -155,7 +154,7 @@ function BS.Outfit.Capture()
     return out
 end
 
--- Applies an outfit to any ped. Drawable/texture indexes are clamped to what the model has, because invalid ones are refused by the engine ("Invalid variation") and half-apply the outfit.
+-- Applies an outfit to any ped.
 function BS.Outfit.Apply(ped, outfit)
     if not outfit or not DoesEntityExist(ped) then return false end
     outfit = repaired(ped, outfit)
@@ -163,7 +162,6 @@ function BS.Outfit.Apply(ped, outfit)
     for id, v in pairs(outfit.components or {}) do
         local slot = tonumber(id)
         -- Old saved outfits may still carry component 5; skipping it keeps the parachute off.
-        -- Components are 0-11 only, anything else causes the "Invalid variation" spam.
         if slot and slot >= 0 and slot <= 11 and slot ~= PARACHUTE_COMPONENT then
             local count = GetNumberOfPedDrawableVariations(ped, slot)
             if count > 0 then
@@ -206,8 +204,7 @@ function BS.Outfit.CurrentWeapon()
     return hash
 end
 
---- Pushes the current outfit + weapon to the server. Called on a timer and
---- whenever the character is about to be unloaded.
+--- Pushes the current outfit + weapon to the server.
 function BS.Outfit.Push()
     if not BS.IsLoaded() then return end
     TriggerServerEvent(BS.Events.UpdateOutfit, BS.Outfit.Capture(), BS.Outfit.CurrentWeapon())
@@ -222,9 +219,7 @@ end)
 
 BS.On('player:unloaded', function() end)   -- placeholder: unload already saved server-side
 
---- Anything that changes what the player is wearing raises this, and the
---- server gets the new outfit without that resource needing to know how it is
---- stored. bs_emotes uses it after taking a jacket off.
+--- Anything that changes what the player is wearing raises this
 AddEventHandler('bs:outfit:push', function() BS.Outfit.Push() end)
 
 exports('CaptureOutfit', BS.Outfit.Capture)

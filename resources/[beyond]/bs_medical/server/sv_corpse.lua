@@ -1,4 +1,4 @@
--- bs_medical - player bodies. On death the whole inventory moves into a container tied to a server-created ped copy left where they fell. The body outlives respawn and goes when looted out or after Medical.Corpse.lifetime. Nothing survives a resource restart.
+-- bs_medical - player bodies.
 
 Corpse = {}
 local C = Medical.Corpse or {}
@@ -35,7 +35,7 @@ local function remove(id, why)
     print(('^3[BS MEDICAL]^7 body of %s removed (%s)'):format(b.name, why))
 end
 
--- Called from the death path while the inventory is still full. Returns the body id, or nil when nothing was carried or the body could not be made.
+-- Called from the death path while the inventory is still full.
 function Corpse.FromDeath(src)
     if not C.enabled or GetResourceState('bs_inventory') ~= 'started' then return nil end
     local ped = GetPlayerPed(src)
@@ -49,7 +49,7 @@ function Corpse.FromDeath(src)
     local heading = GetEntityHeading(ped)
     local model = GetEntityModel(ped)
 
-    -- First, so the client captures its look before the wipe strips it.
+    -- So the client captures its look before the wipe strips it.
     TriggerClientEvent('bs:medical:corpse:snapshot', src, id)
 
     local ok, moved = pcall(function()
@@ -159,7 +159,6 @@ RegisterNetEvent('bs:medical:corpse:bite', function(net)
     publish(b)
 end)
 
--- The owner gets their blip back after a relog.
 AddEventHandler('bs:hook:player:spawned', function(player)
     if not player or not player.source or not player.charId then return end
     for _, b in pairs(bodies) do

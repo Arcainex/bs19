@@ -70,7 +70,7 @@
     const rw = (m.reward || []).length ? `<div class="mlog__rw"><em>${esc(t('mlog.reward'))}</em><div>${m.reward.map(r =>
       `<span class="mlog__item" title="${esc(r.label || r.item)}">${icon(r.item)}<small>${esc(r.label || r.item)}</small>${r.amount > 1 ? `<b class="mlog__x">x${esc(r.amount)}</b>` : ''}</span>`).join('')}</div></div>` : '';
     const note = m.hint ? `<p class="mlog__hint">${esc(m.hint)}</p>` : '';
-    const btn = isReady(m) ? `<button class="mlog__btn" data-i="${i}">${esc(t('mlog.finish'))}</button><p class="mlog__hint">${esc(t('mlog.anywhere'))}</p>` : '';
+    const btn = m.offer ? `<button class="mlog__btn" data-i="${i}" data-accept="true">Accept mission</button>` : isReady(m) ? `<button class="mlog__btn" data-i="${i}">${esc(t('mlog.finish'))}</button><p class="mlog__hint">${esc(t('mlog.anywhere'))}</p>` : '';
     const bartxt = `<div class="mlog__prog" title="${pr.a}/${pr.b}"><span style="width:${Math.round(pr.v * 100)}%"></span><em>${pr.a}/${pr.b}</em></div>`;
     return `<div class="mlog__card is-${st}${isReady(m) ? ' is-ready' : ''}${pinned ? ' is-pinned' : ''}"><div class="mlog__clip"></div>` +
       `<button type="button" class="mlog__pin${pinned ? ' on' : ''}" data-k="${esc(k)}" title="${esc(t(pinned ? 'mlog.unpin' : 'mlog.pin'))}" aria-label="${esc(t(pinned ? 'mlog.unpin' : 'mlog.pin'))}">${pinned ? '&#9733;' : '&#9734;'}</button>` +
@@ -147,7 +147,7 @@
       const m = list[+b.dataset.i];
       if (!m) return;
       b.disabled = true;
-      await call('missionClaim', { source: m.source, id: m.id });
+      await call(b.dataset.accept ? 'missionAccept' : 'missionClaim', { source: m.source, id: m.id });
       load();
     }
   });

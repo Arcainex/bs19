@@ -1,11 +1,8 @@
 -- bs_inventory - clothing config.
--- Clothing is appearance (set at the wardrobe NPC, saved with the character), not items. Only the backpack and body armour are still items, since they carry capacity and protection. Other slots are kept as reserved positions, see `retired`.
--- Equipment slots are more slots of the same inventory (one store for stacking, durability, weight and persistence). Clothing.Slots is ORDERED: slot N is inventory slot (grid + bar + N) in the database. Append only; retire a slot in place instead of removing it.
--- `off` is the bare body drawable and differs between male and female models (standard freemode indices). It is data so a wrong index is a number change here.
 
 Clothing = {}
 
--- Models we dress; anything else is left alone. Names, not backtick hash literals (FiveM-only syntax that breaks plain Lua checks); the hash is taken at runtime with GetHashKey.
+-- Models we dress; anything else is left alone.
 Clothing.Models = {
     male   = 'mp_m_freemode_01',
     female = 'mp_f_freemode_01',
@@ -31,7 +28,7 @@ Clothing.Slots = {
     { id = 'hat',         label = 'Hat',         ui = nil,           kind = 'prop',      index = 0, retired = true },
 }
 
---- id -> slot, built once. Callers ask this rather than looping.
+--- id to slot, built once. Callers ask this rather than looping.
 Clothing.BySlot = {}
 Clothing.OrderOf = {}
 for i, slot in ipairs(Clothing.Slots) do
@@ -39,14 +36,13 @@ for i, slot in ipairs(Clothing.Slots) do
     Clothing.OrderOf[slot.id] = i
 end
 
--- The old thirteen positions stay reserved so persisted slot numbers are never reinterpreted. Only these two are valid equipment; appearance is handled by the wardrobe NPCs.
+-- The old thirteen positions stay reserved so persisted slot numbers are never reinterpreted.
 function Clothing.Count() return #Clothing.Slots end
 function Clothing.IsActiveSlot(slot)
     return slot and (slot.id == 'armour' or slot.id == 'backpack')
 end
 
--- Rarity scales a garment's stats (via `mult`) and colours its plate in the bag. It does NOT drive loot frequency: weights are hand-set per table in bs_economy, so keep tier and drop rate consistent by hand.
--- A new garment only declares base stats and a tier.
+-- Rarity scales a garment's stats (via `mult`) and colours its plate in the bag.
 Clothing.Rarity = {
     worn     = { label = 'Worn',     mult = 0.6, colour = '#8b8578' },
     common   = { label = 'Common',   mult = 1.0, colour = '#a8a293' },
@@ -58,7 +54,7 @@ Clothing.Rarity = {
 -- carry: kg added to the carry limit (playerInventory() in bs_inventory/server/sv_main.lua)
 -- armour: flat damage off a walker bite (bs_zombies/client/cl_attack.lua)
 -- stealth: fraction off walker sight range, 0.15 = 15% (stealthMultiplier() in bs_zombies/client/cl_ai.lua)
--- Warmth, insulation and similar are absent on purpose: no system reads them.
+-- Warmth, insulation and similar are absent: no system reads them.
 Clothing.Stats = { 'carry', 'armour', 'stealth' }
 
 -- Condition lives in the slot's `durability` column and scales a garment's stats linearly (50% condition = half the effect). Armour is therefore a consumable.
@@ -70,11 +66,7 @@ Clothing.Condition = {
     perBite = 1.5,
 }
 
--- Starter wardrobe. Each entry is an item definition plus:
--- equipSlot: slot in the list above, so equipment frames refuse non-clothing.
--- wear: variation per model, `d` drawable and `t` texture. Omit a model to make the garment unavailable to it.
--- Sizes are real (coat 2x2, hat 1x1); worn clothes do not use grid space.
--- Drawable indices are base-game freemode values; fix wrong ones here.
+-- Starter wardrobe: each entry is an item definition plus: equipSlot: slot in the list above
 local function garment(label, slot, w, h, weight, value, wear, extra)
     local def = {
         label = label, category = 'clothing',
@@ -104,13 +96,12 @@ Clothing.Items = {
         { data = nil }), 'good', { carry = 12.0 }),
 }
 -- Legacy pack. Migration 036 turns every copy into pack_medium; kept so an old row still loads.
-Clothing.Items.hiking_pack.data.bag = { width = 5, height = 4, maxWeight = 20.0 }
+Clothing.Items.hiking_pack.data.bag = { width = 7, height = 6, maxWeight = 20.0 }
 Clothing.Items.hiking_pack.data.tier = 2
 -- Packs no longer add rows to the main grid; their contents are their own grid (bag container keyed by metadata.bagId).
 Clothing.Items.hiking_pack.data.rows = 0
 
--- Backpacks and vests (SCUM style). Each tier has its own grid (data.bag) and carry bonus (stats.carry, scaled by rarity: good x1.4, military x2).
--- Tiers: 1 small, 2 medium, 3 large, 4 military. The tier also unlocks looks (Clothing.PackLooks).
+-- Backpacks and vests (SCUM style).
 Clothing.PackTiers = { 'small', 'medium', 'large', 'military' }
 
 -- Looks for the GTA bag component (5). `tier` is the lowest pack tier that may use it. Drawable numbers are data: fix them here.
@@ -124,6 +115,7 @@ Clothing.PackLooks = {
 }
 -- Default look per tier (index into PackLooks).
 Clothing.PackDefaultLook = { 1, 3, 5, 6 }
+
 
 local function pack(label, tier, w, h, weight, value, grid, carry, rarity)
     local look = Clothing.PackLooks[Clothing.PackDefaultLook[tier]]
@@ -140,10 +132,22 @@ local function vest(label, w, h, weight, value, grid, stats, rarity)
     return def
 end
 
-Clothing.Items.pack_small    = pack('Small backpack',    1, 2, 2, 0.8, 120,  { width = 4, height = 3, maxWeight = 10.0 }, 6.0,  'common')
-Clothing.Items.pack_medium   = pack('Medium backpack',   2, 2, 3, 1.4, 260,  { width = 5, height = 4, maxWeight = 20.0 }, 12.0, 'common')
-Clothing.Items.pack_large    = pack('Large backpack',    3, 3, 3, 2.0, 520,  { width = 6, height = 5, maxWeight = 32.0 }, 13.0, 'good')
-Clothing.Items.pack_military = pack('Military backpack', 4, 3, 3, 2.6, 900,  { width = 7, height = 6, maxWeight = 45.0 }, 12.5, 'military')
+Clothing.Items.pack_small    = pack('Small backpack',    1, 2, 2, 0.8, 120,  { width = 6, height = 5, maxWeight = 10.0 }, 6.0,  'common')
+Clothing.Items.pack_medium   = pack('Medium backpack',   2, 2, 3, 1.4, 260,  { width = 7, height = 6, maxWeight = 20.0 }, 12.0, 'common')
+Clothing.Items.pack_large    = pack('Large backpack',    3, 3, 3, 2.0, 520,  { width = 8, height = 7, maxWeight = 32.0 }, 13.0, 'good')
+Clothing.Items.pack_military = pack('Military backpack', 4, 3, 3, 2.6, 900,  { width = 9, height = 8, maxWeight = 45.0 }, 12.5, 'military')
+-- Separate pack items retain their own bag IDs and inventory contents.
+Clothing.Items.pack_civilian = pack('Civilian backpack', 1, 2, 2, 0.9, 145, { width = 6, height = 5, maxWeight = 10.0 }, 6.0, 'common')
+Clothing.Items.pack_hiking = pack('Hiking backpack', 2, 2, 3, 1.5, 310, { width = 7, height = 6, maxWeight = 20.0 }, 12.0, 'common')
+Clothing.Items.pack_survival = pack('Survival backpack', 3, 3, 3, 2.2, 620, { width = 8, height = 7, maxWeight = 32.0 }, 13.0, 'good')
+Clothing.Items.pack_field_military = pack('Field military backpack', 4, 3, 3, 2.8, 980, { width = 9, height = 8, maxWeight = 45.0 }, 12.5, 'military')
+for id, family in pairs({ pack_civilian = 'civilian', pack_hiking = 'hiking', pack_survival = 'survival', pack_field_military = 'military' }) do
+    local item = Clothing.Items[id]
+    local look = ({ civilian = 1, hiking = 2, survival = 4, military = 6 })[family]
+    item.data.packFamily = family
+    item.data.defaultLook = look
+    item.data.wear = { male = Clothing.PackLooks[look].male, female = Clothing.PackLooks[look].female }
+end
 Clothing.Items.vest_tactical = vest('Tactical vest',     2, 2, 2.2, 380,  { width = 3, height = 2, maxWeight = 6.0 },  { carry = 3.0, armour = 6 },  'good')
 Clothing.Items.vest_plate    = vest('Plate carrier',     2, 2, 5.5, 1100, { width = 4, height = 2, maxWeight = 10.0 }, { carry = 3.0, armour = 15 }, 'military')
 
@@ -154,13 +158,11 @@ Clothing.RetiredItems = {
     'gas_mask', 'cap', 'safety_glasses', 'wrist_watch',
 }
 
---------------------------------------------------------------------------------
 -- What you are wearing, added up
---------------------------------------------------------------------------------
 
 -- The one place worn stats are totalled. Shared so the server, the modifiers panel and bs_zombies (client) all use the same sum.
 -- Pure function: no state, natives or database.
--- `entries` maps slot id -> { item = name, condition = 0..100 }; no condition means pristine.
+-- `entries` maps slot id to { item = name, condition = 0..100 }; no condition means pristine.
 -- @return table stats, table breakdown  -- breakdown[slotId] = per-garment totals
 function Clothing.Aggregate(entries)
     local total = {}
@@ -207,8 +209,7 @@ function Clothing.Aggregate(entries)
     return total, breakdown
 end
 
--- Merged into the item table so the grid packer, weight, drops, corpses, vendors and admin list all see clothing through Items.Get. An id already in config_items.lua wins.
--- Guarded: `Items` only exists where config_items.lua is loaded. bs_multichar loads just this file for Clothing.Items / Clothing.PreviewLook.
+-- Merged into the item table so the grid packer, weight, drops, corpses
 if Items then
     for id, def in pairs(Clothing.Items) do
         if Items.Definitions[id] then
@@ -226,8 +227,7 @@ end
 -- Unused since clothing became appearance (migration 021); kept empty so Clothing.TorsoFor returns nil.
 Clothing.TorsoMap = { male = {}, female = {} }
 
--- Torso drawable for a top, or nil so the caller falls back.
--- `gender` is 'male' | 'female'; `drawable`/`texture` are the top's.
+-- Torso drawable for a top, or nil so the caller falls back. `gender` is 'male' | 'female'; `drawable`/`texture` are the top's.
 function Clothing.TorsoFor(gender, drawable, texture)
     local byModel = Clothing.TorsoMap and Clothing.TorsoMap[gender]
     if not byModel then return nil end
@@ -245,8 +245,7 @@ function Clothing.TorsoFor(gender, drawable, texture)
     return nil
 end
 
--- Raw drawable numbers for one or more items, to show a garment on a ped without it being equipped (used by bs_multichar's creator preview).
--- Same read as applySlot() in cl_equipment.lua, so preview and spawned outfit match. Not clamped against a real ped's variation count since there is no ped here.
+-- Raw drawable numbers for one or more items
 function Clothing.PreviewLook(itemNames, gender)
     local components, props = {}, {}
 

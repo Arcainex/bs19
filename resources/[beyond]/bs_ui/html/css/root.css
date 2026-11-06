@@ -31,7 +31,7 @@ html, body {
     height: 100%;
     overflow: hidden;
     background: transparent;
-    font-family: var(--bs-font);
+    font-family: var(--t-hud-font, var(--bs-font));
     color: var(--bs-text);
     user-select: none;
     -webkit-font-smoothing: antialiased;
@@ -54,7 +54,7 @@ html, body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Readability in bright light without a background: text carries its own dark halo (tight opaque + wide soft) and SVG icons get a drop-shadow. Inherited from the document, so new elements are readable by default. */
+/* Readability in bright light without a background: text carries its own dark halo (tight opaque + wide soft) */
 :root {
     --bs-halo:
         0 0 1px rgba(0, 0, 0, 1),

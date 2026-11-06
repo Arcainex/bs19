@@ -66,4 +66,10 @@ return {
     ['fb.sentence_lifted'] = 'Your sentence was lifted.',
     ['fb.released_early'] = 'You have been released early.',
     ['fb.sentence_served'] = 'Sentence served. You are free to go.',
+    ['fb.i_remove_decay'] = 'Remove flag (base decays)',
+    ['fb.i_remove_all'] = 'Remove flag and base',
+    ['fb.remove_decay_ask'] = 'Press again to remove the flag. {n} pieces will fall apart over {h} h, {pct}% of their materials go into a salvage crate here.',
+    ['fb.remove_all_ask'] = 'Press again to remove the flag AND take down {n} pieces now. {pct}% of the materials and everything stored go into a salvage crate here.',
+    ['fb.removed_decay'] = 'Flag removed. The base is abandoned and will fall apart.',
+    ['fb.removed_all'] = 'Flag removed. {n} pieces taken down, check the salvage crate.',
 }

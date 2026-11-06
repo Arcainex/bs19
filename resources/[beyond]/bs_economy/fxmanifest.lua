@@ -21,6 +21,7 @@ client_scripts {
 
 server_scripts {
     'server/sv_main.lua',
+    'server/sv_loot_tables.lua',
     'server/sv_atm.lua',
 }
 

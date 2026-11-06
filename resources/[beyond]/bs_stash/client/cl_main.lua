@@ -1,4 +1,4 @@
--- bs_stash - client side: dig animation, owner name labels and the shovel probe. The stash list from the server only contains your own stashes.
+-- bs_stash - client side: dig animation, owner name labels and the shovel probe.
 
 local S = Stash.Settings
 
@@ -10,7 +10,7 @@ local function notify(kind, message, duration)
     TriggerEvent('bs:ui:notify', { type = kind, message = message, duration = duration or 3000 })
 end
 
--- Animation candidates are checked with GetAnimDuration: a dict can load without containing the clip, and TaskPlayAnim then fails silently.
+-- Animation candidates are checked with GetAnimDuration: a dict can load without containing the clip
 
 local digAnim, digAnimChecked = nil, false
 
@@ -80,9 +80,7 @@ local function dig(label)
     return not cancelled
 end
 
---------------------------------------------------------------------------------
 -- Yours
---------------------------------------------------------------------------------
 
 local function refresh()
     local result = BSB.Await('stash:mine', 8000)
@@ -119,7 +117,7 @@ local function syncZones()
     end
 end
 
--- Name over the spot: visible to the owner up to 50m. Drawn instead of a blip so you still have to remember roughly where you buried it.
+-- Drawn instead of a blip so you still have to remember roughly where you buried it.
 CreateThread(function()
     while true do
         local wait = 500
@@ -154,7 +152,6 @@ CreateThread(function()
     end
 end)
 
--- VIP stash marker (bs_vip 'stashSkin'): a local prop only the owner sees, within sight range.
 
 local markers = {}   -- [stashId] = entity
 
@@ -218,7 +215,7 @@ end)
 -- bs_vip renamed a stash: pull the new names.
 AddEventHandler('bs:stash:refresh', function() CreateThread(function() refresh(); syncZones() end) end)
 
--- Other people's stashes: only with a shovel in the bag and only the square metre under your feet. The server uses its own idea of your position and rate-limits the query.
+-- Other people's stashes: only with a shovel in the bag and only the square metre under your feet.
 
 CreateThread(function()
     while true do
@@ -267,9 +264,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Doing it
---------------------------------------------------------------------------------
 
 RegisterNetEvent('bs:stash:open', function(payload)
     local args = payload and payload.args
@@ -370,9 +365,7 @@ RegisterCommand('mystashes', function()
     end)
 end, false)
 
---------------------------------------------------------------------------------
 -- Boot
---------------------------------------------------------------------------------
 
 CreateThread(function()
     Wait(4000)

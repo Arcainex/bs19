@@ -15,6 +15,7 @@ shared_scripts {
 
 client_scripts {
     'client/cl_nui.lua',
+    'client/cl_theme.lua',
     'client/cl_hud.lua',
     'client/cl_levelup.lua',
     'client/cl_fieldmap.lua',
@@ -27,13 +28,16 @@ client_scripts {
     'client/cl_uiscale.lua',
     'client/cl_hidehud.lua',
     'client/cl_hudmove.lua',
-    -- Last, owns nothing: a watchdog that clears a leaked screen blur / NUI focus. Must load after anything that fades the blur in so its onClientResourceStop handler runs after theirs.
+    -- Last, owns nothing: a watchdog that clears a leaked screen blur / NUI focus.
     'client/cl_blurguard.lua',
 }
 
 server_scripts {
     'server/sv_main.lua',
+    'server/sv_theme.lua',
 }
+
+client_script 'client/cl_voiceradio.lua'
 
 ui_page 'html/index.html'
 
@@ -42,9 +46,13 @@ files {
     'html/css/*.css',
     'html/js/*.js',
     'html/shared/*.js',
+    'html/themes/*.css',
+    -- menu fonts (SIL OFL, licences next to them)
+    'html/fonts/*.ttf',
     'html/img/*.svg',
     'html/img/weapons/*.png',
     'html/img/items/*.png',
+    'html/img/custom_attachments/*.png',
     -- Shared inventory art is addressed through nui://bs_ui. Nested folders must be declared or CEF shows broken images.
     'html/img/xanderp/clothing/*.png',
     'html/img/xanderp/items/*.png',

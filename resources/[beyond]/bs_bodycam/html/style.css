@@ -1,0 +1,50 @@
+/* Bodycam lens overlay. All motion is CSS; Lua only sends show/hide. */
+:root { --film: .5; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; pointer-events: none; user-select: none; }
+.hidden { display: none !important; }
+.cam { position: fixed; inset: 0; opacity: 0; animation: camOn .35s ease forwards; }
+@keyframes camOn { 0% { opacity: 0; filter: brightness(2.2); } 40% { opacity: 1; } 100% { opacity: 1; filter: none; } }
+
+/* Barrel feel: heavy elliptical falloff plus a darker rim, so the picture reads as curved glass. */
+.lens { position: absolute; inset: -2%; background:
+    radial-gradient(ellipse 72% 78% at 50% 50%, transparent 52%, rgba(0, 0, 0, calc(.35 + .3 * var(--film))) 82%, rgba(0, 0, 0, calc(.75 + .2 * var(--film))) 100%); }
+.edge { position: absolute; inset: 0; box-shadow: inset 0 0 calc(60px + 80px * var(--film)) rgba(0, 0, 0, .85), inset 0 0 6px rgba(0, 0, 0, .9);
+    background: linear-gradient(90deg, rgba(0,0,0,.28), transparent 9%, transparent 91%, rgba(0,0,0,.28)),
+        linear-gradient(180deg, rgba(0,0,0,.22), transparent 10%, transparent 90%, rgba(0,0,0,.22)); }
+
+/* Chromatic edge: warm and cool tints pulled to opposite rims. */
+.fringe { position: absolute; inset: 0; mix-blend-mode: screen; opacity: calc(.5 * var(--film) + .15);
+    background:
+        radial-gradient(ellipse 70% 80% at 47% 50%, transparent 60%, rgba(255, 40, 30, .16) 88%, transparent 100%),
+        radial-gradient(ellipse 70% 80% at 53% 50%, transparent 60%, rgba(30, 140, 255, .16) 88%, transparent 100%); }
+.cam.nofringe .fringe { display: none; }
+
+/* Sensor noise */
+.grain { position: absolute; inset: -60px; background-image: var(--bs-grain); background-size: 220px 220px;
+    opacity: calc(.06 + .22 * var(--film)); mix-blend-mode: overlay; animation: grain .5s steps(5) infinite; }
+@keyframes grain {
+    0% { transform: translate(0, 0); } 20% { transform: translate(-22px, 14px); } 40% { transform: translate(18px, -26px); }
+    60% { transform: translate(-30px, -8px); } 80% { transform: translate(26px, 20px); } 100% { transform: translate(0, 0); }
+}
+
+/* Compression lines, drifting slowly */
+.scan { position: absolute; inset: 0; opacity: calc(.03 + .07 * var(--film));
+    background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .9) 0 1px, transparent 1px 3px); animation: scan 9s linear infinite; }
+.scan::after { content: ''; position: absolute; left: 0; right: 0; height: 18%; top: -20%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .05), transparent); animation: band 7s linear infinite; }
+@keyframes scan { from { background-position: 0 0; } to { background-position: 0 90px; } }
+@keyframes band { from { top: -20%; } to { top: 110%; } }
+
+/* REC stamp */
+.stamp { position: absolute; inset: 0; font-family: var(--bs-f-mono, Consolas, 'Courier New', monospace); font-size: 15px; letter-spacing: 1.5px;
+    color: rgba(240, 236, 224, .82); text-shadow: 0 0 2px rgba(0, 0, 0, .9), 0 0 6px rgba(0, 0, 0, .6); }
+.cam.nostamp .stamp { display: none; }
+.stamp > div { position: absolute; display: flex; flex-direction: column; gap: 4px; }
+.tl { top: 5.5vh; left: 5vw; }
+.tr { top: 5.5vh; right: 5vw; text-align: right; }
+.bl { bottom: 6vh; left: 5vw; opacity: .7; font-size: 13px; }
+.rec { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: rgba(255, 236, 230, .9); }
+.rec i { width: 11px; height: 11px; border-radius: 50%; background: #e0261b; box-shadow: 0 0 8px rgba(224, 38, 27, .8); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: .1; } }
+.label { font-family: var(--bs-f-cond, 'Arial Narrow', sans-serif); font-weight: 700; letter-spacing: 3px; font-size: 14px; opacity: .8; }

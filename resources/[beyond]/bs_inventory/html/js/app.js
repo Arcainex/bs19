@@ -1,15 +1,18 @@
-// UI scale (bs_ui/html/shared/scale.js): body is transform-scaled, so screen px (clientX, getBoundingClientRect) must be divided by uiK() before being written to style.left/top. Hit-testing (elementFromPoint) stays in screen px.
+// UI scale (bs_ui/html/shared/scale.js): body is transform-scaled
 const uiK = () => (window.BSScale ? window.BSScale.get() : 1);
 const uiW = () => window.innerWidth / uiK();
 
-// bs_inventory - NUI. Drag and drop between two grids. The client decides nothing: a drop posts a move and waits for the server's new state, so a rejected move never appears.
+// bs_inventory - NUI: drag and drop between two grids.
 
 const RES = (typeof GetParentResourceName === 'function')
     ? GetParentResourceName() : 'bs_inventory';
 
 const $ = (id) => document.getElementById(id);
 
+let companionView = false;
+const companionActions = new Set(['close','inventoryReady','move','bodyRefresh','bodyGrabbed']);
 async function post(endpoint, data = {}) {
+    if (companionView && !companionActions.has(endpoint)) return {ok:false,error:'Use trade to exchange items with your companion.'};
     try {
         const r = await fetch(`https://${RES}/${endpoint}`, {
             method: 'POST',
@@ -76,18 +79,7 @@ function renderGrid(el, inv, which) {
     el.innerHTML = '';
 
     // Layer 1: the cells.
-    for (let y = 1; y <= H; y++) {
-        for (let x = 1; x <= W; x++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.style.gridColumn = x;
-            cell.style.gridRow = y;
-            cell.dataset.inv = which;
-            cell.dataset.x = x;
-            cell.dataset.y = y;
-            el.appendChild(cell);
-        }
-    }
+    BSInventorySlots.cells(el, W, H, which);
 
     if (!inv || !inv.slots) return;
 
@@ -108,7 +100,7 @@ function renderGrid(el, inv, which) {
         const w = entry.rot ? (entry.h || 1) : (entry.w || 1);
         const h = entry.rot ? (entry.w || 1) : (entry.h || 1);
 
-        const node = document.createElement('div');
+        const node = BSInventorySlots.create(entry);
         node.className = 'slot has-item'
             + (which === 'player' && !matchesFilter(entry) ? ' is-filtered' : '')
             + (entry.rot ? ' is-rot' : '');
@@ -116,23 +108,17 @@ function renderGrid(el, inv, which) {
         node.dataset.inv = which;
         node.dataset.cat = entry.category || 'misc';
         if (entry.rarity) node.dataset.rarity = entry.rarity;
+        node.style.setProperty('--art-base-w', `calc(${entry.w||1} * (var(--cell) + var(--gap)) - var(--gap) - 10px)`);
+        node.style.setProperty('--art-base-h', `calc(${entry.h||1} * (var(--cell) + var(--gap)) - var(--gap) - 10px)`);
         node.style.gridColumn = `${entry.x} / span ${w}`;
         node.style.gridRow = `${entry.y} / span ${h}`;
-
-        const icon = (typeof BSIcons !== 'undefined')
-            ? BSIcons.get(entry.item, entry.category) : '';
-
-        node.innerHTML = `
-            <span class="slot__icon">${icon}</span>
-            <span class="slot__name">${esc(entry.label)}</span>
-            <span class="slot__foot">${slotBadge(entry)}</span>${fillBar(entry)}`;
 
         wireSlot(node, entry, which, slot);
         el.appendChild(node);
     });
 }
 
-// Anything the grid could not seat. Rare, and visible on purpose so the player does not think it is lost.
+// Anything the grid could not seat. Rare, and visible so the player does not think it is lost.
 function renderOverflow(gridEl, entry, which, slot) {
     let strip = gridEl.parentElement.querySelector('.overflow');
     if (!strip) {
@@ -156,27 +142,21 @@ function renderOverflow(gridEl, entry, which, slot) {
 
 // Corner badge. A count gets the `x` prefix that `.slot__amount` paints; a fill level must not ("x87%" is meaningless).
 function slotBadge(entry) {
-    if (entry.capacity || entry.battery != null) return `<span>${slotCountLabel(entry)}</span>`;
-    return `<span class="slot__amount">${slotCountLabel(entry)}</span>`;
+    return BSInventorySlots.badge(entry);
 }
 
-// A measured container (jerrycan) shows its level, not its count. The server sends `fill` and `capacity`, turned into a percentage here.
+// A measured container (jerrycan) shows its level, not its count.
 function slotCountLabel(entry) {
-    if (entry.battery != null) return `${Math.round(entry.battery)}%`;
-    if (!entry.capacity) return entry.amount;
-    return `${Math.round(((entry.fill || 0) / entry.capacity) * 100)}%`;
+    return BSInventorySlots.count(entry);
 }
 
 // Plus a bar across the bottom, easier to read than a number.
 function fillBar(entry) {
-    if (!entry.capacity) return '';
-    const pct = Math.max(0, Math.min(100,
-        Math.round(((entry.fill || 0) / entry.capacity) * 100)));
-    return `<span class="slot__fill"><i style="width:${pct}%"></i></span>`;
+    return BSInventorySlots.fill(entry);
 }
 
 function wireSlot(node, entry, which, index) {
-    // All dragging goes through the pointer-driven carry system below. Native HTML5 drag-and-drop is not used: in FiveM's embedded browser dragend/drop often never arrives for elements inside a re-rendering grid.
+    // All dragging goes through the pointer-driven carry system below.
     if (entry) {
         // Right-click opens Use / Give / Drop.
         node.addEventListener('contextmenu', (e) => {
@@ -261,6 +241,7 @@ function renderAll() {
     refreshQuick();
 
     const hasContainer = !!S.container;
+    $('containerBoard').hidden = !hasContainer;
     $('containerHollow').classList.toggle('hidden', hasContainer);
     $('containerGrid').classList.toggle('hidden', !hasContainer);
 
@@ -279,14 +260,18 @@ function renderAll() {
 }
 
 // Worn vest pockets and backpack, each its own grid under the pockets. The server sends them as player.vest / player.pack.
+let packWindowOpen = false;
 function renderBags() {
     const p = S.player || {};
     const wrap = $('bagBoxes');
     if (!wrap) return;   // older cached page
     wrap.classList.toggle('hidden', !p.pack && !p.vest);
+    if (!p.pack) packWindowOpen = false;
+    $('packOpen').classList.toggle('hidden', !p.pack);
+    $('packBox').classList.toggle('hidden', !p.pack || !packWindowOpen);
     [['vest', 'vestBox', 'vestGrid', 'vestWeight', 'vestTitle'], ['pack', 'packBox', 'packGrid', 'packWeight', 'packTitle']].forEach(([k, box, grid, w, title]) => {
         const b = p[k];
-        $(box).classList.toggle('hidden', !b);
+        $(box).classList.toggle('hidden', !b || (k === 'pack' && !packWindowOpen));
         if (!b) { $(grid).innerHTML = ''; return; }
         renderGrid($(grid), b, k);
         $(w).textContent = `${(b.weight || 0).toFixed(1)} / ${(b.maxWeight || 0).toFixed(1)} KG`;
@@ -294,6 +279,8 @@ function renderBags() {
     });
     const pack = p.pack;
     if (!pack) return;
+    $('packOpenTitle').textContent = String(pack.label || 'BACKPACK').toUpperCase();
+    $('packOpenWeight').textContent = `${(pack.weight || 0).toFixed(1)} / ${(pack.maxWeight || 0).toFixed(1)} KG`;
     const sel = $('packLook');
     const want = (pack.looks || []).map((l) => `${l.i}`).join(',');
     if (sel.dataset.opts !== want) {
@@ -307,6 +294,29 @@ function renderBags() {
 
 (function wirePackControls() {
     const sel = $('packLook'), hide = $('packHide');
+    // Keep the movable pack outside the scrollable bags strip, which clips fixed children.
+    const packBox = $('packBox');
+    if (packBox) document.body.appendChild(packBox);
+    $('packOpen')?.addEventListener('click', () => { packWindowOpen = true; renderBags(); });
+    $('packClose')?.addEventListener('click', () => { packWindowOpen = false; renderBags(); });
+    const head = $('packBox')?.querySelector('.bagbox__head');
+    let drag = null;
+    head?.addEventListener('pointerdown', e => {
+        if (e.target.closest('button,select')) return;
+        const box = $('packBox'), rect = box.getBoundingClientRect();
+        box.style.left = `${rect.left / uiK()}px`; box.style.top = `${rect.top / uiK()}px`; box.style.transform = 'none';
+        drag = { x:e.clientX, y:e.clientY, left:rect.left / uiK(), top:rect.top / uiK() };
+        head.setPointerCapture(e.pointerId);
+    });
+    head?.addEventListener('pointermove', e => {
+        if (!drag) return;
+        const box = $('packBox');
+        const left = Math.max(0, Math.min(uiW() - box.offsetWidth, drag.left + (e.clientX - drag.x) / uiK()));
+        const top = Math.max(0, Math.min(window.innerHeight / uiK() - 90, drag.top + (e.clientY - drag.y) / uiK()));
+        box.style.left = `${left}px`; box.style.top = `${top}px`;
+    });
+    head?.addEventListener('pointerup', () => { drag = null; });
+    head?.addEventListener('lostpointercapture', () => { drag = null; });
     if (sel) sel.addEventListener('change', () => post('packLook', { look: Number(sel.value) }));
     if (hide) hide.addEventListener('click', () => {
         const pack = S.player && S.player.pack;
@@ -323,8 +333,9 @@ function loadoutPlate(item, category, label, key, count) {
         <span class="lslot__name">${esc(label || item)}</span>`;
 }
 
-// Gear: armour + backpack. They are real inventory slots (the server's equip frames), so dragging in/out is an ordinary move and the server decides.
+// Gear: armour + backpack: they are real inventory slots (the server's equip frames)
 const GEAR_IDS = ['armour', 'backpack'];
+const radioSlotId = () => Number(S.player?.radioSlot || 921);
 
 function renderGear() {
     const box = $('gearSlots');
@@ -356,6 +367,15 @@ function renderGear() {
         });
         box.appendChild(node);
     });
+    const radioSlot=radioSlotId(), radio=S.player?.slots?.[String(radioSlot)];
+    const radioNode=document.createElement('div');
+    radioNode.className='slot gear__slot gear__radio'+(radio?' has-item':'');
+    radioNode.dataset.inv='player';radioNode.dataset.slot=radioSlot;radioNode.dataset.gear='radio';
+    radioNode.innerHTML=radio?loadoutPlate(radio.item,radio.category,radio.label,'',''):`<span class="lslot__empty">${esc(t('inv.radio_slot',{fallback:'RADIO'}))}</span>`;
+    radioNode.title=radio?t('inv.radio_options',{fallback:'Right-click for radio options'}):t('inv.radio_equip_hint',{fallback:'Drag a radio here to equip it'});
+    radioNode.addEventListener('contextmenu',e=>{e.preventDefault();e.stopImmediatePropagation();if(radio)openContext(e.clientX,e.clientY,'player',radioSlot,radio);});
+    if(radio){radioNode.addEventListener('mouseenter',e=>showTip(radio,e));radioNode.addEventListener('mousemove',moveTip);radioNode.addEventListener('mouseleave',hideTip);radioNode.addEventListener('dblclick',()=>post('use',{slot:radioSlot}));}
+    box.appendChild(radioNode);
 }
 
 // The gear frame an item belongs in, or null.
@@ -367,9 +387,9 @@ function gearSlotFor(entry) {
     return def ? Number(def.slot) : null;
 }
 
-// The bar: five quick slots, drawn inside the bag as well as on the HUD, so you can drag items onto them. A binding is by item name, not grid position.
+// The bar: five quick slots, drawn inside the bag as well as on the HUD, so you can drag items onto them.
 
-// The bar is five more slots of the bag. A bar slot is a real inventory slot (41-45) with data-inv="player" and its absolute slot number, so drags in, out and between bar slots are ordinary moves.
+// The bar is five more slots of the bag.
 
 function barSlotOf(index) {
     const grid = (S.player && S.player.gridSlots) || slotCount();
@@ -396,7 +416,7 @@ function renderHotbar() {
         const icon = (entry && typeof BSIcons !== 'undefined')
             ? BSIcons.get(entry.item, entry.category) : '';
 
-        // The bar draws the same parts as a bag plate, with the same class names, so the stylesheet rules apply (otherwise the 512px icons render at full size).
+        // The bar draws the same parts as a bag plate, with the same class names
         node.innerHTML = `
             <span class="bar__key">${i}</span>
             ${entry ? `<span class="slot__icon">${icon}</span>` : ''}
@@ -411,13 +431,15 @@ function renderHotbar() {
 
             // Attached before wireSlot's handler and stops it, because right-click on the bar means take off, not the Use/Give/Drop menu.
             e.stopImmediatePropagation();
-            await unbind(abs, entry);
+            if(entry.category==='weapon')openContext(e.clientX,e.clientY,'player',abs,entry);
+            else await unbind(abs, entry);
         });
 
         node.addEventListener('click', () => {
             if (carry) return;                          // finishing a drag
             if (Date.now() - barDragged < 250) return;  // just finished one
-            if (!entry) openBarPicker(i, node);
+            if (!entry) openBarPicker(i,node);
+            else if(entry.category==='weapon')post('inspectWeapon',{slot:abs});
         });
 
         wireSlot(node, entry, 'player', abs);
@@ -425,7 +447,7 @@ function renderHotbar() {
     }
 }
 
-// A drag that ends on the bar is followed by a click on the same element, which would open the picker. `carry` is already null by then, so a timestamp is the guard.
+// A drag that ends on the bar is followed by a click on the same element
 let barDragged = 0;
 
 // The first empty square in the carried grid, or null if the bag is full.
@@ -522,144 +544,132 @@ document.addEventListener('mousedown', (e) => {
     if (!e.target.closest('#barpick') && !e.target.closest('.bar__slot')) closeBarPicker();
 });
 
-// The carry: one pointer-driven drag for everything (grid, container incl. trunk, hotbar). Used because the browser's own drag-and-drop is unreliable in FiveM's embedded browser.
+// The carry: one pointer-driven drag for everything (grid, container incl. trunk, hotbar).
 
-let carry = null;       // { from: {inv, slot}, entry, ghost, shift }
-let lastDragEnd = 0;
-
-// Finds the element a carry started from, so every place that un-highlights it uses one lookup.
+let carry = null;
+let lastDragEnd = 0, dragEscapeAt = 0;
 function sourceNodeFor(from) {
-    return document.querySelector(
-        `.slot[data-inv="${from.inv}"][data-slot="${from.slot}"]`);
+    if(from.inv==='vicinity') return [...document.querySelectorAll('.vicinity-item')].find(node=>node.dataset.id===String(from.slot)) || null;
+    return document.querySelector(`.slot[data-inv="${from.inv}"][data-slot="${from.slot}"]`);
 }
-
-function entryAt(which, slot) {
-    const source = which === 'player' ? S.player : which === 'container' ? S.container
-        : (which === 'pack' || which === 'vest') ? (S.player && S.player[which]) : null;
-    return source && source.slots ? source.slots[String(slot)] : null;
+function inventoryFor(which) {
+    return which==='player'?S.player:which==='container'?S.container:S.player?.[which];
 }
-
-document.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-
-    // A bar slot is a normal slot (data-inv="player" plus its absolute slot number), so dragging uses the same code path as the grid.
-    const node = e.target.closest('.slot.has-item');
-    if (!node) return;
-
-    const which = node.dataset.inv;
-    const slot = Number(node.dataset.slot);
-    const entry = entryAt(which, slot);
-    if (!entry) return;
-
-    // Armed, not carrying: a click that never moves is still a click.
-    carry = { from: { inv: which, slot }, entry, ghost: null,
-              start: { x: e.clientX, y: e.clientY }, shift: e.shiftKey };
+function entryAt(which,slot) { return inventoryFor(which)?.slots?.[String(slot)] || null; }
+function clearPlacement() {
+    document.querySelectorAll('.is-over,.cell.is-placeable,.cell.is-blocked').forEach(n=>n.classList.remove('is-over','is-placeable','is-blocked'));
+}
+function settleGhost(ghost,rect,accepted) {
+    if(!ghost||!rect||$('root').classList.contains('hidden')||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const k=uiK(), from=ghost._rect;
+    if(!from) return;
+    ghost.classList.add('is-settling'); document.body.appendChild(ghost);
+    ghost.style.left=`${from.left/k}px`;ghost.style.top=`${from.top/k}px`;
+    const dx=(rect.left-from.left)/k,dy=(rect.top-from.top)/k;
+    const animation=ghost.animate([{transform:'translate(0,0) scale(1)',opacity:.9},{transform:`translate(${dx}px,${dy}px) scale(.65)`,opacity:0}],{duration:accepted?180:240,easing:'cubic-bezier(.2,.8,.3,1)'});
+    animation.onfinish=()=>ghost.remove();
+}
+function cancelCarry() {
+    if(!carry) return;
+    const node=sourceNodeFor(carry.from),ghost=carry.ghost;
+    if(ghost) { ghost._rect=ghost.getBoundingClientRect();ghost.remove(); }
+    node?.classList.remove('is-dragging');document.body.classList.remove('is-carrying');clearPlacement();
+    settleGhost(ghost,node?.getBoundingClientRect(),false);carry=null;lastDragEnd=Date.now();
+}
+function paintCarry(e) {
+    if(!carry?.ghost) return;
+    const ghost=carry.ghost,size=BSGridMath.footprint(carry.entry,carry.rot),k=uiK();
+    ghost.style.left=`${e.clientX/k+12}px`;ghost.style.top=`${e.clientY/k+12}px`;
+    ghost.classList.toggle('is-rotated',carry.rot);
+    ghost.querySelector('.ghost__hint').textContent=`${size.w} × ${size.h}${(carry.entry.w||1)!==(carry.entry.h||1)?' · '+t('inv.rotate_hint',{fallback:'R to rotate'}):''}`;
+    const over=document.elementFromPoint(e.clientX,e.clientY),cell=over?.closest('.cell'),slot=over?.closest('.slot');
+    clearPlacement();
+    const grid=(cell||slot)?.closest('.grid');
+    if(cell&&grid) {
+        const x=Number(cell.dataset.x),y=Number(cell.dataset.y),which=cell.dataset.inv;
+        const ignore=which===carry.from.inv&&!(carry.shift&&carry.entry.amount>1)?carry.from.slot:null;
+        const inv=inventoryFor(which),valid=carry.from.inv==='vicinity' ? which==='player' : BSGridMath.fits(inv,carry.entry,x,y,carry.rot,ignore);
+        grid.querySelectorAll('.cell').forEach(n=>{
+            if(Number(n.dataset.x)>=x&&Number(n.dataset.x)<x+size.w&&Number(n.dataset.y)>=y&&Number(n.dataset.y)<y+size.h) n.classList.add(valid?'is-placeable':'is-blocked');
+        });
+    } else (over?.closest('.booster,.bar__slot,.slot'))?.classList.add('is-over');
+}
+document.addEventListener('mousedown',e=>{
+    if(e.button!==0||carry) return;
+    const node=e.target.closest('.slot.has-item');if(!node) return;
+    const from={inv:node.dataset.inv,slot:Number(node.dataset.slot)},entry=entryAt(from.inv,from.slot);if(!entry) return;
+    carry={from,entry,ghost:null,start:{x:e.clientX,y:e.clientY},last:e,shift:e.shiftKey,rot:!!entry.rot};
 });
-
-document.addEventListener('mousemove', (e) => {
-    if (!carry) return;
-
-    if (!carry.ghost) {
-        const moved = Math.abs(e.clientX - carry.start.x) + Math.abs(e.clientY - carry.start.y);
-        if (moved < 6) return;
-
-        const sourceNode = sourceNodeFor(carry.from);
-        if (sourceNode) sourceNode.classList.add('is-dragging');
-
-        const ghost = document.createElement('div');
-        ghost.className = 'ghost';
-        const icon = (typeof BSIcons !== 'undefined')
-            ? BSIcons.get(carry.entry.item, carry.entry.category) : '';
-        ghost.innerHTML = `<span class="ghost__icon">${icon}</span>
-                           <span class="ghost__name">${esc(carry.entry.label)}</span>`;
-        document.body.appendChild(ghost);
-        carry.ghost = ghost;
-        document.body.classList.add('is-carrying');
+document.addEventListener('mousemove',e=>{
+    if(!carry) return;carry.last=e;
+    if(!carry.ghost) {
+        if(Math.abs(e.clientX-carry.start.x)+Math.abs(e.clientY-carry.start.y)<6) return;
+        sourceNodeFor(carry.from)?.classList.add('is-dragging');
+        const ghost=document.createElement('div');ghost.className='ghost';
+        ghost.innerHTML=`<span class="ghost__icon">${typeof BSIcons==='undefined'?'':BSIcons.get(carry.entry.item,carry.entry.category)}</span><span class="ghost__name">${esc(carry.entry.label)}</span><span class="ghost__hint"></span>`;
+        document.body.appendChild(ghost);carry.ghost=ghost;document.body.classList.add('is-carrying');
     }
-
-    carry.ghost.style.left = `${e.clientX / uiK() + 12}px`;
-    carry.ghost.style.top  = `${e.clientY / uiK() + 12}px`;
-
-    const over = document.elementFromPoint(e.clientX, e.clientY);
-    const target = over && (over.closest('.bar__slot') || over.closest('.booster[data-bidx]')
-        || over.closest('.booster[data-gidx]') || over.closest('.slot'));
-
-    document.querySelectorAll('.is-over').forEach((n) => n.classList.remove('is-over'));
-    if (target) target.classList.add('is-over');
+    paintCarry(e);
 });
-
-document.addEventListener('mouseup', (e) => {
-    if (!carry) return;
-
-    const had = carry.ghost;
-    const sourceNode = sourceNodeFor(carry.from);
-    if (sourceNode) sourceNode.classList.remove('is-dragging');
-    if (carry.ghost) carry.ghost.remove();
-    document.body.classList.remove('is-carrying');
-    document.querySelectorAll('.is-over').forEach((n) => n.classList.remove('is-over'));
-
-    const { from, entry, shift } = carry;
-    carry = null;
-
-    if (!had) return;   // a click, not a drag
-    lastDragEnd = Date.now();
-
-    const over = document.elementFromPoint(e.clientX, e.clientY);
-
-    // Dropping on the bar is dropping on a slot; it only needs the guard against the click that follows a drag.
-    if (over && over.closest('.bar__slot')) barDragged = Date.now();
-
-    // A drop lands on a cell, not a slot number. The server needs the x/y of the cell the item's top-left should occupy. Dropping onto another item still resolves to that item's slot.
-    const cellTarget = over && over.closest('.cell');
-    const slotTarget = over && over.closest('.slot');
-
-    // Booster/gadget slots take the stack out of the bag (server moves it).
-    const gadgetTarget = over ? over.closest('.booster[data-gidx]') : null;
-    if (gadgetTarget) {
-        if (!entry || entry.category !== 'gadget') { flashBar(gadgetTarget, t('inv.only_gadgets')); return; }
-        post('gadgetSet', { index: Number(gadgetTarget.dataset.gidx), item: entry.item });
+document.addEventListener('keydown',e=>{
+    if(!carry?.ghost) return;
+    if(e.key==='Escape') { e.preventDefault();dragEscapeAt=Date.now();cancelCarry();return; }
+    if(e.code==='KeyR'&&!e.repeat) {
+        e.preventDefault();
+        if((carry.entry.w||1)!==(carry.entry.h||1)) {carry.rot=!carry.rot;paintCarry(carry.last);}
+    }
+});
+window.addEventListener('blur',cancelCarry);
+document.addEventListener('mouseup',e=>{
+    if(!carry) return;
+    const {from,entry,shift,rot,ghost}=carry,node=sourceNodeFor(from),sourceRect=node?.getBoundingClientRect();
+    if(ghost) {ghost._rect=ghost.getBoundingClientRect();ghost.remove();}
+    node?.classList.remove('is-dragging');document.body.classList.remove('is-carrying');clearPlacement();carry=null;
+    if(!ghost) return;lastDragEnd=Date.now();
+    const over=document.elementFromPoint(e.clientX,e.clientY),cellTarget=over?.closest('.cell'),slotTarget=over?.closest('.slot');
+    if(from.inv==='vicinity'){
+        const target=cellTarget||slotTarget;
+        if(!target||target.dataset.inv!=='player'||companionView){settleGhost(ghost,sourceRect,false);return;}
+        takeVicinity({id:from.slot,kind:from.kind}).then(result=>{
+            settleGhost(ghost,result?.ok?target.getBoundingClientRect():sourceRect,!!result?.ok);
+            if(!result?.ok&&target.isConnected)flashBar(target,result?.error||'Item unavailable.');
+        });
         return;
     }
-    const boosterTarget = over ? over.closest('.booster[data-bidx]') : null;
-    if (boosterTarget) {
-        if (!entry || entry.category !== 'booster') { flashBar(boosterTarget, t('inv.only_boosters')); return; }
-        post('boosterSet', { index: Number(boosterTarget.dataset.bidx), item: entry.item });
+    const radioTarget=over?.closest('[data-gear="radio"]');
+    if(radioTarget){if(from.inv!=='player'||!entry.radio||from.slot===radioSlotId()){settleGhost(ghost,sourceRect,false);return;}post('radioSlot',{slot:from.slot}).then(result=>{if(!result?.ok)flashBar(radioTarget,result?.error||t('inv.no_room'));settleGhost(ghost,result?.ok?radioTarget.getBoundingClientRect():sourceRect,!!result?.ok);});return;}
+    if(from.inv==='player'&&from.slot===radioSlotId()){if(cellTarget?.dataset.inv!=='player'){settleGhost(ghost,sourceRect,false);return;}post('radioSlot',{slot:0}).then(result=>{if(!result?.ok)flashBar(cellTarget,result?.error||t('inv.no_room'));settleGhost(ghost,result?.ok?cellTarget.getBoundingClientRect():sourceRect,!!result?.ok);});return;}
+    const gadget=over?.closest('.booster[data-gidx]'),booster=over?.closest('.booster[data-bidx]');
+    if(gadget||booster) {
+        const target=gadget||booster,category=gadget?'gadget':'booster';
+        if(entry.category!==category) {flashBar(target,t(gadget?'inv.only_gadgets':'inv.only_boosters'));settleGhost(ghost,sourceRect,false);return;}
+        post(gadget?'gadgetSet':'boosterSet',{index:Number(target.dataset[gadget?'gidx':'bidx']),item:entry.item}).then(r=>settleGhost(ghost,r?.ok?target.getBoundingClientRect():sourceRect,!!r?.ok));return;
+    }
+    if(!cellTarget&&!slotTarget) {
+        const outside=over?.matches('#root,.scrim,.wrap,.layout,.col,.pane');
+        if(from.inv==='player'&&!companionView&&outside){
+            post('drop',{slot:from.slot,amount:shift?1:entry.amount}).then(r=>{
+                settleGhost(ghost,sourceRect,!!r?.ok);
+                if(!r?.ok&&node)flashBar(node,r?.error||'Unable to drop item');
+                refreshVicinity();
+            });
+        }else settleGhost(ghost,sourceRect,false);
         return;
     }
-
-    if (!cellTarget && !slotTarget) return;
-
-    const to = slotTarget
-        ? { inv: slotTarget.dataset.inv, slot: Number(slotTarget.dataset.slot) }
-        : { inv: cellTarget.dataset.inv,
-            slot: from.slot,                       // keeps its identity
-            x: Number(cellTarget.dataset.x),
-            y: Number(cellTarget.dataset.y),
-            rot: !!(entry && entry.rot) };
-
-    // Coming off a gear frame onto a bag cell: it needs a grid slot id to land in.
-    if (!slotTarget && from.inv === 'player' && to.inv === 'player'
-        && !onGrid(entry, from.slot, (S.player && S.player.gridSlots) || slotCount())) {
-        const free = firstFreeGridSlot();
-        if (free === null) { flashBar(cellTarget, t('inv.no_room')); return; }
-        to.slot = free;
+    if(over?.closest('.bar__slot')) barDragged=Date.now();
+    const to=slotTarget?{inv:slotTarget.dataset.inv,slot:Number(slotTarget.dataset.slot)}:{inv:cellTarget.dataset.inv,slot:from.slot,x:Number(cellTarget.dataset.x),y:Number(cellTarget.dataset.y),rot};
+    if(slotTarget&&from.inv===to.inv&&from.slot===to.slot&&rot!==!!entry.rot&&entry.x&&entry.y) Object.assign(to,{x:entry.x,y:entry.y,rot});
+    if(!slotTarget&&from.inv==='player'&&to.inv==='player'&&!onGrid(entry,from.slot,S.player?.gridSlots||slotCount())) {
+        const free=firstFreeGridSlot();if(free===null) {flashBar(cellTarget,t('inv.no_room'));settleGhost(ghost,sourceRect,false);return;}to.slot=free;
     }
-
-    if (from.inv === to.inv && from.slot === to.slot && to.x === undefined) return;
-
-    if (shift && entry.amount > 1) {
-        pendingSplit = { from, to, max: entry.amount };
-        $('splitInput').max = entry.amount;
-        $('splitInput').value = Math.max(1, Math.floor(entry.amount / 2));
-        $('split').classList.remove('hidden');
-        $('splitInput').focus();
-        return;
+    if(from.inv===to.inv&&from.slot===to.slot&&to.x===undefined) {settleGhost(ghost,sourceRect,false);return;}
+    if(shift&&entry.amount>1) {
+        pendingSplit={from,to,max:entry.amount};$('splitInput').max=entry.amount;$('splitInput').value=Math.max(1,Math.floor(entry.amount/2));$('split').classList.remove('hidden');$('splitInput').focus();return;
     }
-
-    // Refused grid/bar moves (no room, bad placement) flash a reason, so a drop never undoes itself silently.
-    const flashOn = cellTarget || slotTarget;
-    post('move', { from, to, amount: entry.amount }).then((r) => {
-        if (r && !r.ok && r.error && flashOn) flashBar(flashOn, r.error);
+    const flashOn=cellTarget||slotTarget,targetRect=flashOn.getBoundingClientRect();
+    post('move',{from,to,amount:entry.amount}).then(r=>{
+        settleGhost(ghost,r?.ok?targetRect:sourceRect,!!r?.ok);
+        if(!r?.ok&&r?.error&&flashOn.isConnected) flashBar(flashOn,r.error);
     });
 });
 
@@ -701,6 +711,10 @@ function openContext(x, y, which, slot, entry) {
         eq.textContent = entry.category === 'gadget' ? t('inv.equip_gadget') : t('inv.equip_booster');
     }
 
+    ctx.querySelector('[data-act="radioequip"]').classList.toggle('hidden',!mine||!entry.radio);
+    ctx.querySelector('[data-act="radioequip"]').textContent=slot===radioSlotId()?t('inv.radio_unequip',{fallback:'Unequip radio'}):t('inv.radio_equip',{fallback:'Equip radio'});
+    ctx.querySelector('[data-act="rotate"]').disabled = !entry.x || !entry.y || (entry.w||1)===(entry.h||1) || !onGrid(entry,slot,inventoryFor(which)?.gridSlots||slotCount());
+    ctx.querySelector('[data-act="inspectweapon"]').classList.toggle('hidden', !mine || entry.category !== 'weapon');
     ctx.classList.remove('hidden');
 
     // Keep it on screen near the cursor.
@@ -719,14 +733,23 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('#ctx')) closeContext();
 });
 
+const rotateButton=document.createElement('button');rotateButton.className='ctx__item';rotateButton.dataset.act='rotate';rotateButton.textContent=t('inv.rotate',{fallback:'Rotate item'});$('ctx').appendChild(rotateButton);
+
+const inspectButton=document.createElement('button');inspectButton.className='ctx__item';inspectButton.dataset.act='inspectweapon';inspectButton.dataset.i18n='ui.customize_weapon';inspectButton.textContent=(window.BSI18n&&BSI18n.t&&BSI18n.t('ui.customize_weapon',{fallback:'CUSTOMIZE WEAPON'}))||'CUSTOMIZE WEAPON';$('ctx').appendChild(inspectButton);
+
+const radioEquipButton=document.createElement('button');radioEquipButton.className='ctx__item hidden';radioEquipButton.dataset.act='radioequip';radioEquipButton.textContent=t('inv.radio_equip',{fallback:'Equip radio'});$('ctx').appendChild(radioEquipButton);
+
 $('ctx').querySelectorAll('.ctx__item').forEach((btn) => {
     btn.addEventListener('click', async () => {
         if (!ctxTarget) return;
-        const { slot, entry } = ctxTarget;
+        const { slot, entry, inv: which } = ctxTarget;
         const act = btn.dataset.act;
         closeContext();
 
+        if (act === 'rotate') { const from={inv:which,slot},to={inv:which,slot,x:entry.x,y:entry.y,rot:!entry.rot};const r=await post('move',{from,to,amount:entry.amount});if(!r?.ok) { const node=sourceNodeFor(from);if(node) flashBar(node,r?.error||t('inv.no_room')); } return; }
+        if (act === 'radioequip') { const result=await post('radioSlot',{slot:slot===radioSlotId()?0:slot});if(!result?.ok)tradeNotice(result?.error||t('inv.no_room'));return; }
         if (act === 'equipslot') return void await equipLoadout(entry, null);
+        if (act === 'inspectweapon') return void await post('inspectWeapon', { slot });
         if (act === 'use')  return void await post('use', { slot });
         if (act === 'drop') return void await post('drop', { slot, amount: entry.amount });
         if (act === 'split') return void openSplitPrompt(slot, entry, null);
@@ -939,7 +962,7 @@ $('splitCancel').addEventListener('click', () => {
 
 // settings
 
-// Filter picker is built from data: the filter list lives in bs_ui's config, so the buttons are generated into the same .seg container and use the generic data-value handler.
+// Filter picker is built from data: the filter list lives in bs_ui's config
 
 // Filter names and notes come from bs_ui's config in English; locale keys win.
 function filterText(preset, field) {
@@ -1033,6 +1056,9 @@ function paintPreview() {
 }
 
 function paintSettings() {
+    const fieldViewOn=document.querySelector('[data-setting="fpsEnabled"] button[data-value="true"]');
+    if(fieldViewOn){fieldViewOn.disabled=S.settings.fpsAvailable!==true;fieldViewOn.title=fieldViewOn.disabled?'Enable First-person prototype availability in F1 first.':'';}
+    document.querySelectorAll('input[type=color][data-setting]').forEach(input=>{const v=S.settings[input.dataset.setting];if(/^#[0-9a-f]{6}$/i.test(v||''))input.value=v;});
     buildChoiceSegs();
     buildFilterSeg();
     paintFilterNote();
@@ -1102,6 +1128,7 @@ function wireSeg(seg) {
 
 // Colours of a palette for the instant preview, as sent by bs_ui.
 function paletteVars(id) {
+    if(id==='custom')return {accent:S.settings.themeAccent||'#e08c46',hi:S.settings.themeAccent||'#e08c46',bg:S.settings.themeBackground||'#0a0a09',text:S.settings.themeText||'#f0ebdd',muted:S.settings.themeMuted||'#a8a293',blood:'#a63d32'};
     const d = ((S.choices && S.choices.palettes) || []).filter((p) => p.id === id)[0];
     return (d && d.vars) || null;
 }
@@ -1157,6 +1184,10 @@ document.querySelectorAll('input[type=range][data-setting]').forEach((input) => 
     });
 });
 
+document.querySelectorAll('input[type=color][data-setting]').forEach(input=>{
+    input.addEventListener('change',()=>{const key=input.dataset.setting;S.settings[key]=input.value;if(S.settings.menuPalette==='custom'&&window.BSPalette)BSPalette.apply(paletteVars('custom'),'custom');post('settings',{patch:{[key]:input.value}});});
+});
+
 // cat filter
 
 const catFilterEl = $('catFilter');
@@ -1185,9 +1216,9 @@ document.querySelectorAll('.tab[data-tab]').forEach((t) => {
 
 $('btnClose').addEventListener('click', () => post('close'));
 
-// ESC only. Listening for the open key here would close the window right away, because the keyup of the opening press arrives while the NUI has focus.
+// ESC only: listening for the open key here would close the window right away
 document.addEventListener('keyup', (e) => {
-    if (e.key === 'Escape') post('close');
+    if (e.key === 'Escape' && Date.now()-dragEscapeAt > 400) post('close');
 });
 
 document.addEventListener('keydown', async (e) => {
@@ -1212,6 +1243,8 @@ function localizeItems(o, depth = 0) {
 
 window.addEventListener('message', (e) => {
     const d = e.data || {};
+    if (companionView && ['hotbar','boosters','gadgets','skillsChanged','medical'].includes(d.action)) return;
+    if (d.action === 'skillsChanged') { renderSheet(d.levels, d.effects, d.trees); return; }
     if (d.action !== 'bs_i18n') localizeItems(d);
 
     if (d.action === 'tradeOpen') {
@@ -1227,7 +1260,12 @@ window.addEventListener('message', (e) => {
         return;
     }
 
+    if (d.action === 'subjectStats' && companionView) { renderStats(d.stats); renderMedical(d.stats,d.levels,S.player && S.player.equipStats); return; }
     if (d.action === 'open') {
+        companionView = d.companionView === true;
+        S.container = null;
+        if (companionView) { S.boosters = {}; S.gadgets = {}; }
+        document.querySelectorAll('.tab[data-tab]').forEach(tab => { tab.hidden = companionView && tab.dataset.tab !== 'carry'; tab.style.display = tab.hidden ? 'none' : ''; });
         // Reveal the shell first so a bad item or stale cached asset never leaves the game camera active behind an invisible page.
         $('root').classList.remove('hidden');
         try {
@@ -1298,7 +1336,9 @@ window.addEventListener('message', (e) => {
 
     if (d.action === 'trade') renderTrade(d.trade);
 
-    if (d.action === 'close') {
+    if (d.action === 'close') { companionView = false;
+        packWindowOpen = false;
+        $('packBox')?.classList.add('hidden');
         renderTrade(null);
         hideTip();
         sel = null;
@@ -1320,8 +1360,7 @@ window.addEventListener('message', (e) => {
 });
 
 
-// hotbar
-// Moves the stack onto one of the five bar slots from the context menu, which frees the source square.
+// hotbar: moves the stack onto one of the five bar slots from the context menu, which frees the source square.
 
 document.querySelectorAll('.ctx__slot').forEach((b) => {
     b.addEventListener('click', async () => {
@@ -1329,20 +1368,20 @@ document.querySelectorAll('.ctx__slot').forEach((b) => {
 
         const index = Number(b.dataset.bind);
         const from = ctxTarget.slot;
+        const sourceInventory=ctxTarget.inv;
         const entry = ctxTarget.entry;
 
         closeContext();
 
         await post('move', {
-            from: { inv: ctxTarget.inv || 'player', slot: from },
+            from: { inv: sourceInventory || 'player', slot: from },
             to:   { inv: 'player', slot: barSlotOf(index) },
             amount: entry.amount,
         });
     });
 });
 
-// stats
-// Snapshot from bs_core GetData() taken when the panel opens, not a live feed (see cl_main.lua).
+// stats: snapshot from bs_core GetData() taken when the panel opens, not a live feed (see cl_main.lua).
 
 function renderMedical(d, levels, gear) {
     const state = document.getElementById('medicalState');
@@ -1445,8 +1484,7 @@ function renderStats(d) {
     rows.innerHTML = html;
 }
 
-// character sheet
-// Each modifier declares its own polarity (good/bad), because a negative hunger rate is a buff and the sign alone cannot tell.
+// character sheet: each modifier declares its own polarity (good/bad)
 
 const MOD_SPEC = [
     { k: 'carryWeight',  label: 'Carry weight', pct: false, unit: 'kg', good: 'up' },
@@ -1512,8 +1550,7 @@ function renderSheet(levels, effects, trees) {
 
 
 
-// boosters
-// Three slots fed by bs_boosters: name, count left, cooldown.
+// boosters: three slots fed by bs_boosters: name, count left, cooldown.
 let boosterTick = null;
 function renderBoosters() {
     const keys = S.boosterKeys || ['6', '7', '8'];
@@ -1554,8 +1591,7 @@ document.querySelectorAll('.booster[data-bidx]').forEach((node) => {
     });
 });
 
-// gadgets
-// Two deployable slots fed by bs_gadgets. Same look as boosters.
+// gadgets: two deployable slots fed by bs_gadgets. Same look as boosters.
 let gadgetTick = null;
 function renderGadgets() {
     const keys = S.gadgetKeys || ['9', '0'];
@@ -1595,14 +1631,13 @@ document.querySelectorAll('.booster[data-gidx]').forEach((node) => {
     });
 });
 
-// body status
-// Four snapshots (front/right/back/left) cut from one game-view grab (see grabGameView): the flat backdrop is keyed out and all four are trimmed and scaled the same. If the grab fails the silhouette stays.
+// body status: four snapshots (front/right/back/left) cut from one game-view grab (see grabGameView): the flat
 
 const Body = { shots: null, angle: 0, sex: null, injuries: {}, front: 'A' };
 const ANGLE_NAMES = ['FRONT', 'RIGHT SIDE', 'BACK', 'LEFT SIDE'];
 const SHOT_W = 300, SHOT_H = 600;
 
-// Game-view grab in plain WebGL. FiveM's NUI swaps in the live game frame when WRAP_T goes CLAMP -> MIRRORED -> REPEAT right after upload. The frame has no NUI in it.
+// Game-view grab in plain WebGL.
 const GameView = { gl: null, fb: null, rt: null, w: 0, h: 0 };
 
 function gameViewInit() {
@@ -1695,7 +1730,23 @@ function keyPixels(d, w, h, marks) {
             });
             kr /= n; kg /= n; kb /= n;
 
+            // Only remove backdrop-coloured pixels connected to the image border.
+            // Similar colours inside clothing must remain opaque on light themes.
+            const connected = new Uint8Array(w * h), queue = new Uint32Array(w * h);
+            let head = 0, tail = 0;
+            const visit = (x, y) => {
+                if (x < 0 || y < 0 || x >= w || y >= h) return;
+                const p = y * w + x;
+                if (connected[p]) return;
+                const i = p * 4, dr = d[i] - kr, dg = d[i + 1] - kg, db = d[i + 2] - kb;
+                if (dr * dr + dg * dg + db * db >= 115 * 115) return;
+                connected[p] = 1; queue[tail++] = p;
+            };
+            for (let x = 0; x < w; x++) { visit(x, 0); visit(x, h - 1); }
+            for (let y = 0; y < h; y++) { visit(0, y); visit(w - 1, y); }
+            while (head < tail) { const p = queue[head++], x = p % w, y = Math.floor(p / w); visit(x - 1, y); visit(x + 1, y); visit(x, y - 1); visit(x, y + 1); }
             for (let i = 0; i < d.length; i += 4) {
+                if (!connected[i / 4]) continue;
                 const dr = d[i] - kr, dg = d[i + 1] - kg, db = d[i + 2] - kb;
                 const dist = Math.sqrt(dr * dr + dg * dg + db * db);
                 const a = Math.max(0, Math.min(1, (dist - 45) / 70));
@@ -1923,7 +1974,7 @@ function showTip(entry, e) {
         entry.battery != null ? `<div class="tip__row"><span>${t('tip.battery')}</span><b>${Math.round(entry.battery)}% <small>(${esc(entry.batteryCap || 'small')})</small></b></div>` : '',
     ].join('');
     const itemDesc = entry.item ? t('item.' + entry.item + '.desc', { fallback: '' }) : '';
-    const desc = itemDesc || entry.description || t('blurb.' + entry.category, { fallback: CAT_BLURB[entry.category] || '' });
+    const desc = (entry.item === 'fishing_rod' ? t('inv.rod_reusable',{fallback:'Reusable. One bait per cast.'}) : '') || itemDesc || entry.description || t('blurb.' + entry.category, { fallback: CAT_BLURB[entry.category] || '' });
     tip.innerHTML = `<div class="tip__head"><span class="tip__name">${esc(entry.label)}</span><span class="tip__cat" data-cat="${esc(entry.category || 'misc')}">${esc(catName(entry.category))}</span></div>
         ${rows}${desc ? `<p class="tip__desc">${esc(desc)}</p>` : ''}
         <div class="tip__keys">${entry.usable ? t('tip.dbl_use') : t('tip.click_select')} &middot; ${t('tip.right_more')}</div>`;
@@ -1964,8 +2015,7 @@ function refreshQuick() {
     btn('drop').disabled = !mine;
 }
 
-// first free spot for a w x h item in the carried grid
-// Split from the SPLIT button or the right-click menu: the new half goes to the first free spot. The server gives it its own slot id.
+// first free spot for a w x h item in the carried grid Split from the SPLIT button or the right-click menu: the
 function openSplitPrompt(slot, entry, flashOn) {
     if (!entry || !(entry.amount > 1)) return;
     const spot = freeSpot(entry.w || 1, entry.h || 1);
@@ -2082,3 +2132,53 @@ renderChips([]);
 
 // /hidehud (bs_ui cl_hidehud.lua): hide the whole page for a clean screenshot.
 window.addEventListener('message', (e) => { const d = e.data || {}; if (d.action === 'bsHideAll') document.documentElement.style.visibility = d.hidden ? 'hidden' : ''; });
+
+// Refresh only while the player's inventory is open; stale replies cannot reopen it.
+let vicinityTimer=null,vicinityVersion=0,vicinityBusy=false;
+async function takeVicinity(item){
+    const result=await post('vicinityTake',{id:item.id,kind:item.kind});
+    refreshVicinity();
+    return result;
+}
+async function refreshVicinity(){
+    const version=vicinityVersion;
+    if(companionView||$('root').classList.contains('hidden')||vicinityBusy||carry?.from.inv==='vicinity')return;
+    vicinityBusy=true;
+    try{
+        const result=await post('vicinity',{});
+        if(version!==vicinityVersion)return;
+        const host=$('vicinityItems');host.replaceChildren();
+        const items=result?.ok?result.items||[]:[];
+        $('vicinityBoard').hidden = !items.length;
+        $('vicinityStatus').textContent=result?.ok?(items.length?'Click to collect or drag into Carried.':'No loose items nearby.'):'Unable to check nearby items.';
+        for(const item of items){
+            const button=document.createElement('button');button.className='vicinity-item';
+            const icon=document.createElement('span');icon.className='slot__icon';icon.innerHTML=BSIcons.get(item.item,item.category);
+            const label=document.createElement('span');label.textContent=`${item.label} ×${item.amount}`;
+            const distance=document.createElement('small');distance.textContent=`${Number(item.distance).toFixed(1)} m`;
+            button.append(icon,label,distance);
+            button.dataset.id=String(item.id);
+            button.title=`${item.label} ×${item.amount} · ${Number(item.distance).toFixed(1)} m`;
+            button.addEventListener('mousedown',e=>{
+                if(e.button!==0||carry)return;
+                carry={from:{inv:'vicinity',slot:item.id,kind:item.kind},entry:{item:item.item,label:item.label,category:item.category,amount:item.amount,w:1,h:1},ghost:null,start:{x:e.clientX,y:e.clientY},last:e,shift:false,rot:false};
+                e.preventDefault();
+            });
+            button.addEventListener('click',async()=>{
+                if(Date.now()-lastDragEnd<250)return;
+                button.disabled=true;
+                const reply=await takeVicinity(item);
+                if(version===vicinityVersion&&!reply?.ok)$('vicinityStatus').textContent=reply?.error||'Item unavailable.';
+                button.disabled=false;
+            });
+            host.appendChild(button);
+        }
+    }finally{vicinityBusy=false;}
+}
+$('vicinityRefresh').onclick=refreshVicinity;
+window.addEventListener('message',({data})=>{
+    if(data?.action==='open'){
+        vicinityVersion++;clearInterval(vicinityTimer);$('vicinityBoard').hidden=true;
+        if(!data.companionView){refreshVicinity();vicinityTimer=setInterval(refreshVicinity,2500);}
+    }else if(data?.action==='close'){vicinityVersion++;clearInterval(vicinityTimer);vicinityTimer=null;}
+});

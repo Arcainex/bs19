@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://cfx-nui-bs_ui/html/css/fonts.css"><style>
+html,body{margin:0;width:1024px;height:1024px;background:transparent;overflow:hidden;color-scheme:normal}
+#atlas{position:absolute;left:0;top:0;width:1024px;height:1024px}
+.tile{position:absolute;width:128px;height:128px;overflow:hidden}
+.tile svg{display:block;width:128px;height:128px}
+</style></head><body><div id="atlas"></div>
+<script src="https://cfx-nui-bs_ui/html/shared/emblem.js"></script>
+<script src="sticker-art.js"></script>
+<script>
+// Every design goes into its own 128 px tile as inline SVG (the same artwork the stickers menu shows), so the page
+// needs nothing from a canvas: the game reads the colour and the alpha straight out of the surface.
+const params=new URLSearchParams(location.search),resource=params.get('resource'),token=Number(params.get('token'));
+function call(name,data){return fetch('https://'+resource+'/'+name,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});}
+const atlas=document.getElementById('atlas');
+function artwork(d){
+  let svg='';
+  try{svg=BSStickerArt.svg(d)||'';}catch(e){svg='';}
+  if(!svg&&window.BSEmblem){try{svg=BSEmblem.render(d.emblem||BSEmblem.fromLegacy(d.logo,d.id))||'';}catch(e){svg='';}}
+  // A missing drawing still leaves a plain disc, so a worn sticker never comes out as an empty tile.
+  if(!svg)svg='<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><circle cx="128" cy="128" r="94" fill="#e5ddc5"/></svg>';
+  return svg;
+}
+window.addEventListener('message',({data})=>{
+  if(!data||data.token!==token||data.action!=='atlas')return;
+  atlas.replaceChildren();
+  const list=(data.entries||[]).slice(0,64);
+  list.forEach((d,i)=>{
+    const tile=document.createElement('div');
+    tile.className='tile';
+    tile.style.left=(i%8*128)+'px';
+    tile.style.top=(Math.floor(i/8)*128)+'px';
+    tile.innerHTML=artwork(d);
+    atlas.append(tile);
+  });
+  // Two frames: the browser has to paint the tiles before the game reads the surface.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>call('stickerAtlasReady',{token,count:list.length})));
+});
+call('stickerAtlasPage',{token});
+</script></body></html>

@@ -1,4 +1,4 @@
--- bs_menu - one snapshot call that gathers everything the hub displays. Uses a flat summary from bs_core because the player table is a serialised copy without methods.
+-- bs_menu - one snapshot call that gathers everything the hub displays.
 
 BSB.RegisterCallback('menu:snapshot', function(src)
     local summary = exports.bs_core:GetPlayerSummary(src)

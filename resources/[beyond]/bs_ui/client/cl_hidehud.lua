@@ -1,6 +1,4 @@
--- bs_ui - /hidehud. Clean screen for screenshots: hides every HUD layer for a while, never persists.
--- Pages hide on the 'bsHideAll' NUI message (bs_ui, bs_inventory); other resources can listen to 'bs:hud:hideAll' (bool) or call exports.bs_ui:IsHudHidden().
--- Restores on: /hidehud again, any panel opening (inventory, pause, phone...), the GTA pause menu, death or downed, taking damage, 10 minutes, unload, resource stop.
+-- bs_ui - /hidehud: clean screen for screenshots: hides every HUD layer for a while, never persists.
 
 local hidden = false
 local hiddenAt = 0

@@ -1,4 +1,4 @@
-/* Squad console. Charcoal glass, rust accent, bone text, blood red for danger. Lives in the tags page, so it re-enables pointer events. */
+/* Squad console: charcoal glass, rust accent, bone text, blood red for danger. */
 #sq { --rust:#b8572a; --rust2:#e07a3f; --ash:#6f6a60; --bone:#e9e2cf; --char:#15130f; --char2:#1e1b16; --blood:#9e1f1f; --ok:#7fb069;
       --mono:'Consolas','Courier New',monospace; position:fixed; inset:0; display:none; align-items:center; justify-content:center;
       font-family:var(--mono); color:var(--bone); pointer-events:none; }

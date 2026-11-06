@@ -21,7 +21,7 @@ Mining.Settings = {
     maxBonus = 0.40,
 }
 
--- Node types. `models` are matched against what the interaction dot points at, so every rock of those models is a node. Wrong matches go in Mining.ExcludeModels.
+-- Node types. `models` are matched against what the interaction dot points at, so every rock of those models is a node.
 Mining.Types = {
     rock = {
         label     = 'Mine the rock',
@@ -34,7 +34,7 @@ Mining.Types = {
         yield     = { { item = 'stone', amount = { 1, 3 } }, { item = 'iron_ore', amount = { 0, 1 } },
                       { item = 'sulfur', amount = { 1, 1 }, chance = 0.25 } },
 
-        -- Candidate clips, checked with GetAnimDuration at runtime. A dict can load without containing the clip, and TaskPlayAnim then silently does nothing.
+        -- Candidate clips, checked with GetAnimDuration at runtime.
         anim = {
             { dict = 'melee@hatchet@streamed_core',        clip = 'plyr_front_takedown' },
             { dict = 'amb@world_human_hammering@male@base', clip = 'base' },

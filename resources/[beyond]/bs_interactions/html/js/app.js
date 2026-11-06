@@ -3,6 +3,25 @@
 const dotEl  = document.getElementById('dot');
 const optsEl = document.getElementById('options');
 const progEl = document.getElementById('progress');
+let progressId = 0;
+let lastProgressReport = '';
+function reportProgress() {
+    // Read the owner's real CSS placement; pickup visuals do not copy its layout constants.
+    const bottom = getComputedStyle(progEl).bottom;
+    const state = { id: progressId, active: !progEl.classList.contains('hidden'), bottom };
+    const encoded = JSON.stringify(state);
+    if (encoded === lastProgressReport) return;
+    lastProgressReport = encoded;
+    if (typeof GetParentResourceName === 'function') {
+        fetch(`https://${GetParentResourceName()}/progressState`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: encoded,
+        }).catch(() => {});
+    }
+}
+window.addEventListener('resize', reportProgress);
+if (window.BSScale) window.BSScale.onChange(reportProgress);
+reportProgress();
 let progHideTimer = null;
 const fillEl = document.getElementById('progress-fill');
 
@@ -39,6 +58,7 @@ function icon(name) {
 let options = [];
 let index = 1;
 
+function escapeLabel(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function renderOptions() {
     if (!options.length) {
         optsEl.classList.add('hidden');
@@ -50,8 +70,8 @@ function renderOptions() {
         <div class="opt ${i + 1 === index ? 'is-active' : ''}">
             <span class="opt__key">${i + 1 === index ? 'E' : i + 1}</span>
             ${icon(o.icon)}
-            <span>${String(o.label || '').toUpperCase()}</span>
-            ${o.hint ? `<span class="opt__hint">${o.hint}</span>` : ''}
+            <span>${escapeLabel(String(o.label||'').toUpperCase())}</span>
+            ${o.hint ? `<span class="opt__hint">${escapeLabel(o.hint)}</span>` : ''}
         </div>`).join('');
     optsEl.classList.remove('hidden');
 }
@@ -59,6 +79,13 @@ function renderOptions() {
 window.addEventListener('message', (e) => {
     const d = e.data || {};
 
+    if(d.action==='targetSettings'){
+        const p=d.settings||{},root=document.documentElement;
+        root.dataset.targetStyle=['panel','compact','bracket'].includes(p.targetStyle)?p.targetStyle:'panel';
+        const finite=(n,f)=>Number.isFinite(Number(n))?Number(n):f;
+        root.style.setProperty('--target-opacity',Math.max(.55,Math.min(1,finite(p.targetOpacity,.94))));
+        root.style.setProperty('--target-scale',Math.max(.75,Math.min(1.5,finite(p.targetScale,1))));
+    }
     if (d.action === 'dot') {
         if (d.settings) {
             const s = document.documentElement.style;
@@ -88,18 +115,22 @@ window.addEventListener('message', (e) => {
     }
 
     if (d.action === 'progress') {
+        if (d.cancel && d.id != null && d.id !== progressId) return;
         clearTimeout(progHideTimer);
         if (d.cancel) {
             progEl.classList.add('hidden');
             fillEl.style.transition = 'none';
             fillEl.style.width = '0%';
+            reportProgress();
             return;
         }
         document.getElementById('progress-label').textContent =
             String(d.label || t('ui.searching')).toUpperCase();
+        progressId = d.id ?? progressId + 1;
         progEl.classList.remove('hidden');
+        reportProgress();
 
-        // Restart the progress bar transition by forcing a reflow between the two width changes; requestAnimationFrame alone can coalesce them and the bar never moves.
+        // Restart the progress bar transition by forcing a reflow between the two width changes
         fillEl.style.transition = 'none';
         fillEl.style.width = '0%';
         void fillEl.offsetWidth;
@@ -112,6 +143,7 @@ window.addEventListener('message', (e) => {
                 progEl.classList.add('hidden');
                 fillEl.style.transition = 'none';
                 fillEl.style.width = '0%';
+                reportProgress();
             }, (d.duration || 4000) + 800);
         }
     }

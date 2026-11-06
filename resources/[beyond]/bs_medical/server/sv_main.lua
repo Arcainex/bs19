@@ -1,5 +1,4 @@
--- bs_medical - server clock: the server decides how long a downed player has, tells others via a state bag, and runs the only timer.
--- Revives spend a real item and are distance-checked when they land, not when they start.
+-- bs_medical - server clock: the server decides how long a downed player has, tells others via a state bag
 
 local S = Medical.Settings
 local Down = {}        -- [src] = { endsAt = os.time seconds, stabilised = bool }
@@ -84,9 +83,6 @@ local function nearestRespawn(src)
 end
 
 -- What a death costs you, in items.
--- Order matters: 1. the death is decided, 2. `bs:medical:death:beforeWipe` fires synchronously while the inventory is still full (so anything turning belongings into loot can take them), 3. the inventory is emptied, 4. the client is told to fade, teleport and wake.
--- Nothing listens to step 2 yet: there is no player-corpse container; lootable corpses are walker corpses from bs_zombies.
--- Deaths are numbered and each is wiped at most once, since two paths can report the same death (bleedout timer and the client's outright-death claim).
 
 local deaths = {}   -- [src] = { seq = n, wiped = bool }
 
@@ -113,6 +109,12 @@ local function wipeForDeath(src)
 
     if GetResourceState('bs_inventory') ~= 'started' then return end
 
+    -- Dark Zone death (bs_darkzone): only the contaminated bag drops, the rest is kept.
+    if GetResourceState('bs_darkzone') == 'started' then
+        local okDz, kept = pcall(function() return exports.bs_darkzone:OnDeath(src) end)
+        if okDz and kept == true then return end
+    end
+
     -- Everything goes into the body first (sv_corpse.lua), then the hook.
     if Corpse and Corpse.FromDeath then
         local ok, err = pcall(Corpse.FromDeath, src)
@@ -122,7 +124,7 @@ local function wipeForDeath(src)
     -- Hook first, while there is still something to take. A corpse system depends on this order.
     TriggerEvent('bs:medical:death:beforeWipe', src)
 
-    -- Uses the export: WipeInventory clears the grid, hotbar bindings, equipment slots and ped weapons. Worn clothing goes too (see wipeOnDeath in config_medical.lua).
+    -- Uses the export: WipeInventory clears the grid, hotbar bindings, equipment slots and ped weapons.
     local ok, err = pcall(function() return exports.bs_inventory:WipeInventory(src) end)
     if not ok then
         print(('^1[BS MEDICAL]^7 death wipe failed for %s: %s'):format(src, tostring(err)))
@@ -157,6 +159,7 @@ local function finish(src, revived)
     setStateBag(src, false)
 
     if revived then
+        exports.bs_core:SetPlayerMeta(src,'survivorLink',nil)
         if GetResourceState('bs_guard') == 'started' then pcall(function() exports.bs_guard:Allow(src, 'teleport', 15000) end) end
         TriggerClientEvent('bs:medical:revived', src)
         return
@@ -203,8 +206,7 @@ CreateThread(function()
             if not GetPlayerName(src) then
                 Down[src] = nil
             elseif now >= record.endsAt then
-                -- Medical system on: the heart stops first and a defibrillator
-                -- can still bring them back for a short while.
+                -- Medical system on: the heart stops first and a defibrillator can still bring them back for a short while.
                 local window = MedicalOn and MedicalOn() and math.floor(Medical.System.defibWindow or 0) or 0
                 if not record.flat and window > 0 then
                     record.flat = true
@@ -221,14 +223,10 @@ CreateThread(function()
 end)
 
 -- Hard death: the downed catch is skipped.
--- The watchdog polls every 120ms for health just above GTA's death floor. A hit that clears the whole window (fall, drowning, explosion, big headshot) kills the ped before that, so goDown never runs. The client then reports its own death (never anyone else's) and gets the same consequences as finish(src, false).
--- The claim is verified: the server reads the ped's dead state itself, and a cooldown stops repeat payouts.
 
 local HARD_DEATH_COOLDOWN = 5 -- seconds
 
--- A first press used to be thrown away: the client sees its own ped dead at once, but the server's networked copy lags a couple of hundred ms, so the server refused while the client respawned anyway.
--- Fixed on both sides: the server waits a bounded moment for its view to agree (this runs inside a CreateThread in sh_bridge, so yielding is safe and well under the client's 8s timeout), and the client guards against double sends and honours refusals.
--- A Down player is no longer excluded: a big hit can kill the ped between 'health dropped' and the server's medical:down answer, so a confirmed-dead body ends the downed state.
+-- A first press used to be thrown away: the client sees its own ped dead at once
 
 local HARD_DEATH_GRACE_MS = 1500
 
@@ -237,17 +235,17 @@ local HARD_DEATH_GRACE_MS = 1500
 -- Now: accept unless the server can positively see a healthy ped. Accept on a readable dead flag, health at or below the downed window, a player registered Down, or a view the server cannot resolve. Refuse only while the ped reads clearly above the window for the whole grace.
 -- The cooldown below is the second half of the exploit guard (free teleports/needs).
 
--- Health at or below which a ped is dead or in the downed catch. Mirrors the 106 window in cl_downed.lua's watchdog; change both together.
+-- Health at or below which a ped is dead or in the downed catch.
 local DOWNED_FLOOR = (S.catchHealth or 106) + 1
 
--- Reads a native that may not exist on the server or may raise on a despawning ped. Returns nil for 'could not tell', which callers treat as 'do not refuse'.
+-- Reads a native that may not exist on the server or may raise on a despawning ped.
 local function tryNative(fn, ...)
     local ok, value = pcall(fn, ...)
     if not ok then return nil end
     return value
 end
 
--- Can the server positively see this player alive and well? Only a confident yes refuses the respawn; dead, downed or unreadable lets them up.
+-- Can the server positively see this player alive and well?
 local function looksAliveAndWell(src, graceMs)
     local waited = 0
     while true do
@@ -262,7 +260,7 @@ local function looksAliveAndWell(src, graceMs)
         local health = tryNative(GetEntityHealth, ped)
         if health == nil then return false end            -- unreadable: do not refuse
         if health <= DOWNED_FLOOR then return false end   -- dead, or in the catch band
-        if isDown(src) then return false end              -- we already agree they are down
+        if isDown(src) then return false end              -- Already agree they are down
 
         if waited >= graceMs then return true end         -- healthy for the whole grace
         Wait(100)
@@ -292,7 +290,7 @@ local function runHardDeath(src)
     end
 
     clearCarry(src)
-    -- Confirmed dead while registered Down: the catch did not hold. Close the downed state here so the bleedout timer does not fire a second death.
+    -- Confirmed dead while registered Down: the catch did not hold.
     if isDown(src) then Down[src] = nil end
     -- Always, so nobody keeps being offered Lp(src, 'med.treat_wounds') after respawning.
     Dead[src] = nil
@@ -306,6 +304,7 @@ local function runHardDeath(src)
         return { ok = false, error = Lp(src, 'med.your_character_is_not_loaded_on_the') }
     end
 
+    exports.bs_core:SetPlayerMeta(src,'survivorLink',nil)
     lastHardDeath[src] = now
 
     local point, bedroll = nearestRespawn(src)
@@ -336,7 +335,7 @@ local function runHardDeath(src)
 end
 
 BSB.RegisterCallback('medical:hardDeath', function(src)
-    -- Self-reporting: this pcall logs the player and the error and tells the player a throw happened, instead of the generic client fallback after 8s.
+    -- Self-reporting: this pcall logs the player and the error and tells the player a throw happened
     local ok, result = pcall(runHardDeath, src)
     if ok and type(result) == 'table' then return result end
 
@@ -357,11 +356,11 @@ BSB.RegisterCallback('medical:down', function(src, reason)
         return { ok = false, error = Lp(src, 'med.your_character_is_not_loaded_on_the') }
     end
 
-    -- The client says it is down; the ped has to agree. A downed ped sits at ~105 health (see cl_downed.lua), so well above that means a healthy player starting the clock.
+    -- The client says it is down; the ped has to agree.
     local ped = GetPlayerPed(src)
     local health = 0
     if ped and ped ~= 0 then health = GetEntityHealth(ped) end
-    -- A PvP catch resurrects the ped in place at 105, and the server's copy can still show full health briefly. Wait a bounded moment instead of refusing on a stale read.
+    -- A PvP catch resurrects the ped in place at 105, and the server's copy can still show full health briefly.
     local limit = (S.catchHealth or 106) + 5
     if (reason == 'pvp' or reason == 'catch') then
         local waited = 0
@@ -400,8 +399,7 @@ BSB.RegisterCallback('medical:stabilise', function(src)
     return { ok = true, bonus = S.stabiliseBonus }
 end)
 
--- Giving up uses the same death as any other: finish(src, false), the same function the bleedout timer calls (corpse hook, wipe once per numbered death, respawn point, needs, death count). This callback only checks that you are down and hands over.
--- The client makes it a held key with visible progress so it is not pressed by accident.
+-- Giving up uses the same death as any other: finish(src, false)
 BSB.RegisterCallback('medical:giveUp', function(src)
     if not S.enabled then
         return { ok = false, error = Lp(src, 'med.the_medical_system_is_switched_off_o') }
@@ -444,7 +442,7 @@ BSB.RegisterCallback('medical:stabiliseOther', function(src, targetSrc)
     return { ok = true }
 end)
 
--- Asked before the twelve second animation, so nobody kneels for nothing. The client says it is on the death screen. Replicated as bsDead / bsRevivable so anyone, including players who join later, sees a revive option on the body. Refused only if the server sees a healthy ped.
+-- Asked before the twelve second animation, so nobody kneels for nothing.
 BSB.RegisterCallback('medical:dead', function(src)
     if not S.enabled then return { ok = false, error = 'off' } end
     if looksAliveAndWell(src, HARD_DEATH_GRACE_MS) then return { ok = false, error = 'not dead' } end
@@ -507,7 +505,7 @@ BSB.RegisterCallback('medical:revive', function(src, targetSrc)
     return { ok = true }
 end)
 
--- Getting yourself up with a medkit. Both the [R] key on the downed screen and inventory 'use' end here, and hand to finish(src, true), the same path as a medic's or staff revive, so the client stands up via the single standUp() in cl_downed.lua and the state bag is cleared.
+-- Getting yourself up with a medkit.
 
 local SR = Medical.SelfRevive or {}
 
@@ -673,9 +671,7 @@ end)
 
 -- Cleanup and staff
 
--- Leaving while down counts as dying, so quitting does not keep the bag.
--- bs_core and this resource both handle playerDropped in no guaranteed order, so this runs from whichever sees it first.
--- A per-character flag is set before the wipe and cleared once it succeeds; if the inventory could not be reached (trade lock, bs_inventory stopped) the wipe happens on the next spawn.
+-- Leaving while down counts as dying, so quitting does not keep the bag. bs_core and this resource both handle
 local function pendingWipeKey(charId) return ('deathwipe:%s'):format(charId) end
 
 local function wipeForDisconnect(src, charId)
@@ -684,6 +680,10 @@ local function wipeForDisconnect(src, charId)
     if not record or record.stabilised then return end
     if not S.wipeOnDeath or not charId then return end
 
+    if GetResourceState('bs_darkzone') == 'started' then
+        local okDz, kept = pcall(function() return exports.bs_darkzone:OnDeath(src) end)
+        if okDz and kept == true then return end
+    end
     SetResourceKvpInt(pendingWipeKey(charId), 1)
     print(('^3[BS MEDICAL]^7 %s left while down - treating it as a death'):format(src))
 
@@ -726,14 +726,14 @@ AddEventHandler('bs:hook:player:spawned', function(player)
     if ok and wiped then DeleteResourceKvp(k) end
 end)
 
--- One revive, used by everyone: the dot, the console command and the admin menu.
--- finish(target, true) only works for players registered Down, so staff reviving someone dead from an explosion did nothing. bs:medical:revived now resurrects a dead ped as well as picking up a downed one (see cl_downed.lua).
+-- One revive, used by everyone: the dot, the console command and the admin menu. finish(target, true) only
 
 -- Brings a player back whatever state they are in. Returns false only when there is no such player.
 local function reviveNow(target)
     target = tonumber(target)
     if not target or not GetPlayerName(target) then return false end
 
+    exports.bs_core:SetPlayerMeta(target,'survivorLink',nil)
     if Dead[target] then setDead(target, false) end
     if isDown(target) then
         -- The medic path. Clears Down, drops the state bag so Lp(src, 'med.treat_wounds') stops being offered, and tells the client.
@@ -779,3 +779,31 @@ function MedicalDefibRevive(target) return reviveNow(target) end
 exports('Revive', function(src) return reviveNow(src) end)
 
 exports.bs_core:RegisterModule('medical', { side = 'server', version = '1.0.0', ready = true })
+
+exports('LinkMedical',function(src,action)
+    if GetInvokingResource()~='bs_survivor_link'then return end
+    local down=Down[src]
+    local life={status=Dead[src] and 'dead' or (down and 'downed' or 'alive'),endsAt=down and down.endsAt or nil,flat=down and down.flat or false}
+    if action=='suspend'then
+        clearCarry(src)
+        if Dead[src]then beginDeath(src);wipeForDeath(src)end
+        Down[src]=nil;lastHardDeath[src]=nil
+        Player(src).state:set('bsFlatline',false,true)
+        setStateBag(src,false);setDead(src,false)
+    end
+    return life
+end)
+exports('LinkReviveRules',function()
+    if GetInvokingResource()~='bs_survivor_link'then return end
+    return {item=S.reviveItem,duration=S.reviveTime,distance=S.reviveDistance,health=S.reviveHealth,bleedout=S.bleedoutTime,wipe=S.wipeOnDeath,hunger=S.respawnHunger,thirst=S.respawnThirst,catchHealth=S.catchHealth}
+end)
+
+exports('LinkRestore',function(src,life)
+    if GetInvokingResource()~='bs_survivor_link' or type(life)~='table'then return end
+    if life.status=='downed' and not life.flat and (life.endsAt or 0)>os.time()then
+        Down[src]={endsAt=life.endsAt,stabilised=false};setStateBag(src,true)
+        TriggerClientEvent('bs:medical:linkRestore',src,'downed',math.max(1,life.endsAt-os.time()))
+    elseif life.status=='dead'or life.status=='downed'then
+        setDead(src,true);TriggerClientEvent('bs:medical:linkRestore',src,'dead',0)
+    end
+end)

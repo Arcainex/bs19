@@ -66,4 +66,10 @@ return {
     ['fb.sentence_lifted'] = 'Tu condena fue levantada.',
     ['fb.released_early'] = 'Te han liberado antes de tiempo.',
     ['fb.sentence_served'] = 'Condena cumplida. Eres libre.',
+    ['fb.i_remove_decay'] = 'Quitar bandera (la base se deteriora)',
+    ['fb.i_remove_all'] = 'Quitar bandera y base',
+    ['fb.remove_decay_ask'] = 'Pulsa otra vez para quitar la bandera. {n} piezas se desmoronarán en {h} h y el {pct}% de sus materiales irá a una caja de chatarra aquí.',
+    ['fb.remove_all_ask'] = 'Pulsa otra vez para quitar la bandera Y desmontar {n} piezas ya. El {pct}% de los materiales y todo lo guardado irá a una caja de chatarra aquí.',
+    ['fb.removed_decay'] = 'Bandera quitada. La base queda abandonada y se desmoronará.',
+    ['fb.removed_all'] = 'Bandera quitada. {n} piezas desmontadas, mira la caja de chatarra.',
 }

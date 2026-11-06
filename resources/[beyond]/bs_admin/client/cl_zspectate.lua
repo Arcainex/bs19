@@ -88,11 +88,28 @@ function AdminZSpectateDiagnose()
             :format(result.distance or 0)
     end
 
-    -- The server has walkers here and this client drew none. Name the reason if spawn() recorded one.
+    -- The server has walkers here and this client drew none. Name the reason.
     local reason = nil
+    if (tonumber(result.bucket) or 0) ~= 0 then
+        reason = ('you are in private world %s (tutorial pick or tour) - walkers live in world 0'):format(tostring(result.bucket))
+    elseif result.withPed == 0 then
+        reason = 'none of them has a ped yet - run /zpop for the cap and promotion'
+    else
+        local okD, d = pcall(function() return exports.bs_zombies:NetDiag(120.0) end)
+        if okD and type(d) == 'table' then
+            if d.bagged == 0 then
+                reason = ('%d have server peds but none reached this client (not streamed: entity scope or culling)'):format(result.withPed)
+            elseif d.adopted < d.bagged then
+                reason = ('%d walker peds here, %d adopted: %d marked removed, %d handle claimed, %d not human, %d dead')
+                    :format(d.bagged, d.adopted, d.removed, d.claimed, d.notHuman, d.dead)
+            elseif d.dead >= d.bagged then
+                reason = ('all %d walker peds here are dead on this client'):format(d.bagged)
+            end
+        end
+    end
     local ok, failures = pcall(function() return exports.bs_zombies:Failures() end)
 
-    if ok and type(failures) == 'table' then
+    if not reason and ok and type(failures) == 'table' then
         local worstKey, worstN = nil, 0
         for k, n in pairs(failures) do
             if n > worstN then worstKey, worstN = k, n end

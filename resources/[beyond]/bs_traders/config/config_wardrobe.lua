@@ -1,5 +1,4 @@
--- bs_traders - clothing shop. Appearance only: nothing bought has stats, weight or an inventory row; it is stored in the outfit metadata bs_core already keeps (cl_outfit.lua).
--- The client enumerates drawables (it needs the ped). The server owns price, VIP, level and visibility and re-checks them on every purchase.
+-- bs_traders - clothing shop.
 
 Wardrobe = {}
 
@@ -14,8 +13,7 @@ Wardrobe.Settings = {
     camDistance = 2.2,
     camHeight   = 0.25,
 
-    -- Camera framing per body part. `dist` is how far back, `z` is how far up the body to look (relative to the feet).
-    -- `side` shifts the framing left so the character sits clear of the UI.
+    -- Camera framing per body part. `dist` is how far back
     focus = {
         head  = { dist = 1.05, z = 0.62, side = 0.18 },
         torso = { dist = 1.70, z = 0.30, side = 0.22 },
@@ -52,19 +50,15 @@ Wardrobe.Poses = {
     },
 }
 
--- Categories.
--- `kind`  'component' (body mesh) or 'prop' (attached).
--- `index` freemode component/prop id.
--- `arms`  true only for the top, which drags component 3 along so a jacket is never worn over a bare torso.
--- Face, hair and decals are left out on purpose: they are character identity.
+-- Categories. `kind` 'component' (body mesh) or 'prop' (attached). `index` freemode component/prop id. `arms`
 Wardrobe.Categories = {
     { id = 'top',        label = 'Jackets & Shirts', kind = 'component', index = 11, arms = true, price = 180, focus = 'torso' },
-    -- Arms as a pickable category. Component 3 is a separate mesh from component 11 with no mapping between them, so by default the arms follow the top (AUTO). Picking an arm drawable here switches that category out of AUTO.
+    -- Arms as a pickable category.
     { id = 'arms',       label = 'Arms & Sleeves',   kind = 'component', index = 3,  price = 0, focus = 'torso' },
     { id = 'undershirt', label = 'Undershirts',      kind = 'component', index = 8,  focus = 'torso' },
     { id = 'legs',       label = 'Trousers',         kind = 'component', index = 4,  price = 140, focus = 'legs' },
     { id = 'shoes',      label = 'Boots & Shoes',    kind = 'component', index = 6,  price = 130, focus = 'feet' },
-    -- No 'packs' category: component 5 is the parachute slot on freemode models, not a backpack. A real backpack needs a streamed addon prop. See PARACHUTE_COMPONENT in bs_core/client/cl_outfit.lua.
+    -- No 'packs' category: component 5 is the parachute slot on freemode models, not a backpack.
     { id = 'armour',     label = 'Vests',            kind = 'component', index = 9,  price = 260, focus = 'torso' },
     { id = 'accessory',  label = 'Accessories',      kind = 'component', index = 7,  focus = 'torso' },
     { id = 'mask',       label = 'Masks',            kind = 'component', index = 1,  price = 150, focus = 'head' },
@@ -78,9 +72,7 @@ Wardrobe.Categories = {
 Wardrobe.ByCategory = {}
 for _, c in ipairs(Wardrobe.Categories) do Wardrobe.ByCategory[c.id] = c end
 
--- What 'nothing' looks like. Props use -1 (ClearPedProp). Components have no empty state, and drawable 0 of component 11 is a T-shirt, so each model needs a drawable that is the bare body: 15 for the top and 15 for the arms on both freemode models.
--- Categories with no entry here get no Remove row (no safe bare value for trousers or shoes).
--- Kept in config so addon bodies can change them.
+-- What 'nothing' looks like. Props use -1 (ClearPedProp).
 Wardrobe.Bare = {
     -- component id 11; the arms move with it, see Wardrobe.BareArms below
     top        = { male = 15, female = 15 },
@@ -91,14 +83,10 @@ Wardrobe.Bare = {
     arms       = { male = 15, female = 15 },
 }
 
---- The arms that go with a bare torso. Same numbers as Wardrobe.Bare.arms; kept
---- separate so a server can make "no top" pick different sleeves to "arms set
---- to none" without the two fighting.
+--- The arms that go with a bare torso.
 Wardrobe.BareArms = { male = 15, female = 15 }
 
---- The drawable that means "nothing" for this category on this model, or nil
---- when the category has no such state and must not offer a Remove row.
---- Props are not listed: every prop's empty state is -1, universally.
+--- The drawable that means "nothing" for this category on this model
 function Wardrobe.BareFor(categoryId, gender)
     local cat = Wardrobe.ByCategory[categoryId]
     if not cat then return nil end
@@ -109,22 +97,21 @@ function Wardrobe.BareFor(categoryId, gender)
     return entry[gender == 'female' and 'female' or 'male']
 end
 
--- Outfits. Buying a garment buys the right to wear it permanently, per character, so wearing a saved outfit later is free.
--- Ownership and saved outfits live in the database (see sv_wardrobe.lua), not in outfit metadata, since they are a growing list.
+-- Outfits: buying a garment buys the right to wear it permanently, per character, so wearing a saved outfit later is free.
 Wardrobe.Outfits = {
     maxPerCharacter = 12,   -- enough to be useful, few enough to stay a list
     nameMaxLength   = 24,
 }
 
 -- The gate. A rule matches a category, and optionally a drawable or inclusive range; the most specific match wins.
---   hidden = true    not listed, and the server refuses it.
---   vip = true       visible but refused unless bs_vip (IsVIP) says so.
---   minLevel = n     visible but refused below that character level.
--- Left nearly empty on purpose, these are examples of the shape.
+-- hidden = true not listed, and the server refuses it.
+-- vip = true visible but refused unless bs_vip (IsVIP) says so.
+-- minLevel = n visible but refused below that character level.
+-- Left nearly empty, these are examples of the shape.
 Wardrobe.Rules = {
-    -- { category = 'top',    drawable = 49,          vip = true },
-    -- { category = 'armour', from = 0, to = 30,      minLevel = 15 },
-    -- { category = 'hat',    drawable = 122,         hidden = true },
+    -- { category = 'top', drawable = 49, vip = true },
+    -- { category = 'armour', from = 0, to = 30, minLevel = 15 },
+    -- { category = 'hat', drawable = 122, hidden = true },
 }
 
 --- The rule that applies to one drawable, or nil. Most specific wins.
@@ -150,8 +137,7 @@ function Wardrobe.RuleFor(categoryId, drawable)
     return best
 end
 
---- What one garment costs. Category override, then the base price; a rule may
---- override both.
+--- What one garment costs: category override, then the base price; a rule may override both.
 function Wardrobe.PriceFor(categoryId, drawable)
     local rule = Wardrobe.RuleFor(categoryId, drawable)
     if rule and tonumber(rule.price) then return math.floor(tonumber(rule.price)) end

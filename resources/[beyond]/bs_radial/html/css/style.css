@@ -1,7 +1,4 @@
-/*
-   the radial wheel.
-   No backdrop-filter: NUI is composited over the game with no game pixels to sample, so it blurs transparent black into an opaque slab. The blur comes from the game (TriggerScreenblurFadeIn in cl_main.lua).
-*/
+/* the radial wheel: no backdrop-filter: NUI is composited over the game with no game pixels to sample */
 
 :root {
     --soot:  #0a0a09;
@@ -106,10 +103,7 @@ html, body {
 .hub__label.is-disabled { color: var(--dust); }
 .hub__label.is-danger   { color: #c9705f; }
 
-/*
-   Off-center wheels (weapon wheel): the left half of the screen stays clear for the scripted gun camera. The wheel slides to its side, and the veil is re-centered with it and made much lighter on the far side.
-   No geometry in app.js: sliceAt() measures the wheel's bounding box on every mousemove.
-*/
+/* Off-center wheels (weapon wheel): the left half of the screen stays clear for the scripted gun camera. */
 
 #root.is-right .wheel { left: 72%; }
 #root.is-left  .wheel { left: 28%; }
@@ -142,7 +136,7 @@ html, body {
     text-shadow: 0 1px 3px #000; white-space: nowrap;
 }
 
-/* Readability in bright light without a background panel: text carries its own dark halo (tight opaque plus wider soft), and SVG icons get a drop-shadow. Applied to the whole document and inherited, so new elements are readable by default. */
+/* Readability in bright light without a background panel: text carries its own dark halo */
 :root {
     --bs-halo:
         0 0 1px rgba(0, 0, 0, 1),
@@ -173,3 +167,27 @@ svg, .icon, .ico { filter: var(--bs-ink-shadow); }
 
 /* Hairline rules and borders vanish over bright ground; give them an edge. */
 hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
+
+/* The survivor wheel has its own presentation; weapon and staff wheels keep theirs. */
+#root.is-survivor .wheel { width:min(calc(57vh / var(--ui-scale,1)),calc(84vw / var(--ui-scale,1))); height:min(calc(57vh / var(--ui-scale,1)),calc(84vw / var(--ui-scale,1))); }
+#root.is-survivor .veil { background:radial-gradient(ellipse at center,#0a100830, #060b0880 65%,#060b08b8); }
+#root.is-survivor .slice { fill:#131b17ed; stroke:#7d8b7050; stroke-width:.22; transition:fill .16s,stroke .16s; animation:survivorSlice .23s ease-out both; animation-delay:calc(var(--slice-i)*22ms); }
+#root.is-survivor .slice.is-hot { fill:#614521eb; stroke:var(--amber); }
+#root.is-survivor .slice.is-active { fill:#30412ced; }
+#root.is-survivor .slice.is-disabled { fill:#101712a0; }
+#root.is-survivor .slice.is-danger.is-hot { fill:#5a2721ed; stroke:var(--blood); }
+#root.is-survivor .slice__icon path { stroke:#c4cbbb; stroke-width:1.6; }
+#root.is-survivor .is-hot .slice__icon path { stroke:#f1c68b; }
+#root.is-survivor .slice__label { font:500 2.15px 'Segoe UI',Arial,sans-serif; text-anchor:middle; fill:#b4beaa; stroke:none; pointer-events:none; }
+#root.is-survivor .is-hot .slice__label { fill:#ffe3b7; }
+#root.is-survivor .slice__key { font:500 1.8px 'Segoe UI',Arial,sans-serif; text-anchor:middle; fill:#7c8b72; stroke:none; pointer-events:none; }
+#root.is-survivor .hub { width:31%; aspect-ratio:1; padding:8%; box-sizing:content-box; display:flex; flex-direction:column; justify-content:center; gap:4px; }
+#root.is-survivor .hub::before { content:''; position:absolute; width:64%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,#293023,#121a13); border:1px solid #ad8b4e70; box-shadow:0 0 0 5px #0a100c70,0 0 0 6px #a5864920,0 12px 30px #0006; left:18%; top:18%; z-index:-1; }
+#root.is-survivor .hub__title { font:600 8px/1.3 'Segoe UI',Arial,sans-serif; letter-spacing:.12em; color:#a5b198; }
+#root.is-survivor .hub__label { font:600 19px/1.15 'Segoe UI',Arial,sans-serif; letter-spacing:-.3px; margin:0; min-height:0; color:#f1eadb; }
+#root.is-survivor .hub__note { font:400 10px/1.4 'Segoe UI',Arial,sans-serif; letter-spacing:0; margin:0; min-height:0; color:#acb69f; }
+#root.is-survivor .hint { font:500 11px/1.4 'Segoe UI',Arial,sans-serif; letter-spacing:.06em; bottom:calc(15vh / var(--ui-scale,1)); color:#b6bea9; padding:8px 16px; border:1px solid #9a8c6d30; background:#101710b8; border-radius:3px; }
+#root.is-survivor .wheel__svg { filter:drop-shadow(0 8px 20px #0006); }
+#root.is-survivor * { text-shadow:0 1px 2px #0008; }
+@keyframes survivorSlice { from { opacity:0; } to { opacity:1; } }
+@media(prefers-reduced-motion:reduce) { #root.is-survivor * { animation:none!important; transition:none!important; } }

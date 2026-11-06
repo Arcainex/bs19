@@ -12,6 +12,15 @@ local State = {
 }
 
 local lastLocal = GetGameTimer()
+local selectionWeather,latestSync
+AddEventHandler('bs:world:selectionWeather',function(on,settings)
+    selectionWeather=on and settings or nil
+    State.transitionId=State.transitionId+1;State.transitioningTo=nil
+    if not on and latestSync then
+        State.weather=nil
+        TriggerEvent('bs:world:sync',latestSync)
+    end
+end)
 
 -- What the server says
 
@@ -29,7 +38,7 @@ local function transitionTo(weather, seconds)
 
     CreateThread(function()
         Wait((seconds + 2.0) * 1000)
-        if State.transitionId == ticket and State.transitioningTo == weather then
+        if not selectionWeather and State.transitionId == ticket and State.transitioningTo == weather then
             State.weather = weather
             State.weatherNext = nil
             State.transitioningTo = nil
@@ -40,6 +49,7 @@ end
 
 RegisterNetEvent('bs:world:sync', function(s)
     if type(s) ~= 'table' then return end
+    latestSync=s
 
     State.minutes  = (tonumber(s.hour) or 0) * 60 + (tonumber(s.minute) or 0)
     State.rate     = tonumber(s.rate) or 12.0
@@ -47,6 +57,7 @@ RegisterNetEvent('bs:world:sync', function(s)
     State.haveSync = true
     lastLocal      = GetGameTimer()
 
+    if selectionWeather then return end
     -- Natural weather changes are announced in sync as weatherNext
     if s.weatherNext then
         -- A joining player needs the server's transition origin to blend the remaining time, otherwise GTA's random local weather is used
@@ -72,6 +83,7 @@ end)
 -- Staff-set weather has its own event because it carries the full transition duration
 RegisterNetEvent('bs:world:weather', function(weather, seconds)
     if not weather then return end
+    if selectionWeather then latestSync=latestSync or {};latestSync.weather=weather;latestSync.weatherNext=nil;return end
     seconds = tonumber(seconds) or 0
 
     if seconds <= 0 then
@@ -127,7 +139,9 @@ CreateThread(function()
                 end
             end
 
-            if not onCharScreen then
+            if selectionWeather then
+                NetworkOverrideClockTime(selectionWeather.hour or 14,selectionWeather.minute or 0,0)
+            elseif not onCharScreen then
                 local total = State.minutes % 1440
                 local h = math.floor(total / 60)
                 local m = math.floor(total % 60)
@@ -145,6 +159,7 @@ CreateThread(function()
         Wait(5000)
 
         -- The engine's weather system keeps running underneath and will drift off what we set
-        if State.weather and not State.transitioningTo then SetOverrideWeather(State.weather) end
+        if selectionWeather then SetOverrideWeather(selectionWeather.weather or 'OVERCAST')
+        elseif State.weather and not State.transitioningTo then SetOverrideWeather(State.weather) end
     end
 end)

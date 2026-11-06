@@ -1,6 +1,6 @@
-/* No backdrop-filter anywhere: NUI is composited over the game, so it blurs transparent black into an opaque slab. Real blur comes from the game side (TriggerScreenblurFadeIn). */
+/* No backdrop-filter anywhere: NUI is composited over the game, so it blurs transparent black into an opaque slab. *//* notify.css - no cards: coloured edge, icon and text that fades out, each glyph with its own shadow. */
 
-/* notify.css - no cards: coloured edge, icon and text that fades out, each glyph with its own shadow. */
+
 
 .notifications {
     position: absolute;
@@ -20,20 +20,20 @@
     display: flex;
     align-items: flex-start;
     gap: 0.55rem;
-    padding: 0.45rem 0.7rem;
-    /* Fades away to the right instead of sitting in a black box. */
-    background: linear-gradient(90deg, rgba(10, 10, 9, 0.52), rgba(10, 10, 9, 0) 92%);
+    padding: 0.45rem 0.7rem;/* Fades away to the right instead of sitting in a black box. */
+    
+    background: linear-gradient(90deg, rgba(var(--t-h-bg, 10,10,9), 0.52), rgba(var(--t-h-shade, 10,10,9), calc(0 * var(--t-shade-k, 1))) 92%);
     border: none;
-    border-left: 2px solid var(--bs-accent);
+    border-left: 2px solid var(--t-hud-acc, var(--bs-accent));
     animation: bs-slide-in 190ms ease-out;
 }
 
 .notification--closing { animation: bs-slide-out 190ms ease-in forwards; }
 
-.notification--success { border-left-color: var(--bs-good); }
-.notification--error   { border-left-color: var(--bs-danger); }
-.notification--warn    { border-left-color: var(--bs-warn); }
-.notification--info    { border-left-color: var(--bs-accent); }
+.notification--success { border-left-color: var(--t-hud-ok, var(--bs-good)); }
+.notification--error   { border-left-color: var(--t-hud-bad, var(--bs-danger)); }
+.notification--warn    { border-left-color: var(--t-hud-warn, var(--bs-warn)); }
+.notification--info    { border-left-color: var(--t-hud-acc, var(--bs-accent)); }
 
 .notification__icon {
     width: 13px;
@@ -51,7 +51,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.24em;
-    color: var(--bs-text-muted);
+    color: var(--t-hud-dim, var(--bs-text-muted));
     margin-bottom: 1px;
     text-shadow: 0 1px 3px #000;
 }
@@ -60,10 +60,10 @@
     font-size: 1.02rem;
     line-height: 1.4;
     letter-spacing: 0.03em;
-    color: var(--bs-text);
+    color: var(--t-hud-ink, var(--bs-text));
     word-wrap: break-word;
     text-shadow: 0 1px 3px #000, 0 0 9px rgba(0, 0, 0, 0.95);
-}
+}/* Same halo as everything else (defined in root.css, which this page loads). */
 
-/* Same halo as everything else (defined in root.css, which this page loads). */
+
 .notification, .notification * { text-shadow: var(--bs-halo); }

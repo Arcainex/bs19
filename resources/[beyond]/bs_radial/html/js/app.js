@@ -1,5 +1,4 @@
-// Radial wheel. Draws N slices as SVG arcs and picks the slice by cursor angle, not by hovering a DOM element.
-// The middle is a dead zone: releasing there cancels.
+// Radial wheel: draws N slices as SVG arcs and picks the slice by cursor angle, not by hovering a DOM element.
 
 const RES = (typeof GetParentResourceName === 'function')
     ? GetParentResourceName() : 'bs_radial';
@@ -45,7 +44,7 @@ function slicePath(index, count, inner, outer) {
     const step = (Math.PI * 2) / count;
     const start = -Math.PI / 2 + index * step - step / 2;
     const end = start + step;
-    const gap = 0.012;                    // hairline between slices
+    const gap = S.survivor ? 0.035 : 0.012;                    // hairline between slices
 
     const a0 = start + gap, a1 = end - gap;
     const large = (a1 - a0) > Math.PI ? 1 : 0;
@@ -69,9 +68,7 @@ function sliceCentre(index, count, radius) {
     return { x: radius * Math.cos(a), y: radius * Math.sin(a) };
 }
 
-/* Which slice is the cursor pointing at? By angle from the middle, so the whole
- * wedge counts - including well outside the ring, which is where people
- * actually flick to. */
+/* Which slice is the cursor pointing at? */
 function sliceAt(dx, dy, count) {
     const dist = Math.hypot(dx, dy);
     const deadPx = (S.geom.dead / S.geom.outer) * (wheelSize() / 2);
@@ -101,8 +98,7 @@ function render() {
     // Scale the -50..50 viewBox to the configured vh radii.
     const oR = 46, iR = 46 * (inner / outer);
 
-    // Cached once per render, so setHot() never needs a live DOM query - see
-    // the comment on setHot below for why that matters.
+    // Cached once per render, so setHot() never needs a live DOM query - see the comment on setHot below for why that matters.
     S.sliceEls = new Array(n);
 
     S.items.forEach((item, i) => {
@@ -111,7 +107,7 @@ function render() {
             + (item.disabled ? ' is-disabled' : '')
             + (item.active ? ' is-active' : '')
             + (item.danger ? ' is-danger' : ''));
-        g.dataset.index = String(i);
+        g.dataset.index = String(i);g.style.setProperty('--slice-i',i);
 
         const path = document.createElementNS(SVG_NS, 'path');
         path.setAttribute('d', slicePath(i, n, iR, oR));
@@ -122,13 +118,17 @@ function render() {
         const icon = document.createElementNS(SVG_NS, 'g');
         icon.setAttribute('class', 'slice__icon');
         icon.setAttribute('transform',
-            `translate(${(c.x - 6).toFixed(2)} ${(c.y - 6).toFixed(2)}) scale(0.5)`);
+            `translate(${(c.x - 6).toFixed(2)} ${(c.y - (S.survivor ? 8 : 6)).toFixed(2)}) scale(0.5)`);
 
         const p = document.createElementNS(SVG_NS, 'path');
         p.setAttribute('d', S.icons[item.icon] || S.icons.dot || '');
         icon.appendChild(p);
         g.appendChild(icon);
 
+        if (S.survivor) {
+            const label=document.createElementNS(SVG_NS,'text');label.setAttribute('class','slice__label');label.setAttribute('x',c.x);label.setAttribute('y',c.y+7);label.textContent=String(item.label||'').slice(0,18);g.appendChild(label);
+            const key=document.createElementNS(SVG_NS,'text'),edge=sliceCentre(i,n,oR-4);key.setAttribute('class','slice__key');key.setAttribute('x',edge.x);key.setAttribute('y',edge.y+1);key.textContent=String(i+1);g.appendChild(key);
+        }
         // A submenu gets a tick on its outer edge so you can see it goes deeper.
         if (item.submenu) {
             const t = document.createElementNS(SVG_NS, 'path');
@@ -145,13 +145,14 @@ function render() {
     });
 
     $('title').textContent = S.title || t('ui.select', { fallback: 'SELECT' });
+    if(S.survivor) S.hot=-2;
     setHot(-1);
     $('hint').textContent = S.stack.length
         ? 'RELEASE TO PICK · BACKSPACE TO GO BACK · ESC TO CLOSE'
         : (S.hold ? 'RELEASE TO PICK · ESC TO CLOSE' : 'CLICK TO PICK · ESC TO CLOSE');
 }
 
-// Perf: render() caches the slice elements (S.sliceEls), so a mousemove only touches the previously hot slice and the new one, and nothing on jitter within the same slice.
+// Perf: render() caches the slice elements (S.sliceEls)
 function setHot(index) {
     if (index === S.hot) return;
 
@@ -167,7 +168,7 @@ function setHot(index) {
     const label = $('label');
     const note = $('note');
 
-    label.textContent = item ? item.label : '';
+    label.textContent = item ? item.label : (S.survivor ? 'Quick actions' : '');
     label.classList.toggle('is-disabled', !!(item && item.disabled));
     label.classList.toggle('is-danger', !!(item && item.danger));
     note.textContent = item ? (item.note || (item.submenu ? 'more...' : '')) : '';
@@ -224,8 +225,7 @@ document.addEventListener('mousedown', (e) => {
     if (e.button === 2) { if (!back()) { close(); post('cancel', { token: S.token }); } }
 });
 
-/* Hold-to-pick: the key is released in Lua, which tells us to resolve. Clicking
- * also works, because not everyone holds. */
+/* Hold-to-pick: the key is released in Lua, which tells us to resolve. */
 document.addEventListener('click', (e) => {
     if (!S.open || !S.hold) return;
     if (S.hot >= 0) pick(S.hot);
@@ -256,7 +256,7 @@ window.addEventListener('message', (event) => {
     if (d.action === 'open') {
         S.open = true;
 
-        // The token identifies which wheel this is and goes back with the pick. Lua opens a new wheel on a new token, so a late pick from a replaced wheel is discarded.
+        // The token identifies which wheel this is and goes back with the pick.
         S.token = d.token;
         S.items = d.items || [];
         S.icons = d.icons || {};
@@ -265,11 +265,13 @@ window.addEventListener('message', (event) => {
         S.geom = d.geometry || S.geom;
         S.stack = [];
 
-        // Wheel position is a CSS class (.is-right / .is-left in style.css). sliceAt() measures the wheel's bounding box on every mousemove, so the angles follow wherever CSS puts it.
+        // Wheel position is a CSS class (.is-right / .is-left in style.css). sliceAt() measures the wheel's bounding
         S.anchor = ['centre', 'right', 'left'].includes(d.anchor)
             ? d.anchor : 'centre';
 
+        S.survivor = ['inventory','skills','settings'].every(id=>S.items.some(item=>item.id===id));
         const root = $('root');
+        root.classList.toggle('is-survivor',S.survivor);
         root.classList.remove('is-right', 'is-left');
         if (S.anchor !== 'centre') root.classList.add(`is-${S.anchor}`);
 

@@ -23,7 +23,7 @@ client_scripts {
     'client/cl_dodge.lua',
     'client/cl_sway.lua',
     'client/cl_recoil.lua',
-    -- Last: cl_skilldebug.lua registers /skilltest, which reports on BS_SkillsDebug published by the files above. Safe to delete first if trimming.
+    -- Last: cl_skilldebug.lua registers /skilltest, which reports on BS_SkillsDebug published by the files above.
     'client/cl_skilldebug.lua',
 }
 

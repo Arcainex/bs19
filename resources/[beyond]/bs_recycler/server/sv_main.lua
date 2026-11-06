@@ -1,5 +1,4 @@
--- bs_recycler server. Machines live at fixed spots, run on fuel, take one item every few seconds and put the
--- materials in their output box. Shared: anyone nearby can load, start, stop or empty one.
+-- bs_recycler server: machines live at fixed spots, run on fuel
 
 local S = Recycler.Settings
 local INV = exports.bs_inventory
@@ -34,9 +33,7 @@ local function log(src, kind, details)
         { src, GetPlayerIdentifierByType(src, 'license'), p and p.charId, (GetPlayerName(src) or '?'):sub(1, 64), kind, tostring(details):sub(1, 512), c.x, c.y, c.z })
 end
 
---------------------------------------------------------------------------------
 -- What an item gives back
---------------------------------------------------------------------------------
 
 local function refused(item) return Recycler.Never[item] or blacklist[item] end
 
@@ -125,9 +122,7 @@ local function toolFor(item)
     return 'wrench'
 end
 
---------------------------------------------------------------------------------
 -- Points
---------------------------------------------------------------------------------
 
 local function pointList()
     local out = {}
@@ -161,9 +156,7 @@ local function at(src, id)
     return p
 end
 
---------------------------------------------------------------------------------
 -- Running
---------------------------------------------------------------------------------
 
 local function setRunning(id, on, status)
     local m = M[id]
@@ -249,9 +242,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Panel callbacks (the CRAFT tab in the inventory, machine view)
---------------------------------------------------------------------------------
 
 local function view(src, p)
     local m = M[p.id]
@@ -345,9 +336,7 @@ BSB.RegisterCallback('recycler:act', function(src, id, action, item, all)
     return view(src, p)
 end)
 
---------------------------------------------------------------------------------
 -- Exports for bs_crafting (hand dismantle) and admin
---------------------------------------------------------------------------------
 
 exports('CanRecycle', canRecycle)
 exports('ToolFor', function(item) if not canRecycle(item) then return nil end return toolFor(item) end)
@@ -436,9 +425,7 @@ exports('ConfigExt', function(src, action, a)
     return { ok = false, error = 'Unknown action.' }
 end)
 
---------------------------------------------------------------------------------
 -- Boot
---------------------------------------------------------------------------------
 
 AddEventHandler('bs:hook:player:spawned', function(p) if p and p.source then announce(p.source) end end)
 BSB.RegisterCallback('recycler:points', function() return { ok = true, points = pointList() } end)

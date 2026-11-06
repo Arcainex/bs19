@@ -1,10 +1,4 @@
 -- bs_emotes - dpEmotes-style menu and favourites wheel.
--- Tabs (Emotes / Dances / Walks / Expressions / Favourites), search, play on
--- click, cancel, star to favourite. Everything is open to everyone.
--- Emotes play through EmoteCore (cl_emotes.lua), so the usual cancel rules
--- apply. Walks and expressions are applied here.
--- Every `bs:ui:opened` 'emotes' is matched by one `bs:ui:closed` 'emotes'
--- through the single close().
 
 local Cfg      = Emotes.Menu or {}
 local BaseFavLimit = tonumber(Emotes.FavLimit) or 15
@@ -40,8 +34,7 @@ local function loadFavs()
     local ok, list = pcall(json.decode, raw)
     if not ok or type(list) ~= 'table' then return end
     for _, id in ipairs(list) do
-        -- Not trimmed to the live limit: VIP may not have synced yet, and a lapsed VIP
-        -- keeps their list but cannot add more.
+        -- Not trimmed to the live limit: VIP may not have synced yet, and a lapsed VIP keeps their list but cannot add more.
         if type(id) == 'string' and #favs < (Emotes.FavHardCap or 40) then favs[#favs + 1] = id end
     end
 end

@@ -1,0 +1,67 @@
+/* bs_fighting v3 HUD. Theme tokens from bs_ui (dossier by default), transparent, stencil heads. */
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; width: 100%; height: 100%; }
+.ff {
+    --acc: rgb(var(--t-acc, 224, 140, 70));
+    --acc2: rgb(var(--t-acc2, 240, 163, 92));
+    --ink: rgb(var(--t-ink, 236, 229, 211));
+    --dim: rgb(var(--t-dim, 163, 156, 139));
+    --bad: rgb(var(--t-bad2, 228, 136, 118));
+    --ok: rgb(var(--t-ok, 127, 212, 162));
+    --tape: var(--t-deco, repeating-linear-gradient(-45deg, rgb(224, 140, 70) 0 10px, rgb(23, 21, 15) 10px 20px) 0 0 / 100% 4px no-repeat);
+    position: fixed; inset: 0; pointer-events: none; color: var(--ink);
+    font-family: var(--bs-f-cond, 'Bahnschrift Condensed', 'Arial Narrow', sans-serif);
+    text-shadow: 0 1px 2px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.5);
+}
+.ff.mode-off { display: none; }
+
+/* combo: dossier stamp right of the crosshair */
+.ffcombo { position: absolute; left: calc(50% + 78px); top: calc(50% - 30px); opacity: 0;
+    display: grid; grid-template-columns: auto; justify-items: start; transition: opacity .18s; }
+.ffcombo.show { opacity: 1; }
+.ffcombo__tag { font-size: 11px; letter-spacing: var(--t-ui-ls, .2em); color: var(--dim); text-transform: uppercase; }
+.ffcombo b { font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 40px; line-height: .95; color: var(--acc);
+    letter-spacing: .04em; }
+.ffcombo__tape { display: block; width: 46px; height: 4px; background: var(--tape); opacity: .85; margin-top: 3px; }
+.ffcombo.pop b { animation: ffpop .16s ease-out; }
+.ffcombo.hot b { color: var(--acc2); }
+.mode-minimal .ffcombo b { font-size: 30px; }
+@keyframes ffpop { from { transform: scale(1.35) rotate(-3deg); } to { transform: none; } }
+
+/* counter prompt: key cap in a ring that empties with the window */
+.ffcounter { position: absolute; left: 50%; top: calc(50% + 54px); width: 54px; height: 54px; margin-left: -27px; opacity: 0;
+    transition: opacity .08s; }
+.ffcounter.show { opacity: 1; }
+.ffcounter svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ffcounter circle { fill: none; stroke-width: 3; }
+.ffcounter .bg { stroke: rgba(0,0,0,.45); }
+.ffcounter .ring { stroke: var(--acc); stroke-dasharray: 176; stroke-dashoffset: 0; }
+.ffcounter.run .ring { transition: stroke-dashoffset linear var(--ms, 450ms); stroke-dashoffset: 176; }
+.ffcounter kbd { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 22px; color: var(--ink); }
+.ffcounter span { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+    font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 11px; letter-spacing: .24em; color: var(--acc); }
+.mode-minimal .ffcounter span { display: none; }
+
+/* finisher ready */
+.fffinisher { position: absolute; left: 50%; top: calc(50% - 64px); transform: translateX(-50%); opacity: 0;
+    padding: 2px 10px 5px; background: var(--tape); background-position: bottom; transition: opacity .15s; }
+.fffinisher.show { opacity: .95; }
+.fffinisher span { font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 13px; letter-spacing: .26em;
+    color: var(--acc); text-transform: uppercase; }
+
+/* flash word under the crosshair */
+.ffflash { position: absolute; left: 50%; top: calc(50% + 28px); transform: translateX(-50%); opacity: 0; white-space: nowrap;
+    font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 12px; letter-spacing: .26em; text-transform: uppercase; }
+.ffflash.k-counter, .ffflash.k-finisher { color: var(--acc); }
+.ffflash.k-dodge { color: var(--ok); }
+.ffflash.k-tired { color: var(--bad); }
+.ffflash.go { animation: ffflash .6s ease-out; }
+@keyframes ffflash { 0% { opacity: 0; } 15% { opacity: .95; } 100% { opacity: 0; transform: translateX(-50%) translateY(-6px); } }
+
+/* lock-on tag above the crosshair: bracket rules either side of a stencil word */
+.fflocked { position: absolute; left: 50%; top: calc(50% - 92px); transform: translateX(-50%); opacity: 0;
+    display: flex; align-items: center; gap: 8px; transition: opacity .12s; }
+.fflocked.show { opacity: .95; }
+.fflocked i { width: 18px; height: 2px; background: var(--acc); }
+.fflocked span { font-family: var(--bs-f-stencil, Impact, sans-serif); font-size: 11px; letter-spacing: .3em;
+    color: var(--acc2); text-transform: uppercase; }

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!-- Flag cloth for the in-world banners. cl_banners.lua opens this as a DUI and draws it onto the waving cloth. -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://cfx-nui-bs_ui/html/css/fonts.css" />
+<style>
+    html, body { margin: 0; width: 512px; height: 320px; overflow: hidden; background: transparent; }
+    #cloth { position: relative; width: 512px; height: 320px; overflow: hidden; }
+    #field { position: absolute; inset: 0; }
+    #band { position: absolute; left: 0; top: 0; bottom: 0; width: 64px; }
+    #band::after { content: ''; position: absolute; right: -6px; top: 0; bottom: 0; width: 6px; background: rgba(0,0,0,.35); }
+    #mark { position: absolute; left: 140px; top: 22px; width: 276px; height: 276px; }
+    #mark svg { width: 100%; height: 100%; filter: drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+    #grain { position: absolute; inset: 0; background: var(--bs-grain); mix-blend-mode: multiply; opacity: .9; }
+    #shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.25), transparent 18%, transparent 80%, rgba(0,0,0,.35)), linear-gradient(180deg, rgba(255,255,255,.06), transparent 40%, rgba(0,0,0,.3)); }
+    .seam { position: absolute; left: 0; right: 0; height: 3px; top: 10px; background: repeating-linear-gradient(90deg, rgba(0,0,0,.35) 0 10px, transparent 10px 16px); }
+    .seam.b { top: auto; bottom: 10px; }
+</style>
+</head>
+<body>
+<div id="cloth"><div id="field"></div><div id="band"></div><div id="mark"></div><div class="seam"></div><div class="seam b"></div><div id="grain"></div><div id="shade"></div></div>
+<script src="https://cfx-nui-bs_ui/html/shared/emblem.js"></script>
+<script>
+    function draw(d) {
+        const E = window.BSEmblem;
+        if (!E) return;
+        const spec = d.emblem ? E.normalize(d.emblem) : E.fromLegacy(d.logo, d.id || '');
+        document.getElementById('field').style.background = `linear-gradient(180deg, ${E.shade(spec.primary, 0.06)}, ${E.shade(spec.primary, -0.18)})`;
+        document.getElementById('band').style.background = spec.secondary;
+        document.getElementById('mark').innerHTML = E.render(spec);
+        if(d.resource&&d.token!=null)fetch('https://'+d.resource+'/bannerReady',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:d.id,token:d.token})}).catch(()=>{});
+    }
+    try {
+        const q = new URLSearchParams(location.search).get('d');
+        if (q) draw(JSON.parse(q));
+    } catch (e) { /* bad payload: plain cloth */ }
+    window.addEventListener('message', (e) => { if (e.data && e.data.action === 'banner') draw(e.data); });
+</script>
+</body>
+</html>

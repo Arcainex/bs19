@@ -104,10 +104,7 @@ end)
 
 -- Position heartbeat + autosave
 
--- The heartbeat position becomes the saved spawn point, so validate it. The
--- bounds are generous (a jet at top speed over the full interval, see
--- Config.Framework.positionSyncInterval, 30s default); this only catches
--- obvious lies like underground or off the map.
+-- The heartbeat position becomes the saved spawn point, so validate it.
 local lastPositionReport = {} -- [src] = { x, y, z, at = GetGameTimer() }
 
 -- The playable world is roughly +-8000 on x/y; leave headroom for edge terrain.
@@ -135,8 +132,7 @@ RegisterNetEvent(BS.Events.UpdatePosition, function(x, y, z, h)
         local dx, dy, dz = x - last.x, y - last.y, z - last.z
         local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
         if (dist / dt) > MAX_PLAUSIBLE_SPEED then
-            -- Implausible jump for this interval: drop the claim, keep the last accepted
-            -- position and do not advance the clock.
+            -- Implausible jump for this interval: drop the claim, keep the last accepted position and do not advance the clock.
             return
         end
     end
@@ -180,9 +176,7 @@ AddEventHandler('txAdmin:events:serverShuttingDown', function()
     for _, player in pairs(BS.Players) do player:Save(true) end
 end)
 
--- Wiring check. Runs once shortly after boot and warns about missing exports,
--- globals and ensure lines in other resources. It only warns: optional
--- resources (bs_vip, bs_extraction) may legitimately be missing.
+-- Wiring check: runs once shortly after boot and warns about missing exports, globals and ensure lines in other resources.
 CreateThread(function()
     -- Wait for other resources to finish starting.
     Wait(8000)

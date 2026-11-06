@@ -1,5 +1,4 @@
 -- Junk and crafting materials added to the loot tables (recycler fodder, see bs_recycler).
--- Appended after config_economy.lua so the main tables stay readable.
 
 local add = {
     trash      = { { 'junk_cans', 1, 3, 14 }, { 'junk_tape', 1, 1, 5 }, { 'junk_shoes', 1, 1, 4 }, { 'junk_spraycan', 1, 2, 5 }, { 'rags', 1, 3, 12 }, { 'plastic', 1, 2, 8 }, { 'dirty_water', 1, 1, 4 }, { 'junk_remote', 1, 1, 3 } },

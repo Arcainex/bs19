@@ -1,5 +1,4 @@
 -- bs_jobs server core: who holds which job, applications, approvals, rewards and logging.
--- Everything is decided here. Clients only ask.
 
 J = J or {}
 local S = Jobs.Settings
@@ -158,9 +157,7 @@ function J.Reward(src, cid, fid, tpl, job)
     return { rep = rep, xp = xp, sxp = sxp }
 end
 
---------------------------------------------------------------------------------
 -- Membership
---------------------------------------------------------------------------------
 
 local function cooldownLeft(cid)
     local r = q('SELECT until_ts FROM bs_job_cooldowns WHERE character_id = ? LIMIT 1', { cid })[1]

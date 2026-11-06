@@ -1,5 +1,4 @@
--- bs_tutorial F1 page (bs_config ext): edit chapter text per language, set camera points from where you stand, disable or preview chapters.
--- Saved to data/overrides.json on top of the config and locale files.
+-- bs_tutorial F1 page (bs_config ext): edit chapter text per language, set camera points from where you stand
 
 local RES = GetCurrentResourceName()
 local FILE = 'data/overrides.json'

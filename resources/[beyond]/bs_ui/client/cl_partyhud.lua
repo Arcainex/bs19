@@ -1,6 +1,6 @@
 -- bs_ui - party frames (left edge), Division / WoW style.
 -- Data: 'factions:roster' (bs_factions/server/sv_roster.lua), re-asked every ~2 s and on bs:squad:sync / bs:factions:sync. Squad mates first, then the faction, capped at Cfg.maxRows with overflow shown as "+N more".
--- Live data (health, DOWN, OUT OF RANGE, distance) is sampled at ~5 Hz and sent only on change. Health uses the cl_hud scale (GTA 100..max -> 0..100).
+-- Live data (health, DOWN, OUT OF RANGE, distance) is sampled at ~5 Hz and sent only on change. Health uses the cl_hud scale (GTA 100..max to 0..100).
 -- Toggle: KVP 'bs_partyhud' (0 = unset = ON, 1 = ON, 2 = OFF), exports GetPartyHudPref() / SetPartyHudPref(v). Hidden while a full-screen panel is open.
 
 local Cfg = {
@@ -36,9 +36,7 @@ local function syncVisible()
     send({ action = 'partyhud:visible', visible = v })
 end
 
---------------------------------------------------------------------------------
 -- Settings
---------------------------------------------------------------------------------
 local function getPref() return enabled and 1 or 2 end
 local function setPref(v)
     local on = not (v == false or tonumber(v) == 2)
@@ -51,9 +49,7 @@ end
 exports('GetPartyHudPref', getPref)
 exports('SetPartyHudPref', setPref)
 
---------------------------------------------------------------------------------
 -- Panels
---------------------------------------------------------------------------------
 AddEventHandler('bs:ui:opened', function(panel)
     if panel and panel ~= 'chat' then blocking[panel] = true; syncVisible() end
 end)
@@ -63,11 +59,10 @@ AddEventHandler('bs:ui:closed', function(panel)
 end)
 
 RegisterNetEvent('bs:squad:sync', function() refreshNow = true end)
+RegisterNetEvent('bs:link:state', function() refreshNow = true end)
 RegisterNetEvent('bs:factions:sync', function() refreshNow = true end)
 
---------------------------------------------------------------------------------
 -- Roster
---------------------------------------------------------------------------------
 local function buildRows(res)
     local me = GetPlayerServerId(PlayerId())
     local mySquad = res.squadId
@@ -77,16 +72,20 @@ local function buildRows(res)
         if src and src ~= me then
             local row = {
                 src = src,
+                key = m.linked and ('linked:'..tostring(m.charId or m.net or src))or ('player:'..tostring(src)),
+                linked = m.linked == true,
                 name = tostring(m.name or '?'),
                 level = tonumber(m.level) or 1,
                 down = m.downed == true,
+                -- Survivor Link companion: no player id, live data comes from his body.
+                net = m.linked and tonumber(m.net) or nil,
             }
             -- VIP name color on the HUD (bsVipTag.hud), if set
-            local vt = Player(src).state.bsVipTag
+            local vt = src > 0 and Player(src).state.bsVipTag
             if type(vt) == 'table' and type(vt.hud) == 'string' and vt.hud:match('^#%x%x%x%x%x%x$') then
                 row.hex = vt.hud
             end
-            if mySquad ~= nil and m.squadId ~= nil and m.squadId == mySquad then
+            if mySquad ~= nil and m.squadId ~= nil and tostring(m.squadId) == tostring(mySquad) then
                 row.kind = 'squad'
                 row.tag = string.upper(tostring(m.squadRankLabel or 'SQUAD'))
                 row.order = tonumber(m.squadRankId) or 99
@@ -145,25 +144,32 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Live state (~5 Hz, changes only)
---------------------------------------------------------------------------------
 local function sample(row, myPos)
+    if row.linked then
+        local ped = row.net and NetworkDoesNetworkIdExist(row.net) and NetworkGetEntityFromNetworkId(row.net) or 0
+        local life = ped ~= 0 and Entity(ped).state.bsLinkLife
+        local down = life~=nil and life~='alive' or (life==nil and row.down==true)
+        if ped == 0 or not DoesEntityExist(ped) then return { key=row.key, src = row.src, oor = true, down = down } end
+        local maxH = math.max(101, GetEntityMaxHealth(ped))
+        local hp = math.floor(math.max(0, GetEntityHealth(ped) - 100) / (maxH - 100) * 100 + 0.5)
+        return { key=row.key, src = row.src, oor = false, down = down, hp = math.min(100, hp), dist = math.floor(#(GetEntityCoords(ped) - myPos) + 0.5) }
+    end
     local st = Player(row.src).state
     local down = (st and st.bsDowned == true) or false
     local pid = GetPlayerFromServerId(row.src)
     if pid == -1 or not NetworkIsPlayerActive(pid) then
-        return { src = row.src, oor = true, down = down }
+        return { key=row.key, src = row.src, oor = true, down = down }
     end
     local ped = GetPlayerPed(pid)
     if ped == 0 or not DoesEntityExist(ped) then
-        return { src = row.src, oor = true, down = down }
+        return { key=row.key, src = row.src, oor = true, down = down }
     end
     local maxH = math.max(101, GetEntityMaxHealth(ped))
     local hp = math.floor(math.max(0, GetEntityHealth(ped) - 100) / (maxH - 100) * 100 + 0.5)
     if IsEntityDead(ped) then hp = 0 end
     local d = #(GetEntityCoords(ped) - myPos)
-    return { src = row.src, oor = false, down = down, hp = math.min(100, hp), dist = math.floor(d + 0.5) }
+    return { key=row.key, src = row.src, oor = false, down = down, hp = math.min(100, hp), dist = math.floor(d + 0.5) }
 end
 
 CreateThread(function()
@@ -174,8 +180,8 @@ CreateThread(function()
             for _, row in ipairs(rows) do
                 local s = sample(row, myPos)
                 local sig = (s.oor and 'o' or 'i') .. (s.down and 'd' or '-') .. tostring(s.hp) .. ':' .. tostring(s.dist)
-                if lastLive[row.src] ~= sig then
-                    lastLive[row.src] = sig
+                if lastLive[row.key] ~= sig then
+                    lastLive[row.key] = sig
                     changed[#changed + 1] = s
                 end
             end
@@ -190,3 +196,16 @@ end)
 AddEventHandler('onResourceStop', function(res)
     if res == GetCurrentResourceName() then send({ action = 'partyhud:visible', visible = false }) end
 end)
+
+RegisterCommand('squadhudstatus',function()
+    CreateThread(function()
+        local ok,res=pcall(BSB.Await,'factions:roster',5000)
+        if not ok or type(res)~='table'or not res.ok then print('[Squad HUD] Roster unavailable.');return end
+        local squad,linked=0,0
+        for _,member in ipairs(res.members or {})do
+            if res.squadId and tostring(member.squadId)==tostring(res.squadId)then squad=squad+1 end
+            if member.linked then linked=linked+1;print(('[Squad HUD] Linked character %s; squad %s; body %s.'):format(tostring(member.charId),tostring(member.squadId),tostring(member.net)))end
+        end
+        print(('[Squad HUD] Squad %s; members %d; linked survivors %d; frames %d; enabled %s; visible %s.'):format(tostring(res.squadId),squad,linked,#rows,tostring(enabled),tostring(shown)))
+    end)
+end,false)

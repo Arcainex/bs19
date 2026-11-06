@@ -254,4 +254,11 @@ return {
     ['fac.cmd.rep_usage'] = 'Verwendung: /setfactionrep <serverId> <Menge>',
     ['fac.cmd.rep_nofaction'] = 'Dieser Spieler ist in keiner Fraktion.',
     ['fac.cmd.rep_set'] = 'Auf {n} Ruf gesetzt.',
+    -- faction emblems and identity
+    ['fac.emblem_no_perm'] = 'Nur der Anführer oder Ränge mit dem Recht Wappen können das Wappen ändern.',
+    ['fac.emblem_wait'] = 'Warte ein paar Sekunden, bevor du erneut speicherst.',
+    ['fac.banner_added'] = 'Banner für {faction} aufgestellt.',
+    ['fac.banner_none_near'] = 'Kein aufgestelltes Banner in 6 m Umkreis.',
+    ['fac.banner_removed'] = 'Banner entfernt.',
+    ['fac.banner_list'] = 'Banner: {list}',
 }

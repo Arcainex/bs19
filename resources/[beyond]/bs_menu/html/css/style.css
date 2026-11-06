@@ -1,4 +1,4 @@
-/* No backdrop-filter anywhere in this project. NUI is composited over the game with no game pixels behind it, so blur() paints an opaque black slab. Real blur comes from the game side (TriggerScreenblurFadeIn). */
+/* No backdrop-filter anywhere in this project. */
 
 /* BeyondSurvival hub */
 
@@ -24,7 +24,7 @@ html, body {
 
 .hidden { display: none !important; }
 
-/* The world stays visible. The game does the blur (TriggerScreenblurFadeIn in cl_main.lua); this only adds a soft vignette behind the text at the edges. */
+/* The world stays visible: the game does the blur (TriggerScreenblurFadeIn in cl_main.lua) */
 .veil {
     position: fixed; inset: 0;
     background:
@@ -86,7 +86,7 @@ html, body {
     text-shadow: 0 1px 3px #000;
 }
 
-/* Grid gotcha: a grid item's default min-width is auto, so it will not shrink below its content and overflows into neighbouring columns. Fix with min-width: 0 on the item. */
+/* Grid gotcha: a grid item's default min-width is auto */
 .hub__cols { display: grid; grid-template-columns: 330px 1fr; gap: 2rem; flex: 1; overflow: hidden; min-width: 0; }
 
 /* rail */
@@ -171,10 +171,7 @@ html, body {
     font-size: 0.73rem; letter-spacing: 0.24em; color: rgba(111,106,92,0.8);
 }
 
-/*
-   skills
-   Perk rows. No solid panel here, the hub already sits over a dimmed world.
-*/
+/* skills: perk rows. No solid panel here, the hub already sits over a dimmed world. */
 
 .points {
     display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem 0.7rem;
@@ -221,7 +218,7 @@ html, body {
     opacity: 0.85;
 }
 .perk__icon svg { width: 100%; height: 100%; }
-/* icons.js often falls back to painted <img> art instead of inline svg. Without a size rule it renders at native size and breaks the row, so it gets the same box. */
+/* icons.js often falls back to painted <img> art instead of inline svg. */
 .perk__icon img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .perk--locked .perk__icon { color: var(--dust); opacity: 0.5; }
 
@@ -292,7 +289,7 @@ html, body {
 }
 .trainrow__hint { font-size: 0.876rem; letter-spacing: 0.08em; color: rgba(150,143,127,0.95); }
 
-/* Readability in bright light without a background: text carries its own dark halo (tight opaque plus wide soft) and SVG icons get a drop-shadow. */
+/* Readability in bright light without a background: text carries its own dark halo */
 :root {
     --bs-halo:
         0 0 1px rgba(0, 0, 0, 1),
@@ -325,10 +322,7 @@ svg, .icon, .ico { filter: var(--bs-ink-shadow); }
 hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
 
 
-/*
-   faction
-   Roster styled as a record: fixed columns, scannable rank, actions on the right.
-*/
+/* faction: roster styled as a record: fixed columns, scannable rank, actions on the right. */
 
 .fact__head { display: flex; align-items: flex-start; gap: 1rem; }
 
@@ -396,10 +390,7 @@ hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
 .btn--bad { border-color: rgba(110, 43, 33, 0.7); color: #d08878; }
 .btn--bad:hover { background: rgba(110, 43, 33, 0.26); border-color: var(--blood); color: var(--bone); }
 
-/*
-   survivor hub refresh
-   Visual-only: keeps the soot/bone/amber/blood palette and existing markup; compact field-terminal look.
-*/
+/* survivor hub refresh: visual-only: keeps the soot/bone/amber/blood palette and existing markup; compact field-terminal look. */
 html { font-size: 18px; }
 
 .hub {
@@ -483,10 +474,7 @@ html { font-size: 18px; }
     .hub__cols { grid-template-columns: 205px minmax(0, 1fr); gap: 0.75rem; }
     .rail__item { min-height: 64px; }
 }
-/*
-   full-screen command deck
-   Overrides the compact hub above with the same palette, using the full screen.
-*/
+/* full-screen command deck. Overrides the compact hub above with the same palette, using the full screen. */
 html { font-size: clamp(16px, calc(0.95vw / var(--ui-scale, 1)), 20px); }
 
 .veil {

@@ -1,5 +1,4 @@
--- bs_config shared helper. Include as '@bs_config/shared/apply.lua' after a resource's config files. Patches this resource's config tables with the active bs_config profile on start and on every change, and restores originals when an override is removed.
--- BSConfigGet(path, default) reads a value (e.g. 'Global.xpMultiplier').
+-- bs_config shared helper: include as '@bs_config/shared/apply.lua' after a resource's config files.
 
 if BSConfigHelperLoaded then return end
 BSConfigHelperLoaded = true

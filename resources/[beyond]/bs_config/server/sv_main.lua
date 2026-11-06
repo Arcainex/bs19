@@ -9,9 +9,9 @@ end
 local BUILTIN = {}
 for _, n in ipairs(BSConfig.Builtin) do BUILTIN[n] = true end
 
-local profiles = {}      -- name -> { overrides = {id=value}, updated = ts, by = name }
+local profiles = {}      -- name to { overrides = {id=value}, updated = ts, by = name }
 local active = 'Default'
-local defaults = {}      -- id -> value read from the config files
+local defaults = {}      -- id to value read from the config files
 local payload = { _global = {} }
 local ready = false
 
@@ -121,7 +121,33 @@ local function validate(id, v)
     local e = BYID[id]
     if not e then return nil end
     local t = e.type
-    if t == 'bool' then
+    if t == 'json' then
+        if type(v) == 'string' then
+            if #v > 24000 then return nil end
+            local ok, decoded = pcall(json.decode, v)
+            if not ok then return nil end
+            v = decoded
+        end
+        if type(v) ~= 'table' then return nil end
+        local size, seen = 0, {}
+        local function bounded(value, depth)
+            if depth > 6 then return false end
+            if type(value) == 'table' then
+                if seen[value] then return false end
+                seen[value] = true
+                for key, child in pairs(value) do
+                    size = size + 1
+                    if size > 1200 or (type(key) ~= 'string' and type(key) ~= 'number') or not bounded(child, depth + 1) then return false end
+                end
+            elseif type(value) == 'number' then
+                return value == value and value ~= math.huge and value ~= -math.huge
+            elseif type(value) == 'string' then return #value <= 120
+            elseif type(value) ~= 'boolean' then return false end
+            return true
+        end
+        if not bounded(v, 0) then return nil end
+        return v
+    elseif t == 'bool' then
         if type(v) == 'boolean' then return v end
         return nil
     elseif t == 'int' or t == 'number' then
@@ -215,6 +241,17 @@ local function audit(src, action, profile, setting, old, new)
     local name, ident = who(src)
     MySQL.insert('INSERT INTO `bs_config_audit` (`actor`, `actor_ident`, `action`, `profile`, `setting`, `old_value`, `new_value`) VALUES (?, ?, ?, ?, ?, ?, ?)',
         { name, ident, action, profile, setting, enc(old), enc(new) })
+end
+
+-- Staff actions go to bs_guard_log (kind admin) so they show in the GUARD tab.
+local function guardLog(src, detail)
+    if not src or src == 0 then print(('[bs_config] console -> %s'):format(detail)) return end
+    local ped = GetPlayerPed(src)
+    local c = (ped and ped ~= 0) and GetEntityCoords(ped) or vector3(0, 0, 0)
+    local player = GetResourceState('bs_core') == 'started' and exports.bs_core:GetPlayer(src) or nil
+    MySQL.insert('INSERT INTO `bs_guard_log` (`src`,`license`,`char_id`,`name`,`kind`,`confidence`,`details`,`x`,`y`,`z`) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        { src, GetPlayerIdentifierByType(src, 'license'), player and player.charId or nil, (GetPlayerName(src) or '?'):sub(1, 64),
+          'admin', 0, tostring(detail):sub(1, 512), c.x, c.y, c.z })
 end
 
 -- Broadcast
@@ -314,7 +351,12 @@ function A.save(src, name, changes)
     end
     p.by = (who(src))
     persist(name)
-    if name == active then broadcast() end
+    if name == active then
+        broadcast()
+        if changes['bs_ui:UI.ThemePack']~=nil and GetResourceState('bs_ui')=='started' then
+            exports.bs_ui:SetThemePack(p.overrides['bs_ui:UI.ThemePack'] or defaults['bs_ui:UI.ThemePack'] or 'classic')
+        end
+    end
     return { ok = true, changed = n, overrides = p.overrides, state = state(src) }
 end
 
@@ -370,6 +412,9 @@ function A.setActive(src, name)
     MySQL.query.await('REPLACE INTO `bs_config_state` (`k`, `v`) VALUES (?, ?)', { 'active', active })
     audit(src, 'activate', name, nil, old, name)
     broadcast()
+    if GetResourceState('bs_ui')=='started' then
+        exports.bs_ui:SetThemePack(profiles[name].overrides['bs_ui:UI.ThemePack'] or defaults['bs_ui:UI.ThemePack'] or 'classic')
+    end
     return { ok = true, state = state(src), overrides = profiles[name].overrides }
 end
 
@@ -430,6 +475,34 @@ function A.import(src, name, text)
     end
     return res
 end
+
+-- Themes & UI page: read, change and refresh the UI theme pack (admin only, re-checked here).
+local themeCool = {}
+function A.themeApi(src, action, pack)
+    if not isAdmin(src) then return { ok = false, denied = true, error = Lp(src, 'cfg.e.admins') } end
+    if GetResourceState('bs_ui') ~= 'started' then return { ok = false, error = Lp(src, 'cfg.e.notrunning', { res = 'bs_ui' }) } end
+    local old = exports.bs_ui:GetThemePack()
+    if action == 'get' then
+        return { ok = true, active = old, packs = exports.bs_ui:ThemePacks() }
+    end
+    local now = GetGameTimer()
+    if (themeCool[src] or 0) > now then return { ok = false, error = Lp(src, 'cfg.e.server', { err = 'wait a moment' }) } end
+    themeCool[src] = now + 2000
+    if action == 'set' then
+        local valid = false
+        for _, p in ipairs(exports.bs_ui:ThemePacks()) do if p == pack then valid = true end end
+        if not valid or not exports.bs_ui:SetThemePack(pack) then return { ok = false, error = Lp(src, 'cfg.e.nosuch') } end
+        audit(src, 'set', active, 'bs_ui:UI.ThemePack', old, pack)
+        guardLog(src, ('ui_theme set %s -> %s'):format(tostring(old), pack))
+    elseif action == 'refresh' then
+        exports.bs_ui:RefreshTheme()
+        guardLog(src, 'ui_theme refresh for everyone (' .. tostring(old) .. ')')
+    else
+        return { ok = false, error = Lp(src, 'cfg.e.unknown_action') }
+    end
+    return { ok = true, active = exports.bs_ui:GetThemePack(), packs = exports.bs_ui:ThemePacks() }
+end
+AddEventHandler('playerDropped', function() themeCool[source] = nil end)
 
 -- Extension pages: other resources answer their own F1 page through a ConfigExt export.
 function A.ext(src, res, action, payload)

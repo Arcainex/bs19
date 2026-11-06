@@ -49,7 +49,7 @@ local function countFlags(id,kind) local n=0;for _,f in ipairs(Flags) do if f.fa
 local function role(src) local r=rank(src);if r=='owner' then return 'leader' end;if r=='officer' then return 'officer' end;return 'member' end
 local function allowed(src, permission)
  local f=faction(src);if not f or not f.factionId then return false end
- -- Rank permissions live in bs_factions (factions:perms:*). It answers nil for permissions it does not own (reclaim, manage), which fall through.
+ -- Rank permissions live in bs_factions (factions:perms:*).
  local okRank,byRank=pcall(function() return exports.bs_factions:RankAllowed(tonumber(src),permission) end)
  if okRank and byRank~=nil then return byRank==true end
  local row=one('SELECT permissions_json FROM bs_faction_role_permissions WHERE faction_id=? AND role_id=? LIMIT 1',{f.factionId,role(src)})
@@ -88,7 +88,7 @@ BSB.RegisterCallback('factionBases:status',function(src)
  if at and at.kind=='safezone' and (not f or f.factionId~=at.factionId) then at=nil end -- never reveal a hidden safezone
  return {ok=Ready,flags=visibleFor(src),nearby=at,role=f and role(src) or nil,canBuild=allowed(src,'build'),canDeposit=allowed(src,'deposit'),canWithdraw=allowed(src,'withdraw')}
 end)
--- Flags are planted through the F2 build wheel (bs_building -> PlaceFlagAt).
+-- Flags are planted through the F2 build wheel (bs_building to PlaceFlagAt).
 BSB.RegisterCallback('factionBases:placeFlag',function(src) return {ok=false,error=Lp(src,'fb.use_wheel')} end)
 -- bs_building places both flag kinds through this. kind = 'safezone' | 'outpost'.
 exports('PlaceFlagAt',function(src,fx,fy,fz,heading,buildRadius,kind,opts)
@@ -116,18 +116,38 @@ exports('PlaceFlagAt',function(src,fx,fy,fz,heading,buildRadius,kind,opts)
 end)
 exports('IsVanilla',function(id) return isVanilla(id)==true end)
 -- Leader picks the flag up: the kit comes back, the claim ends and bs_building starts decaying the pieces it covered.
-local function pickUp(src,id)
+local function pickUp(src,id,mode)
  local flag;for _,v in ipairs(Flags) do if v.id==tonumber(id) then flag=v break end end -- by DB id only
  local f=faction(src);if not flag or not f or f.factionId~=flag.factionId or rank(src)~='owner' then return {ok=false,error=Lp(src, 'fb.leader_remove')} end
  if flag.status~='active' then return {ok=false,error=Lp(src, 'fb.flag_unavail')} end
  local at=point(src);if not at or dist(at,flag)>6.0 then return {ok=false,error=Lp(src, 'fb.too_far')} end
  x('UPDATE bs_faction_flags SET status=? WHERE id=?',{'removed',flag.id})
  pcall(function() exports.bs_inventory:GiveItem(src,itemFor(flag.kind),1) end)
- guardLog(src,'flag_pickup',('%s flag #%d of %s'):format(flag.kind,flag.id,flag.factionId),flag)
- Flags=flagRows();sync();return {ok=true}
+ mode=mode=='all' and 'all' or 'decay'
+ guardLog(src,'flag_pickup',('%s flag #%d of %s (%s)'):format(flag.kind,flag.id,flag.factionId,mode),flag)
+ Flags=flagRows();sync()
+ -- bs_building takes down or abandons the pieces and fills the salvage crate
+ local n=0
+ if GetResourceState('bs_building')=='started' then
+  local ok,res=pcall(function() return exports.bs_building:FlagRemoved(flag,mode,src) end)
+  if ok and type(res)=='table' then n=tonumber(res.n) or 0 end
+ end
+ return {ok=true,n=n,mode=mode}
 end
-BSB.RegisterCallback('factionBases:removeFlag',function(src,id) return pickUp(src,id) end)
-BSB.RegisterCallback('factionBases:pickupFlag',function(src,id) return pickUp(src,id) end)
+BSB.RegisterCallback('factionBases:removeFlag',function(src,id,mode) return pickUp(src,id,mode) end)
+BSB.RegisterCallback('factionBases:pickupFlag',function(src,id,mode) return pickUp(src,id,mode) end)
+-- What a removal would touch, for the leader's confirm message
+BSB.RegisterCallback('factionBases:flagPieces',function(src,id)
+ local flag;for _,v in ipairs(Flags) do if v.id==tonumber(id) then flag=v break end end
+ local f=faction(src);if not flag or not f or f.factionId~=flag.factionId or rank(src)~='owner' then return {ok=false,error=Lp(src, 'fb.leader_remove')} end
+ local n,pct,hours=0,50,24
+ if GetResourceState('bs_building')=='started' then
+  local ok,c=pcall(function() return exports.bs_building:FlagPieces(flag) end);if ok then n=tonumber(c) or 0 end
+  local okS,st=pcall(function() return exports.bs_building:FlagRemoveSettings() end)
+  if okS and type(st)=='table' then pct=tonumber(st.pct) or pct;hours=tonumber(st.hours) or hours end
+ end
+ return {ok=true,n=n,pct=pct,hours=hours}
+end)
 -- Is a raid on this faction allowed for the attacker right now? Window + declared raid, owned by bs_building.
 local function raidAllowed(attackerId,targetId)
  local ok,r=pcall(function() return exports.bs_building:RaidAllowed(attackerId,targetId) end)
@@ -161,7 +181,7 @@ exports('ClearFaction',function(factionId)
  x('DELETE FROM bs_faction_sanctions WHERE faction_id=?',{factionId})
  if Ready then Flags=flagRows();sync() end;return true
 end)
--- Reclaim resolves at the timer: fails if the attacker hit its flag cap, or if a living defender holds the radius while no living attacker is inside.
+-- Reclaim resolves at the timer: fails if the attacker hit its flag cap
 local function reclaimHolds(flag)
  if countFlags(flag.reclaimBy,'outpost')>=capFor(flag.reclaimBy,'outpost') then return false end
  local defenders,attackers=0,0

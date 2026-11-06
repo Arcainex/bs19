@@ -1,11 +1,11 @@
--- Hunger, thirst and the custom stamina bar. Simulated locally and reported to the server, which clamps and persists. Values live in BS.Player.data.needs for the HUD.
+-- Hunger, thirst and the custom stamina bar.
 
 BS.Needs = { hunger = 100.0, thirst = 100.0, stamina = 100.0, infection = 0.0 }
 local N = BS.Needs
 
 local lastSprint = 0
 
--- Running out of breath slows you down, it never stops you. Winded is a move rate computed each frame from current stamina (full speed at windedAt and above, down to windedMoveRate at zero), so there is no flag to latch. Enforcement runs every frame because DisableControlAction lasts one frame; the 10Hz loop owns the number.
+-- Running out of breath slows you down, it never stops you.
 
 --- @return number  1.0 at full stamina, windedMoveRate at zero
 local function moveRateFor(stamina)
@@ -58,7 +58,7 @@ CreateThread(function()
     end
 end)
 
--- SetEntityHealth from a script bypasses the game's damage pipeline, so godmode does not stop it. Ask bs_admin and skip the health reduction.
+-- SetEntityHealth from a script bypasses the game's damage pipeline, so godmode does not stop it.
 local function godmodeOn()
     if GetResourceState('bs_admin') ~= 'started' then return false end
     local ok, on = pcall(function() return exports.bs_admin:IsGodmode() end)
@@ -98,11 +98,9 @@ RegisterNetEvent(BS.Events.PlayerNeeds, function(needs)
     BS.Emit('needs:changed', N)
 end)
 
---------------------------------------------------------------------------------
 -- Hunger / thirst tick
---------------------------------------------------------------------------------
 
--- Sampler: the needs tick is 30s, so once a second we note movement and last activity. The drain tick reads the totals and resets them.
+-- Sampler: the needs tick is 30s, so once a second we note movement and last activity.
 local activity = { moving = 0, samples = 0, lastActive = GetGameTimer() }
 
 CreateThread(function()
@@ -166,7 +164,6 @@ CreateThread(function()
             end
 
             -- Infection only climbs, and only while you carry it.
-            -- With bs_medical running it owns infection and sets this number itself.
             if Config.Infection.enabled and N.infection > 0 and not GlobalState.bsMedicalInfection then
                 N.infection = BS.Util.Clamp(N.infection + Config.Infection.perTick * ((LocalPlayer.state.bsDrugMods or {}).infection or 1.0), 0.0, 100.0)
 
@@ -184,9 +181,7 @@ CreateThread(function()
     end
 end)
 
---------------------------------------------------------------------------------
 -- Custom stamina
---------------------------------------------------------------------------------
 
 CreateThread(function()
     if not Config.Stamina.enabled then return end
@@ -224,7 +219,7 @@ end)
 
 exports('GetNeeds', function() return N end)
 
--- A setter is needed because GetNeeds() crosses an export boundary and returns a copy. Anything that spends stamina (e.g. the roll in bs_emotes) must go through this.
+-- A setter is needed because GetNeeds() crosses an export boundary and returns a copy.
 exports('AdjustStamina', function(delta)
     N.stamina = BS.Util.Clamp(N.stamina + (tonumber(delta) or 0), 0.0, 100.0)
     BS.Emit('needs:stamina', N.stamina)
@@ -258,7 +253,7 @@ CreateThread(function()
                 end
             end
         elseif infectionGradeActive then
-            -- Only touch the timecycle while symptoms are active; clearing it every pass erased the player's selected filter and caused flashing.
+            -- Only touch the timecycle while symptoms are active
             infectionGradeActive = false
             ClearTimecycleModifier()
             if GetResourceState('bs_ui') == 'started' then

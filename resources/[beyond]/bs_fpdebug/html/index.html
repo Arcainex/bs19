@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
+    <script src="nui://bs_ui/html/shared/window.js?v=20261015"></script>
+    <meta charset="utf-8" />
+    <script src="nui://bs_ui/html/js/i18n.js"></script>
+    <title>FightParkDebug</title>
+    <link rel="stylesheet" href="css/style.css?v=1" />
+</head>
+<body>
+<div id="root" class="hidden">
+    <section class="menu">
+        <header class="menu__head"><h1><span data-i18n="fpdbg.title">FIGHT + PARKOUR</span></h1></header>
+        <nav class="menu__tabs">
+            <button class="mtab is-active" data-tab="fight"><span data-i18n="fpdbg.fight">FIGHT</span></button>
+            <button class="mtab" data-tab="park"><span data-i18n="fpdbg.parkour">PARKOUR</span></button>
+            <button class="mtab" data-tab="failed"><span data-i18n="fpdbg.failed">FAILED</span></button>
+        </nav>
+        <div class="menu__body">
+            <div class="mpane is-active" data-pane="fight" id="pFight"></div>
+            <div class="mpane" data-pane="park" id="pPark"></div>
+            <div class="mpane" data-pane="failed" id="pFailed"></div>
+        </div>
+        <footer class="menu__foot"><span class="msg" id="msg"><span data-i18n="fpdbg.ready">READY</span></span><span class="keys">ESC</span></footer>
+    </section>
+</div>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>

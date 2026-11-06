@@ -1,13 +1,11 @@
--- bs_interactions - registry: what can be interacted with and how other resources add to it. It only decides what is offered; the server decides what is allowed.
+-- bs_interactions - registry: what can be interacted with and how other resources add to it.
 
 Registry = { models = {}, zones = {}, entities = {}, types = {} }
 
 -- [modelHash] = model name it was registered under. Hashes cannot be reversed, so names are remembered here for the target debug overlay (cl_target.lua). Optional.
 Registry.modelNames = {}
 
--- Options can carry labelKey: the label is then looked up in the registering resource's
--- locales/<lang>.lua (labelRes, filled in on registration) so it follows the player's language.
--- label stays as the fallback text.
+-- Options can carry labelKey: the label is then looked up in the registering resource's locales/<lang>.lua
 local foreign = {}
 local function foreignDict(res, lang)
     local id = res .. ':' .. lang
@@ -89,7 +87,7 @@ function Registry.RemoveZone(id) Registry.zones[id] = nil end
 Registry.entityFlags = {}
 
 -- Adds options for one entity handle (a spawned prop, a vendor ped).
--- `flags` is optional, e.g. exports.bs_interactions:AddEntity(ped, opts, { noOutline = true }).
+-- Optional flags: noOutline hides the outline; raycastOnly excludes proximity fallback.
 function Registry.AddEntity(entity, options, flags)
     if not DoesEntityExist(entity) then return false end
     stamp(options, GetInvokingResource())
@@ -98,7 +96,7 @@ function Registry.AddEntity(entity, options, flags)
     return true
 end
 
--- Removing an entity also drops it from cl_target.lua's cache right away (see Target.ForceRelease). Target is a global from the same resource.
+-- Removing an entity also drops it from cl_target.lua's cache right away (see Target.ForceRelease).
 function Registry.RemoveEntity(entity)
     Registry.entities[entity] = nil
     Registry.entityFlags[entity] = nil
@@ -114,9 +112,7 @@ function Registry.AddType(entityType, options)
     end
 end
 
---------------------------------------------------------------------------------
 -- Resolution
---------------------------------------------------------------------------------
 
 local TYPE_NAME = { [1] = 'ped', [2] = 'vehicle', [3] = 'object' }
 
@@ -142,7 +138,7 @@ local function passesFilters(f, entity, distance)
         if f.inFront and offset.y < 0.5 then return false end
     end
 
-    -- State bags on the entity let other resources express conditions without a function. Walkers are local, non-networked peds, so player-only options must bail out on IsPedAPlayer before touching state bags.
+    -- State bags on the entity let other resources express conditions without a function.
     if f.playerPed and not (DoesEntityExist(entity) and IsEntityAPed(entity) and IsPedAPlayer(entity)) then
         return false
     end
@@ -200,7 +196,7 @@ local function passesFilters(f, entity, distance)
     return true
 end
 
--- Everything offered for a hit, filtered by declared filters, canInteract (same resource only) and distance. `checkZones` defaults to true, pass false when the caller resolves zones itself (see ResolveZones).
+-- Everything offered for a hit, filtered by declared filters
 function Registry.Resolve(entity, coords, distance, checkZones)
     local out = {}
 
@@ -220,7 +216,7 @@ function Registry.Resolve(entity, coords, distance, checkZones)
                 ok = success and result and true or false
             end
 
-            -- Skip options whose `action` arrived uncallable, and print once so the mistake shows in the console instead of a frozen-looking dot.
+            -- Skip options whose `action` arrived uncallable
             if ok and not opt.event and not opt.serverEvent
                and type(opt.action) ~= 'function' then
                 if not opt.__warned then
@@ -253,7 +249,7 @@ function Registry.Resolve(entity, coords, distance, checkZones)
     return out
 end
 
--- Zones, centred on the player: resolved separately so a dropped item is found by standing near it even when the raycast hits nothing.
+-- Zones, centred on the player: resolved separately so a dropped item is found by standing near it even when
 function Registry.ResolveZones(coords)
     local out = {}
     for _, zone in pairs(Registry.zones) do

@@ -1,6 +1,4 @@
 // bs_multichar - character select and creator.
-// The 3D ped lives in the game; this file decides what to show and posts it to Lua via post(), which restyles the preview ped.
-// Every choice is only a request: the server re-validates identity, kit, outfit and faction against its own config.
 
 const RES = (typeof GetParentResourceName === 'function')
     ? GetParentResourceName() : 'bs_multichar';
@@ -52,6 +50,8 @@ const S = {
     tex: {},             // texture counts of the pieces currently worn
     hands: false,
     busy: false,
+    cards: {},           // charId -> { faction, label, short, emblem, logo, motto }
+    portraits: {},       // charId -> nui-img url of the headshot
 };
 
 // select view
@@ -64,9 +64,50 @@ function playtime(seconds) {
     return tr('ui.days_survived', { n: d }, `${d}D SURVIVED`);
 }
 
+// Exact time on the clock for the card, e.g. 14h 05m.
+function played(seconds) {
+    const m = Math.floor((seconds || 0) / 60);
+    if (m < 1) return tr('sel.fresh', null, 'Fresh');
+    const h = Math.floor(m / 60);
+    return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+}
+
+// last_played arrives as ms, seconds or a date string depending on the driver.
+function lastSeen(v) {
+    if (v === null || v === undefined || v === '') return tr('sel.never', null, 'Never');
+    let t = typeof v === 'number' ? v : Date.parse(v);
+    if (!Number.isFinite(t)) return tr('sel.never', null, 'Never');
+    if (t < 1e12) t *= 1000;
+    const mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
+    if (mins < 60) return tr('sel.mins_ago', { n: Math.max(1, mins) }, `${Math.max(1, mins)} min ago`);
+    const h = Math.floor(mins / 60);
+    if (h < 24) return tr('sel.hours_ago', { n: h }, `${h} h ago`);
+    const d = Math.floor(h / 24);
+    if (d < 60) return tr('sel.days_ago', { n: d }, `${d} days ago`);
+    try { return new Date(t).toLocaleDateString(lang(), { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; }
+}
+
 function slotCountText() {
     return tr('ui.slots_used', { n: S.characters.length, max: S.maxSlots },
         `${S.characters.length} / ${S.maxSlots} SLOTS USED`);
+}
+
+function cardOf(c) { return (c && S.cards[String(c.id)]) || null; }
+
+function emblemFor(card, size) {
+    if (!card || !window.BSEmblem) return '';
+    const spec = card.emblem ? BSEmblem.normalize(card.emblem) : BSEmblem.fromLegacy(card.logo, card.faction || '');
+    return BSEmblem.render(spec, size ? { size } : undefined);
+}
+
+function initials(c) {
+    return ((String(c.first_name || '?')[0] || '') + (String(c.last_name || '')[0] || '')).toUpperCase();
+}
+
+function portraitHtml(c) {
+    const url = S.portraits[String(c.id)];
+    const img = url ? `<img src="${escape(url)}" alt="" onerror="this.remove()">` : '';
+    return `<span class="slot__face"><b>${escape(initials(c))}</b>${img}</span>`;
 }
 
 function renderSlots() {
@@ -76,21 +117,36 @@ function renderSlots() {
     $('slotCount').textContent = slotCountText();
 
     S.characters.forEach((c, i) => {
-        const node = el('div', 'slot' + (i === S.selected ? ' is-active' : ''));
+        const card = cardOf(c);
+        const on = i === S.selected;
+        const node = el('div', 'slot' + (on ? ' is-active' : ''));
+        node.setAttribute('role', 'option');
+        node.setAttribute('aria-selected', on ? 'true' : 'false');
+        node.tabIndex = on ? 0 : -1;
+        node.style.setProperty('--n', i);
+        const fac = card ? `<span class="slot__fac">${escape(card.label || card.faction)}</span>` : `<span class="slot__fac is-none">${escape(tr('sel.no_faction', null, 'No faction'))}</span>`;
         node.innerHTML = `
-            <div class="slot__name">${escape(c.first_name)} ${escape(c.last_name)}</div>
-            <div class="slot__meta">
-                <span><em>${escape(c.classLabel || c.class)}</em></span>
-                <span>${escape(tr('ui.lvl', null, 'LVL'))} ${c.level ?? 1}</span>
-                <span>${escape(playtime(c.playtime))}</span>
-            </div>`;
+            <span class="slot__no">${String(i + 1).padStart(2, '0')}</span>
+            <span class="slot__pic">${portraitHtml(c)}${card ? `<span class="slot__mark">${emblemFor(card)}</span>` : ''}</span>
+            <span class="slot__body">
+                <span class="slot__name">${escape(c.first_name)} ${escape(c.last_name)}</span>
+                <span class="slot__sub"><em>${escape(c.classLabel || c.class)}</em>${fac}</span>
+                <span class="slot__meta">
+                    <span class="slot__lvl"><small>${escape(tr('ui.lvl', null, 'LVL'))}</small>${c.level ?? 1}</span>
+                    <span><small>${escape(tr('sel.played', null, 'PLAYED'))}</small>${escape(played(c.playtime))}</span>
+                    <span><small>${escape(tr('sel.last', null, 'LAST SEEN'))}</small>${escape(lastSeen(c.last_played))}</span>
+                </span>
+            </span>`;
         node.addEventListener('click', () => selectSlot(i));
+        node.addEventListener('dblclick', () => { selectSlot(i); $('btnPlay').click(); });
         list.appendChild(node);
     });
 
     // Empty slots are shown so a fresh account does not look broken.
     for (let i = S.characters.length; i < S.maxSlots; i++) {
-        const node = el('div', 'slot slot--empty', escape(tr('ui.empty_slot', null, 'EMPTY SLOT')));
+        const node = el('button', 'slot slot--empty', `<span class="slot__no">${String(i + 1).padStart(2, '0')}</span><span class="slot__plus">+</span><span class="slot__body"><span class="slot__name">${escape(tr('ui.new_survivor', null, 'NEW SURVIVOR'))}</span><span class="slot__sub">${escape(tr('ui.empty_slot', null, 'EMPTY SLOT'))}</span></span>`);
+        node.type = 'button';
+        node.style.setProperty('--n', i);
         node.addEventListener('click', openCreator);
         list.appendChild(node);
     }
@@ -99,11 +155,39 @@ function renderSlots() {
     $('btnPlay').disabled = !has;
     $('btnDelete').disabled = !has;
     $('btnNew').disabled = S.characters.length >= S.maxSlots;
+    const cur = S.characters[S.selected];
+    $('playName').textContent = cur ? `${cur.first_name} ${cur.last_name}` : '';
+    renderDossier();
 }
 
+// Plate under the survivor on show: name, faction mark and motto.
+function renderDossier() {
+    const box = $('dossier');
+    if (!box) return;
+    const c = S.characters[S.selected];
+    if (!c || $('select').classList.contains('hidden')) { box.classList.add('hidden'); return; }
+    const card = cardOf(c);
+    const motto = card && card.motto ? tr(`fi.${card.faction}.motto`, null, card.motto) : '';
+    box.innerHTML = `${card ? `<span class="dossier__mark">${emblemFor(card)}</span>` : ''}
+        <span class="dossier__txt"><small>${escape(card ? `[${card.short || card.faction}] ${card.label || ''}` : tr('sel.no_faction', null, 'No faction'))}</small>
+        <b>${escape(c.first_name)} ${escape(c.last_name)}</b>
+        ${motto ? `<em>“${escape(motto)}”</em>` : `<em>${escape(c.classLabel || c.class)} · ${escape(tr('ui.lvl', null, 'LVL'))} ${c.level ?? 1}</em>`}</span>`;
+    box.classList.remove('hidden');
+    box.classList.remove('is-in'); void box.offsetWidth; box.classList.add('is-in');
+}
+
+let selectorSound=true,selectorReducedMotion=false;
+function updateSelectorOptions(){document.documentElement.dataset.selectorMotion=selectorReducedMotion?'off':'on';$('selectorSound').textContent=selectorSound?'SOUND ON':'SOUND OFF';$('selectorMotion').textContent=selectorReducedMotion?'MOTION OFF':'MOTION ON';}
+$('selectorSound').addEventListener('click',()=>{selectorSound=!selectorSound;updateSelectorOptions();post('selectionPreferences',{sound:selectorSound});});
+$('selectorMotion').addEventListener('click',()=>{selectorReducedMotion=!selectorReducedMotion;updateSelectorOptions();post('selectionPreferences',{reducedMotion:selectorReducedMotion});});
 function selectSlot(i) {
+    if(selectorLoading)return;
+    if(i!==S.selected&&selectorSound)post('selectionSound');
+    if (i < 0 || i >= S.characters.length) return;
     S.selected = i;
     renderSlots();
+    const n = $('slots').children[i];
+    if (n) { n.focus({ preventScroll: true }); n.scrollIntoView({ block: 'nearest' }); }
     post('preview', { index: i + 1 });
 }
 
@@ -195,6 +279,7 @@ function blankDraft() {
 }
 
 async function openCreator() {
+    if(selectorLoading)return;
     if (S.busy || S.characters.length >= S.maxSlots) return;
     S.busy = true;
     // Open framed. Zoom and rotation persist while browsing survivors, but should not carry into a new character.
@@ -211,7 +296,8 @@ async function openCreator() {
     S.steps = buildSteps();
     S.edit = false;
 
-    $('select').classList.add('hidden');
+    $('select').classList.add('hidden');$('selectorOptions').classList.add('hidden');
+    $('dossier').classList.add('hidden');
     $('creator').classList.remove('hidden');
     $('createError').textContent = '';
     $('btnHands').classList.remove('hidden');
@@ -227,10 +313,11 @@ async function openCreator() {
 
 function closeCreator() {
     $('creator').classList.add('hidden');
-    $('select').classList.remove('hidden');
+    $('select').classList.remove('hidden');$('selectorOptions').classList.remove('hidden');
     $('btnHands').classList.add('hidden');
     S.draft = null;
     S.hands = false;
+    renderDossier();
     // The list opens framed; otherwise zoom and rotation from the creator carry over after cancelling.
     post('resetView', {});
     post('preview', { index: S.selected + 1 });
@@ -262,7 +349,7 @@ function daysInMonth(month, year) {
     return new Date(year, month, 0).getDate();
 }
 
-// The creator can be opened many times: option lists are rebuilt each time but listeners are bound once, otherwise handlers stack up.
+// The creator can be opened many times: option lists are rebuilt each time but listeners are bound once
 let dobBound = false;
 
 function buildDobPickers() {
@@ -334,7 +421,7 @@ function updateAgeHint() {
     hint.classList.toggle('bad', bad);
 }
 
-/** The wire format bs_core validates is still YYYY-MM-DD. */
+/* The wire format bs_core validates is still YYYY-MM-DD. */
 function draftDobString() {
     const p = (n) => String(n).padStart(2, '0');
     return `${S.draft.dobYear}-${p(S.draft.dobMonth)}-${p(S.draft.dobDay)}`;
@@ -477,9 +564,10 @@ function renderFactions() {
         const node = el('div', 'card card--fac' + (on ? ' is-active' : ''));
         node.style.setProperty('--fc', f.colour || '');
         const name = tr('fac.' + f.id + '.n', null, f.id);
-        let html = '';
+        let html = (f.emblem && window.BSEmblem) ? `<span class="card__mark">${BSEmblem.render(f.emblem)}</span>` : '';
         if (f.bonus) html += `<span class="card__tag">${escape(tr('ui.smallest_bonus', { cash: S.cfg.bonusCash || 0, xp: S.cfg.bonusXp || 0 }, 'SMALLEST'))}</span>`;
         html += `<div class="card__title">${escape(name)}</div>
+            ${f.motto ? `<div class="card__motto">“${escape(tr('fi.' + f.id + '.motto', null, f.motto))}”</div>` : ''}
             <div class="card__blurb">${escape(tr('fac.' + f.id + '.d', null, ''))}</div>`;
         if (on) {
             const perks = [1, 2, 3].map((n) => tr('fac.' + f.id + '.p' + n, null, '')).filter(Boolean);
@@ -548,8 +636,7 @@ function renderSliders() {
     }
 }
 
-/* ROLL A FACE: everything comes from the server's Multichar.Roll lists - curated parent pairs, shape/skin ranges
-   that follow the dominant parent, natural hair and eye colours, small face details. Female never gets a beard. */
+/* ROLL A FACE: everything comes from the server's Multichar.Roll lists - curated parent pairs */
 function randomiseLook() {
     if (!S.draft || !S.cfg || !S.cfg.roll) return;
     const g = S.draft.gender;
@@ -599,7 +686,7 @@ function randomiseLook() {
     pushDraft(false);
 }
 
-/* Debounced so dragging a slider does not spam the client every frame. The answer carries what the preview ped has (drawable and texture counts). */
+/* Debounced so dragging a slider does not spam the client every frame. */
 let draftTimer = null;
 function pushDraft(rebuild) {
     clearTimeout(draftTimer);
@@ -881,7 +968,7 @@ $('btnPlay').addEventListener('click', async () => {
     if (!c) return;
     $('btnPlay').disabled = true;
 
-    // Read at the moment of pressing, sent with the selection and never stored, so a rescue cannot silently cost anyone their logout position.
+    // Read at the moment of pressing, sent with the selection and never stored
     const safe = !!($('safeSpawn') && $('safeSpawn').checked);
 
     const res = await post('play', { id: c.id, safeSpawn: safe });
@@ -923,8 +1010,7 @@ $('review').addEventListener('click', (e) => {
     if (b) setStep(b.dataset.go);
 });
 
-// appearance edit mode
-// Opened in-game by bs_vip. Only the LOOK pane, on the live character.
+// appearance edit mode: opened in-game by bs_vip. Only the LOOK pane, on the live character.
 function setEditChrome(on) {
     $('steps').style.display = on ? 'none' : '';
     $('stepName').style.display = on ? 'none' : '';
@@ -949,7 +1035,8 @@ async function enterEdit(d) {
     for (const f of S.appearance) appearance[f.key] = (d.current && d.current[f.key] !== undefined) ? d.current[f.key] : f.default;
     S.draft = { gender: d.gender || 'male', appearance, firstName: '', lastName: '', class: '', dobYear: 2000, dobMonth: 1, dobDay: 1 };
     $('root').classList.remove('hidden');
-    $('select').classList.add('hidden');
+    $('select').classList.add('hidden');$('selectorOptions').classList.add('hidden');
+    $('dossier').classList.add('hidden');
     $('confirm').classList.add('hidden');
     $('creator').classList.remove('hidden');
     $('btnHands').classList.add('hidden');
@@ -1004,7 +1091,7 @@ async function submitCreate() {
 
     if (!res.ok) { $('createError').textContent = res.error || tr('ui.could_not_create', null, 'Could not create the character.'); return; }
 
-    // Use the list the client handed back. Reading S.characters here raced the setData broadcast and could select the slot before the new one existed.
+    // Use the list the client handed back.
     if (res.characters) S.characters = res.characters;
 
     S.selected = Math.max(0, S.characters.length - 1);
@@ -1046,8 +1133,7 @@ $('height').addEventListener('input', (e) => {
 });
 $('occupation').addEventListener('change', (e) => { if (S.draft) S.draft.occupation = e.target.value; });
 
-/* Switching sex swaps the model AND resets the face, hair, brows, beard, makeup and outfit to that sex's starting look,
-   otherwise the male head blend stays on the female model. */
+/* Switching sex swaps the model AND resets the face, hair, brows, beard */
 document.querySelectorAll('#genderChoice .choice__btn').forEach((b) => {
     b.addEventListener('click', () => {
         if (!S.draft) return;
@@ -1132,34 +1218,68 @@ if (window.BSI18n && BSI18n.onChange) {
 }
 // from the client
 
+let selectorLoading=false;
+$('selectorRetry').addEventListener('click',()=>post('selectorRetry'));
 window.addEventListener('message', (event) => {
     const d = event.data || {};
 
     switch (d.action) {
+        case 'loading':
+            selectorLoading=true;
+            $('root').classList.remove('hidden');
+            $('creator').classList.add('hidden');$('confirm').classList.add('hidden');
+            $('select').classList.remove('hidden');$('dossier').classList.add('hidden');
+            $('selectorLoading').classList.remove('hidden');
+            $('selectorLoadingText').textContent=d.text||'Loading survivors…';
+            $('selectorRetry').classList.toggle('hidden',!String(d.text||'').includes('retry'));
+            $('btnPlay').disabled=true;$('btnNew').disabled=true;$('btnDelete').disabled=true;
+            break;
         case 'setData':
             if (d.characters) S.characters = d.characters;
             if (d.classes)    S.classes = d.classes;
             if (d.appearance) S.appearance = d.appearance;
             if (d.maxSlots)   S.maxSlots = d.maxSlots;
+            if (d.cards)      S.cards = d.cards;
+            if (S.selected >= S.characters.length) S.selected = Math.max(0, S.characters.length - 1);
             renderSlots();
+            if(selectorLoading){$('btnPlay').disabled=true;$('btnNew').disabled=true;$('btnDelete').disabled=true;}
             break;
 
+        case 'selectionOptions':
+            selectorSound=d.sound!==false;selectorReducedMotion=d.reducedMotion===true||matchMedia('(prefers-reduced-motion: reduce)').matches;updateSelectorOptions();break;
         case 'open':
+            selectorLoading=false;$('selectorLoading').classList.add('hidden');
             $('root').classList.remove('hidden');
             $('creator').classList.add('hidden');
             $('btnHands').classList.add('hidden');
-            $('select').classList.remove('hidden');
+            $('select').classList.remove('hidden');$('selectorOptions').classList.remove('hidden');
             $('confirm').classList.add('hidden');
             renderSlots();
             break;
 
         case 'close':
+            selectorLoading=false;$('selectorLoading').classList.add('hidden');
             if (S.edit) leaveEdit();
+            $('dossier').classList.add('hidden');
             $('root').classList.add('hidden');
             break;
 
         case 'editAppearance':
             enterEdit(d);
+            break;
+
+        case 'portrait':
+            if (d.id && typeof d.url === 'string' && d.url.startsWith('https://nui-img/')) {
+                S.portraits[String(d.id)] = d.url;
+                const index=S.characters.findIndex(c=>String(c.id)===String(d.id));
+                const slot=index>=0?$('slots').children[index]:null;
+                const picture=slot&&slot.querySelector('.slot__pic');
+                if(picture){
+                    const mark=picture.querySelector('.slot__mark');
+                    picture.innerHTML=portraitHtml(S.characters[index]);
+                    if(mark)picture.appendChild(mark);
+                }
+            }
             break;
     }
 });
@@ -1181,7 +1301,7 @@ let dragging = false;
 let lastX = 0;
 
 function overPanel(target) {
-    return !!target.closest('.panel, .cam, .modal');
+    return !!target.closest('.panel, .cam, .modal, .dossier');
 }
 
 document.addEventListener('mousedown', (e) => {
@@ -1212,6 +1332,15 @@ document.addEventListener('wheel', (e) => {
 document.addEventListener('keydown', (e) => {
     // Never steal keys while someone is typing a name.
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+    const picking = !selectorLoading && !$('select').classList.contains('hidden') && $('confirm').classList.contains('hidden') && !$('root').classList.contains('hidden');
+    if (picking) {
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.preventDefault(); return selectSlot(Math.max(0, S.selected - 1)); }
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.preventDefault(); return selectSlot(Math.min(S.characters.length - 1, S.selected + 1)); }
+        if (e.key === 'Enter' && !$('btnPlay').disabled) { e.preventDefault(); return $('btnPlay').click(); }
+        if ((e.key === 'n' || e.key === 'N') && !$('btnNew').disabled) return openCreator();
+        if (e.key === 'Delete' && !$('btnDelete').disabled) return $('btnDelete').click();
+    }
+    if (!$('confirm').classList.contains('hidden') && e.key === 'Escape') { $('confirm').classList.add('hidden'); return; }
     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft')  rotate(-ROTATE_STEP);
     if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') rotate(ROTATE_STEP);
 });

@@ -1,5 +1,4 @@
 -- bs_factions - faction levels, mission board, skill tree and cosmetic tag styles.
--- XP comes only from faction missions and treasury donations. Config: config/config_progression.lua.
 
 local P = Factions.Progression
 local Data, Ready, Dirty = {}, false, {}
@@ -58,6 +57,11 @@ end
 local function dayKey() return math.floor(os.time() / 86400) end
 local function weekKey() return math.floor((os.time() - 345600) / 604800) end
 
+local function periodKey(d, period) return period=='daily' and d.dayKey or d.weekKey end
+local function offerId(d, period, m)
+    return ('fac:%s:%d:%d:%s'):format(period,periodKey(d,period),m.slot,m.id)
+end
+
 local SkillById, DefById = {}, {}
 for _, s in ipairs(P.Skills) do SkillById[s.id] = s end
 for period, list in pairs(P.Missions) do for _, m in ipairs(list) do m.period = period; DefById[m.id] = m end end
@@ -91,6 +95,13 @@ local function load(fid)
                 done = r.done == true or tonumber(r.done) == 1, xp = tonumber(r.xp_reward) or 0, money = tonumber(r.money_reward) or 0 }
         end
     end
+    for _, accepted in ipairs(q('SELECT period,period_key,slot,mission_id FROM bs_faction_mission_acceptance WHERE faction_id=?', {fid})) do
+        local m=d.board[accepted.period] and d.board[accepted.period][tonumber(accepted.slot)]
+        if m and m.id==accepted.mission_id and tonumber(accepted.period_key)==periodKey(d,accepted.period) then m.accepted=true end
+    end
+    for _, list in pairs(d.board) do for _, m in pairs(list) do
+        if m.done then m.accepted=true elseif not m.accepted then m.progress=0 end
+    end end
     Data[fid] = d
     return d
 end
@@ -168,6 +179,9 @@ end
 
 -- Board
 local function roll(d, period)
+    -- A delayed dirty flush must never restore yesterday's board after rollover.
+    local prefix=d.id..':'..period..':'
+    for key in pairs(Dirty) do if key:sub(1,#prefix)==prefix then Dirty[key]=nil end end
     local pool, picked = {}, {}
     for _, m in ipairs(P.Missions[period] or {}) do pool[#pool + 1] = m end
     local payBonus = 1 + skillValue(d, 'mission_pay') / 100
@@ -175,7 +189,7 @@ local function roll(d, period)
         local i = math.random(#pool)
         local def = table.remove(pool, i)
         local target = math.random(def.n[1], def.n[2])
-        picked[slot] = { slot = slot, id = def.id, target = target, progress = 0, done = false,
+        picked[slot] = { slot = slot, id = def.id, target = target, progress = 0, done = false, accepted = false,
             xp = target * (def.xpPer or 0), money = math.floor(target * (def.moneyPer or 0) * payBonus) }
     end
     d.board[period] = picked
@@ -210,7 +224,7 @@ local function bump(fid, kind, n, match)
     for period, list in pairs(d.board) do
         for _, m in ipairs(list) do
             local def = DefById[m.id]
-            if def and def.kind == kind and not m.done and (not match or match(def)) then
+            if def and m.accepted and def.kind == kind and not m.done and (not match or match(def)) then
                 m.progress = math.min(m.target, m.progress + n)
                 if m.progress >= m.target then complete(d, period, m) else Dirty[d.id .. ':' .. period .. ':' .. m.slot] = { d, period, m } end
             end
@@ -252,7 +266,7 @@ local function missionView(d)
         for _, m in ipairs(d.board[period]) do
             local def = DefById[m.id] or {}
             list[#list + 1] = { slot = m.slot, id = m.id, label = def.label, kind = def.kind, item = def.item,
-                target = m.target, progress = m.progress, done = m.done, xp = m.xp, money = m.money }
+                target = m.target, progress = m.progress, done = m.done, accepted = m.accepted==true, offerId = offerId(d,period,m), xp = m.xp, money = m.money }
         end
         out[period] = list
     end
@@ -308,15 +322,40 @@ BSB.RegisterCallback('factions:missions:get', function(src)
     return out
 end)
 
+-- Acceptance is shared by the faction, bound to this exact board period and mission.
+local function acceptMission(src, id)
+    local _,d,err=myFaction(tonumber(src));if err then return err end
+    if type(id)~='string' or #id>160 then return {ok=false,error='Invalid mission offer'} end
+    for period,list in pairs(d.board) do for _,m in ipairs(list) do
+        if offerId(d,period,m)==id then
+            if m.done then return {ok=false,error='Already complete'} end
+            if m.accepted then return {ok=true,accepted=true} end
+            local saved=x([[INSERT IGNORE INTO bs_faction_mission_acceptance
+                (faction_id,period,period_key,slot,mission_id,accepted_char,accepted_at) VALUES (?,?,?,?,?,?,?)]],
+                {d.id,period,periodKey(d,period),m.slot,m.id,charOf(src),os.time()})
+            if saved==nil or saved==false then return {ok=false,error='Unable to accept mission'} end
+            m.accepted=true
+            saveMission(d,period,m)
+            local out=missionView(d);out.ok=true;out.accepted=true;broadcast(d);return out
+        end
+    end end
+    return {ok=false,error='This mission offer has expired; refresh the board'}
+end
+BSB.RegisterCallback('factions:missions:accept',function(src,payload)
+    return acceptMission(src,type(payload)=='table' and payload.offerId or payload)
+end)
+exports('MissionLogAccept',acceptMission)
+
 -- Hand in items for a 'deliver' mission. Must stand inside one of your faction's flags.
 BSB.RegisterCallback('factions:missions:deliver', function(src, ...)
     local s, d, err = myFaction(src)
     if err then return err end
-    local a = args({ 'period', 'slot' }, ...)
+    local a = args({ 'period', 'slot', 'offerId' }, ...)
     local period = tostring(a.period or '')
     local m = d.board[period] and d.board[period][tonumber(a.slot) or 0]
     local def = m and DefById[m.id]
     if not m or not def or def.kind ~= 'deliver' then return { ok = false, error = Lp(src, 'fac.that_mission_does_not_take_deliverie') } end
+    if not m.accepted or a.offerId~=offerId(d,period,m) then return {ok=false,error='Accept this mission before delivering; refresh an expired offer'} end
     if m.done then return { ok = false, error = Lp(src, 'fac.already_complete') } end
     local okFlag, flag = pcall(function() return exports.bs_faction_bases:FlagAt(src) end)
     if not okFlag or type(flag) ~= 'table' or flag.factionId ~= s.factionId then return { ok = false, error = Lp(src, 'fac.deliver_at_one_of_your_faction_flags') } end
@@ -383,7 +422,7 @@ BSB.RegisterCallback('factions:cosmetics:set', function(src, ...)
     return out
 end)
 
--- Cash -> treasury, a little XP back (daily cap per member).
+-- Cash to treasury, a little XP back (daily cap per member).
 BSB.RegisterCallback('factions:donate', function(src, ...)
     local _, d, err = myFaction(src)
     if err then return err end
@@ -455,6 +494,9 @@ CreateThread(function()
     x([[CREATE TABLE IF NOT EXISTS bs_faction_missions (faction_id VARCHAR(32) NOT NULL, period VARCHAR(8) NOT NULL, slot TINYINT UNSIGNED NOT NULL,
         mission_id VARCHAR(32) NOT NULL, target INT UNSIGNED NOT NULL, progress INT UNSIGNED NOT NULL DEFAULT 0, done TINYINT(1) NOT NULL DEFAULT 0,
         xp_reward INT UNSIGNED NOT NULL DEFAULT 0, money_reward INT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY (faction_id, period, slot))]])
+    x([[CREATE TABLE IF NOT EXISTS bs_faction_mission_acceptance (faction_id VARCHAR(32) NOT NULL, period VARCHAR(8) NOT NULL,
+        period_key INT NOT NULL, slot TINYINT UNSIGNED NOT NULL, mission_id VARCHAR(32) NOT NULL, accepted_char INT UNSIGNED NULL, accepted_at BIGINT UNSIGNED NOT NULL,
+        PRIMARY KEY(faction_id,period,period_key,slot,mission_id))]])
     x([[CREATE TABLE IF NOT EXISTS bs_faction_donations (faction_id VARCHAR(32) NOT NULL, character_id INT UNSIGNED NOT NULL, day DATE NOT NULL,
         xp INT UNSIGNED NOT NULL DEFAULT 0, PRIMARY KEY (faction_id, character_id, day))]])
     -- admin-granted skill points on top of level - 1
@@ -512,11 +554,11 @@ exports('MissionLogList', function(src)
             local def = DefById[m.id] or {}
             local vars = { xp = m.xp, money = m.money }
             out[#out + 1] = {
-                id = ('fac:%s:%d'):format(period, m.slot), title = def.label or m.id,
+                id = offerId(d,period,m), title = def.label or m.id,
                 group = Lp(src, period == 'daily' and 'mlog.fac_daily' or 'mlog.fac_weekly'),
                 steps = { { label = ('%s (%d/%d)'):format(def.label or m.id, m.progress, m.target), done = m.done == true } },
-                complete = m.done == true, claimed = m.done == true, noClaim = true,
-                hint = Lp(src, def.kind == 'deliver' and 'mlog.fac_deliver' or 'mlog.fac_auto', vars),
+                complete = m.done == true, claimed = m.done == true, noClaim = true, accepted = m.accepted==true, canAccept = not m.done and not m.accepted,
+                hint = not m.accepted and 'Accept this faction mission to begin contributing.' or Lp(src, def.kind == 'deliver' and 'mlog.fac_deliver' or 'mlog.fac_auto', vars),
             }
         end
     end

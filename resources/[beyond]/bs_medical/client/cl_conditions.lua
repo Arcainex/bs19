@@ -1,7 +1,4 @@
--- bs_medical - conditions on the client: what you feel (limp, sway, blur,
--- coughing), what hit you (reported to the server), the HUD icons, the
--- Medical tab in the inventory and the paid doctors.
--- Nothing here decides an outcome; the server does.
+-- bs_medical - conditions on the client: what you feel (limp, sway, blur, coughing)
 
 local SYS = Medical.System
 local Cur = { on = false }          -- last state from the server
@@ -341,8 +338,7 @@ CreateThread(function()
             setLimp((f.legFrac or f.legSplint) and not inCar)
             if f.legFrac and not inCar then sprintBlocker() else Fx.sprintBlock = false end
 
-            -- Shake: a broken arm or pain sways the aim; pain alone shakes the view.
-            -- Painkillers mask the pain part.
+            -- Shake: a broken arm or pain sways the aim; pain alone shakes the view. Painkillers mask the pain part.
             local pain = ((Cur.pk or 0) > 0) and 0 or (Cur.pain or 0)
             local aiming = IsPlayerFreeAiming(PlayerId())
             local kind, amp = nil, 0.0
@@ -537,7 +533,9 @@ local function spawnDoctor(i, d)
     if not HasModelLoaded(model) then return end
     local ped = CreatePed(4, model, d.x, d.y, d.z - 1.0, d.h, false, false)
     SetModelAsNoLongerNeeded(model)
-    if ped == 0 then return end
+    if ped == 0 or not DoesEntityExist(ped)then return end
+    Entity(ped).state:set('bsProtected',true,false)
+    SetEntityAsMissionEntity(ped,true,true)
     SetEntityInvincible(ped, true)
     FreezeEntityPosition(ped, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
@@ -565,6 +563,11 @@ CreateThread(function()
         local list = GlobalState.bsMedDoctors or {}
         local at = GetEntityCoords(PlayerPedId())
         for i, d in ipairs(list) do
+            local existing=docPeds[i]
+            if existing and not DoesEntityExist(existing)then
+                pcall(function()exports.bs_interactions:RemoveEntity(existing)end)
+                docPeds[i]=nil
+            end
             local near = GlobalState.bsMedicalOn and #(at - vector3(d.x, d.y, d.z)) < 60.0
             if near and not docPeds[i] then spawnDoctor(i, d)
             elseif not near and docPeds[i] then despawnDoctor(i) end

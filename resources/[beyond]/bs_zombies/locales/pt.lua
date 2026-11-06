@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Zona segura',
     ['zed.search_body'] = 'Revistar o corpo',
     ['zed.skin'] = 'Esfolar o corpo',
-    ['zed.take_down'] = '[E]  ABATER',
+    ['zed.takedown_opt'] = 'Abater',
     ['zed.they_here'] = 'Estão aqui.',
     ['zed.unknown_opt'] = 'Opção desconhecida.',
     ['zed.vip_colours'] = 'Cores personalizadas são um benefício VIP.',
