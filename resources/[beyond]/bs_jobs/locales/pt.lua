@@ -257,7 +257,7 @@ return {
     ['mlog.job_progress'] = '{label} ({p}/{n})',
     -- foraging
     ['forage.search_bush'] = 'Revistar arbusto',
-    ['forage.search_undergrowth'] = 'Revistar o mato',
+    ['forage.search_undergrowth'] = 'Revistar arbustos',
     ['forage.progress_bush'] = 'A revistar o arbusto',
     ['forage.progress_undergrowth'] = 'A revistar o mato',
     ['forage.found'] = 'Encontraste {n} {item}.',

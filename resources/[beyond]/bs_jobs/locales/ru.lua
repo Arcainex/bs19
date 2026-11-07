@@ -257,7 +257,7 @@ return {
     ['mlog.job_progress'] = '{label} ({p}/{n})',
     -- foraging
     ['forage.search_bush'] = 'Obyskat kust',
-    ['forage.search_undergrowth'] = 'Obyskat zarosli',
+    ['forage.search_undergrowth'] = 'Обыскать кусты',
     ['forage.progress_bush'] = 'Obysk kusta',
     ['forage.progress_undergrowth'] = 'Obysk zaroslei',
     ['forage.found'] = 'Naideno: {n} {item}.',

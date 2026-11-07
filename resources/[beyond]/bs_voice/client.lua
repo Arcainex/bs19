@@ -56,14 +56,19 @@ RegisterNetEvent('bs:voice:route', function(peers, incoming, selected, ranges)
     end
     received=incoming
 end)
-RegisterCommand('voicecycle',function() mode=mode%3+1;TriggerServerEvent('bs:voice:mode',mode) end,false)
-RegisterKeyMapping('voicecycle','Change speaking distance','keyboard','CAPITAL')
+-- CAPS LOCK is radio transmit now, so the range cycle has a new command name and no default key (bind it in FiveM settings).
+RegisterCommand('voicecycle',function()end,false)
+RegisterCommand('bs_voicerange',function() mode=mode%3+1;TriggerServerEvent('bs:voice:mode',mode) end,false)
+RegisterKeyMapping('bs_voicerange','Change speaking distance','keyboard','')
 AddEventHandler('onResourceStop',function(name) if name==GetCurrentResourceName() then clear();MumbleSetVoiceChannel(10000+GetPlayerServerId(PlayerId()));MumbleSetTalkerProximity(0.0) end end)
 
 local proximityHeld, radioHeld = false, false
-RegisterCommand('+bsproximitytalk',function() proximityHeld=true end,false)
+-- Old K binding: retired so it no longer fights crouch. Push-to-talk moved to N under a new name.
+RegisterCommand('+bsproximitytalk',function()end,false)
 RegisterCommand('-bsproximitytalk',function() proximityHeld=false end,false)
-RegisterKeyMapping('+bsproximitytalk','Speak nearby','keyboard','K')
+RegisterCommand('+bs_voice_ptt',function() proximityHeld=true end,false)
+RegisterCommand('-bs_voice_ptt',function() proximityHeld=false end,false)
+RegisterKeyMapping('+bs_voice_ptt','Speak nearby','keyboard','N')
 AddEventHandler('bs:voice:radioPtt',function(held) radioHeld=held==true end)
 CreateThread(function()
     while true do

@@ -257,7 +257,7 @@ return {
     ['mlog.job_progress'] = '{label} ({p}/{n})',
     -- foraging
     ['forage.search_bush'] = 'Search bush',
-    ['forage.search_undergrowth'] = 'Search undergrowth',
+    ['forage.search_undergrowth'] = 'Search bushes',
     ['forage.progress_bush'] = 'Searching bush',
     ['forage.progress_undergrowth'] = 'Searching undergrowth',
     ['forage.found'] = 'Found {n} {item}.',

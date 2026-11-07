@@ -257,7 +257,7 @@ return {
     ['mlog.job_progress'] = '{label} ({p}/{n})',
     -- foraging
     ['forage.search_bush'] = 'Caliyi ara',
-    ['forage.search_undergrowth'] = 'Calilari ara',
+    ['forage.search_undergrowth'] = 'Çalıları ara',
     ['forage.progress_bush'] = 'Cali araniyor',
     ['forage.progress_undergrowth'] = 'Calilar araniyor',
     ['forage.found'] = '{n} {item} bulundu.',

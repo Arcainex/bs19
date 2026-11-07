@@ -257,7 +257,7 @@ return {
     ['mlog.job_progress'] = '{label} ({p}/{n})',
     -- foraging
     ['forage.search_bush'] = 'Fouiller le buisson',
-    ['forage.search_undergrowth'] = 'Fouiller les broussailles',
+    ['forage.search_undergrowth'] = 'Fouiller les buissons',
     ['forage.progress_bush'] = 'Fouille du buisson',
     ['forage.progress_undergrowth'] = 'Fouille des broussailles',
     ['forage.found'] = 'Trouve : {n} {item}.',

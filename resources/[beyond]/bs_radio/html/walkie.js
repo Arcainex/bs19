@@ -20,7 +20,7 @@
                     <div class="lcd-divider"></div>
                     <div class="lcd-label"><span>B</span><span>NETWORK</span><span id="radioTierMark">FIELD</span></div>
                     <div id="walkieStatus" role="status">POWER OFF</div>
-                    <div class="lcd-bottom"><span id="radioCharging">BATTERY PACK</span><span>N : PTT</span></div>
+                    <div class="lcd-bottom"><span id="radioCharging">BATTERY PACK</span><span>CAPS : PTT</span></div>
                 </div>
             </div>
             <div class="radio-function-row">
@@ -34,7 +34,7 @@
             <span class="radio-screw radio-screw--left" aria-hidden="true"></span><span class="radio-screw radio-screw--right" aria-hidden="true"></span>
         </div>
         <div class="radio-charger" id="radioCharger" hidden><strong>CHARGING LEAD</strong><p>Connect to an available power source.</p><button id="chargeVehicle">12V VEHICLE</button><button id="chargeMains">MAINS POWER</button><button id="chargeStop">DISCONNECT</button></div>
-        <p class="radio-caption">N to transmit · ESC to put away</p>`;
+        <p class="radio-caption">CAPS LOCK to transmit · ESC to put away</p>`;
     document.body.appendChild(panel);
     const $ = id => document.getElementById(id);
     const frequency = $('frequency');

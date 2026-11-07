@@ -27,15 +27,18 @@ end
 RegisterCommand('walkie',function()end,false)
 RegisterCommand('+walkietalk',function()end,false)
 RegisterCommand('-walkietalk',stopTransmitting,false)
+RegisterCommand('+bs_radio_ptt',function()end,false)
+RegisterCommand('-bs_radio_ptt',stopTransmitting,false)
 
-RegisterCommand('+bs_radio_ptt',function()
+-- CAPS LOCK, never Left Alt (Left Alt is the interaction key).
+RegisterCommand('+bs_radio_tx',function()
     if not canTransmit() then return end
     transmitting=true
     TriggerEvent('bs:voice:radioPtt',true)
     TriggerServerEvent('bs:walkie:transmit',true)
 end,false)
-RegisterCommand('-bs_radio_ptt',stopTransmitting,false)
-RegisterKeyMapping('+bs_radio_ptt','Transmit on equipped radio','keyboard','N')
+RegisterCommand('-bs_radio_tx',stopTransmitting,false)
+RegisterKeyMapping('+bs_radio_tx','Transmit on equipped radio','keyboard','CAPITAL')
 RegisterNUICallback('walkieClose',function(_,cb) close();cb({ok=true}) end)
 RegisterNUICallback('walkieJoin',function(data,cb) TriggerServerEvent('bs:walkie:join',data.channel);cb({ok=true}) end)
 RegisterNUICallback('walkieFaction',function(data,cb) TriggerServerEvent('bs:walkie:factionChannel',data.channel);cb({ok=true}) end)
