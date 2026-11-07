@@ -4,11 +4,7 @@ local KVP = 'bs_zombies:fxoptions'
 local OLD_KVP = 'bs_vip:options'
 
 local DEFAULTS = {
-    zombieNoiseHud = true,
-    zombieNoiseRadius = true,
     zombieHealthBars  = true,
-    zombieImpactFx = true,
-    zombieImpactVolume = 0.7,
     healthBarLinger   = 5,
     hitMarker         = false,  -- off by default, players turn it on in F7
     hitMarkerVisual   = true,
@@ -72,8 +68,6 @@ local function setOption(key, value)
         if not vipColoursAllowed() then return { ok = false, error = L('zed.vip_colours') } end
         value = value:lower()
         if not colourAllowed(value) then return { ok = false, error = L('zed.palette') } end
-    elseif key == 'zombieImpactVolume' then
-        value = math.max(0, math.min(1, value))
     elseif key == 'healthBarLinger' then
         value = math.max(1, math.min(15, math.floor(value)))
     end

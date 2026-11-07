@@ -92,7 +92,7 @@ RegisterCommand('bs_holster', function()
     CreateThread(function() Holster.Toggle() end)
 end, false)
 
-RegisterKeyMapping('bs_holster', L('wpn.key_holster'), 'keyboard', 'J')
+RegisterKeyMapping('bs_holster', L('wpn.key_holster'), 'keyboard', '')
 
 -- Pressing the slot of the weapon already in hand puts it away instead of re-drawing it.
 AddEventHandler('bs:weapons:hotbarWeapon', function(weaponName)

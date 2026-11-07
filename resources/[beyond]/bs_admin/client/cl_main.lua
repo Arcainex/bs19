@@ -15,7 +15,6 @@ local function send(p) SendNUIMessage(p) end
 local function refreshRights()
     local info = BSB.Await('admin:whoami', 8000)
     isAdmin = info and info.admin or false
-    Noclip.isAdmin = isAdmin
     send({ action = 'rights', admin = isAdmin, superadmin = info and info.superadmin or false })
     if isAdmin then AdminAddSuggestions() end
     return isAdmin
@@ -99,7 +98,7 @@ local function openMenu()
             local ok, list = pcall(function() return exports.bs_zombies:Types() end)
             return (ok and list) or {}
         end)(),
-        state     = { godmode = godmode, zombieGodmode = zombieGodmode, noclip = Noclip.active, noclipKey = Noclip.keyEnabled,
+        state     = { godmode = godmode, zombieGodmode = zombieGodmode, noclip = Noclip.active,
                       invisible = invisible, coords = coordsOverlay, propid = propIdOverlay,
                       advanced = advancedMode, guardAlerts = guardAlerts },
     })
@@ -129,6 +128,35 @@ end, false)
 RegisterKeyMapping(Admin.Settings.openCommand, 'Open the staff menu', 'keyboard', 'F10')
 
 RegisterNUICallback('close', function(_, cb) closeMenu(); cb({ ok = true }) end)
+
+-- Alpha-Z editor handoff: release admin NUI focus before opening another resource.
+RegisterNUICallback('alphaZOpenEditor', function(data, cb)
+    local editor = type(data) == 'table' and data.editor or nil
+    local resource, event
+    if editor == 'clothing' then
+        resource, event = 'bs_clothing', 'bs_clothing:requestEditor'
+    elseif editor == 'weaponcarry' then
+        resource, event = 'alpha_z_weaponcarry', 'alpha_z_weaponcarry:requestEditor'
+    else
+        cb({ ok = false, error = 'Unbekannter Editor' })
+        return
+    end
+    if not open then
+        cb({ ok = false, error = 'F10-Menü nicht geöffnet' })
+        return
+    end
+    if GetResourceState(resource) ~= 'started' then
+        cb({ ok = false, error = resource .. ' ist nicht gestartet' })
+        return
+    end
+    closeMenu()
+    cb({ ok = true })
+    CreateThread(function()
+        Wait(200)
+        TriggerServerEvent(event) -- Server checks editor permissions.
+    end)
+end)
+
 
 -- Threaded because BSB.Await yields.
 RegisterNUICallback('factionsAdmin', function(_, cb)
@@ -282,10 +310,6 @@ local localActions = {
         return { noclip = Noclip.Toggle() }
     end,
 
-    noclipKey = function()
-        return { noclipKey = Noclip.SetKeyEnabled(not Noclip.keyEnabled) }
-    end,
-
     -- Two separate godmodes
     godmode = function()
         godmode = not godmode
@@ -304,10 +328,19 @@ local localActions = {
         local blip = GetFirstBlipInfoId(8)
         if not DoesBlipExist(blip) then return { error = 'no waypoint set' } end
 
-        -- The blip has no real Z, so the shared helper finds the ground
         local coords = GetBlipInfoIdCoord(blip)
-        local ok = exports.bs_core:SafeTeleport(coords.x, coords.y, nil)
-        if ok then return { ok = true } end
+        local ped = PlayerPedId()
+
+        -- Probe downwards for ground; the Z from a blip is always 0.
+        for z = 1000, 0, -25 do
+            SetEntityCoordsNoOffset(ped, coords.x, coords.y, z + 0.0, false, false, false)
+            Wait(20)
+            local found, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, z + 0.0, false)
+            if found then
+                SetEntityCoordsNoOffset(ped, coords.x, coords.y, groundZ + 1.0, false, false, false)
+                return { ok = true }
+            end
+        end
         return { error = 'could not find ground there' }
     end,
 
@@ -320,8 +353,21 @@ local localActions = {
             return { error = 'invalid map destination' }
         end
 
-        local ok = exports.bs_core:SafeTeleport(x, y, z)
-        if not ok then return { error = 'could not find ground there' } end
+        local ped = PlayerPedId()
+        local entity = ped
+        local vehicle = GetVehiclePedIsIn(ped, false)
+        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == ped then entity = vehicle end
+
+        DoScreenFadeOut(180)
+        while not IsScreenFadedOut() do Wait(0) end
+        RequestCollisionAtCoord(x, y, z)
+        SetEntityCoordsNoOffset(entity, x + 0.0, y + 0.0, z + 1.5, false, false, false)
+        SetFocusPosAndVel(x + 0.0, y + 0.0, z + 1.5, 0.0, 0.0, 0.0)
+
+        local deadline = GetGameTimer() + 2500
+        while not HasCollisionLoadedAroundEntity(entity) and GetGameTimer() < deadline do Wait(50) end
+        ClearFocus()
+        DoScreenFadeIn(220)
         return { ok = true, note = 'map teleport complete' }
     end,
     invisible = function()
@@ -532,10 +578,26 @@ local localActions = {
         local ty = result.y + (dy / len) * 5.0
 
         -- The record's Z is 0.0 until a host reports real ground (the server has no collision)
-        local tpOk = exports.bs_core:SafeTeleport(tx, ty, result.grounded and result.z or nil)
-        if not tpOk then
+        if result.grounded then
+            SetEntityCoordsNoOffset(ped, tx, ty, result.z + 1.0, false, false, false)
+            Wait(150)
+        end
+
+        local found, groundZ = GetGroundZFor_3dCoord(tx, ty, (result.z or 0.0) + 3.0, false)
+        if not found then
+            for z = 1000, 0, -25 do
+                SetEntityCoordsNoOffset(ped, tx, ty, z + 0.0, false, false, false)
+                Wait(20)
+                found, groundZ = GetGroundZFor_3dCoord(tx, ty, z + 0.0, false)
+                if found then break end
+            end
+        end
+
+        if not found then
             return { error = ('found one %.0fm away but no ground under it'):format(result.distance or 0) }
         end
+
+        SetEntityCoordsNoOffset(ped, tx, ty, groundZ + 1.0, false, false, false)
 
         -- Face it, so it is on screen when the teleport lands.
         SetEntityHeading(ped, GetHeadingFromVector_2d(result.x - tx, result.y - ty))
@@ -1054,12 +1116,43 @@ end)
 RegisterNetEvent('bs:admin:tpCoords', function(x, y, z)
     if tpBusy then return end
     tpBusy = true
-    exports.bs_core:SafeTeleport(x, y, z or nil)
+    local ped = PlayerPedId()
+    local entity = ped
+    local vehicle = GetVehiclePedIsIn(ped, false)
+    if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == ped then entity = vehicle end
+
+    DoScreenFadeOut(180)
+    local fadeEnd = GetGameTimer() + 1000
+    while not IsScreenFadedOut() and GetGameTimer() < fadeEnd do Wait(0) end
+    FreezeEntityPosition(entity, true)
+
+    local targetZ = z
+    if not targetZ then
+        local found, groundZ = false, 0.0
+        for probe = 1000, -100, -25 do
+            RequestCollisionAtCoord(x, y, probe + 0.0)
+            SetEntityCoordsNoOffset(entity, x, y, probe + 0.0, false, false, false)
+            Wait(20)
+            found, groundZ = GetGroundZFor_3dCoord(x, y, probe + 0.0, false)
+            if found then break end
+        end
+        targetZ = found and groundZ or 100.0
+    end
+
+    RequestCollisionAtCoord(x, y, targetZ)
+    SetEntityCoordsNoOffset(entity, x, y, targetZ + 1.0, false, false, false)
+    local deadline = GetGameTimer() + 2500
+    while not HasCollisionLoadedAroundEntity(entity) and GetGameTimer() < deadline do Wait(50) end
+    if entity == vehicle then SetVehicleOnGroundProperly(vehicle) end
+
+    FreezeEntityPosition(entity, false)
+    DoScreenFadeIn(220)
     tpBusy = false
 end)
 
 RegisterNetEvent('bs:admin:teleportTo', function(x, y, z)
-    CreateThread(function() exports.bs_core:SafeTeleport(x, y, z) end)
+    local ped = PlayerPedId()
+    SetEntityCoordsNoOffset(ped, x + 0.0, y + 0.0, z + 1.0, false, false, false)
 end)
 
 -- Broadcast so /dv (and the menu's delete) removes the car for everyone watching
@@ -1170,3 +1263,87 @@ TriggerEvent('chat:addSuggestion', '/ammo',
     'Add ammunition for the weapon in your hands (staff)', {
         { name = 'mags', help = 'full mags, 1-20 (default 3), or rounds like 45r' },
     })
+
+-- Books editor: the server callback in bs_books checks staff permissions again.
+RegisterNUICallback('booksAdmin', function(data, cb)
+    CreateThread(function()
+        local action = type(data) == 'table' and data.action or nil
+        local args = type(data) == 'table' and data.args or {}
+        cb(BSB.Await('books:admin', 15000, action, args) or {ok=false,error='Keine Antwort von bs_books'})
+    end)
+end)
+
+-- Prop Studio NUI bridge: every mutation is authorized by bs_building server.
+RegisterNUICallback('propStudio', function(data, cb)
+    CreateThread(function()
+        if not isAdmin then cb({ok=false,error='Keine Berechtigung'}); return end
+        local action = type(data) == 'table' and data.action or nil
+        if action == 'validateModel' then
+            local model = type(data.payload)=='table' and data.payload.model or nil
+            if type(model)~='string' or not model:match('^[%w_]+$') or #model>90 then cb({ok=false,error='Ungültiger Modellname'}); return end
+            local hash=GetHashKey(model)
+            cb(IsModelInCdimage(hash) and IsModelValid(hash) and {ok=true} or {ok=false,error='GTA-Modell nicht vorhanden: '..model})
+            return
+        end
+        local name = ({list='build:studio:list',materials='build:studio:materials',save='build:studio:save',reset='build:studio:reset',categories='build:studio:categories',categoryCreate='build:studio:categoryCreate',categoryRename='build:studio:categoryRename',categoryDelete='build:studio:categoryDelete',categoryMove='build:studio:categoryMove',remove='build:studio:remove',restore='build:studio:restore',deletePermanent='build:studio:deletePermanent',placedNearby='build:admin:placedNearby'})[action or '']
+        if not name then cb({ok=false,error='Ungültige Aktion'}); return end
+        local arg = action == 'reset' and data.id or data.payload
+        cb(BSB.Await(name, 10000, arg) or {ok=false,error='Keine Antwort von bs_building'})
+    end)
+end)
+
+-- Reopen the same F10 admin UI when the external 3D gizmo finishes.
+AddEventHandler('bs:admin:propStudioReturn', function()
+    if not isAdmin or open then return end
+    CreateThread(openMenu)
+end)
+
+RegisterNUICallback('propStudioPreview', function(data, cb)
+    if not isAdmin or GetResourceState('bs_building') ~= 'started' then cb({ok=false,error='Nicht verfügbar'});return end
+    if type(data) ~= 'table' then cb({ok=false,error='Ungültige Daten'});return end
+    closeMenu()
+    TriggerEvent('bs:building:studio:edit', data)
+    cb({ok=true})
+end)
+
+-- Prop editor errors are retained in the F10 Debug / Fehlerprotokoll.
+AddEventHandler('bs:admin:propStudioError', function(message, source)
+    SendNUIMessage({ action = 'propStudioError', source = tostring(source or 'F2 / 3D'), message = tostring(message or 'Unbekannter Fehler') })
+end)
+
+RegisterNUICallback('propPlacedAction', function(data, cb)
+    CreateThread(function()
+        if not isAdmin then cb({ok=false,error='Keine Berechtigung'});return end
+        local action=data and data.action
+        local id=tonumber(data and data.id)
+        if not id or (action~='delete' and action~='move') then cb({ok=false,error='Ungueltige Aktion'});return end
+        cb(BSB.Await('build:admin:placedAction',12000,action,id,data.coords) or {ok=false,error='Keine Antwort'})
+    end)
+end)
+RegisterNUICallback('propPlacedBatchDelete', function(data, cb)
+    CreateThread(function()
+        if not isAdmin then cb({ok=false,error='Keine Berechtigung'}); return end
+        local ids=type(data)=='table' and data.ids or nil
+        if type(ids)~='table' or #ids<1 or #ids>100 then
+            cb({ok=false,error='Bitte 1 bis 100 Objekte auswählen'}); return
+        end
+        cb(BSB.Await('build:admin:placedBatchDelete', 15000, ids) or {ok=false,error='Keine Antwort von bs_building'})
+    end)
+end)
+
+RegisterNUICallback('propPlacedEdit', function(data,cb)
+    if not isAdmin or not data or not tonumber(data.id) then cb({ok=false,error='Keine Berechtigung'});return end
+    closeMenu()
+    TriggerEvent('bs:building:admin:editPlaced',tonumber(data.id))
+    cb({ok=true})
+end)
+
+-- Read-only F10 Building Debugger; isolated from the Prop Studio gizmo.
+RegisterNUICallback('buildingDebugRead', function(_, cb)
+    if GetResourceState('bs_building') ~= 'started' then
+        cb({ok=false,error='bs_building ist nicht gestartet'}); return
+    end
+    local ok, data = pcall(function() return exports.bs_building:getBuildingFullDebug() end)
+    if not ok then cb({ok=false,error=tostring(data)}); return end
+    cb({ok=true,data=data})
+end)

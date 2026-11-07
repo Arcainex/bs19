@@ -1,7 +1,5 @@
 -- bs_inventory strings (it)
 return {
-    ['inv.rotate'] = 'Ruota oggetto',
-    ['inv.rotate_hint'] = 'R per ruotare',
     ['ammo.added'] = '+{n} colpi',
     ['ammo.mag_full'] = 'Il caricatore è già pieno.',
     ['ammo.no_gun'] = 'Niente nelle tue mani usa questi colpi.',
@@ -219,7 +217,7 @@ return {
     ['item.rags'] = 'Stracci',
     ['item.raw_meat'] = 'Carne cruda',
     ['item.rehab_kit'] = 'Kit di riabilitazione',
-    ['item.reinforced_bat'] = 'Mazza rinforzata',
+    ['item.reinforced_bat'] = 'Einhornkuss',
     ['item.repair_kit'] = 'Kit di riparazione',
     ['item.revolver'] = 'Revolver',
     ['item.rotten_flesh'] = 'Carne marcia',
@@ -682,18 +680,4 @@ return {
     ['item.rabbit_pelt'] = 'Pelliccia di coniglio',
     ['item.coyote_pelt'] = 'Pelliccia di coyote',
     ['item.mtlion_pelt'] = 'Pelliccia di puma',
-    -- Dark Zone (bs_darkzone)
-    ['item.dz_flare'] = 'Razzo di segnalazione',
-    ['item.dz_intel'] = 'Informazioni sul campo',
-    ['item.dz_sample'] = 'Campione di tessuto infetto',
-    ['item.dz_pdw_warden'] = 'PDW Guardiano',
-    ['item.dz_rifle_revenant'] = 'Fucile Redivivo',
-    ['item.dz_shotgun_breacher'] = 'Fucile Sfondatore',
-    ['item.booster_dz_overdrive'] = 'Sovraccarico',
-    ['item.booster_dz_ironhide'] = 'Pelle di ferro',
-    ['item.booster_dz_sentry'] = 'Torretta sentinella',
-    ['inv.e_sealed'] = 'Contaminato: resta in questa borsa finché non lo estrai.',
-    ['inv.e_dz_full'] = 'La tua borsa contaminata è piena.',
-    ['inv.cant_sprint_heavy'] = 'Troppo carico per correre. Lascia qualcosa.',
-    ['ui.customize_weapon'] = "PERSONALIZZA ARMA",
 }

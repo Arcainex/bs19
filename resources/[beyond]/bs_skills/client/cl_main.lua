@@ -1,4 +1,4 @@
--- bs_skills - client half of the perks.
+-- bs_skills - client half of the perks. The server decides what you own; this applies the native-side effects (weapon damage modifiers, drain rates, and the `executioner` / `break_fall` flags). The server re-sends the truth on every skill change and spawn, so nothing here is trusted.
 
 local Mine = {
     levels  = {},
@@ -15,17 +15,15 @@ local function applyEffects()
     local e = Mine.effects
 
     -- Damage modifiers are multiplicative on top of 1.0.
-    SetPlayerWeaponDamageModifier(playerId, 1.0 + (e.weaponDamage or 0.0))
-    SetPlayerMeleeWeaponDamageModifier(playerId, 1.0 + (e.meleeDamage or 0.0))
+    SetPlayerWeaponDamageModifier(playerId, 1.0)
+    SetPlayerMeleeWeaponDamageModifier(playerId, 1.0)
 end
 
--- Level-up sound goes through bs_ui's WebAudio player (own cue in bs_ui/html/sound), not a GTA native sting.
+-- Level-up sound goes through bs_ui's WebAudio player (own cue in bs_ui/html/sound), not a GTA native sting. Non-positional. If bs_ui is not running it stays silent.
+-- A skill level plays only the quiet LevelAppear sound; LevelUpMusic is reserved for character level-ups. bs_ui owns the sequence.
 RegisterNetEvent('bs:skills:levelUp', function(treeId, level, label)
-    if GetResourceState('bs_ui') ~= 'started' then return end
-
-    pcall(function()
-        exports.bs_ui:SkillLevelSequence(level, level - 1)
-    end)
+    -- Alpha-Z: silent skill progression.
+    return
 end)
 
 RegisterNetEvent('bs:skills:sync', function(payload)
@@ -53,8 +51,8 @@ CreateThread(function()
 end)
 
 -- Reads for other resources. Two signatures are in use:
--- exports.bs_skills:HasPerk('survival', 'break_fall')
--- exports.bs_skills:HasPerk('break_fall')
+--     exports.bs_skills:HasPerk('survival', 'break_fall')
+--     exports.bs_skills:HasPerk('break_fall')
 
 exports('HasPerk', function(a, b)
     local perkId = b or a
@@ -68,7 +66,7 @@ end)
 
 exports('GetLevels', function() return Mine.levels end)
 
--- Tree definitions for UIs to draw.
+-- Tree definitions for UIs to draw. Labels and max levels only (bs_inventory's character sheet), so it does not need its own copy of config_skills.lua. Perks, costs and effects stay here, since decisions about them belong on the server.
 exports('GetTrees', function()
     local out = {}
     for id, tree in pairs(Skills.Trees or {}) do
@@ -77,7 +75,7 @@ exports('GetTrees', function()
     return out
 end)
 
--- Every modifier currently applying, as a flat table, for panels that list all effects.
+-- Every modifier currently applying, as a flat table, for panels that list all effects. Returns a copy so consumers cannot edit this resource's state.
 exports('GetEffects', function()
     local out = {}
     for k, v in pairs(Mine.effects or {}) do

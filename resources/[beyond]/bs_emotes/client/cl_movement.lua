@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_emotes movement consequences. Double-tapping jump ragdolls you instead of hopping.
+-- BeyondSurvival - bs_emotes movement consequences. Double-tapping jump ragdolls you instead of hopping. The Survival skill perk will later turn the stumble into a roll; the hook does nothing until the perk exists.
 
 Movement = { lastJump = 0, recovering = false }
 
@@ -14,13 +14,10 @@ end
 local function stumble()
     local ped = PlayerPedId()
     if Movement.recovering then return end
-    -- A parkour move (bs_parkour) owns the jump key while it runs
-    local pk = LocalPlayer.state.bsParkour
-    if type(pk) == 'table' and pk.active then return end
     Movement.recovering = true
 
     if hasRollPerk() then
-        -- The roll clip: earlier guesses ('dive_start_run', 'jump_land_roll') do not exist in the dict
+        -- The roll clip. Earlier guesses ('dive_start_run', 'jump_land_roll') do not exist in the dict, and TaskPlayAnim silently does nothing for a missing clip.
         RequestAnimDict('move_fall')
         local waited = 0
         while not HasAnimDictLoaded('move_fall') and waited < 1500 do Wait(10); waited = waited + 10 end

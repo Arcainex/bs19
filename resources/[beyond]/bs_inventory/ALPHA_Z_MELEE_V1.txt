@@ -1,0 +1,8 @@
+Alpha-Z melee inventory integration
+- Bottle / WEAPON_BOTTLE
+- Pool Cue / WEAPON_POOLCUE
+- Golf Club / WEAPON_GOLFCLUB
+- Stone Hatchet / WEAPON_STONE_HATCHET
+- Antique Cavalry Dagger / WEAPON_DAGGER
+Each item starts at 200 durability and loses 1 only on a reported successful melee damage event.
+At 0 durability the exact inventory copy is removed and the weapon is disarmed.

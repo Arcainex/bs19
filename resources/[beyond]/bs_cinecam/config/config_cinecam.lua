@@ -1,4 +1,4 @@
--- bs_cinecam - config: everything here is a default.
+-- bs_cinecam - config. Everything here is a default. Menu changes are saved per client (KVP), so editing a value only changes fresh installs. Use "Reset to defaults" in the menu to pull these back in.
 
 Cine = {}
 
@@ -7,7 +7,7 @@ Cine.Settings = {
     openCommand = 'bs_cinecam',
     openKey     = 'F3',
 
-    -- F3 is unused by this framework (F7 VIP panel, F10 staff menu, F8 FiveM console, F5/F6 often taken by other resources).
+    -- F3 is unused by this framework (F7 VIP panel, F10 staff menu, F8 FiveM console, F5/F6 often taken by other resources). If you rebind, avoid F1-F4 in the pause menu context.
 
     -- Who may fly the camera. A free camera is a wallhack in a survival game, so this is checked server-side on entering.
     aces = { 'bs.admin', 'bs.superadmin', 'command' },
@@ -43,7 +43,7 @@ Cine.Defaults = {
     fovMax        = 110.0,
     roll          = 0.0,     -- dutch angle, degrees
 
-    -- Look speed is scaled by FOV: at 10 degrees the same mouse movement sweeps five times more of the frame than
+    -- Look speed is scaled by FOV: at 10 degrees the same mouse movement sweeps five times more of the frame than at 50, which makes slow pans unusable otherwise.
     sensitivity   = 1.0,
     scaleLookByFov = true,
     invertY       = false,
@@ -56,7 +56,8 @@ Cine.Defaults = {
 
     -- grade
 
-    -- The shot's own color grade, separate from the player's filter (bs_ui UI.Filters).
+    -- The shot's own color grade, separate from the player's filter (bs_ui UI.Filters). Applied only while flying, restored on landing.
+    -- '' means leave the player's filter alone (not the same as 'off'). The picker is built from bs_ui's list at runtime.
     filter         = '',
     filterStrength = 0.8,
 
@@ -64,13 +65,15 @@ Cine.Defaults = {
     timescale     = 1.0,     -- 0.05 - 1.0; slow motion
     hideHud       = true,    -- hide framework HUD + radar while flying
 
-    -- false: entering cinematic mode disables every control (no menu, emote, inventory or weapon keys). true: only
+    -- false: entering cinematic mode disables every control (no menu, emote, inventory or weapon keys).
+    -- true: only the controls the camera needs are taken, so normal keybinds still work (useful for filming a menu).
     allowMenuHotkeys = false,
 
     -- Collision off lets the camera fly through walls and terrain: good for establishing shots, bad for handheld follow.
     collide       = false,
 
-    -- limits: the camera will not go below this.
+    -- limits
+    -- The camera will not go below this. The world streams badly under the map and the ocean floor renders black.
     minZ          = -220.0,
     maxZ          = 2200.0,
 }
@@ -85,7 +88,7 @@ Cine.Path = {
     -- Ease in/out over this fraction of the run at each end. 0 = constant speed with abrupt start/stop, 0.5 = full sine ease.
     ease       = 0.25,
 
-    -- A Catmull-Rom spline needs a point before the first and after the last for its tangents.
+    -- A Catmull-Rom spline needs a point before the first and after the last for its tangents. Both are mirrored, so a two-keyframe path is a straight line and three or more curve.
     maxNodes   = 64,
 }
 

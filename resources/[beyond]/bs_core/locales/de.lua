@@ -26,7 +26,4 @@ return {
     ['core.unstuck'] = 'Losgerüttelt.',
     ['core.denied_title'] = 'Verweigert',
     ['core.denied_msg'] = 'Dafür hast du keine Berechtigung.',
-    ['core.tex_busy'] = 'Die Welt um dich wird schon neu geladen...',
-    ['core.tex_start'] = 'Die Welt um dich wird neu geladen...',
-    ['core.tex_done'] = 'Welt neu geladen.',
 }

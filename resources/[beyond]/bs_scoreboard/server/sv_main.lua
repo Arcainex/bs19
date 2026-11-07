@@ -1,17 +1,19 @@
 -- bs_scoreboard - the three boards, read from bs_character_stats and bs_characters so there is one source of truth.
+-- Cached: F9 gets mashed and three ORDER BY queries per press is wasteful. One rebuild every few seconds serves everyone, and a board a few seconds stale is still correct.
 
 local cache = nil
 local cachedAt = 0
 
 local onlineCache = nil
 local onlineCachedAt = 0
--- The online list is cached for 1 second: it is rebuilt (GetPlayer/GetPlayerPing per player, then a sort) once
+-- The online list is cached for 1 second: it is rebuilt (GetPlayer/GetPlayerPing per player, then a sort) once per second instead of on every scoreboard:get, since F9 gets mashed.
 local ONLINE_CACHE_MS = 1000
 
 
 local function now() return GetGameTimer() end
 
--- Everybody currently connected, with what they are doing. VIP tier for a connected player, or nil.
+-- Everybody currently connected, with what they are doing.
+-- VIP tier for a connected player, or nil. Wrapped because bs_vip is optional; the scoreboard must still build a list without it.
 local function vipTier(src)
     if GetResourceState('bs_vip') ~= 'started' then return nil end
     -- GetTierInfo, not GetTier: GetTier returns only the id string and the scoreboard also needs the label and color.
@@ -28,7 +30,7 @@ local function online()
         local player = exports.bs_core:GetPlayer(src)
 
         if player then
-            -- VIP is shown with the name highlighted.
+            -- VIP is shown with the name highlighted. The color travels with the row so the page does not keep its own tier -> color table that could drift from bs_vip's.
             local tierId, tierLabel, tierColour, tierBanner = vipTier(src)
 
             local faction = GetResourceState('bs_factions') == 'started' and exports.bs_factions:GetFactionSummary(src) or nil
@@ -39,7 +41,6 @@ local function online()
                 level  = player.level or 1,
                 ping   = GetPlayerPing(playerId),
                 factionTag = faction and faction.short or nil,
-                factionId  = faction and faction.factionId or nil,
 
                 vip      = tierId,
                 vipLabel = tierLabel,
@@ -89,7 +90,7 @@ local function board(entry)
     local rows = exports.oxmysql:query_async(sql) or {}
 
     local out = {}
-    -- Rows are per character; two characters with the same name would look like one person listed twice
+    -- Rows are per character; two characters with the same name would look like one person listed twice, so only the best is kept (rows come sorted).
     local seen = {}
     for _, row in ipairs(rows) do
         local name = ('%s %s'):format(row.first_name or '', row.last_name or '')
@@ -139,24 +140,11 @@ BSB.RegisterCallback('scoreboard:get', function()
         onlineCachedAt = now()
     end
 
-    -- One emblem per faction on screen, sent once instead of on every row.
-    local emblems, fl = {}, factions()
-    if GetResourceState('bs_factions') == 'started' then
-        local want = {}
-        for _, p in ipairs(onlineCache or {}) do if p.factionId then want[p.factionId] = true end end
-        for _, f in ipairs(fl) do if f.id then want[f.id] = true end end
-        for fid in pairs(want) do
-            local ok, e = pcall(function() return exports.bs_factions:GetEmblem(fid) end)
-            emblems[fid] = ok and e or false
-        end
-    end
-
     return {
         ok      = true,
         boards  = cache,
         players = onlineCache,
-        factions = fl,
-        emblems = emblems,
+        factions = factions(),
         count   = #GetPlayers(),
         max     = GetConvarInt('sv_maxclients', 32),
         title    = Scoreboard.Settings.title,

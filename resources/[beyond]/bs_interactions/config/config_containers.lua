@@ -1,4 +1,5 @@
 -- bs_interactions - searchable containers.
+-- Each entry maps prop models to a bs_economy loot table, plus search time and refill time. Search state is per container, kept on the server by world position.
 
 Containers = {}
 
@@ -7,7 +8,7 @@ Containers.Settings = {
     defaultRespawn   = 1800,
     -- Movement cancels the search.
     cancelOnMove     = true,
-    -- Search animations: `search` is a standing rummage (bins, lockers, boots, fridges). `kneel` is for things on
+    -- Search animations: `search` is a standing rummage (bins, lockers, boots, fridges). `kneel` is for things on the ground, like bodies, and layers two full-body clips (a kneel base plus the hand motion). See the movement cancel note in cl_search.lua.
     anim             = { dict = 'anim@gangops@facility@servers@bodysearch@', clip = 'player_search' },
 
     kneelAnim        = {
@@ -19,9 +20,15 @@ Containers.Settings = {
 }
 
 Containers.Types = {
-    furniture = {label='Search furniture',icon='search',time=4500,lootTable='urban',respawn=1800},
-    drawers = {label='Search drawers',icon='search',time=4000,lootTable='kitchen',respawn=1800,
-        models={'prop_ld_int_safe_01','v_res_tre_storagebox','v_res_mconsolemod','v_res_mconsolemove','v_res_tre_bedside','v_res_tre_draws','v_res_tre_wardrobe','v_res_mcupboard'}},
+    -- Existing bush loot from your Git branch (numeric model hash).
+    bush = {
+        label     = 'Busch durchsuchen',
+        icon      = 'search',
+        time      = 4000,
+        lootTable = 'rural',
+        respawn   = 1800,
+        models    = { 1165271193 },
+    },
     trash = {
         label     = 'Search the bin',
         icon      = 'search',
@@ -36,7 +43,7 @@ Containers.Types = {
             'prop_bin_11b', 'prop_bin_12a', 'prop_bin_13a', 'prop_bin_14a',
             'prop_bin_14b', 'prop_dumpster_01a', 'prop_dumpster_02a',
             'prop_dumpster_02b', 'prop_dumpster_3a', 'prop_dumpster_4a',
-            'prop_dumpster_4b', 'prop_skip_01a', 'prop_skip_02a', 'prop_skip_03',
+            'prop_dumpster_4b', 'prop_skip_01a', 'prop_skip_03',
             'prop_skip_04a', 'prop_skip_05a', 'prop_skip_06a', 'prop_skip_08a',
 
             -- More bin models: the blue street, beach, recycling and wheelie bins are separate models from prop_bin_01a-14b.
@@ -113,7 +120,7 @@ Containers.Types = {
         },
     },
 
-    -- Barrels and drums: small chance of a small amount of diesel, kept low (hundreds of props).
+    -- Barrels and drums: small chance of a small amount of diesel, kept low on purpose (hundreds of props). Read by the bs_interactions loot path, not the loot table. See Containers.Diesel below.
     barrel = {
         label     = 'Scrap the barrel',
         icon      = 'barrel',
@@ -195,7 +202,7 @@ Containers.Types = {
         rearOnly   = true,
     },
 
-    -- Wreck props: car_boot only matches real vehicle entities
+    -- Wreck props: car_boot only matches real vehicle entities, so decorative wrecks (scrapyards, crash scenes) are static objects matched by model, like the bins.
     car_wreck = {
         label     = 'Pick through the wreck',
         icon      = 'bag',
@@ -211,7 +218,7 @@ Containers.Types = {
             'ex_prop_ex_wreck_car01',
         },
 
-        -- Size-based wreck match for models not in the list above (map mods ship their own names; a hash cannot be turned back into a name). Uses GetModelDimensions: roughly 3-6.5m long, 1.5-2.5m wide, under 2m tall. enabled = false to explicit list only. The staff PROP ID overlay shows model names to add.
+        -- Size-based wreck match for models not in the list above (map mods ship their own names; a hash cannot be turned back into a name). Uses GetModelDimensions: roughly 3-6.5m long, 1.5-2.5m wide, under 2m tall. enabled = false -> explicit list only. The staff PROP ID overlay shows model names to add.
         matchBySize = {
             enabled   = true,
             minLength = 3.0,
@@ -221,9 +228,209 @@ Containers.Types = {
             maxHeight = 2.3,
         },
     },
+
+    -- BS19 additional searchable props (19 models)
+    plastic_bag = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'plastic_bag', respawn = 1800,
+        models = { 'prop_rub_binbag_03b' },
+    },
+    cement_pipes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'cement_pipes', respawn = 1800,
+        models = { 'prop_pipes_01a' },
+    },
+    plywood = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'plywood', respawn = 1800,
+        models = { 'prop_cons_ply01' },
+    },
+    portable_toilet = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'portable_toilet', respawn = 1800,
+        models = { 'prop_portaloo_01a' },
+    },
+    construction_skip = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'construction_skip', respawn = 1800,
+        models = { 'prop_skip_02a' },
+    },
+    wood_pallet = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'wood_pallet', respawn = 1800,
+        models = { 'prop_pallet_pile_02' },
+    },
+    fruit_boxes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'fruit_boxes', respawn = 1800,
+        models = { 'prop_rub_boxpile_04b' },
+    },
+    meat_crate = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'meat_crate', respawn = 1800,
+        models = { 'prop_crate_11b' },
+    },
+    general_boxes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 'prop_rub_boxpile_09' },
+    },
+    wood_pallet_mix = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'wood_pallet_mix', respawn = 1800,
+        models = { 'prop_pallet_pile_04' },
+    },
+    drink_boxes = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'drink_boxes', respawn = 1800,
+        models = { 'prop_rub_boxpile_04' },
+    },
+    tyre_stack = {
+        label = 'Reifenstapel durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'tyre_stack', respawn = 1800,
+        models = { -1919073083, 2069078066 },
+    },
+    old_couch = {
+        label = 'Couch durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 2021659595, -1841495633, -2021659595 },
+    },
+    bicycle = {
+        label = 'Fahrrad durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'bicycle', respawn = 1800,
+        models = { 902408500 },
+    },
+    mailbox = {
+        label = 'Briefkasten durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'mailbox', respawn = 1800,
+        cash = { chance = 0.08, min = 1, max = 10 },
+        models = { -861422469, 354284193, -830216854 },
+    },
+    crate_extra = {
+        label = 'Kiste durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { -1415300092 },
+    },
+    trash_bag_extra = {
+        label = 'Müllsack durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { -1681329307 },
+    },
+    phone_booth = {
+        label = 'Telefonzelle durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'phone_booth', respawn = 1800,
+        cash = { chance = 0.08, min = 1, max = 5 },
+        models = { 1281992692 },
+    },
+
+
+    -- Additional world props collected in Sandy Shores (2026-10-29).
+    trash_bag_sandy = {
+        label = 'Müllsack durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 600967813, 1098827230, 1388308576 },
+    },
+    shopping_cart = {
+        label = 'Einkaufswagen durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 1918323043 },
+    },
+    old_furniture = {
+        label = 'Alte Möbel durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 306579620, 603696143 },
+    },
+    sandy_crates = {
+        label = 'Kiste durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'trash', respawn = 1800,
+        models = { 1138027619, -2073573168, -1322592273, -52732303 },
+    },
+    motorcycle_salvage = {
+        label = 'Motorrad durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'motorcycle', respawn = 1800,
+        models = { 1347944675, 134794675 },
+    },
+    locked_crate = {
+        label = 'Verschlossene Kiste öffnen', icon = 'crowbar', time = 6000,
+        lootTable = 'locked_crate', respawn = 2400,
+        requiredWeapon = 'WEAPON_CROWBAR',
+        requiredWeaponError = 'Du musst eine Brechstange in der Hand halten.',
+        cash = { chance = 0.10, min = 1, max = 20 },
+        models = { -1322183878 },
+    },
+    old_wood_barrel = {
+        label = 'Altes Holzfass öffnen', icon = 'crowbar', time = 6000,
+        lootTable = 'old_wood_barrel', respawn = 2400,
+        requiredWeapon = 'WEAPON_CROWBAR',
+        requiredWeaponError = 'Du musst eine Brechstange in der Hand halten.',
+        models = { 650320113 },
+    },
+
+
+    -- Grapeseed scavenging props collected in-game (2026-11-01).
+    grapeseed_fruit_boxes = {
+        label = 'Obstkiste durchsuchen', icon = 'search', time = 4000,
+        lootTable = 'fruit_boxes', respawn = 1800,
+        models = { -689705442, -1381786722, -1016215758 },
+    },
+    newspaper_box = {
+        label = 'Zeitungskasten durchsuchen', icon = 'search', time = 4000,
+        lootTable = 'newspaper_box', respawn = 1800,
+        models = { 1211559620 },
+    },
+    grapeseed_crates = {
+        label = 'Kiste durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'crate_general', respawn = 1800,
+        models = { -1886777370, -939897404, 1280771616, 1513590521 },
+    },
+    grapeseed_phone_booth = {
+        label = 'Telefonzelle durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'phone_booth', respawn = 1800,
+        cash = { chance = 0.08, min = 1, max = 5 },
+        models = { 1158960338 },
+    },
+    cash_register = {
+        label = 'Kasse durchsuchen', icon = 'search', time = 4500,
+        lootTable = 'cash_register', respawn = 2400,
+        cash = { chance = 0.35, min = 2, max = 25 },
+        models = { 303280717 },
+    },
+    special = {
+        label = 'Hangman durchsuchen', icon = 'search', time = 6500,
+        lootTable = 'special', respawn = 3600,
+        models = { -1240857364 },
+    },
+    wood_salvage_grapeseed = {
+        label = 'Holz durchsuchen', icon = 'search', time = 5000,
+        lootTable = 'wood_pallet_mix', respawn = 1800,
+        models = { -1152075764 },
+    },
+    cement_blocks = {
+        label = 'Zementblöcke durchsuchen', icon = 'search', time = 5500,
+        lootTable = 'cement_blocks', respawn = 2400,
+        models = { 1711856655 },
+    },
+    compressor = {
+        label = 'Kompressor durchsuchen', icon = 'tool', time = 6500,
+        lootTable = 'compressor', respawn = 3000,
+        requiredItem = 'wrench',
+        requiredItemError = 'Du benötigst eine Wrench im Inventar, um den Kompressor zu durchsuchen.',
+        models = { 1742374783 },
+    },
+    grill = {
+        label = 'Grill durchsuchen', icon = 'search', time = 4500,
+        lootTable = 'grill', respawn = 1800,
+        models = { 977744387 },
+    },
+
+    electrical_salvage = {
+        label = 'Search', icon = 'search', time = 5000,
+        lootTable = 'electrical_salvage', respawn = 1800,
+        models = { 'prop_aircon_m_04', 'prop_roofvent_06a', 'prop_aircon_m_07', 'prop_aircon_m_03', 'prop_roofvent_03a', 'prop_sub_trans_01a', 'prop_sub_trans_04a', 'prop_elecbox_25' },
+    },
 }
 
--- Diesel: one rule shared by the barrel, siphon and pump - fuel goes into containers
+-- Diesel: one rule shared by the barrel, siphon and pump - fuel goes into containers, never pockets. `chance` is per search, not per barrel.
 Containers.Diesel = {
     chance     = 0.22,
     amount     = { 5, 18 },     -- units, out of a jerrycan's 100
@@ -231,89 +438,10 @@ Containers.Diesel = {
     containers = { 'fuel_can', 'empty_bottle' },
 }
 
--- Storage families. Only real loaded models are registered by cl_search.
--- Unavailable DLC/custom model names are skipped rather than turned into proximity targets.
-Containers.Types.backpack={label="Search backpack",icon='search',time=3200,lootTable='travel',respawn=2400,models={"prop_michael_backpack","p_michael_backpack_s","prop_cs_backpack_01"}}
-Containers.Types.duffel={label="Search duffel bag",icon='search',time=3500,lootTable='travel',respawn=2400,models={"prop_cs_heist_bag_01","prop_cs_heist_bag_02","prop_cs_duffel_01","prop_cs_duffel_01b","p_ld_heist_bag_s","p_ld_heist_bag_s_1"}}
-Containers.Types.suitcase={label="Search suitcase",icon='search',time=3500,lootTable='travel',respawn=2400,models={"prop_ld_suitcase_01","prop_ld_suitcase_02","prop_luggage_01a","prop_luggage_02a","prop_luggage_03a","prop_luggage_04a","prop_luggage_05a","prop_luggage_06a","prop_luggage_07a","prop_luggage_08a","prop_luggage_09a"}}
-Containers.Types.briefcase={label="Search briefcase",icon='search',time=4000,lootTable='office',respawn=2400,models={"prop_ld_case_01","prop_ld_case_02","prop_security_case_01"}}
-Containers.Types.cardboard_box={label="Search parcel",icon='search',time=3500,lootTable='parcel',respawn=2400,models={"prop_cs_cardbox_01","prop_cardbordbox_01a","prop_cardbordbox_02a","prop_cardbordbox_03a","prop_cardbordbox_04a","prop_box_01a","prop_box_02a","prop_box_03a","prop_box_04a","prop_box_05a","prop_box_06a","prop_box_07a","prop_box_08a"}}
-Containers.Types.wooden_crate={label="Search wooden crate",icon='search',time=4500,lootTable='warehouse',respawn=2400,models={"prop_box_wood01a","prop_box_wood02a","prop_box_wood03a","prop_box_wood04a","prop_box_wood05a","prop_box_wood02a_pu","prop_box_wood05b","prop_box_wood06a"}}
-Containers.Types.plastic_crate={label="Search storage crate",icon='search',time=4000,lootTable='warehouse',respawn=2400,models={"prop_crate_01a","prop_crate_02a","prop_crate_03a","prop_crate_04a","prop_crate_05a","prop_crate_06a","prop_crate_07a","prop_crate_08a","prop_crate_09a","prop_crate_10a","prop_crate_11a"}}
-Containers.Types.military_crate={label="Search military supplies",icon='search',time=6500,lootTable='military',respawn=2400,models={"prop_mil_crate_01","prop_mil_crate_02","prop_box_ammo01a","prop_box_ammo02a","prop_box_ammo03a","prop_box_ammo04a","prop_box_ammo05a","prop_box_ammo06a","prop_box_ammo07a"}}
-Containers.Types.police_armory={label="Search police weapon storage",icon='search',time=6500,lootTable='police',respawn=2400,models={"v_ilev_ph_gunlocker","prop_gun_case_01","prop_box_guncase_01a","prop_ld_guncase_01"}}
-Containers.Types.weapon_rack={label="Search weapon rack",icon='search',time=6000,lootTable='military',respawn=2400,models={"prop_gunrack","prop_gunrack_01","prop_gunrack_02","prop_gunrack_03","gr_prop_gr_gunsmithsupl_02a"}}
-Containers.Types.gun_case={label="Search gun case",icon='search',time=6000,lootTable='weapon_storage',respawn=2400,models={"gr_prop_gr_guncase_01a","gr_prop_gr_guncase_02a","gr_prop_gr_guncase_03a"}}
-Containers.Types.office_storage={label="Search office storage",icon='search',time=4000,lootTable='office',respawn=2400,models={"prop_cabinet_01","prop_cabinet_01b","prop_cabinet_02b","v_corp_cabinet","v_corp_filecablow","v_corp_filecabtall","v_corp_offshelf","v_corp_offshelf_01"}}
-Containers.Types.safe={label="Search safe",icon='search',time=7000,lootTable='safe',respawn=2400,models={"prop_ld_int_safe_01","prop_ld_int_safe_01b","prop_safe_01","prop_safe_02","prop_safe_03","prop_ld_int_safe_door"}}
-Containers.Types.wardrobe={label="Search wardrobe",icon='search',time=4500,lootTable='travel',respawn=2400,models={"v_res_tre_wardrobe","v_res_mcupboard","v_res_tre_wdunits","v_res_tre_wdunitsc","v_res_j_wardrobe","v_res_m_wardrobe"}}
-Containers.Types.bedside_storage={label="Search bedside storage",icon='search',time=3500,lootTable='home',respawn=2400,models={"v_res_tre_bedside","v_res_mbbedtable","v_res_mdbedtable","v_res_tre_draws","v_res_d_dressingtable","v_res_mconsolemod","v_res_mconsolemove"}}
-Containers.Types.kitchen_cupboard={label="Search kitchen cupboard",icon='search',time=4000,lootTable='kitchen',respawn=2400,models={"v_res_mcabinet","v_res_mcounter","v_res_tre_cupboard","v_res_fa_cabinet","v_res_mchest"}}
-Containers.Types.shelf_storage={label="Search shelf supplies",icon='search',time=4500,lootTable='warehouse',respawn=2400,models={"v_ilev_shelf_02","prop_shelves_01","prop_shelves_02","prop_shelves_03","prop_shelf_01","prop_shelf_02","prop_shelf_03","prop_rub_cabinet01","prop_rub_cabinet02"}}
-Containers.Types.shop_till={label="Search shop till",icon='search',time=5000,lootTable='shop',respawn=2400,models={"prop_till_01","prop_till_02","prop_till_03","prop_cash_register_01"}}
-Containers.Types.shop_basket={label="Search basket",icon='search',time=3000,lootTable='shop',respawn=2400,models={"prop_shopping_bags01","prop_shopping_bags02","prop_shop_basket_01","prop_shop_basket_02","prop_fruit_basket"}}
-Containers.Types.food_crate={label="Search food crate",icon='search',time=3500,lootTable='kitchen',respawn=2400,models={"prop_fruitstand_01","prop_fruitstand_02","prop_crate_11e","prop_crate_11d","prop_crate_11c","prop_crate_11b"}}
-Containers.Types.cooler={label="Search cooler",icon='search',time=3500,lootTable='kitchen',respawn=2400,models={"prop_coolbox_01","prop_coolbox_02","prop_coolbox_03","prop_coolbox_04","prop_coolbox_05","prop_coolbox_06"}}
-Containers.Types.medical_bag={label="Search medical supplies",icon='search',time=4500,lootTable='medical',respawn=2400,models={"prop_ld_health_pack","prop_ld_health_pack_01","prop_med_bag_01","xm_prop_x17_bag_med_01a"}}
-Containers.Types.medicine_cabinet={label="Search medicine cabinet",icon='search',time=4500,lootTable='medical',respawn=2400,models={"v_med_cabinet1","v_med_cabinet2","v_med_cabinet3","v_res_mmedcab","v_res_tre_medicinecabinet","prop_medstation_01","prop_medstation_02","prop_medstation_03","prop_medstation_04"}}
-Containers.Types.first_aid_box={label="Search first-aid box",icon='search',time=4000,lootTable='medical',respawn=2400,models={"prop_medstation_01a","prop_firstaid_01","prop_firstaid_02"}}
-Containers.Types.industrial_case={label="Search equipment case",icon='search',time=5000,lootTable='industrial',respawn=2400,models={"prop_box_elec01a","prop_box_elec01b","prop_box_elec02a","prop_box_elec02b","prop_box_elec03a","prop_box_elec04a","prop_box_elec05a","prop_box_elec06a","prop_box_elec07a"}}
-Containers.Types.parts_storage={label="Search spare parts",icon='search',time=5000,lootTable='vehicle',respawn=2400,models={"prop_toolchest_01","prop_toolchest_02","prop_toolchest_03"}}
-Containers.Types.tool_case={label="Search tool case",icon='search',time=4500,lootTable='workshop',respawn=2400,models={"prop_tool_box_01","prop_tool_box_02","prop_tool_box_03","prop_tool_box_04","prop_tool_box_05","prop_toolchest_04","prop_toolchest_05"}}
-Containers.Types.fishing_storage={label="Search fishing supplies",icon='search',time=4000,lootTable='fishing',respawn=2400,models={"prop_fishing_bait_01"}}
-Containers.Types.camp_storage={label="Search camping supplies",icon='search',time=4000,lootTable='travel',respawn=2400,models={"prop_cs_sack_01","prop_cs_sack_02"}}
--- Generic lockers do not become military containers merely because of their location.
-Containers.Types.locker.lootTable='urban'
-local excluded={prop_ld_ferris_wheel=true,v_med_bed2=true}
-local owner={}
-local order={}
-for id in pairs(Containers.Types)do order[#order+1]=id end
-table.sort(order)
--- Later explicit families own aliases that appeared in older generic lists.
-local preferred={"backpack","duffel","suitcase","briefcase","cardboard_box","wooden_crate","plastic_crate","military_crate","police_armory","weapon_rack","gun_case","office_storage","safe","wardrobe","bedside_storage","kitchen_cupboard","shelf_storage","shop_till","shop_basket","food_crate","cooler","medical_bag","medicine_cabinet","first_aid_box","industrial_case","parts_storage","tool_case","fishing_storage","camp_storage"}
-for _,id in ipairs(preferred)do for _,model in ipairs(Containers.Types[id].models or {})do owner[model]=id end end
-for _,id in ipairs(order)do
-    local def=Containers.Types[id];local clean={}
-    for _,model in ipairs(def.models or {})do
-        if not excluded[model]and (not owner[model]or owner[model]==id)then
-            if not owner[model]then owner[model]=id end
-            local duplicate=false;for _,known in ipairs(clean)do if known==model then duplicate=true;break end end
-            if not duplicate then clean[#clean+1]=model end
-        end
-    end
-    if def.models then def.models=clean end
-end
-
---- Flattened model to type lookup, built once at load.
+--- Flattened model -> type lookup, built once at load.
 Containers.ByModel = {}
 for typeId, def in pairs(Containers.Types) do
     for _, model in ipairs(def.models or {}) do
-        Containers.ByModel[GetHashKey(model)] = typeId
+        Containers.ByModel[type(model) == 'number' and model or GetHashKey(model)] = typeId
     end
-end
-
--- Optional installed-model discovery. Explicit names remain the first choice.
-Containers.Discovery={enabled=false,overrides={}}
-function Containers.DiscoverType(name)
-    if type(name)~='string'or #name>128 then return end
-    name=name:lower()
-    local cfg=Containers.Discovery
-    local override=cfg.overrides and cfg.overrides[name]
-    if override==false then return end
-    if type(override)=='string'then return Containers.Types[override]and override or nil end
-    local known=Containers.ByModel[GetHashKey(name)];if known then return known end
-    if not cfg.enabled then return end
-    for _,excluded in ipairs({'door','strap','handle','debris','fragment','_lod','_glass','_wheel'})do if name:find(excluded,1,true)then return end end
-    local families={
-        {'gunlocker','police_armory'},{'gunrack','weapon_rack'},{'guncase','gun_case'},{'gun_case','gun_case'},
-        {'mil_crate','military_crate'},{'ammo_box','military_crate'},{'box_ammo','military_crate'},
-        {'backpack','backpack'},{'suitcase','suitcase'},{'luggage','suitcase'},{'duffel','duffel'},
-        {'briefcase','briefcase'},{'tool_box','tool_case'},{'toolbox','tool_case'},{'toolchest','tool_case'},
-        {'med_cabinet','medicine_cabinet'},{'medical_cabinet','medicine_cabinet'},{'med_bag','medical_bag'},
-        {'firstaid','first_aid_box'},{'coolbox','cooler'},{'cooler_box','cooler'},{'filingcab','office_storage'},
-        {'wardrobe','wardrobe'},{'bedside','bedside_storage'},{'locker','locker'},{'cabinet','office_storage'},
-        {'wood_crate','wooden_crate'},{'box_wood','wooden_crate'},{'cardboard','cardboard_box'},{'cardbord','cardboard_box'},
-        {'storagebox','plastic_crate'},{'storage_box','plastic_crate'},{'storagebin','plastic_crate'},
-    }
-    for _,pair in ipairs(families)do if name:find(pair[1],1,true)then return pair[2]end end
 end

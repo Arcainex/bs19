@@ -1,7 +1,5 @@
 -- bs_esx_bridge - fills ESX.PlayerData/ESX.PlayerLoaded from the esx:playerLoaded event re-broadcast by sv_main.lua.
 
-exports('getSharedObject', function() return ESX end)
-
 RegisterNetEvent('esx:playerLoaded', function(xPlayerData)
     ESX.PlayerData = xPlayerData or ESX.PlayerData
     ESX.PlayerLoaded = true

@@ -37,7 +37,8 @@ Medical.System = {
     coughNoise       = 30.0,
     vomitLoss        = 12.0,   -- hunger and thirst lost per vomit
 
-    -- Pain (0-100) from wounds, breaks, bullets and heavy hits. Shakes the screen and the aim.
+    -- Pain (0-100) from wounds, breaks, bullets and heavy hits. Shakes the
+    -- screen and the aim. Painkillers mask it for a while.
     painMult         = 1.0,
     painkillerMinutes = 10,
     hitPainDecay     = 6.0,    -- per minute, pain from hits fading
@@ -50,12 +51,12 @@ Medical.System = {
     defibWindow      = 60,
 
     -- NPC doctor full heal price (cash).
-    doctorPrice      = 2500,
+    doctorPrice      = 10,
 
     -- Treating someone else is quicker.
     otherSpeed       = 0.7,
     -- Medical skill: each level shaves this off the time (capped at 50%).
-    skillSpeedPerLevel = 0.04,
+    skillSpeedPerLevel = 0.01,
 }
 
 -- Body parts, in diagram order.
@@ -92,9 +93,29 @@ Medical.TreatAnims = {
 -- Paid doctors, anchored to safe zones (ids from bs_zombies Zones.Safe).
 Medical.Doctors = {
     { zone = 'paleto',             offset = vector3(-3.0, -10.0, 0.0), heading = 20.0 },
-    { zone = 'faction_military',   offset = vector3(6.0, 4.0, 0.0),   heading = 180.0 },
+    -- Alpha-Z: old military/safe-zone medic removed.
     { zone = 'faction_rebels',     offset = vector3(6.0, 4.0, 0.0),   heading = 180.0 },
-    { zone = 'faction_civilians',  offset = vector3(6.0, 4.0, 0.0),   heading = 180.0 },
+    -- Alpha-Z: civilian medic fixed to the requested Grand-Senora position.
+    { pos = vector3(1716.07, 3325.22, 41.22), heading = 192.5 },
     { zone = 'faction_bikers',     offset = vector3(6.0, 4.0, 0.0),   heading = 180.0 },
 }
 Medical.DoctorModel = 's_m_m_doctor_01'
+
+-- Alpha-Z: Arztbehandlung auf einer vorhandenen Kranken-/Feldliege.
+-- Zusätzliche Liegenmodelle können hier eingetragen werden.
+Medical.DoctorTreatment = {
+    duration = 60000,
+    bedSearchRadius = 16.0,
+    bedModels = {
+        'v_med_bed1', 'v_med_bed2', 'v_med_bed3',
+        'prop_med_bed_01', 'prop_med_bed_02',
+        'prop_hospitalbed_01', 'prop_hospitalbed_02',
+        'prop_gurney_01', 'prop_gurney_02',
+        'prop_campbed_01', 'prop_campbed_02',
+        'prop_skid_sleepbag_1',
+        'v_res_msonbed', 'v_res_msonbed_s',
+        'prop_ld_farm_couch01', 'prop_ld_farm_couch02',
+        'prop_rub_couch02',
+    },
+    -- Falls Map-Liegen Custom-Modelle benutzen, trage ihre Namen oben ein.
+}

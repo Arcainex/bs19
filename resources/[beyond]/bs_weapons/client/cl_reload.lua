@@ -84,6 +84,15 @@ CreateThread(function()
             DisableControlAction(0, MELEE_LIGHT, true)
 
             if IsDisabledControlJustPressed(0, RELOAD_CONTROL) and not reloading then
+                -- Alpha-Z: do not let R start the vanilla sniper reload while
+                -- a crossbow shot is being mechanically cocked. Normal rifles
+                -- and manual reload outside this short cycle are unchanged.
+                if GetResourceState('alpha_z_crossbow_sound') == 'started' then
+                    local ok, busy = pcall(function()
+                        return exports.alpha_z_crossbow_sound:IsCycling()
+                    end)
+                    if ok and busy then goto continue end
+                end
                 local _, clip = GetAmmoInClip(ped, hash)
                 local reserve = reserveOf(ped, hash)
 
@@ -117,8 +126,11 @@ CreateThread(function()
             ::continue::
             Wait(0)
         else
-            -- Nothing reloadable in hand: leave R alone (the engine uses it for other things; this file only handles firearms)
-            Wait(250)
+            -- R must never trigger GTA's melee/pistol-whip action on this server.
+            -- Keep the melee variants blocked even when no reloadable firearm is in hand.
+            DisableControlAction(0, MELEE_ALT, true)
+            DisableControlAction(0, MELEE_LIGHT, true)
+            Wait(0)
         end
     end
 end)

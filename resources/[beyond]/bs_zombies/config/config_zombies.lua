@@ -3,8 +3,6 @@
 
 Zombies = {}
 
-Zombies.CombatEffects = { enabled = true, blood = true }
-
 Zombies.Settings = {
     enabled             = true,
 
@@ -74,15 +72,15 @@ Zombies.Settings = {
     damageScale         = 1.0,
     headshotMultiplier  = 4.0,
     -- Non-headshot damage multiplier. Low so aiming for the head is the sane strategy.
-    bodyDamageScale     = 0.35,
+    bodyDamageScale     = 1.0,
     -- Vehicle damage multiplier. Large enough that any real-speed hit is lethal.
     vehicleDamageScale  = 6.0,
 
     -- Melee damage multiplier
-    -- Large enough that a bat or machete drops an ordinary walker (220 hp) in one swing; a brute (850 hp) still needs two or three
-    meleeDamageScale    = 12.0,
+    -- Global melee balance multiplier. Alpha-Z balance sheet: all melee weapons use x2.
+    meleeDamageScale    = 2.0,
     -- Bare fists are scaled far lower, so punching a walker to death takes several hits.
-    unarmedDamageScale  = 2.0,
+    unarmedDamageScale  = 1.0,
 
     -- Damage sv_registry.lua assumes when the reported weapon is not in Zombies.WeaponBaseDamage. Conservative.
     unknownWeaponRawDamage = 27,
@@ -189,11 +187,11 @@ Zombies.Detector = {
 -- Values only need to be a believable maximum so lied-about numbers get caught. melee = true routes through meleeDamageScale.
 Zombies.WeaponBaseDamage = {
     -- Pistols / sidearms
-    WEAPON_PISTOL         = { raw = 27  },
-    WEAPON_COMBATPISTOL   = { raw = 26  },
+    WEAPON_PISTOL         = { raw = 35  },
+    WEAPON_COMBATPISTOL   = { raw = 40  },
     WEAPON_APPISTOL       = { raw = 24  },
     WEAPON_PISTOL50       = { raw = 38  },
-    WEAPON_SNSPISTOL      = { raw = 24  },
+    WEAPON_SNSPISTOL      = { raw = 30  },
     WEAPON_HEAVYPISTOL    = { raw = 30  },
     WEAPON_VINTAGEPISTOL  = { raw = 24  },
     WEAPON_REVOLVER       = { raw = 50  },
@@ -203,32 +201,32 @@ Zombies.WeaponBaseDamage = {
     WEAPON_ASSAULTSMG     = { raw = 22  },
     WEAPON_MACHINEPISTOL  = { raw = 20  },
     -- Rifles
-    WEAPON_ASSAULTRIFLE   = { raw = 30  },
-    WEAPON_CARBINERIFLE   = { raw = 30  },
+    WEAPON_ASSAULTRIFLE   = { raw = 35  },
+    WEAPON_CARBINERIFLE   = { raw = 40  },
     WEAPON_ADVANCEDRIFLE  = { raw = 28  },
     WEAPON_SPECIALCARBINE = { raw = 32  },
     WEAPON_BULLPUPRIFLE   = { raw = 29  },
     WEAPON_COMPACTRIFLE   = { raw = 28  },
     -- Shotguns: a close hit lands several pellets, so the damage delta can be far above a rifle round. Generous.
-    WEAPON_PUMPSHOTGUN    = { raw = 180 },
-    WEAPON_SAWNOFFSHOTGUN = { raw = 200 },
+    WEAPON_PUMPSHOTGUN    = { raw = 120 },
+    WEAPON_SAWNOFFSHOTGUN = { raw = 140 },
     WEAPON_ASSAULTSHOTGUN = { raw = 130 },
     WEAPON_BULLPUPSHOTGUN = { raw = 130 },
     WEAPON_MUSKET         = { raw = 110 },
-    WEAPON_DBSHOTGUN      = { raw = 200 },
+    WEAPON_DBSHOTGUN      = { raw = 90 },
     -- Sniper / marksman
     WEAPON_SNIPERRIFLE    = { raw = 100 },
-    WEAPON_HEAVYSNIPER    = { raw = 130 },
-    WEAPON_MARKSMANRIFLE  = { raw = 60  },
+    WEAPON_HEAVYSNIPER    = { raw = 100 },
+    WEAPON_MARKSMANRIFLE  = { raw = 100  },
     -- Melee - routed through meleeDamageScale.
-    WEAPON_BAT            = { raw = 45, melee = true },
-    WEAPON_CROWBAR        = { raw = 45, melee = true },
-    WEAPON_HAMMER         = { raw = 45, melee = true },
+    WEAPON_BAT            = { raw = 60, melee = true },
+    WEAPON_CROWBAR        = { raw = 40, melee = true },
+    WEAPON_HAMMER         = { raw = 55, melee = true },
     WEAPON_GOLFCLUB       = { raw = 40, melee = true },
     WEAPON_KNIFE          = { raw = 35, melee = true },
     WEAPON_MACHETE        = { raw = 45, melee = true },
-    WEAPON_HATCHET        = { raw = 45, melee = true },
-    WEAPON_BATTLEAXE      = { raw = 55, melee = true },
+    WEAPON_HATCHET        = { raw = 40, melee = true },
+    WEAPON_BATTLEAXE      = { raw = 60, melee = true },
     WEAPON_WRENCH         = { raw = 40, melee = true },
     WEAPON_POOLCUE        = { raw = 35, melee = true },
     WEAPON_SWITCHBLADE    = { raw = 35, melee = true },
@@ -241,8 +239,13 @@ Zombies.WeaponBaseDamage = {
     WEAPON_KNUCKLE        = { raw = 35, melee = true },
     WEAPON_BOTTLE         = { raw = 30, melee = true },
     WEAPON_UNARMED        = { raw = 14, melee = true },
+    -- Alpha-Z custom / crafted weapons
+    WEAPON_ZOMBIEARM          = { raw = 25, melee = true }, -- Alpha-Z balance
+    WEAPON_BARBEDBAT          = { raw = 35, melee = true }, -- Alpha-Z balance
+    WEAPON_PIPEBOMB           = { raw = 300 }, -- Alpha-Z balance
+    WEAPON_STICKYBOMB         = { raw = 400 }, -- Alpha-Z balance
     -- Thrown / tools: not GROUP_MELEE, so they use the ranged branch. Grenade/molotov are generous.
-    WEAPON_MOLOTOV          = { raw = 60  },
+    WEAPON_MOLOTOV          = { raw = 120  },
     WEAPON_GRENADE          = { raw = 400 },
     WEAPON_PETROLCAN        = { raw = 20  },
     WEAPON_FIREEXTINGUISHER = { raw = 10  },
@@ -568,7 +571,7 @@ Zombies.Types = {
         -- Spawn weight.
         weight      = 93,
         health      = 220,
-        armour      = 0,
+        armour      = 20,
 
         -- Movement rates. 1.0 is a normal human walk.
         -- Keep these low: you should be able to walk away from one walker, the danger is the others behind it
@@ -578,7 +581,7 @@ Zombies.Types = {
         -- A walker that has seen you gets urgent, not fast. Still slower than a player's jog.
         chaseRate   = 1.0,
 
-        damage      = 14,
+        damage      = 18,
         -- Sight radius in metres, needs clear line of sight and is reduced by stealth perks
         -- Too low and walkers stay in idle (wandering) almost always. Hearing is the main sense.
         senseRadius = 28.0,
@@ -600,13 +603,13 @@ Zombies.Types = {
     brute = {
         label       = 'Brute',
         weight      = 5,
-        health      = 850,
-        armour      = 60,
+        health      = 450,
+        armour      = 40,
         shambleRate = 1.0,
         drawnRate   = 1.0,
         chaseRate   = 1.0,
         chaseAnim   = nil,   -- a brute lumbers, it does not jog
-        damage      = 42,
+        damage      = 28,
         senseRadius = 30.0,
         hearRadius  = 48.0,
         loseRadius  = 60.0,
@@ -629,7 +632,7 @@ Zombies.Types = {
         weight      = 0,
 
         -- Low health: a crawler is hard to see and hit, so it must be easy to kill
-        health      = 90,
+        health      = 120,
         armour      = 0,
 
         -- Move-rate overrides (animation playback speed), slower than a walker in every gear
@@ -803,8 +806,6 @@ Zombies.Crawl = {
 
 -- Attacks: a walker takes hold and bites. Mash the jump key to break free early.
 Zombies.Attack = {
-    -- No swing until a knocked-down walker has been back on its feet this long, ms
-    recoverMs = 600,
     -- Dodging (cl_attack.lua, evaded())
     -- The claw only lands on someone slower than evadeSpeed m/s
     evadeSpeed  = 1.8,
@@ -871,60 +872,26 @@ Zombies.Reach = {
     whileHunting = true,
 }
 
--- Takedowns: offered in the ALT menu on a walker that is down, staggered by a fighting hit,
--- or has not noticed you standing behind it. One-hit kill through the server.
-local UC, KN, SW, LW, HT = 'melee@unarmed@streamed_core', 'melee@knife@streamed_core',
-    'melee@small_wpn@streamed_core', 'melee@large_wpn@streamed_core', 'melee@hatchet@streamed_core'
+-- Executions: press E next to a walker for a one-hit kill. Animation depends on the weapon in hand.
+-- Works best from behind; refused once the walker has committed to you
 Zombies.Execute = {
     enabled   = true,
-    range     = 2.0,
+    key       = 38,        -- E (INPUT_PICKUP)
+    range     = 1.8,
     -- Rear arc counted as behind it. 1.0 = directly behind.
     behindDot = -0.1,
-    -- Standing walkers only from behind and before they notice you.
+    -- Refuse once it is actively hunting you.
     onlyUnaware = true,
     cooldown  = 1200,
-    -- How long a fighting stagger or knockdown keeps a walker open to a takedown, ms.
-    staggerWindow = 3000,
 
-    -- Clip pairs played together (plyr on you, victim on the walker). The first pair that loads is used;
-    -- /ztakedownanims lists what loads on your client.
-    takedown = {
-        killAt    = 0.75,     -- fraction of the clip where the kill is reported
-        controlMs = 350,      -- how long to wait for control of the walker before using the short clip
-        sceneOffset = vector3(0.0, 0.0, -1.0),
-        rear = {
-            fists   = { { dict = UC, plyr = 'plyr_stealth_kill_unarmed_a', victim = 'victim_stealth_kill_unarmed_a' },
-                        { dict = UC, plyr = 'plyr_takedown_rear_lefthook', victim = 'victim_takedown_rear_lefthook' },
-                        { dict = UC, plyr = 'plyr_stealth_kill_unarmed_hook_r', victim = 'victim_stealth_kill_unarmed_hook_r' } },
-            knife   = { { dict = KN, plyr = 'plyr_knife_rear_takedown', victim = 'victim_knife_rear_takedown' } },
-            small   = { { dict = SW, plyr = 'plyr_rear_takedown', victim = 'victim_rear_takedown' } },
-            hatchet = { { dict = HT, plyr = 'plyr_rear_takedown', victim = 'victim_rear_takedown' },
-                        { dict = SW, plyr = 'plyr_rear_takedown', victim = 'victim_rear_takedown' } },
-            large   = { { dict = LW, plyr = 'plyr_rear_takedown_bat_r_facehit', victim = 'victim_rear_takedown_bat_r_facehit' } },
-        },
-        -- Staggered walker facing you
-        front = {
-            fists   = { { dict = UC, plyr = 'plyr_takedown_front_uppercut', victim = 'victim_takedown_front_uppercut' },
-                        { dict = UC, plyr = 'plyr_takedown_front_elbow', victim = 'victim_takedown_front_elbow' } },
-            knife   = { { dict = KN, plyr = 'plyr_knife_front_takedown', victim = 'victim_knife_front_takedown' } },
-            small   = { { dict = SW, plyr = 'plyr_front_takedown', victim = 'victim_front_takedown' } },
-            hatchet = { { dict = HT, plyr = 'plyr_front_takedown', victim = 'victim_front_takedown' } },
-            large   = { { dict = LW, plyr = 'plyr_front_takedown_bat_headhit', victim = 'victim_front_takedown_bat_headhit' } },
-        },
-        -- Walker on the ground: player clip only
-        ground = {
-            knife = { { dict = KN, clip = 'ground_attack_on_spot', time = 1100 } },
-            fists = { { dict = UC, clip = 'ground_attack_on_spot', time = 1500 } },
-        },
-        -- Used when no pair loads or the walker could not be lined up
-        fallback = { { dict = KN, clip = 'ground_attack_on_spot', time = 1100 },
-                     { dict = UC, clip = 'ground_attack_on_spot', time = 1500 } },
-        weapons = {
-            hatchet = { 'WEAPON_HATCHET', 'WEAPON_STONE_HATCHET', 'WEAPON_MACHETE', 'WEAPON_BATTLEAXE' },
-            knife   = { 'WEAPON_KNIFE', 'WEAPON_SWITCHBLADE', 'WEAPON_DAGGER', 'WEAPON_BOTTLE' },
-            small   = { 'WEAPON_HAMMER', 'WEAPON_WRENCH', 'WEAPON_NIGHTSTICK', 'WEAPON_FLASHLIGHT', 'WEAPON_KNUCKLE' },
-        },
+    anims = {
+        knife = { dict = 'melee@knife@streamed_core', clip = 'ground_attack_on_spot', time = 1100 },
+        fists = { dict = 'melee@unarmed@streamed_core', clip = 'ground_attack_on_spot', time = 1500 },
     },
+
+    -- Weapons that count as a blade for the animation choice.
+    blades = { 'WEAPON_KNIFE', 'WEAPON_MACHETE', 'WEAPON_HATCHET', 'WEAPON_SWITCHBLADE',
+               'WEAPON_DAGGER', 'WEAPON_BOTTLE', 'WEAPON_STONE_HATCHET' },
 }
 
 -- Aimed melee finisher: hold aim (RMB) with a melee weapon and attack a walker in front for a head strike kill.
@@ -993,7 +960,7 @@ Zombies.Damage = {
     -- Body and melee damage scale with player level (bs_core) and combat skill (bs_skills). mult = min +
     -- Headshot kills are unaffected
     progression = {
-        enabled = true,
+        enabled = false,
         min = 0.6,          -- level 1 / skill 0
         max = 1.2,          -- max level / max skill
         maxLevel = 60,      -- bs_core Config.Progression.maxLevel
@@ -1024,8 +991,6 @@ Zombies.Damage = {
     -- Nearest walker in the cone takes the hit, one walker per swing
     meleeRange     = 2.4,
     meleeHalfAngle = 60.0,
-    -- Extra metres the server allows on a melee hit, because its positions trail the clients
-    meleeServerSlack = 4.0,
 
     -- Server anti-cheat headroom: a reported hit is clamped to the weapon's raw damage times this, anything above is refused and counted
     serverHeadroom = 1.6,
@@ -1128,27 +1093,4 @@ Zombies.Vehicle = {
     serverMinKmh   = 1.0,
     serverKillFrac = 0.6,    -- a ram kill needs car speed >= this * killKmh (crush exempt)
     proofRadius    = 15.0,   -- walkers this close to a moving car ignore engine crash damage
-}
-
--- Hooks for bs_fighting freeflow combat. enabled = false turns all of them off.
-Zombies.Combat = {
-    enabled       = true,
-    maxAttackers  = 2,       -- different walkers allowed to take turns on one player; 0 = no limit
-    tokenHoldMs   = 900,     -- a walker keeps its turn this long after its swing
-    windupEvent   = true,    -- raises bs:z:windup on the victim's client before a swing lands
-    windupLeadMs  = 300,     -- extra telegraph before the swing clip, so a counter has time; 0 = off
-    victimControl = true,    -- RequestVictim export (paired clips)
-    victimHoldMs  = 3000,    -- AI pauses at most this long on a held walker
-    -- Melee hits to kill a standard walker (scaled to its max health). Blades kill in one, blunt takes 2-4, fists 5+.
-    -- A head hit counts meleeHeadMult times. Finishers always kill. Weapons not listed keep the old rule.
-    meleeHeadMult = 1.5,
-    meleeHits = {
-        WEAPON_KNIFE = 1, WEAPON_MACHETE = 1, WEAPON_HATCHET = 1, WEAPON_BATTLEAXE = 1, WEAPON_STONE_HATCHET = 1,
-        WEAPON_SWITCHBLADE = 1, WEAPON_DAGGER = 1,
-        WEAPON_BAT = 3, WEAPON_CROWBAR = 3, WEAPON_HAMMER = 3, WEAPON_WRENCH = 3, WEAPON_NIGHTSTICK = 3,
-        WEAPON_GOLFCLUB = 4, WEAPON_POOLCUE = 4, WEAPON_FLASHLIGHT = 4, WEAPON_KNUCKLE = 4, WEAPON_BOTTLE = 4,
-        WEAPON_UNARMED = 6,
-    },
-    stagger       = true,    -- SetStaggered export
-    staggerAnim   = { dict = 'melee@unarmed@streamed_core', clip = 'hit_heavy_punch_a', ms = 900 },
 }

@@ -1,0 +1,7 @@
+V4.4.8 – Collection-Luecken: Ursache in Modelldaten statt nur Anzeige korrigiert.
+- Nur belegte, gueltige Collection-Eintraege werden in beiden Modi gezaehlt.
+- Deaktivierte, gueltige Modelle bleiben im Admin-Editor sichtbar und rot.
+- Spieler-Umkleide blendet deaktivierte Eintraege aus; Nummern bleiben dicht.
+- Von FiveM abgelehnte Collection-Eintraege werden sofort aus der Navigationsliste entfernt.
+- Torso-Korrekturen aus V4.4.5 bleiben erhalten.
+- Original clothing_rules.json NICHT ueberschreiben.

@@ -1,8 +1,12 @@
 -- bs_mining - rock ownership.
+-- The server owns a node as a place, keyed by rounded world position (like bs_interactions bins), because props are not networked and handles differ per client.
+-- The client's node name is only a claim: it is verified against the player's position at swing start and at collect.
 
 local S = Mining.Settings
 
+--------------------------------------------------------------------------------
 -- Node state
+--------------------------------------------------------------------------------
 
 -- [key] = { left, type, emptyUntil }
 -- Created lazily; untouched rocks have no entry. The sweep below drops refilled nodes so the table stays small.
@@ -36,7 +40,8 @@ local function swingsFor(def)
     return math.random(lo, hi)
 end
 
---- Reads a node's state, creating it if this is the first swing at it, and refilling it if its respawn has passed.
+--- Reads a node's state, creating it if this is the first swing at it, and
+--- refilling it if its respawn has passed.
 local function nodeAt(key, typeId)
     local def = Mining.Types[typeId]
     if not def then return nil end
@@ -59,7 +64,8 @@ local function nodeAt(key, typeId)
     return node
 end
 
--- Forgetting: a node that refilled long ago is indistinguishable from one nobody has touched
+-- Forgetting. A node that refilled long ago is indistinguishable from one
+-- nobody has touched, so keeping the row costs memory and buys nothing.
 CreateThread(function()
     while true do
         Wait(300000)
@@ -72,9 +78,11 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Tools
+--------------------------------------------------------------------------------
 
--- Tool from def.tools (or def.tool) the player carries.
+-- First tool from def.tools (or def.tool) the player carries.
 local function toolOf(src, def)
     for _, t in ipairs(def.tools or { def.tool }) do
         local ok, count = pcall(function() return exports.bs_inventory:CountItem(src, t) end)
@@ -88,7 +96,9 @@ local function hasTool(src, def)
     return toolOf(src, def) ~= nil
 end
 
+--------------------------------------------------------------------------------
 -- Yield
+--------------------------------------------------------------------------------
 
 local function skillBonus(src)
     if not S.skill or GetResourceState('bs_skills') ~= 'started' then return 0.0 end
@@ -99,7 +109,7 @@ local function skillBonus(src)
     return math.min((S.maxBonus or 0.4), level * (S.bonusPerLevel or 0.02))
 end
 
--- One swing's yield: base roll plus a skill-based chance of one extra unit
+-- One swing's yield: base roll plus a skill-based chance of one extra unit (not a multiplier, so levels help a little instead of dominating).
 local function yieldFor(src, def)
     local bonus = skillBonus(src)
     local out = {}
@@ -117,7 +127,9 @@ local function yieldFor(src, def)
     return out
 end
 
+--------------------------------------------------------------------------------
 -- Swinging
+--------------------------------------------------------------------------------
 
 local working = {}     -- [key] = src, one pair of hands per node
 local started = {}     -- [src] = { key, type, at }
@@ -147,20 +159,23 @@ BSB.RegisterCallback('mining:start', function(src, typeId, key)
     end
 
     working[key] = src
-    -- Milliseconds, from the game clock. os.time() has one-second resolution
+    -- Milliseconds, from the game clock. os.time() has one-second resolution,
+    -- which is not enough to tell a 2.6s animation from a 1.9s one.
     started[src] = { key = key, type = typeId, at = GetGameTimer() }
 
     return { ok = true, swingMs = S.swingMs, left = node.left }
 end)
 
--- The swing lands: items are handed over at the end of the animation, so a player killed
+-- The swing lands. Items are handed over at the end of the animation, so a player killed, downed or disconnected mid-swing gets nothing.
+-- Proximity is checked again here to prove the player was still there.
 BSB.RegisterCallback('mining:swing', function(src, typeId, key)
     local claim = started[src]
     if not claim or claim.key ~= key or claim.type ~= typeId then
         return { ok = false, error = Lp(src, 'mn.not_working') }
     end
 
-    -- A swing that lands sooner than the animation could possibly finish is a client that skipped the animation.
+    -- A swing that lands sooner than the animation could possibly finish is a
+    -- client that skipped the animation.
     if GetGameTimer() - claim.at < (S.swingMs or 2600) - 400 then
         return { ok = false, error = Lp(src, 'mn.too_fast') }
     end
@@ -186,7 +201,9 @@ BSB.RegisterCallback('mining:swing', function(src, typeId, key)
         node.emptyUntil = os.time() + (S.respawnSeconds or 600)
     end
 
-    -- Wear the tool BEFORE handing over the materials: a swing that breaks the pickaxe still produced its stone
+    -- Wear the tool BEFORE handing over the materials: a swing that breaks the
+    -- pickaxe still produced its stone, and the player should be told in that
+    -- order.
     local broke = false
     local tool = toolOf(src, def)
     if tool and def.wear and def.wear > 0 then
@@ -202,7 +219,8 @@ BSB.RegisterCallback('mining:swing', function(src, typeId, key)
         given[#given + 1] = {
             item = entry.item, amount = entry.amount,
             label = (type(label) == 'string' and label) or entry.item,
-            -- A full bag is not a silent failure.
+            -- A full bag is not a silent failure. The material is lost - the
+            -- rock is still worked - and the player is told why.
             spilled = not ok,
         }
     end
@@ -214,7 +232,8 @@ BSB.RegisterCallback('mining:swing', function(src, typeId, key)
     return { ok = true, given = given, left = node.left, exhausted = exhausted, broke = broke }
 end)
 
---- Somebody stopped early: free the node rather than leaving it reserved to a player who is no longer swinging at it.
+--- Somebody stopped early. Free the node rather than leaving it reserved to a
+--- player who is no longer swinging at it.
 BSB.RegisterCallback('mining:abort', function(src, key)
     if working[key] == src then working[key] = nil end
     started[src] = nil
@@ -228,7 +247,9 @@ AddEventHandler('playerDropped', function()
     started[src] = nil
 end)
 
+--------------------------------------------------------------------------------
 -- Admin
+--------------------------------------------------------------------------------
 
 BSB.RegisterCommand('minednodes', 'bs.admin', 'How many gathering nodes are being tracked',
     {}, function(src)

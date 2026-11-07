@@ -1,7 +1,7 @@
--- bs_multichar - join flow.
+-- bs_multichar - join flow. Takes over when bs_core says the session is at 'select', drives the NUI, and hands control back once a character is chosen.
+-- Talks to bs_core through exports and 'bs:hook:*' events only, never by passing functions across resources.
 
-local State = { open = false, characters = {}, classes = {} }
-local selectionRun=0
+local State = { open = false, characters = {}, classes = {}, loadingClosed = false }
 
 local function send(payload) SendNUIMessage(payload) end
 
@@ -10,50 +10,18 @@ local function focus(on)
     SetNuiFocusKeepInput(false)
 end
 
--- Screen grade while choosing. 'crisp' clears every engine grade, 'cinematic' adds a light filmic one, 'legacy' is the old soft haze.
-local GRADES = {
-    cinematic = { names = { 'NG_filmic01', 'MP_corona_heist' }, strength = 0.22 },
-    legacy    = { names = { 'spectator5' }, strength = 0.32 },
-}
-
-local function clearGrade()
-    ClearTimecycleModifier()
-    ClearExtraTimecycleModifier()
-    pcall(function() SetNoiseOveride(false); SetNoisinessOveride(0.0) end)
-end
-
-local function applyGrade()
-    clearGrade()
-    local grade = GRADES[tostring(Multichar.Selection.grade or 'crisp')]
-    if not grade then return end
-    for _, name in ipairs(grade.names) do
-        SetTimecycleModifier(name)
-        if GetTimecycleModifierIndex() ~= -1 then
-            SetTimecycleModifierStrength(grade.strength)
-            return
-        end
-    end
-    ClearTimecycleModifier()
-end
-
--- The player's own screen filter (bs_ui) must not lay grain or a vignette over the selector.
-local function suspendFilter(on)
-    if GetResourceState('bs_ui') ~= 'started' then return end
-    pcall(function() exports.bs_ui:SuspendFilter(on) end)
-end
-
+--------------------------------------------------------------------------------
 -- Opening / closing
+--------------------------------------------------------------------------------
 
-local function refresh(current)
+local function refresh()
     local data = BSB.Await('characters:list', 10000)
-    if not data or not current()then return false end
+    if not data then return false end
 
     State.characters = data.characters or {}
     State.classes    = data.classes or {}
     State.maxSlots   = data.maxSlots or 3
     State.appearance = data.appearance or {}
-
-    State.cards = {}
 
     send({
         action     = 'setData',
@@ -61,198 +29,164 @@ local function refresh(current)
         classes    = State.classes,
         maxSlots   = State.maxSlots,
         appearance = State.appearance,
-        cards      = State.cards,
     })
-    -- Extra card details should never delay a usable character list.
-    CreateThread(function()
-        local extra=BSB.Await('multichar:cards',6000)
-        if not current()then return end
-        State.cards=(extra and extra.cards)or {}
-        send({action='setData',cards=State.cards})
-    end)
     return true
 end
 
--- Portraits: a headshot of the preview ped, taken the first time each survivor is shown.
-local Shots = {}
-local portraitGeneration = 0
-
-local function releasePortrait(id, shot)
-    if shot.ped and DoesEntityExist(shot.ped) then DeleteEntity(shot.ped);shot.ped=nil end
-    if shot.handle then
-        UnregisterPedheadshot(shot.handle)
-        shot.handle = nil
-    end
-    if Shots[id] == shot then Shots[id] = nil end
-end
-
-local function cancelPendingPortraits()
-    portraitGeneration = portraitGeneration + 1
-    for id, shot in pairs(Shots) do
-        if shot.pending and not shot.ped then releasePortrait(id, shot) end
-    end
-    return portraitGeneration
-end
-
-local function portrait(char, generation, ped, background)
-    if not char or not char.id or Shots[char.id] or not ped then return end
-    local id = char.id
-    local shot = { pending = true, ped = background and ped or nil }
-    Shots[id] = shot
-    local function current()
-        return State.open and (background or (portraitGeneration == generation and Scene.ped == ped))
-            and DoesEntityExist(ped) and Shots[id] == shot
-    end
-    CreateThread(function()
-        Wait(250) -- let the outfit settle; portrait peds are frozen and never animate
-        if not current() then releasePortrait(id, shot); return end
-        local handle = RegisterPedheadshot(ped)
-        if not handle or handle < 0 then releasePortrait(id, shot); return end
-        shot.handle = handle
-        local untilAt = GetGameTimer() + 4000
-        while current() and not IsPedheadshotReady(shot.handle) and GetGameTimer() < untilAt do Wait(50) end
-        if not current() or not IsPedheadshotValid(shot.handle) or not IsPedheadshotReady(shot.handle) then
-            releasePortrait(id, shot)
-            return
-        end
-        local txd = GetPedheadshotTxdString(shot.handle)
-        if type(txd) ~= 'string' or txd == '' then releasePortrait(id, shot); return end
-        shot.pending = false
-        send({ action = 'portrait', id = id, url = ('https://nui-img/%s/%s'):format(txd, txd) })
-    end)
-end
-
-local function dropPortraits()
-    cancelPendingPortraits()
-    for id, shot in pairs(Shots) do releasePortrait(id, shot) end
-end
-
-local portraitQueue = 0
-local function preparePortraits()
-    portraitQueue=portraitQueue+1
-    local token=portraitQueue
-    -- Every survivor is shot at once rather than one after another; the head-shot pool easily covers the slot limit.
-    for _,char in ipairs(State.characters)do
-        if char.id and not Shots[char.id] then
-            CreateThread(function()
-                if not State.open or token~=portraitQueue or Shots[char.id] then return end
-                local ped=Scene.MakePortraitPed(char,function()return State.open and token==portraitQueue end)
-                if not ped then return end
-                if not State.open or token~=portraitQueue or Shots[char.id] then DeleteEntity(ped);return end
-                portrait(char,portraitGeneration,ped,true)
-            end)
-        end
-    end
-end
-
 --- Shows the ped for a slot (or a blank one when there are no characters yet).
+local previewGeneration=0
+local previewCharacterId=nil
+local currentCarryItems=nil
+local currentCarryPed=nil
+local function clearSceneCarry()
+ currentCarryItems=nil
+ currentCarryPed=nil
+ if GetResourceState('alpha_z_weaponcarry')=='started' then
+  pcall(function() exports.alpha_z_weaponcarry:ClearPreviewPedWeapons() end)
+ end
+end
+
+local function putSceneCarry(ped,items)
+ if not State.open or ped==0 or not DoesEntityExist(ped) then return end
+ if GetResourceState('alpha_z_weaponcarry')~='started' then return end
+ -- The preview should be holstered, even if lastWeapon metadata had a gun in hand.
+ if #items>0 then RemoveAllPedWeapons(ped,true) end
+ local ok,result=pcall(function()
+  return exports.alpha_z_weaponcarry:SetPreviewPedWeapons(ped,items)
+ end)
+ if ok and result then currentCarryPed=ped end
+end
+
 local function preview(index)
-    local generation = cancelPendingPortraits()
-    if not State.open then return end
+    previewGeneration=previewGeneration+1
+    local generation=previewGeneration
+    clearSceneCarry()
     local char = State.characters[index]
     if char then
-        local card=State.cards and State.cards[tostring(char.id)]
-        if Scene.SelectSet(card and card.faction)then Scene.ClearSet();Scene.Destroy(true);Scene.Build()end
-        if not State.open or generation~=portraitGeneration then return end
         Scene.SpawnPed(char.gender)
-        if not State.open or generation ~= portraitGeneration then return end
         Scene.Dress(char)
-        Scene.Glide(0.3, 900)
-        Scene.BuildSet(State.characters,index)
-        -- Card portraits use independent peds so changing selection cannot cancel them.
     else
-        -- An empty slot shows a plain freemode ped.
+        -- An empty slot shows a plain freemode ped. Its face is whatever the
+        -- engine defaults to, which is correct: there is no character here yet.
         Scene.SpawnPed('male')
     end
+    previewCharacterId=char and tonumber(char.id) or nil
+    if not previewCharacterId or not Scene.ped or not DoesEntityExist(Scene.ped) then return end
+    local ped=Scene.ped
+    local charId=previewCharacterId
+    -- Do not block the survivor list while the inventory DB is queried.
+    CreateThread(function()
+        local data=BSB.Await('multichar:previewCarry',10000,charId)
+        if generation~=previewGeneration or not State.open or
+           previewCharacterId~=charId or Scene.ped~=ped or not DoesEntityExist(ped) then return end
+        if not data or data.ok~=true or type(data.items)~='table' then return end
+        currentCarryItems=data.items
+        putSceneCarry(ped,currentCarryItems)
+    end)
 end
 
 function OpenSelect()
     if State.open then return end
     State.open = true
-    selectionRun=selectionRun+1
-    local run=selectionRun
-    local function current()return State.open and selectionRun==run end
-    local openedAt=GetGameTimer()
-    State.ready=false
-    State.loading='Loading survivors…'
-    State.characters={};State.cards={}
-    send({action='loading',text=State.loading})
-    focus(true)
-    -- NUI may still be starting on a cold join; resend the same shell until ready.
-    CreateThread(function()
-        while current()and not State.ready do
-            send({action='loading',text=State.loading})
-            Wait(500)
-        end
-    end)
-    -- The character list, the private bucket and the stage streaming all start together; only the teleport waits for the bucket.
-    local listDone,listOk=false,false
-    CreateThread(function()
-        local ok,result=pcall(refresh,current)
-        listOk=ok and result==true;listDone=true
-    end)
-    Scene.EndArrival();Scene.SelectSet()
-    Scene.Prestream()
-    suspendFilter(true)
-    local entered=BSB.Await('multichar:sceneEnter',6000)
-    -- A newer run (retry) owns the streaming focus by now; only undo it when the selector really closed.
-    if not current()then if not State.open then Scene.CancelPrestream()end;return end
-    if not entered or not entered.ok then Scene.CancelPrestream();State.loading='Unable to load survivors. Please retry.';return end
-    -- Close inspection/inventory cameras before taking ownership of the lineup scene.
-    TriggerEvent('bs:ui:opened','multichar')
+    -- Other Alpha-Z resources may mute their screen messages while customizing.
+    if LocalPlayer and LocalPlayer.state then LocalPlayer.state:set('azCharacterEditor', true, false) end
+    TriggerEvent('bs:alphaweather:creatorQuiet', true)
 
-    local built=Scene.Build()
-    if not current()then return end
-    if not built then State.loading='Unable to prepare the scene. Please retry.';return end
-    applyGrade()
+    Scene.Build()
     DoScreenFadeIn(Multichar.Scene.fadeIn)
-    ShutdownLoadingScreen()
-    ShutdownLoadingScreenNui()
 
-    focus(true)
-    while current()and not listDone do Wait(0)end
-    if not current()then return end
-    if not listOk then
-        State.loading='Unable to load survivors. Please retry.'
+    if not refresh() then
         print('^1[BeyondSurvival]^7 character list never arrived - is bs_core running?')
-        return
     end
-    State.loading='Preparing character preview…'
+
     preview(1)
-    if not current()then return end
-    State.ready=true
     send({ action = 'open' })
-    -- One F8 line per open, so a slow join can be told apart from a slow stage.
-    print(('^2[BeyondSurvival]^7 (multichar) selector ready in %d ms (stage %d ms)'):format(GetGameTimer()-openedAt,Scene.lastStreamMs or -1))
-    send({action='selectionOptions',sound=Multichar.Selection.sound and GetResourceKvpInt('selectorMute')~=1,reducedMotion=Multichar.Selection.reducedMotion or GetResourceKvpInt('selectorMotionOff')==1})
     focus(true)
-    preparePortraits()
 end
+
+-- The browser acknowledges that the character selection is visible.
+RegisterNUICallback('selectionReady', function(_, cb)
+    if State.open and not State.loadingClosed then
+        State.loadingClosed = true
+
+        -- The loading screen owns the cursor while loadscreen_cursor is enabled.
+        -- Fully release that cursor/focus first, then give NUI focus back to
+        -- bs_multichar after the loadscreen has finished shutting down.
+        ShutdownLoadingScreen()
+        ShutdownLoadingScreenNui()
+
+        SetNuiFocus(false, false)
+        SetNuiFocusKeepInput(false)
+
+        CreateThread(function()
+            Wait(500)
+            if not State.open then return end
+
+            SetNuiFocus(true, true)
+            SetNuiFocusKeepInput(false)
+            SetMouseCursorVisibleInMenus(true)
+            SetCursorLocation(0.5, 0.5)
+
+            -- One more explicit false -> true transition after the loadscreen
+            -- teardown, because simply repeating "true" does not recreate the
+            -- FiveM cursor in some loadscreen hand-offs.
+            Wait(500)
+            if not State.open then return end
+            SetNuiFocus(false, false)
+            Wait(0)
+            SetNuiFocus(true, true)
+            SetNuiFocusKeepInput(false)
+            SetMouseCursorVisibleInMenus(true)
+            SetCursorLocation(0.5, 0.5)
+        end)
+    end
+    cb({ ok = true })
+end)
 
 -- @param takeover boolean|nil  true when bs_core is taking the player over.
 function CloseSelect(handoff)
     if not State.open then return end
     State.open = false
-    selectionRun=selectionRun+1
-    portraitQueue=portraitQueue+1
-    clearGrade()
-    suspendFilter(false)
-    dropPortraits()
+    if LocalPlayer and LocalPlayer.state then LocalPlayer.state:set('azCharacterEditor', false, false) end
+    TriggerEvent('bs:alphaweather:creatorQuiet', false)
+    previewGeneration=previewGeneration+1
+    previewCharacterId=nil
+    clearSceneCarry()
     send({ action = 'close' })
-    focus(false)
-    Scene.ClearSet()
+
+    -- Only at the final character -> gameplay handoff, briefly return the cursor
+    -- to the game window so GTA/FiveM reacquires mouse capture. Loading screen and
+    -- character selection/creator stay unrestricted for multi-monitor use.
+    SetNuiFocusKeepInput(false)
+    SetNuiFocus(false, false)
+    SetMouseCursorVisibleInMenus(false)
+    SetCursorLocation(0.5, 0.5)
+
+    CreateThread(function()
+        for i = 1, 30 do
+            Wait(0)
+            SetNuiFocusKeepInput(false)
+            SetMouseCursorVisibleInMenus(false)
+            if i == 1 or i == 5 or i == 15 then
+                SetCursorLocation(0.5, 0.5)
+            end
+        end
+    end)
+
     Scene.Destroy(handoff)
-    TriggerServerEvent('bs:multichar:sceneLeave')
-    TriggerEvent('bs:ui:closed','multichar')
 end
 
-local function releaseSelectionForSpawn()
-    selectionRun=selectionRun+1
-    if State.open then CloseSelect(true)end
-    Scene.ClearSet();Scene.EndArrival();Scene.Destroy(true)
-    send({action='close'});focus(false);ClearTimecycleModifier()
-end
-AddEventHandler('bs:multichar:spawnRelease',releaseSelectionForSpawn)
+-- The selection scene's watchdog can rebuild its ped after streaming changes.
+-- Reattach the CURRENT character's saved props to its new local-only ped.
+CreateThread(function()
+    while true do
+        Wait(750)
+        if State.open and currentCarryItems and previewCharacterId and
+           Scene.ped and DoesEntityExist(Scene.ped) and Scene.ped~=currentCarryPed then
+            putSceneCarry(Scene.ped,currentCarryItems)
+        end
+    end
+end)
 
 -- bs_core broadcasts its hooks as events; this is where control passes over.
 AddEventHandler('bs:hook:session:state', function(state)
@@ -261,12 +195,15 @@ AddEventHandler('bs:hook:session:state', function(state)
     end
 end)
 
--- The character is chosen and bs_core is already swapping the model, teleporting and fading.
+-- The character is chosen and bs_core is already swapping the model, teleporting
+-- and fading. Hand off rather than tearing the player ped about ourselves.
 AddEventHandler('bs:hook:player:loaded', function()
     CloseSelect(true)
 end)
 
---- Catch-up: if this resource starts (or is restarted) while the player is already sitting at 'select'
+--- Catch-up. If this resource starts (or is restarted) while the player is
+--- already sitting at 'select', the state event has long since been and gone -
+--- so ask, rather than waiting for an event that will never fire again.
 CreateThread(function()
     Wait(1200)
     if State.open then return end
@@ -279,16 +216,20 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- NUI callbacks
+--------------------------------------------------------------------------------
 
--- Every handler that can reach Scene.SpawnPed runs in its own thread: SpawnPed waits on the model loading
+-- Every handler that can reach Scene.SpawnPed runs in its own thread:
+-- SpawnPed waits on the model loading, and yielding directly inside an NUI
+-- callback raises "attempt to yield across a C-call boundary".
 RegisterNUICallback('preview', function(data, cb)
     if AppearanceEdit and AppearanceEdit.active then return cb({ ok = true }) end
     CreateThread(function() preview(tonumber(data.index) or 1) end)
     cb({ ok = true })
 end)
 
--- Leaving the creator re-frames the survivor list
+-- Leaving the creator re-frames the survivor list (zoom/rotation persist while browsing, but not when coming back from the creator). See Scene.ResetView.
 RegisterNUICallback('resetView', function(_, cb)
     if AppearanceEdit and AppearanceEdit.active then return cb({ ok = true }) end
     Scene.ResetView()
@@ -309,7 +250,8 @@ end)
 
 RegisterNUICallback('focus', function(data, cb)
     if AppearanceEdit and AppearanceEdit.active then return cb({ ok = true }) end
-    -- A missing mode is a UI bug, not a request to reset the camera.
+    -- A missing mode is a UI bug, not a request to reset the camera. Ignoring
+    -- it keeps a stray click from yanking the framing back to full body.
     if type(data.mode) ~= 'string' then return cb({ ok = false }) end
     Scene.SetFocus(data.mode)
     cb({ ok = true })
@@ -319,7 +261,8 @@ RegisterNUICallback('play', function(data, cb)
     local id = tonumber(data.id)
     if not id then return cb({ ok = false, error = 'no character' }) end
 
-    -- Safe spawn: announced before the character is selected
+    -- Safe spawn: announced before the character is selected, because bs_core's player:loaded handler starts as soon as the server answers.
+    -- An event rather than a shared value (two resources). bs_core arms a one-shot flag and clears it on use.
     TriggerEvent('bs:core:safeSpawn', data.safeSpawn and true or false)
 
     CreateThread(function()
@@ -328,8 +271,10 @@ RegisterNUICallback('play', function(data, cb)
             return cb({ ok = false, error = (result and result.error) or 'no response' })
         end
 
-        -- PlayerLoaded may precede this callback, even by several seconds. The core owns
-        -- the spawn fade; fading here can black out a spawn that has already completed.
+        DoScreenFadeOut(Multichar.Scene.fadeOut)
+        Wait(Multichar.Scene.fadeOut)
+        -- bs_core's player:loaded handler owns the player ped from here.
+        CloseSelect(true)
         cb({ ok = true })
     end)
 end)
@@ -339,8 +284,7 @@ RegisterNUICallback('delete', function(data, cb)
         local result = BSB.Await('characters:delete', 10000, tonumber(data.id))
         if result and result.ok then
             State.characters = result.characters or {}
-            send({ action = 'setData', characters = State.characters, cards = State.cards })
-        preparePortraits()
+            send({ action = 'setData', characters = State.characters })
             preview(1)
         end
         cb(result or { ok = false })
@@ -349,7 +293,6 @@ end)
 
 --- Live preview while the creator is open: rebuild the ped from the draft.
 RegisterNUICallback('draft', function(data, cb)
-    cancelPendingPortraits()
     if AppearanceEdit and AppearanceEdit.active then AppearanceEdit.Draft(data.draft); return cb({ ok = true }) end
     CreateThread(function()
         local draft = data.draft or {}
@@ -358,17 +301,19 @@ RegisterNUICallback('draft', function(data, cb)
             Scene.SpawnPed(draft.gender or 'male')
         end
 
-        -- Guard: ApplyAppearanceTo falls back to the LOCAL PLAYER's ped when given nil
+        -- Guard: ApplyAppearanceTo falls back to the LOCAL PLAYER's ped when
+        -- given nil, which would silently restyle the hidden real character
+        -- instead of the preview.
         if not Scene.ped or not DoesEntityExist(Scene.ped) then
             return cb({ ok = false, error = 'no preview ped' })
         end
 
-        -- Start from a clean ped: the creator reuses the preview ped between drafts
+        -- Start from a clean ped: the creator reuses the preview ped between drafts, so a draft would inherit the previous weapon and props. See Scene.StripPed.
         Scene.StripPed(Scene.ped)
 
         exports.bs_core:ApplyAppearanceTo(Scene.ped, draft.appearance)
 
-        -- The CLOTHING step sends the outfit it is building; Scene.ApplyLook skips any drawable this model lacks.
+        -- The CLOTHING step sends the outfit it is building; Scene.ApplyLook skips any drawable this model lacks. Without one the preview keeps bs_core's default outfit.
         local outfit = draft.outfit
         if type(outfit) == 'table' then Scene.ApplyLook(outfit.components, outfit.props) end
 
@@ -381,11 +326,36 @@ RegisterNUICallback('draft', function(data, cb)
     end)
 end)
 
--- Creator lists (factions, kit, clothes, roll tables, identity limits) come from the server
+-- Enumerate only when the wardrobe step is entered, not on each face slider.
+RegisterNUICallback('wardrobeCatalog', function(data, cb)
+    CreateThread(function()
+        local ped = Scene.ped
+        if not ped or not DoesEntityExist(ped) then return cb({ ok = false, error = 'Vorschau wird geladen.' }) end
+        local wanted = data and data.gender == 'female' and 'female' or 'male'
+        local current = GetEntityModel(ped) == joaat('mp_f_freemode_01') and 'female' or 'male'
+        if wanted ~= current then return cb({ ok = false, error = 'Charaktermodell wird geladen.' }) end
+        -- Rules originate on the server on creatorData; the server checks again on save.
+        local catalog, gender = Scene.WardrobeCatalog(data and data.rules or {})
+        if not catalog then return cb({ ok = false }) end
+        -- Server remembers only the latest catalog for this player and sex.
+        local registered = BSB.Await('multichar:registerCatalog', 15000, gender, catalog)
+        if not registered or registered.ok ~= true then return cb({ ok = false, error = 'Kleidungskatalog konnte nicht freigegeben werden.' }) end
+        cb({ ok = true, gender = gender, catalog = catalog })
+    end)
+end)
+
+-- Creator lists (factions, kit, clothes, roll tables, identity limits) come from the server, which validates the choices against the same config.
 RegisterNUICallback('creatorData', function(_, cb)
     CreateThread(function()
         local r = BSB.Await('multichar:creatorData', 8000)
         cb(r or { ok = false })
+    end)
+end)
+
+RegisterNUICallback('saveDefaultOutfit', function(data, cb)
+    CreateThread(function()
+        local result = BSB.Await('multichar:saveDefaultOutfit', 10000, data.gender, data.outfit)
+        cb(result or { ok = false, error = 'Keine Serverantwort.' })
     end)
 end)
 
@@ -405,10 +375,7 @@ RegisterNUICallback('create', function(data, cb)
         end
 
         State.characters = result.characters or State.characters
-        local extra = BSB.Await('multichar:cards', 6000)
-        State.cards = (extra and extra.cards) or State.cards
-        send({ action = 'setData', characters = State.characters, cards = State.cards })
-        preparePortraits()
+        send({ action = 'setData', characters = State.characters })
         -- Returned as well as broadcast so the NUI does not read a stale copy and select the wrong slot.
         cb({ ok = true, charId = result.charId, characters = State.characters })
     end)
@@ -426,7 +393,9 @@ RegisterNUICallback('close', function(_, cb)
     cb({ ok = false })
 end)
 
+--------------------------------------------------------------------------------
 -- Safety net
+--------------------------------------------------------------------------------
 
 -- If bs_core is restarted while the screen is open, do not strand the player.
 AddEventHandler('onResourceStop', function(resource)
@@ -434,41 +403,48 @@ AddEventHandler('onResourceStop', function(resource)
     if resource == 'bs_core' or resource == GetCurrentResourceName() then CloseSelect() end
 end)
 
--- Escape must never leave the player frozen with no UI.
-CreateThread(function()
-    -- Disables only last one frame, so every frame while open.
-    while true do
-        if State.open then
+
+-- ESC opens the GTA pause menu while character selection remains active.
+local azPauseOpen = false
+RegisterNUICallback('azOpenPauseMenu', function(_, cb)
+    if not State.open or azPauseOpen then return cb({ok=false}) end
+    azPauseOpen = true
+    cb({ok=true})
+    CreateThread(function()
+        SetNuiFocusKeepInput(false)
+        SetNuiFocus(false, false)
+        Wait(0)
+        SetPauseMenuActive(true)
+        local deadline = GetGameTimer() + 1800
+        local appeared = false
+        while State.open and GetGameTimer() < deadline do
             Wait(0)
-            DisableControlAction(0, 200, true)   -- pause menu
-            DisableControlAction(0, 199, true)
+            if IsPauseMenuActive() then appeared = true; break end
+        end
+        if appeared then
+            while State.open and IsPauseMenuActive() do Wait(100) end
+        end
+        if State.open then
+            Wait(150)
+            SetNuiFocus(true, true)
+            SetNuiFocusKeepInput(false)
+            SetMouseCursorVisibleInMenus(true)
+        end
+        azPauseOpen = false
+    end)
+end)
+
+-- Quiet editing: do not let GTA's standard notifications obscure the model.
+CreateThread(function()
+    while true do
+        if State.open or (AppearanceEdit and AppearanceEdit.active) then
+            Wait(0)
+            ThefeedHideThisFrame()
+            HideHudAndRadarThisFrame()
         else
-            Wait(250)
+            Wait(500)
         end
     end
 end)
 
-RegisterNUICallback('selectionPreferences',function(data,cb)
-    if type(data)=='table'then
-        if type(data.sound)=='boolean'then SetResourceKvpInt('selectorMute',data.sound and 0 or 1)end
-        if type(data.reducedMotion)=='boolean'then SetResourceKvpInt('selectorMotionOff',data.reducedMotion and 1 or 0)end
-    end
-    cb({ok=true})
-end)
-RegisterNUICallback('selectionSound',function(_,cb)
-    if State.open and Multichar.Selection.sound and GetResourceKvpInt('selectorMute')~=1 then PlaySoundFrontend(-1,'NAV_UP_DOWN','HUD_FRONTEND_DEFAULT_SOUNDSET',false)end
-    cb({ok=true})
-end)
-
--- An F1 change to the grade shows at once on an open selector.
-AddEventHandler('bs_config:changed:bs_multichar',function()
-    if State.open and State.ready then applyGrade() end
-end)
-
-RegisterNUICallback('selectorRetry',function(_,cb)
-    if State.open and not State.ready then
-        CloseSelect(false)
-        CreateThread(OpenSelect)
-    end
-    cb({ok=true})
-end)
+exports('IsCharacterScreenOpen', function() return State.open end)

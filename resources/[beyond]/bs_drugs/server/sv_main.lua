@@ -1,8 +1,8 @@
 -- Server authority: item checks, consumption, timers, addiction.
 
-local active = {}   -- src to { [drug] = expiresAt (os.time) }
-local lastUse = {}  -- src to GetGameTimer()
-local info = {}     -- src to { [drug] = { q, dur } } for the HUD
+local active = {}   -- src -> { [drug] = expiresAt (os.time) }
+local lastUse = {}  -- src -> GetGameTimer()
+local info = {}     -- src -> { [drug] = { q, dur } } for the HUD
 
 local function notify(src, msg, kind)
     TriggerClientEvent('bs:ui:notify', src, { type = kind or 'info', message = msg, duration = 3500 })
@@ -182,8 +182,4 @@ end)
 AddEventHandler('playerDropped', function()
     local src = source
     active[src], lastUse[src], info[src] = nil, nil, nil
-end)
-
-AddEventHandler('bs:hook:player:unloaded',function(p)
-    if p then active[p.source],lastUse[p.source],info[p.source]=nil,nil,nil end
 end)

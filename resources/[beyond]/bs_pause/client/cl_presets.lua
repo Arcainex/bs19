@@ -1,4 +1,5 @@
--- bs_pause graphics and audio presets.
+-- bs_pause graphics and audio presets. Only what natives can do from a script; resolution and textures stay in GTA settings.
+-- Saved per player in KVP and applied on start.
 
 PausePresets = { gfx = 'balanced', audio = 'default', distantLights = true }
 
@@ -34,13 +35,10 @@ function PausePresets.Set(patch)
     if GFX[patch.gfx] then PausePresets.gfx = patch.gfx end
     if patch.audio == 'default' or patch.audio == 'immersive' then PausePresets.audio = patch.audio end
     if patch.distantLights ~= nil then PausePresets.distantLights = patch.distantLights == true end
-    -- Encode the plain values only: PausePresets also holds functions
+    -- Encode the plain values only: PausePresets also holds functions, which json.encode rejects (that error used to kill the NUI callback, so no button did anything).
     SetResourceKvp(KVP, json.encode(PausePresets.Get()))
     PausePresets.Apply()
 end
-
--- After a texture refresh, put the player's own LOD scale and model budgets back.
-AddEventHandler('bs:streaming:refreshed', function() PausePresets.Apply() end)
 
 function PausePresets.Get()
     return { gfx = PausePresets.gfx, audio = PausePresets.audio, distantLights = PausePresets.distantLights }

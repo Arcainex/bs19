@@ -1,4 +1,6 @@
 // bs_traders - trader editor (admin). Opened by /traderdebug, F10 or the bs:traders:openEditor event.
+// Separate script, root (#dbgRoot) and `debug*` action namespace from app.js; both share one NUI page and must not answer each other's messages. Lua side: client/cl_debug.lua; the link between them is window.__bsNpcsDebugOpen in app.js.
+// Nothing here is trusted: the server validates and re-checks admin on every save.
 
 (function () {
     'use strict';
@@ -16,7 +18,7 @@
     var isNew = false;           // true while the id field is still editable
     var dirty = false;
 
-    // Clipboard: copy/paste moves a trader's settings, not the trader.
+    // Clipboard: copy/paste moves a trader's settings, not the trader. Paste only fills the form until Save and never carries id or position. Duplicate makes a real second trader (see dbgDuplicate).
     var clipboard = null;
 
     function tr(key, vars, fallback) {
@@ -645,7 +647,7 @@
         flash(tr('ui.dbg_pasted', null, 'Pasted - not saved yet'));
     });
 
-    // Two clicks instead of a dialog: the first shows a field with a suggested id
+    // Two clicks instead of a dialog: the first shows a field with a suggested id, the second creates. window.prompt is not used because CEF blocks JS dialogs.
     $('dbgDuplicate').addEventListener('click', function (e) {
         var btn = e.currentTarget;
         var field = $('dbgDupId');

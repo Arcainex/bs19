@@ -1,4 +1,5 @@
--- bs_recycler client: machine props, interaction zones, loop sound and smoke.
+-- bs_recycler client: machine props, interaction zones, loop sound and smoke. The panel itself is the CRAFT tab
+-- in the inventory (bs_inventory/html/js/craft.js), which calls the NUI callbacks below by resource name.
 
 local S = Recycler.Settings
 local machines = {}     -- [id] = point

@@ -1,11 +1,11 @@
--- bs_multichar - the 3D half of the character screen: a preview ped with a scripted camera.
+-- bs_multichar - the 3D half of the character screen: a preview ped with a scripted camera. The player's own ped is hidden elsewhere, so sliders restyle the preview without touching the character.
 
 Scene = { active = false, ped = nil, cam = nil, rotation = 0.0, zoom = 1.0, focus = 'full',
           gender = nil, handsUp = false }
 
 local baseHeading = Multichar.Scene.ped.h
 
--- Declared up here: SpawnPed and Dress assign to them and the watchdog reads them.
+-- Declared up here on purpose: SpawnPed and Dress assign to them and the watchdog reads them. Declaring lower would create globals and a shadowed copy.
 local lastGender = 'male'
 local lastCharacter = nil
 
@@ -41,7 +41,7 @@ end
 
 -- Camera
 
--- Framing is measured from the ped's actual soles to crown instead of mixing the entity origin with a head bone
+-- Framing is measured from the ped's actual soles to crown instead of mixing the entity origin with a head bone, which can disagree about where zero is.
 local ANKLE_TO_SOLE = 0.09
 local HEAD_BONE_TO_CROWN = 0.13
 
@@ -66,29 +66,12 @@ local function bodySpan(ped, fallbackZ)
     return fallbackZ, fallbackZ + 1.78
 end
 
--- Camera motion: a short ease-in when the scene opens or the survivor changes, then a slow drift of a few centimetres.
-local motion = { from = 0, start = 0, ms = 0 }
-
-local function motionOn()
-    local cfg = Multichar.Selection or {}
-    return cfg.cameraMotion ~= false and not cfg.reducedMotion and GetResourceKvpInt('selectorMotionOff') ~= 1
-end
-
--- 0 at rest, up to 1 at the start of an ease-in.
-local function easeLeft()
-    if motion.ms <= 0 then return 0.0 end
-    local t = (GetGameTimer() - motion.start) / motion.ms
-    if t >= 1.0 then motion.ms = 0; return 0.0 end
-    local k = 1.0 - t
-    return motion.from * k * k * k
-end
-
 local function applyCam()
     if not Scene.cam then return end
 
     local focus = Multichar.Settings.focus[Scene.focus] or Multichar.Settings.focus.full
 
-    -- Uses the configured x/y, not GetEntityCoords(Scene.ped): if the ped is missing for a frame it returns 0,0,0
+    -- Uses the configured x/y, not GetEntityCoords(Scene.ped): if the ped is missing for a frame it returns 0,0,0 and the camera jumps to the map origin. The stage never moves.
     local s = Multichar.Scene.ped
 
     local footZ, headZ = bodySpan(Scene.ped, s.z)
@@ -98,19 +81,11 @@ local function applyCam()
     local dist = (focus.offset.y or 2.4) * Scene.zoom
     local fov  = focus.fov or 34.0
 
-    local drift, rise = 0.0, 0.0
-    if motionOn() then
-        local left = easeLeft()
-        dist = dist * (1.0 + 0.16 * left)
-        rise = 0.10 * left
-        drift = math.sin(GetGameTimer() / 1600.0) * 0.035
-    end
-
-    -- Clamped to the room (Multichar.Scene.maxCamDistance), otherwise the camera backs out of the lineup room.
+    -- Clamped to the room (Multichar.Scene.maxCamDistance), otherwise the camera backs out of the lineup room. The distance is clamped rather than the zoom, so zooming back in works right away.
     local ceiling = Multichar.Scene.maxCamDistance
     if ceiling and dist > ceiling then dist = ceiling end
 
-    -- Parallel shift as a fraction of the visible half-width. offset.x moves the camera and its look-at point
+    -- Parallel shift as a fraction of the visible half-width. offset.x moves the camera and its look-at point together, so the character stays viewed dead-on and sits off-centre, clear of the survivor list.
     local halfHeight = dist * math.tan(math.rad(fov * 0.5))
 
     local aspect = 16.0 / 9.0
@@ -121,56 +96,38 @@ local function applyCam()
     end
 
     local lateral = (focus.offset.x or 0.0) * halfHeight * aspect
-    local camLateral = lateral + drift
 
     -- Fractions of the measured body from the soles up: 0 is the floor under the boots, 1 is the crown of the head.
-    local camZ  = footZ + height * (focus.offset.z or 0.50) + rise
+    local camZ  = footZ + height * (focus.offset.z or 0.50)
     local lookZ = footZ + height * (focus.look.z or 0.50)
 
-    local rad=math.rad(Scene.cameraHeading or 0)
+    -- Rotate the fixed camera around the outdoor stage so the selected heading
+    -- determines the backdrop. At heading 180 this matches the original south-facing setup.
+    local heading = math.rad(s.h or 180.0)
+    local forwardX, forwardY = math.sin(heading), math.cos(heading)
+    local rightX, rightY = math.cos(heading), -math.sin(heading)
     SetCamCoord(Scene.cam,
-        s.x+camLateral*math.cos(rad)+dist*math.sin(rad),
-        s.y+camLateral*math.sin(rad)-dist*math.cos(rad),camZ)
+        s.x - forwardX * dist + rightX * lateral,
+        s.y - forwardY * dist + rightY * lateral,
+        camZ)
 
     PointCamAtCoord(Scene.cam,
-        s.x+lateral*math.cos(rad)+(focus.look.x or 0.0),
-        s.y+lateral*math.sin(rad)+(focus.look.y or 0.0),
+        s.x + rightX * (lateral + (focus.look.x or 0.0)) + forwardX * (focus.look.y or 0.0),
+        s.y + rightY * (lateral + (focus.look.x or 0.0)) + forwardY * (focus.look.y or 0.0),
         lookZ)
 
     SetCamFov(Scene.cam, fov)
 
     -- Debug output: one F8 line per framing change naming the shot, the measured body and the camera position.
-    if Scene.debugCam and Scene.debugCamOnce then
-        Scene.debugCamOnce = false
+    if Scene.debugCam then
         print(('^5[BeyondSurvival]^7 (multichar) %s: foot=%.2f head=%.2f (%.2fm) cam z=%.2f look z=%.2f d=%.2f fov=%.0f')
             :format(Scene.focus, footZ, headZ, height, camZ, lookZ, dist, fov))
     end
 end
 
--- Starts an ease-in of the given strength (1 = opening shot, smaller for a survivor swap).
-function Scene.Glide(strength, ms)
-    if not motionOn() then motion.ms = 0; return end
-    motion.from = math.max(easeLeft(), strength or 1.0)
-    motion.start = GetGameTimer()
-    motion.ms = ms or 1400
-end
-
--- Drives the camera every frame while it moves; idle otherwise.
-CreateThread(function()
-    while true do
-        if Scene.active and Scene.cam and motionOn() then
-            applyCam()
-            Wait(0)
-        else
-            Wait(250)
-        end
-    end
-end)
-
 -- /camdebug - print the framing numbers on every camera change.
 RegisterCommand('camdebug', function()
     Scene.debugCam = not Scene.debugCam
-    Scene.debugCamOnce = Scene.debugCam
     print(('^5[BeyondSurvival]^7 (multichar) camera debug %s')
         :format(Scene.debugCam and 'ON' or 'OFF'))
     if Scene.debugCam then applyCam() end
@@ -191,135 +148,122 @@ end
 function Scene.SetZoom(delta)
     Scene.zoom = math.max(Multichar.Scene.zoomMin,
                  math.min(Multichar.Scene.zoomMax, Scene.zoom + (tonumber(delta) or 0)))
-    Scene.debugCamOnce = Scene.debugCam
     applyCam()
 end
 
 function Scene.SetFocus(name)
     Scene.focus = Multichar.Settings.focus[name] and name or 'full'
-    Scene.debugCamOnce = Scene.debugCam
-    Scene.Glide(0.35, 700)
     applyCam()
 end
 
--- Build / teardown
-
-local function modelFor(gender)
-    local models = exports.bs_core:GetConfig('Character.pedModels',
-        { male = 'mp_m_freemode_01', female = 'mp_f_freemode_01' })
-    return models[gender] or models.male or 'mp_m_freemode_01'
+-- Alpha-Z: local weather/clock preview, refreshed only while the character screen is open.
+-- The game world and server clock are never changed by these client natives.
+local function applyCreatorWeather()
+    if not Scene.active then return end
+    local settings = Multichar.Scene
+    local lock = settings.weatherLock or {}
+    if lock.enabled == false then return end
+    SetOverrideWeather(settings.weather or 'FOGGY')
+    -- Ensure a stable midday even when another weather/time resource has a pending tick.
+    NetworkOverrideClockTime(settings.hour or 12, settings.minute or 30, 0)
+    SetRainLevel(0.0)
+    SetWindSpeed(0.0)
 end
 
--- Starts streaming the stage and the preview assets while the server is still answering. Nothing moves the player here.
-function Scene.Prestream()
-    local s = Multichar.Scene.ped
-    SetFocusPosAndVel(s.x, s.y, s.z, 0.0, 0.0, 0.0)
-    RequestCollisionAtCoord(s.x, s.y, s.z)
-    if not IsNewLoadSceneActive() then NewLoadSceneStart(s.x, s.y, s.z, 0.0, 0.0, 0.0, 50.0, 0) end
-    for _, gender in ipairs({ 'male', 'female' }) do
-        local hash = GetHashKey(modelFor(gender))
-        if IsModelInCdimage(hash) then RequestModel(hash) end
+CreateThread(function()
+    while true do
+        if Scene.active then
+            applyCreatorWeather()
+            local lock = Multichar.Scene.weatherLock or {}
+            Wait(math.max(50, tonumber(lock.tickMs) or 100))
+        else
+            Wait(350)
+        end
     end
-    local idle = Multichar.Settings.idleAnim
-    if idle and idle.dict then RequestAnimDict(idle.dict) end
-end
+end)
 
--- Undoes Prestream when the scene is never built (bucket refused, selector closed).
-function Scene.CancelPrestream()
-    if Scene.active then return end
-    if IsNewLoadSceneActive() then NewLoadSceneStop() end
-    ClearFocus()
-end
+-- Build / teardown
 
 -- Spawns the preview ped and camera. Safe to call repeatedly.
 function Scene.Build()
     if Scene.active then return true end
-    -- Bumped by Destroy: a close during the waits below must not leave a live scene behind.
-    local gen = Scene.gen or 0
 
     local s = Multichar.Scene
-    TriggerEvent('bs:world:selectionWeather',true,{weather=s.weather,hour=s.hour,minute=s.minute})
 
-    -- Park the player's own ped at the scene and hide it; the camera sees the preview ped.
+    -- Park the player's own ped at the scene and hide it; the camera sees the preview ped. Collision is loaded first so the ped does not fall.
     local playerPed = PlayerPedId()
 
-    -- Two-step teleport: going straight to z = -98.5 drops you into a room that has not loaded. Standing at z = 30 first makes the engine cache the column. Same technique as BigDaddy-CharacterManager.
+    -- Two-stage teleport ensures the custom outdoor map has time to stream before showing the preview.
     local pre = s.precache or { x = s.ped.x, y = s.ped.y, z = 30.0 }
 
+    RequestCollisionAtCoord(pre.x, pre.y, pre.z)
+    SetEntityCoordsNoOffset(playerPed, pre.x, pre.y, pre.z, false, false, false)
     FreezeEntityPosition(playerPed, true)
     SetEntityVisible(playerPed, false, false)
     SetEntityInvincible(playerPed, true)
     SetPlayerControl(PlayerId(), false, 0)
 
-    -- The cache-in step only matters for the shell under the map; outdoor scenes go straight to the stage.
-    if not Scene.outdoor then
-        RequestCollisionAtCoord(pre.x, pre.y, pre.z)
-        SetEntityCoordsNoOffset(playerPed, pre.x, pre.y, pre.z, false, false, false)
-        local untilAt = GetGameTimer() + 600
-        repeat Wait(50) until HasCollisionLoadedAroundEntity(playerPed) or GetGameTimer() >= untilAt
-    end
+    Wait(600)
 
     RequestCollisionAtCoord(s.ped.x, s.ped.y, s.ped.z)
     SetEntityCoordsNoOffset(playerPed, s.ped.x, s.ped.y, s.ped.z, false, false, false)
+    Wait(300)
 
-    -- Force the world to stream around the scene, not the player. Prestream may already have started this.
+    -- Force the world to stream around the scene, not the player. With a scripted camera the engine keeps streaming around the player ped, which can leave a grey LOD void.
     SetFocusPosAndVel(s.ped.x, s.ped.y, s.ped.z, 0.0, 0.0, 0.0)
-    if not IsNewLoadSceneActive() then NewLoadSceneStart(s.ped.x, s.ped.y, s.ped.z, 0.0, 0.0, 0.0, 50.0, 0) end
+    NewLoadSceneStart(s.ped.x, s.ped.y, s.ped.z, 0.0, 0.0, 0.0, 50.0, 0)
 
-    -- Collision is required; the wider scene gets a short grace after it and keeps streaming behind the camera (the watchdog pins the focus).
-    -- Requested every two seconds, not every 50ms: each streaming request takes a script-resource slot.
-    local startAt = GetGameTimer()
-    local hardStop = startAt + 5000
-    local nextAsk, collisionAt = 0, nil
+    -- Requested every two seconds, not every 50ms: each streaming request takes a script-resource slot and the pool is 256 per resource (see the note in bs_core/client/cl_spawn.lua).
+    local waited = 0
+    local nextAsk = 0
 
-    while GetGameTimer() < hardStop do
-        local now = GetGameTimer()
-        if now >= nextAsk then
+    while waited < 8000 do
+        if waited >= nextAsk then
             RequestCollisionAtCoord(s.ped.x, s.ped.y, s.ped.z)
-            nextAsk = now + 2000
+            nextAsk = waited + 2000
         end
-        if HasCollisionLoadedAroundEntity(playerPed) then
-            collisionAt = collisionAt or now
-            if not IsNewLoadSceneActive() or IsNewLoadSceneLoaded() or now - collisionAt >= 1500 then break end
-        end
-        Wait(50)
+
+        if HasCollisionLoadedAroundEntity(playerPed) and not IsNewLoadSceneActive() then break end
+        Wait(50); waited = waited + 50
     end
     NewLoadSceneStop()
-    Scene.lastStreamMs = GetGameTimer() - startAt
 
-    if gen ~= (Scene.gen or 0) then
-        ClearFocus()
-        return false
-    end
-
-    if Scene.outdoor and Scene.ResolveOutdoorSet then Scene.ResolveOutdoorSet()end
-    if gen ~= (Scene.gen or 0)then ClearFocus();return false end
     Scene.rotation = 0.0
     Scene.zoom = 1.0
     Scene.focus = 'full'
     Scene.rebuilds = 0
     Scene.nextRebuild = 0
 
-    -- Framed before it is rendered: the camera starts from a default guess and is re-aimed on the first applyCam
+    -- Framed before it is rendered: the camera starts from a default guess and is re-aimed on the first applyCam once a ped exists to measure, so set the initial frame from the default height.
     Scene.cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA',
-        s.ped.x, s.ped.y - (s.cam.offset and s.cam.offset.y or 2.75), s.ped.z + 0.89,
+        s.ped.x, s.ped.y, s.ped.z + 0.89,
         0.0, 0.0, 0.0, s.cam.fov or 50.0, false, 0)
     SetCamActive(Scene.cam, true)
-    Scene.Glide(1.0, 1800)
     applyCam()
     RenderScriptCams(true, false, 0, true, true)
 
-    -- Local-only mood. The server's weather is untouched.
-    SetOverrideWeather(s.weather or 'OVERCAST')
-    NetworkOverrideClockTime(s.hour or 21, s.minute or 40, 0)
+    -- Set a clean local starting sky, then keep it fixed until exit.
+    -- Never use SetWeatherTypeNowPersist or server-wide weather commands here.
+    SetWeatherTypeNow(s.weather or 'FOGGY')
+    SetOverrideWeather(s.weather or 'FOGGY')
+    NetworkOverrideClockTime(s.hour or 12, s.minute or 30, 0)
+    SetRainLevel(0.0)
+    SetWindSpeed(0.0)
 
-    -- bs_world turns every map light off, which leaves a black room
+    -- bs_world turns every map light off, which leaves a black room, so the blackout is lifted while the character screen is up and restored on close. The only exception in the project.
     TriggerEvent('bs:world:blackoutHold', true)
 
     Scene.active = true
+    applyCreatorWeather()
     return true
 end
 
+-- Creates (or replaces) the preview ped for a gender. Uses the same models the player spawns as; bs_core owns that list, so read it instead of hardcoding.
+local function modelFor(gender)
+    local models = exports.bs_core:GetConfig('Character.pedModels',
+        { male = 'mp_m_freemode_01', female = 'mp_f_freemode_01' })
+    return models[gender] or models.male or 'mp_m_freemode_01'
+end
 
 -- Hands-up pose for checking clothing clipping. Each candidate is checked for the clip, since a dict can load without containing it.
 local HANDS_UP = {
@@ -327,19 +271,11 @@ local HANDS_UP = {
     { dict = 'missminuteman_1ig_2', clip = 'handsup_base' },
 }
 
--- Never holds up the preview: when the dictionary is not in memory yet the pose starts once it arrives.
 local function playIdle(ped)
     local anim = Multichar.Settings.idleAnim
-    if not anim or not anim.dict then return end
-    if HasAnimDictLoaded(anim.dict) then
+    if anim and loadAnim(anim.dict) then
         TaskPlayAnim(ped, anim.dict, anim.clip, 2.0, 2.0, -1, 1, 0, false, false, false)
-        return
     end
-    CreateThread(function()
-        if loadAnim(anim.dict) and DoesEntityExist(ped) and Scene.ped == ped and not Scene.handsUp then
-            TaskPlayAnim(ped, anim.dict, anim.clip, 2.0, 2.0, -1, 1, 0, false, false, false)
-        end
-    end)
 end
 
 local function playHandsUp(ped)
@@ -367,8 +303,6 @@ end
 
 function Scene.SpawnPed(gender, force)
     gender = gender or 'male'
-    -- A late preview after the scene closed would re-pin streaming to the stage with nothing to undo it.
-    if not Scene.active then return nil end
     lastGender = gender
 
     -- Re-dressing an existing ped is instant, respawning pops. Only rebuild when the model has to change.
@@ -386,12 +320,6 @@ function Scene.SpawnPed(gender, force)
         if hash then model = candidate break end
     end
 
-    -- The model load waits, the player may have spawned meanwhile.
-    if not Scene.active then
-        if hash then SetModelAsNoLongerNeeded(hash) end
-        return nil
-    end
-
     if not hash then
         print('^1[BeyondSurvival]^7 (multichar) no preview ped would load - the screen will be empty')
         return nil
@@ -407,17 +335,17 @@ function Scene.SpawnPed(gender, force)
 
     local s = Multichar.Scene.ped
 
-    -- No ground probe: GetGroundZFor_3dCoord in this interior returns the first collision hit
+    -- Use the measured CodeWalker ground estimate. Custom map collision may differ; verify in-game.
     local spawnZ = s.z
 
     Scene.ped = CreatePed(4, hash, s.x, s.y, spawnZ, s.h or 180.0, false, true)
     Scene.gender = gender
     SetModelAsNoLongerNeeded(hash)
 
-    -- Hidden until finished: a freemode ped has no head until head-blend data is written
+    -- Hidden until finished: a freemode ped has no head until head-blend data is written, so showing it straight from CreatePed gives a headless body for a few seconds. Scene.Reveal() shows it once dressed.
     SetEntityVisible(Scene.ped, false, false)
 
-    -- Default face applied immediately.
+    -- Default face applied immediately. A freemode ped with no head blend stays headless; zeroes give a neutral base face that ApplyAppearanceTo then overwrites.
     pcall(SetPedHeadBlendData, Scene.ped, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, false)
 
     SetEntityInvincible(Scene.ped, true)
@@ -437,7 +365,7 @@ function Scene.SpawnPed(gender, force)
     SetPedAoBlobRendering(Scene.ped, false)
     SetEntityLodDist(Scene.ped, 1000)
 
-    -- Do not call ClearFocus() here.
+    -- Do not call ClearFocus() here. Streaming focus must stay pinned to the stage; ClearFocus returns it to the player ped, the engine can then cull the preview ped, and the watchdog rebuilds it in a loop.
     SetFocusPosAndVel(s.x, s.y, spawnZ, 0.0, 0.0, 0.0)
     SetEntityCoordsNoOffset(Scene.ped, s.x, s.y, spawnZ, false, false, false)
     if ClearRoomForEntity then pcall(ClearRoomForEntity, Scene.ped) end
@@ -454,40 +382,20 @@ function Scene.SpawnPed(gender, force)
     return Scene.ped
 end
 
--- Show the ped now that it is finished.
--- A fresh survivor fades in over a quarter second; re-dressing the creator draft stays instant.
-local revealToken = 0
-function Scene.Reveal(fade)
-    local ped = Scene.ped
-    if not ped or not DoesEntityExist(ped) then return end
-    revealToken = revealToken + 1
-    local token = revealToken
-    if not fade or not motionOn() then
-        ResetEntityAlpha(ped)
-        SetEntityVisible(ped, true, false)
-        return
+-- Show the ped now that it is finished. Pairs with SetEntityVisible(false) in Build; nothing else turns visibility on, so a preview ped is only visible after it has a face and clothes.
+function Scene.Reveal()
+    if Scene.ped and DoesEntityExist(Scene.ped) then
+        SetEntityVisible(Scene.ped, true, false)
     end
-    SetEntityAlpha(ped, 0, false)
-    SetEntityVisible(ped, true, false)
-    CreateThread(function()
-        local start = GetGameTimer()
-        while token == revealToken and DoesEntityExist(ped) do
-            local t = (GetGameTimer() - start) / 260.0
-            if t >= 1.0 then break end
-            SetEntityAlpha(ped, math.floor(255 * t), false)
-            Wait(0)
-        end
-        if DoesEntityExist(ped) then ResetEntityAlpha(ped) end
-    end)
 end
 
--- Clear everything the previous character left behind (weapon, props like goggles).
+-- Clear everything the previous character left behind (weapon, props like goggles). The preview ped is rebuilt per character, but Dress only added to it.
 local function stripPed(ped)
     if not ped or not DoesEntityExist(ped) then return end
 
     RemoveAllPedWeapons(ped, true)
 
-    -- All prop slots on freemode models: hat, glasses, ears, mouth, left hand, right hand, watch, bracelet.
+    -- All prop slots on freemode models: hat, glasses, ears, mouth, left hand, right hand, watch, bracelet. ClearAllPedProps covers them on current builds; the loop is a free fallback.
     if not pcall(ClearAllPedProps, ped) then
         for slot = 0, 7 do pcall(ClearPedProp, ped, slot) end
     end
@@ -509,7 +417,7 @@ function Scene.Dress(character)
         exports.bs_core:ApplyOutfit(Scene.ped, character.outfit)
     end
 
-    -- Only a saved character gets a weapon.
+    -- Only a saved character gets a weapon. A draft in the creator can carry a stale character.lastWeapon from the previous selection; a character with no id was never holding anything.
     local saved = character.id ~= nil
 
     if saved and Multichar.Settings.showLastWeapon and character.lastWeapon then
@@ -517,7 +425,7 @@ function Scene.Dress(character)
         SetCurrentPedWeapon(Scene.ped, character.lastWeapon, true)
     end
 
-    Scene.Reveal(character.id ~= nil)
+    Scene.Reveal()
 end
 
 -- Drawable and texture counts of what the preview ped has / wears, for the creator's clothing step (keys c<component>, p<prop>).
@@ -536,7 +444,95 @@ function Scene.Report(ped)
     return counts, tex
 end
 
--- Back to the survivor list.
+-- Alpha-Z Survival: only valid, active models/textures from the same collections
+-- as bs_clothing. The catalog is measured on the actual preview freemode ped.
+local wardrobeSlots = {
+    mask = { kind = 'component', id = 1 },
+    top = { kind = 'component', id = 11 },
+    undershirt = { kind = 'component', id = 8 },
+    arms = { kind = 'component', id = 3 },
+    legs = { kind = 'component', id = 4 },
+    shoes = { kind = 'component', id = 6 },
+    accessory = { kind = 'component', id = 7 },
+    hat = { kind = 'prop', id = 0 },
+    glasses = { kind = 'prop', id = 1 },
+    ears = { kind = 'prop', id = 2 },
+    watch = { kind = 'prop', id = 6 },
+    bracelet = { kind = 'prop', id = 7 },
+}
+
+function Scene.WardrobeCatalog(rules)
+    local ped = Scene.ped
+    if not ped or not DoesEntityExist(ped) then return nil end
+    local gender = GetEntityModel(ped) == joaat('mp_f_freemode_01') and 'female' or 'male'
+    local disabled = rules and rules.disabled or {}
+    local disabledTextures = rules and rules.disabledTextures or {}
+    local excluded = Multichar.Clothes.excludedCollections or {}
+    local catalog = {}
+    local collections = math.max(0, GetPedCollectionsCount(ped))
+    local work = 0
+    for cat, info in pairs(wardrobeSlots) do
+        local list, seen = {}, {}
+        if info.kind == 'prop' then
+            list[#list + 1] = { d = -1, k = '', ts = { 0 }, collection = '', localIndex = -1 }
+        end
+        for n = 0, collections - 1 do
+            local name = GetPedCollectionName(ped, n) or ''
+            local omit = false
+            local normalized = name:lower()
+            for _, fragment in ipairs(excluded) do
+                if normalized:find(fragment:lower(), 1, true) then omit = true; break end
+            end
+            if not omit then
+                local count = 0
+                if info.kind == 'component' then
+                    count = math.max(0, GetNumberOfPedCollectionDrawableVariations(ped, info.id, name))
+                else
+                    count = math.max(0, GetNumberOfPedCollectionPropDrawableVariations(ped, info.id, name))
+                end
+                for localIndex = 0, count - 1 do
+                    local global
+                    local texCount
+                    if info.kind == 'component' then
+                        global = GetPedDrawableGlobalIndexFromCollection(ped, info.id, name, localIndex)
+                        texCount = GetNumberOfPedCollectionTextureVariations(ped, info.id, name, localIndex)
+                    else
+                        global = GetPedPropGlobalIndexFromCollection(ped, info.id, name, localIndex)
+                        texCount = GetNumberOfPedCollectionPropTextureVariations(ped, info.id, name, localIndex)
+                    end
+                    global, texCount = tonumber(global), math.max(0, tonumber(texCount) or 0)
+                    if global and global >= 0 and not seen[global] then
+                        local key = table.concat({gender, info.kind, tostring(info.id), name, tostring(localIndex)}, '|')
+                        if disabled[key] ~= true then
+                            local tex = {}
+                            for texture = 0, math.min(texCount, 256) - 1 do
+                                local valid = true
+                                if info.kind == 'component' then
+                                    valid = IsPedCollectionComponentVariationValid(ped, info.id, name, localIndex, texture, 2)
+                                end
+                                if valid and disabledTextures[key .. '|texture|' .. tostring(texture)] ~= true then
+                                    tex[#tex + 1] = texture
+                                end
+                            end
+                            if #tex > 0 then
+                                seen[global] = true
+                                list[#list + 1] = { d = math.floor(global), k = key, ts = tex,
+                                    collection = name, localIndex = localIndex }
+                            end
+                        end
+                    end
+                    work = work + 1
+                    if work % 150 == 0 then Wait(0) end
+                end
+            end
+        end
+        table.sort(list, function(a, b) return a.d < b.d end)
+        catalog[cat] = list
+    end
+    return catalog, gender
+end
+
+-- Back to the survivor list. Scene.zoom and Scene.rotation are only reset in Build(), and cancelling the creator returns to the list without a rebuild, so reset them here.
 function Scene.ResetView()
     if Scene.handsUp then CreateThread(function() Scene.SetHandsUp(false) end) end
     Scene.rotation = 0.0
@@ -546,7 +542,7 @@ function Scene.ResetView()
     applyCam()
 end
 
--- Validated dressing. "CPed::SetVariation: Invalid variation" in the console means a drawable that does not
+-- Validated dressing. "CPed::SetVariation: Invalid variation" in the console means a drawable that does not exist on this model (e.g. a preset jacket index the female ped lacks). The write is dropped and the old item stays, so check ranges first.
 
 -- Out-of-range drawables are rejected, not clamped. Clamping to the last item gave unrelated clothes on the other model.
 local reported = {}
@@ -629,14 +625,9 @@ function Scene.ApplyLook(components, props)
     end
 end
 
--- Pass true when bs_core is about to respawn the player (model swap, teleport, fade).
+-- Pass true when bs_core is about to respawn the player (model swap, teleport, fade). Then do not touch the player ped: unfreezing mid-teleport drops people through the map. Only tear down the camera and preview ped.
 function Scene.Destroy(handoff)
-    Scene.gen = (Scene.gen or 0) + 1
-    TriggerEvent('bs:world:selectionWeather',false)
-    if not Scene.active then
-        ClearFocus()
-        return
-    end
+    if not Scene.active then return end
 
     if Scene.ped and DoesEntityExist(Scene.ped) then DeleteEntity(Scene.ped) end
     Scene.ped = nil
@@ -648,15 +639,20 @@ function Scene.Destroy(handoff)
         Scene.cam = nil
     end
 
+    -- Release ONLY our local preview overrides. The world/Alpha-Z clients
+    -- re-sync the actual server weather when the player returns to gameplay.
+    Scene.active = false
     ClearOverrideWeather()
     NetworkClearClockTimeOverride()
+    SetRainLevel(-1.0)
+    SetWindSpeed(-1.0)
 
     -- The exception ends with the scene.
     TriggerEvent('bs:world:blackoutHold', false)
 
     -- Unconditional and before the hand-off check: leaving streaming focus on the stage stops the world loading textures afterwards.
     ClearFocus()
-    Scene.active = false
+    TriggerEvent('bs:world:creatorWeatherReleased')
 
     if handoff then return end
 
@@ -668,7 +664,8 @@ function Scene.Destroy(handoff)
     SetPlayerControl(PlayerId(), true, 0)
 end
 
--- Scene lighting. bs_world turns map lights off, which left the preview in flat grey.
+-- Scene lighting
+-- bs_world turns map lights off, which left the preview in flat grey. These are local lights drawn only while the scene is up and around the stage: key light, cold fill from behind, low warm bounce.
 
 CreateThread(function()
     while true do
@@ -679,16 +676,20 @@ CreateThread(function()
             local L = Multichar.Scene.lights or {}
 
             if L.enabled ~= false then
-                for _, key in ipairs({ 'key', 'rim', 'bounce' }) do
-                    local light = L[key]
+                local heading = math.rad(Multichar.Scene.ped.h or 180.0)
+                local fwdX, fwdY = math.sin(heading), math.cos(heading)
+                local rightX, rightY = math.cos(heading), -math.sin(heading)
+                for _, lightName in ipairs({ 'key', 'rim', 'bounce' }) do
+                    local light = L[lightName]
                     if light then
-                        -- Offsets are written for a camera due south; turn them with the scene's camera heading.
-                        local rad = math.rad(Scene.cameraHeading or 0)
-                        local lx, ly = light.x or 0.0, light.y or 0.0
+                        -- Light is always in front of the subject for the key,
+                        -- behind for the rim, independent of world heading.
+                        local front = lightName == 'key' and -2.0 or (lightName == 'rim' and 1.4 or -0.55)
+                        local side = lightName == 'key' and 0.2 or (light.x or 0.0)
                         DrawLightWithRange(
-                            at.x + lx * math.cos(rad) - ly * math.sin(rad),
-                            at.y + lx * math.sin(rad) + ly * math.cos(rad),
-                            at.z + (light.z or 0.0),
+                            at.x + fwdX * front + rightX * side,
+                            at.y + fwdY * front + rightY * side,
+                            at.z + (light.z or 1.0),
                             light.r or 255, light.g or 255, light.b or 255,
                             light.range or 5.0, light.intensity or 2.0)
                     end
@@ -700,7 +701,8 @@ CreateThread(function()
     end
 end)
 
--- Watchdog: the world can unstream (grey void) or the preview ped can vanish.
+-- Watchdog
+-- The world can unstream (grey void) or the preview ped can vanish. Both look the same to the player, so this re-asserts both a few times a second while the scene is up.
 
 CreateThread(function()
     while true do
@@ -712,23 +714,15 @@ CreateThread(function()
             -- Keep streaming pinned to the stage, not the player.
             SetFocusPosAndVel(s.x, s.y, s.z, 0.0, 0.0, 0.0)
 
-            -- Late cleanup from a previous menu can deactivate scripted rendering.
-            if Scene.cam and DoesCamExist(Scene.cam) and GetRenderingCam()~=Scene.cam then
-                SetCamActive(Scene.cam,true)
-                RenderScriptCams(true,false,0,true,true)
-            end
-
-            if IsScreenFadedOut() then DoScreenFadeIn(250)end
-
-            -- Re-aim: the head bone is not measurable on the frame the ped is created
-            if Scene.ped and DoesEntityExist(Scene.ped) and not motionOn() then applyCam() end
+            -- Re-aim. The head bone is not measurable on the frame the ped is created, so the first framing uses the default height; this corrects it once the skeleton exists and after a model swap.
+            if Scene.ped and DoesEntityExist(Scene.ped) then applyCam() end
 
             local now = GetGameTimer()
 
             if (not Scene.ped or not DoesEntityExist(Scene.ped))
                and now >= (Scene.nextRebuild or 0) then
 
-                -- Rate limited: a rebuild that fails for the same reason must not retry twice a second.
+                -- Rate limited on purpose: a rebuild that fails for the same reason must not retry twice a second.
                 Scene.rebuilds = (Scene.rebuilds or 0) + 1
                 Scene.nextRebuild = now + 2500
 
@@ -745,32 +739,8 @@ CreateThread(function()
     end
 end)
 
--- Rotation and zoom come from the NUI (buttons, drag, keyboard) because the game never sees the mouse while the
+-- Rotation and zoom come from the NUI (buttons, drag, keyboard) because the game never sees the mouse while the cursor is captured. See the pointer handlers in html/js/app.js.
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then Scene.Destroy() end
 end)
-
--- Card snapshots do not touch the selected ped or the character creator.
-function Scene.MakePortraitPed(character,current)
-    local hash=GetHashKey(modelFor(character.gender or 'male'))
-    RequestModel(hash)
-    local deadline=GetGameTimer()+2500
-    while current() and not HasModelLoaded(hash) and GetGameTimer()<deadline do Wait(25)end
-    if not current() or not HasModelLoaded(hash) then SetModelAsNoLongerNeeded(hash);return nil end
-    local at=Multichar.Scene.ped
-    local ped=CreatePed(4,hash,at.x,at.y,at.z+12,180.0,false,false)
-    SetModelAsNoLongerNeeded(hash)
-    if not ped or ped==0 then return nil end
-    SetEntityAsMissionEntity(ped,true,true)
-    Entity(ped).state:set('bsProtected',true,false)
-    SetEntityCollision(ped,false,false);FreezeEntityPosition(ped,true)
-    SetEntityInvincible(ped,true);SetBlockingOfNonTemporaryEvents(ped,true)
-    SetPedDefaultComponentVariation(ped)
-    local ok=pcall(function()
-        exports.bs_core:ApplyAppearanceTo(ped,character.appearance)
-        if character.outfit then exports.bs_core:ApplyOutfit(ped,character.outfit)end
-    end)
-    if not ok then DeleteEntity(ped);return nil end
-    return ped
-end

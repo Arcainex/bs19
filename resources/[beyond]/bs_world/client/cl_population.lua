@@ -15,7 +15,6 @@ CreateThread(function()
     if not World.Population.enabled then return end
 
     local p = World.Population
-    local nextStatic = 0
 
     while true do
         Wait(0)
@@ -26,22 +25,16 @@ CreateThread(function()
         SetPedDensityMultiplierThisFrame(p.pedDensity)
         SetScenarioPedDensityMultiplierThisFrame(p.scenarioDensity, p.scenarioDensity)
 
-        -- These are not "this frame" natives, so once a second is plenty.
-        local now = GetGameTimer()
-        if now >= nextStatic then
-            nextStatic = now + 1000
+        -- Density multipliers only stop new spawns
+        safe(SetPedPopulationBudget, 0)
+        safe(SetVehiclePopulationBudget, 0)
 
-            -- Density multipliers only stop new spawns
-            safe(SetPedPopulationBudget, 0)
-            safe(SetVehiclePopulationBudget, 0)
-
-            -- Garbage trucks, planes and boats have their own spawn paths.
-            SetGarbageTrucks(false)
-            SetRandomBoats(false)
-            SetCreateRandomCops(false)
-            SetCreateRandomCopsNotOnScenarios(false)
-            SetCreateRandomCopsOnScenarios(false)
-        end
+        -- Garbage trucks, planes and boats have their own spawn paths.
+        SetGarbageTrucks(false)
+        SetRandomBoats(false)
+        SetCreateRandomCops(false)
+        SetCreateRandomCopsNotOnScenarios(false)
+        SetCreateRandomCopsOnScenarios(false)
 
         if p.disableAmbient then
             SetAmbientVehicleRangeMultiplierThisFrame(0.0)
@@ -134,10 +127,6 @@ local PURGE_BUDGET = 40
 --- @return boolean gone  true when the entity is actually no longer there
 local function purge(entity, isVehicle)
     if not DoesEntityExist(entity) then return true end
-    if not isVehicle then
-        local state=Entity(entity).state
-        if IsPedAPlayer(entity)or IsEntityAMissionEntity(entity)or (state and (state.bsProtected or state.bsZombie or state.bsConvoy or state.bsSurvivorLink))then return false end
-    end
 
     -- Rule 1. A networked entity we do not own cannot be deleted, and tagging it would waste a slot.
     if NetworkGetEntityIsNetworked(entity) then
@@ -237,7 +226,7 @@ CreateThread(function()
 
             if not IsPedAPlayer(ped) and DoesEntityExist(ped) then
                 local state = Entity(ped).state
-                local ours = IsEntityAMissionEntity(ped)or (state and (state.bsZombie or state.bsProtected or state.bsConvoy or state.bsSurvivorLink))
+                local ours = state and (state.bsZombie or state.bsProtected or state.bsConvoy)
 
                 -- The state bag tag is only a hint
                 if not ours and GetResourceState('bs_zombies') == 'started' then

@@ -104,7 +104,7 @@ end
 -- NPCs
 --------------------------------------------------------------------------------
 
--- Sandy Camp and Paleto offsets are first guesses; correct them with /traderdebug. The faction zones and the airbase were placed from the map props (see _notes/TRADER_PLACEMENT.md).
+-- Two NPCs per safe zone, plus a black-market fence at Sandy Camp (fence_sandy), the one informal zone. Offsets are first guesses; correct them with /traderdebug.
 Traders.Traders = {
 
     ---------------------------------------------------------------- Sandy Camp
@@ -115,14 +115,6 @@ Traders.Traders = {
         model = 'a_m_m_farmer_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
 
         buys = {
-            { item = 'fish_bass', price = 16 },
-            { item = 'fish_catfish', price = 28 },
-            { item = 'fish_trout', price = 55 },
-            { item = 'fish_salmon', price = 110 },
-            { item = 'fish_mackerel', price = 18 },
-            { item = 'raw_fish', price = 10 },
-            { item = 'big_fish', price = 100 },
-
             -- zombie_teeth buy price is 80% of catalogue value (10), in line with the rest of the file (about Economy.Settings.sellRateMultiplier).
             { item = 'zombie_teeth',    price = 5 },
             { item = 'scrap_metal',     price = 3 },
@@ -139,11 +131,6 @@ Traders.Traders = {
         },
         -- Sell prices keep roughly a 1.4-1.5x markup over catalogue value (antiseptic: value 60).
         sells = {
-            { item = 'radio', price = 220, stock = 8 },
-            { item = 'radio_advanced', price = 800, stock = 3 },
-            { item = 'portable_antenna', price = 1100, stock = 2 },
-            { item = 'fishing_rod', price = 120, stock = 8 },
-            { item = 'fish_bait', price = 3, stock = 200 },
             { item = 'water_bottle',  price = 12,  stock = 40 },
             { item = 'canned_food',   price = 18,  stock = 40 },
             { item = 'bandage',       price = 25,  stock = 25 },
@@ -172,14 +159,6 @@ Traders.Traders = {
         model = 'a_f_m_trampbeac_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
 
         buys = {
-            { item = 'fish_bass', price = 16 },
-            { item = 'fish_catfish', price = 28 },
-            { item = 'fish_trout', price = 55 },
-            { item = 'fish_salmon', price = 110 },
-            { item = 'fish_mackerel', price = 18 },
-            { item = 'raw_fish', price = 10 },
-            { item = 'big_fish', price = 100 },
-
             { item = 'wood_plank',  price = 2 },
             { item = 'scrap_metal', price = 3 },
             { item = 'cloth',       price = 2 },
@@ -193,15 +172,13 @@ Traders.Traders = {
         },
         -- Same ~1.4x markup over catalogue value (antibiotics 220, lockpick 140).
         sells = {
-            { item = 'fishing_rod', price = 120, stock = 8 },
-            { item = 'fish_bait', price = 3, stock = 200 },
             { item = 'water_bottle', price = 12,  stock = 40 },
             { item = 'canned_food',  price = 18,  stock = 40 },
             { item = 'antibiotics',  price = 300, stock = 12 },
             { item = 'lockpick',     price = 200, stock = 10 },
             { item = 'shovel',       price = 210, stock = 5  },
-            { item = 'pack_civilian',   price = 170, stock = 4  },
-            { item = 'pack_hiking',  price = 360, stock = 2  },
+            { item = 'pack_small',   price = 170, stock = 4  },
+            { item = 'pack_medium',  price = 360, stock = 2  },
         },
     },
 
@@ -217,128 +194,26 @@ Traders.Traders = {
     -- Grand Senora Airbase: one ped with role 'both', the base quartermaster handles armoury and missions.
     armorer_airbase = {
         label = 'Armorer', role = 'both',
-        -- Stands next to the armoury crate stacks north of the yard (ch_prop_ch_crate_01a / h4_prop_h4_crates_full_01a). Ymap-derived, absolute (1991.36, 3075.82, 46.99), check in game.
-        zone = 'post_apocalyptic_airbase', offset = vector3(-0.64, 18.42, 0.69), heading = 185.9,
+        zone = 'post_apocalyptic_airbase', offset = vector3(-4.0, 6.0, 0.0), heading = 110.0,
         model = 's_m_y_ranger_01', scenario = 'WORLD_HUMAN_GUARD_STAND',
 
         -- Ammo sells above catalogue value (ammo_pistol/shotgun/rifle are 4/7/8) at the usual ~1.4-1.5x markup; buy prices are raised to keep a sane spread.
         buys = {
-            { item = 'advanced_rifle', price = 1440 },
-            { item = 'ap_pistol', price = 607 },
-            { item = 'assault_rifle', price = 1170 },
-            { item = 'assault_rifle_mk2', price = 1935 },
-            { item = 'assault_shotgun', price = 1620 },
-            { item = 'assault_smg', price = 990 },
-            { item = 'bullpup_rifle', price = 1305 },
-            { item = 'bullpup_rifle_mk2', price = 1890 },
-            { item = 'bullpup_shotgun', price = 1282 },
-            { item = 'carbine', price = 1080 },
-            { item = 'carbine_mk2', price = 2025 },
-            { item = 'combat_mg', price = 2520 },
-            { item = 'combat_mg_mk2', price = 3060 },
-            { item = 'combat_pdw', price = 1125 },
-            { item = 'combat_pistol', price = 382 },
-            { item = 'compact_rifle', price = 1057 },
-            { item = 'gusenberg', price = 1170 },
-            { item = 'heavy_pistol', price = 540 },
-            { item = 'heavy_shotgun', price = 1485 },
-            { item = 'heavy_sniper', price = 2565 },
-            { item = 'heavy_sniper_mk2', price = 3330 },
-            { item = 'hunting_rifle', price = 945 },
-            { item = 'machine_pistol', price = 517 },
-            { item = 'marksman', price = 1305 },
-            { item = 'marksman_mk2', price = 2160 },
-            { item = 'mg', price = 2070 },
-            { item = 'micro_smg', price = 607 },
-            { item = 'military_rifle', price = 1845 },
-            { item = 'musket', price = 495 },
-            { item = 'pipe_pistol', price = 144 },
-            { item = 'pipe_shotgun', price = 234 },
-            { item = 'pistol', price = 292 },
-            { item = 'pistol_50', price = 742 },
-            { item = 'pistol_mk2', price = 810 },
-            { item = 'pump_shotgun', price = 562 },
-            { item = 'pump_shotgun_mk2', price = 1282 },
-            { item = 'revolver', price = 405 },
-            { item = 'revolver_mk2', price = 1035 },
-            { item = 'sawn_off', price = 495 },
-            { item = 'smg', price = 630 },
-            { item = 'smg_mk2', price = 1395 },
-            { item = 'sns_pistol_mk2', price = 562 },
-            { item = 'special_carbine', price = 1530 },
-            { item = 'special_carbine_mk2', price = 2115 },
-            { item = 'vintage_pistol', price = 342 },
-            { item = 'ammo_magnum', price = 5 },
-            { item = 'gun_parts', price = 45 },
             { item = 'ammo_pistol',  price = 2 },
             { item = 'ammo_shotgun', price = 3 },
             { item = 'ammo_rifle',   price = 4 },
         },
         -- The only vendor that sells firearms. Priced and stocked as the expensive, limited option next to finding or crafting one.
         sells = {
-            { item = 'advanced_rifle', price = 4800, stock = 2 },
-            { item = 'ap_pistol', price = 2025, stock = 3 },
-            { item = 'assault_rifle', price = 3900, stock = 2 },
-            { item = 'assault_rifle_mk2', price = 6450, stock = 1 },
-            { item = 'assault_shotgun', price = 5400, stock = 2 },
-            { item = 'assault_smg', price = 3300, stock = 2 },
-            { item = 'bullpup_rifle', price = 4350, stock = 2 },
-            { item = 'bullpup_rifle_mk2', price = 6300, stock = 1 },
-            { item = 'bullpup_shotgun', price = 4275, stock = 2 },
-            { item = 'carbine_mk2', price = 6750, stock = 1 },
-            { item = 'combat_mg', price = 8400, stock = 1 },
-            { item = 'combat_mg_mk2', price = 10200, stock = 1 },
-            { item = 'combat_pdw', price = 3750, stock = 2 },
-            { item = 'compact_rifle', price = 3525, stock = 2 },
-            { item = 'gusenberg', price = 3900, stock = 2 },
-            { item = 'heavy_pistol', price = 1800, stock = 3 },
-            { item = 'heavy_shotgun', price = 4950, stock = 2 },
-            { item = 'heavy_sniper', price = 8550, stock = 1 },
-            { item = 'heavy_sniper_mk2', price = 11100, stock = 1 },
-            { item = 'hunting_rifle', price = 3150, stock = 2 },
-            { item = 'machine_pistol', price = 1725, stock = 3 },
-            { item = 'marksman', price = 4350, stock = 1 },
-            { item = 'marksman_mk2', price = 7200, stock = 1 },
-            { item = 'mg', price = 6900, stock = 1 },
-            { item = 'micro_smg', price = 2025, stock = 2 },
-            { item = 'military_rifle', price = 6150, stock = 1 },
-            { item = 'musket', price = 1650, stock = 2 },
-            { item = 'pipe_pistol', price = 480, stock = 3 },
-            { item = 'pipe_shotgun', price = 780, stock = 2 },
-            { item = 'pistol_50', price = 2475, stock = 3 },
-            { item = 'pistol_mk2', price = 2700, stock = 1 },
-            { item = 'pump_shotgun_mk2', price = 4275, stock = 1 },
-            { item = 'revolver', price = 1350, stock = 3 },
-            { item = 'revolver_mk2', price = 3450, stock = 1 },
-            { item = 'sawn_off', price = 1650, stock = 2 },
-            { item = 'smg_mk2', price = 4650, stock = 1 },
-            { item = 'sns_pistol_mk2', price = 1875, stock = 1 },
-            { item = 'special_carbine', price = 5100, stock = 2 },
-            { item = 'special_carbine_mk2', price = 7050, stock = 1 },
-            { item = 'vintage_pistol', price = 1140, stock = 3 },
-            { item = 'ammo_magnum', price = 13, stock = 100 },
-            { item = 'att_muzzle_brake', price = 480, stock = 3 },
-            { item = 'att_reflex', price = 440, stock = 3 },
-            { item = 'att_scope_long', price = 930, stock = 2 },
-            { item = 'att_laser', price = 320, stock = 3 },
-            { item = 'gun_parts', price = 180, stock = 15 },
             { item = 'ammo_pistol',   price = 6,    stock = 200 },
             { item = 'ammo_shotgun',  price = 10,   stock = 120 },
             { item = 'ammo_rifle',    price = 11,   stock = 100 },
             { item = 'armour_plate',  price = 850,  stock = 2   },
-            { item = 'pack_survival',    price = 730,  stock = 2   },
+            { item = 'pack_large',    price = 730,  stock = 2   },
             { item = 'vest_tactical', price = 530,  stock = 2   },
             { item = 'booster_focus',  price = 300,  stock = 3   },
             { item = 'booster_decoy',  price = 240,  stock = 3   },
             { item = 'combat_pistol', price = 1150, stock = 3   },
-            { item = 'pistol', price = 950, stock = 3 },
-            { item = 'smg', price = 2100, stock = 2 },
-            { item = 'carbine', price = 3600, stock = 1 },
-            { item = 'att_suppressor', price = 630, stock = 2 },
-            { item = 'att_scope', price = 570, stock = 3 },
-            { item = 'att_grip', price = 290, stock = 3 },
-            { item = 'att_flashlight', price = 240, stock = 4 },
-            { item = 'att_extmag', price = 360, stock = 4 },
             { item = 'pump_shotgun',  price = 1650, stock = 2   },
         },
 
@@ -347,8 +222,7 @@ Traders.Traders = {
 
     medic_airbase = {
         label = 'Base Medic', role = 'trader',
-        -- Stands next to the gazebo with clubhouse chairs and water cooler (prop_gazebo_02) by the yard. Ymap-derived, absolute (1997.55, 3060.33, 47.05).
-        zone = 'post_apocalyptic_airbase', offset = vector3(5.55, 2.93, 0.75), heading = 94.1,
+        zone = 'post_apocalyptic_airbase', offset = vector3(5.0, -3.0, 0.0), heading = 250.0,
         model = 's_f_y_ranger_01', scenario = 'WORLD_HUMAN_CLIPBOARD',
 
         buys = {
@@ -390,8 +264,7 @@ Traders.Traders = {
     },
     tailor_airbase = {
         label = 'The Tailor', role = 'clothing',
-        -- Stands next to the bench and water vending machine (prop_bench_01a / prop_vend_water_01) south of the yard. Ymap-derived, absolute (1994.48, 3053.17, 47.21).
-        zone = 'post_apocalyptic_airbase', offset = vector3(2.48, -4.23, 0.91), heading = 12.2,
+        zone = 'post_apocalyptic_airbase', offset = vector3(-8.0, -6.0, 0.0), heading = 60.0,
         model = 'a_f_m_trampbeac_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
     },
 
@@ -439,204 +312,6 @@ Traders.Traders = {
         model = 's_m_m_doctor_01', scenario = 'WORLD_HUMAN_CLIPBOARD',
 
         missions = { 'rehab_fetch_meds', 'rehab_clear_nest' },
-    },
-
-    ------------------------------------------------ Vanilla faction safezones and outposts
-    -- Three NPCs per zone (trading, missions, tailor), locked to that faction: outsiders can trade at the
-    -- surcharge, only members get missions and the wardrobe. Spots come from the props of The Apocalypse
-    -- Project map around each zone (see _notes/TRADER_PLACEMENT.md); offsets are from the zone centre in
-    -- bs_zombies Zones.FactionSafe, so they move with it. Ped z is ground + 1 (cl_peds spawns at z - 1).
-    -- The Bikers Outpost is the Grand Senora Airbase: armorer_airbase, medic_airbase and tailor_airbase serve it.
-
-    -- Military
-    military_trader = {
-        -- Stands next to the stack of rifle crates (gr_prop_gr_crates_rifles_04a) by the north-east hangar. Ymap-derived, absolute (1753.55, 3273.25, 41.16).
-        label = 'Military Trader', role = 'trader', faction = 'military',
-        zone = 'military', offset = vector3(9.55, 8.25, -0.09), heading = 130.8,
-        model = 's_m_y_marine_03', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-
-        buys = {
-            { item = 'scrap_metal',     price = 3 },
-            { item = 'copper',          price = 5 },
-            { item = 'electrical_wire', price = 15 },
-            { item = 'ammo_pistol',     price = 2 },
-            { item = 'ammo_rifle',      price = 4 },
-        },
-        sells = {
-            { item = 'water_bottle', price = 12,  stock = 40 },
-            { item = 'canned_food',  price = 18,  stock = 40 },
-            { item = 'bandage',      price = 25,  stock = 30 },
-            { item = 'medkit',       price = 170, stock = 8  },
-            { item = 'ammo_pistol',  price = 6,   stock = 150 },
-            { item = 'ammo_rifle',   price = 11,  stock = 80 },
-            { item = 'vest_tactical', price = 530, stock = 2 },
-        },
-    },
-    military_missions = {
-        -- Stands next to the supply rack with ammo boxes (imp_prop_impexp_rack_02a) inside the north gate. Ymap-derived, absolute (1744.70, 3298.14, 41.22).
-        label = 'Military Quartermaster', role = 'quest', faction = 'military',
-        zone = 'military', offset = vector3(0.70, 33.14, -0.03), heading = 178.8,
-        model = 's_m_m_marine_01', scenario = 'WORLD_HUMAN_CLIPBOARD',
-
-        missions = { 'kill_walkers_50', 'gather_scrap_30', 'gather_wood_20', 'gather_teeth_50' },
-    },
-    military_tailor = {
-        -- Stands next to the ammo locker and gun case (bkr_prop_gunlocker_ammo_01a) on the west side. Ymap-derived, absolute (1719.54, 3286.03, 41.20), check in game.
-        label = 'The Tailor', role = 'clothing', faction = 'military',
-        zone = 'military', offset = vector3(-24.46, 21.03, -0.05), heading = 229.3,
-        model = 's_f_y_ranger_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-    },
-
-    -- Rebels
-    rebels_trader = {
-        -- Stands next to the fruit stall and table (prop_fruit_stand_01 / prop_table_08) in the middle of the camp market. Ymap-derived, absolute (1012.33, -320.18, 67.22).
-        label = 'Rebels Trader', role = 'trader', faction = 'rebels',
-        zone = 'rebels', offset = vector3(-2.67, -2.18, 0.22), heading = 309.2,
-        model = 'g_m_y_salvagoon_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-
-        buys = {
-            { item = 'scrap_metal', price = 3 },
-            { item = 'cloth',       price = 2 },
-            { item = 'wood_plank',  price = 2 },
-            { item = 'copper',      price = 5 },
-            { item = 'deer_hide',   price = 18 },
-            { item = 'boar_hide',   price = 15 },
-        },
-        sells = {
-            { item = 'water_bottle',  price = 12,  stock = 40 },
-            { item = 'canned_food',   price = 18,  stock = 40 },
-            { item = 'bandage',       price = 25,  stock = 25 },
-            { item = 'lockpick',      price = 200, stock = 8 },
-            { item = 'hunting_knife', price = 135, stock = 5 },
-            { item = 'pack_civilian',    price = 170, stock = 4 },
-        },
-    },
-    rebels_missions = {
-        -- Stands next to the parasol table (prop_table_para_comb_05) by the couches. Ymap-derived, absolute (1016.11, -310.59, 67.72).
-        label = 'Rebels Quartermaster', role = 'quest', faction = 'rebels',
-        zone = 'rebels', offset = vector3(1.11, 7.41, 0.72), heading = 171.5,
-        model = 'a_m_m_hillbilly_01', scenario = 'WORLD_HUMAN_CLIPBOARD',
-
-        missions = { 'kill_walkers_50', 'gather_scrap_30', 'gather_wood_20', 'gather_teeth_50' },
-    },
-    rebels_tailor = {
-        -- Stands next to the cloth market tents (prop_skid_tent_cloth). Ymap-derived, absolute (1026.91, -314.53, 67.77).
-        label = 'The Tailor', role = 'clothing', faction = 'rebels',
-        zone = 'rebels', offset = vector3(11.91, 3.47, 0.77), heading = 106.2,
-        model = 'a_f_y_hippie_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-    },
-
-    -- Rebels Outpost
-    rebels_outpost_trader = {
-        -- Stands next to the camp kitchen: fridge, fruit crates and BBQs (prop_trailr_fridge / prop_fruit_plas_crate_01). Ymap-derived, absolute (-1141.59, 4909.81, 220.97), check in game.
-        label = 'Rebels Outpost Trader', role = 'trader', faction = 'rebels',
-        zone = 'rebels_outpost', offset = vector3(-34.59, -10.19, 3.97), heading = 286.4,
-        model = 'a_m_m_hillbilly_02', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-
-        buys = {
-            { item = 'wood_plank',  price = 2 },
-            { item = 'scrap_metal', price = 3 },
-            { item = 'deer_hide',   price = 18 },
-            { item = 'rabbit_pelt', price = 7 },
-            { item = 'coyote_pelt', price = 13 },
-        },
-        sells = {
-            { item = 'water_bottle', price = 12,  stock = 30 },
-            { item = 'canned_food',  price = 18,  stock = 30 },
-            { item = 'bandage',      price = 25,  stock = 20 },
-            { item = 'antibiotics',  price = 300, stock = 6 },
-            { item = 'shovel',       price = 210, stock = 3 },
-        },
-    },
-    rebels_outpost_missions = {
-        -- Stands next to the gunsmith workbench and tool chests (gr_prop_gr_gunsmithsupl_02a). Ymap-derived, absolute (-1099.11, 4946.36, 218.36).
-        label = 'Rebels Outpost Quartermaster', role = 'quest', faction = 'rebels',
-        zone = 'rebels_outpost', offset = vector3(7.89, 26.36, 1.36), heading = 163.3,
-        model = 'g_m_y_salvagoon_02', scenario = 'WORLD_HUMAN_CLIPBOARD',
-
-        missions = { 'kill_walkers_50', 'gather_scrap_30', 'gather_wood_20', 'gather_teeth_50' },
-    },
-    rebels_outpost_tailor = {
-        -- Stands next to the camp bed (bkr_prop_biker_campbed_01) south of the clearing. Ymap-derived, absolute (-1116.83, 4909.10, 218.64), check in game.
-        label = 'The Tailor', role = 'clothing', faction = 'rebels',
-        zone = 'rebels_outpost', offset = vector3(-9.83, -10.90, 1.64), heading = 318.0,
-        model = 'a_f_m_trampbeac_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-    },
-
-    -- Civilians
-    civilians_trader = {
-        -- Stands next to the fruit stall and crates (prop_fruitstand_01 / prop_crate_10a) in the market corner. Ymap-derived, absolute (-252.76, -2067.61, 27.62).
-        label = 'Civilians Trader', role = 'trader', faction = 'civilians',
-        zone = 'civilians', offset = vector3(13.24, -18.61, 0.62), heading = 35.4,
-        model = 'a_m_m_farmer_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-
-        buys = {
-            { item = 'scrap_metal', price = 3 },
-            { item = 'cloth',       price = 2 },
-            { item = 'wood_plank',  price = 2 },
-            { item = 'copper',      price = 5 },
-        },
-        sells = {
-            { item = 'water_bottle', price = 12,  stock = 50 },
-            { item = 'canned_food',  price = 18,  stock = 50 },
-            { item = 'bandage',      price = 25,  stock = 25 },
-            { item = 'antiseptic',   price = 90,  stock = 15 },
-            { item = 'toolbox',      price = 220, stock = 3 },
-            { item = 'wood_plank',   price = 8,   stock = 60 },
-            { item = 'nails',        price = 3,   stock = 200 },
-            { item = 'hammer',       price = 105, stock = 3 },
-        },
-    },
-    civilians_missions = {
-        -- Stands next to the desk with notebook and chair (prop_table_08) on the west side. Ymap-derived, absolute (-269.63, -2064.16, 27.62).
-        label = 'Civilians Quartermaster', role = 'quest', faction = 'civilians',
-        zone = 'civilians', offset = vector3(-3.63, -15.16, 0.62), heading = 346.5,
-        model = 'a_m_y_hipster_01', scenario = 'WORLD_HUMAN_CLIPBOARD',
-
-        missions = { 'kill_walkers_50', 'gather_scrap_30', 'gather_wood_20', 'gather_teeth_50' },
-    },
-    civilians_tailor = {
-        -- Stands next to the canopy tents by the fire pits (prop_skid_tent_03). Ymap-derived, absolute (-228.17, -2067.08, 27.62), check in game.
-        label = 'The Tailor', role = 'clothing', faction = 'civilians',
-        zone = 'civilians', offset = vector3(37.83, -18.08, 0.62), heading = 64.5,
-        model = 'a_f_y_hippie_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-    },
-
-    -- Bikers
-    bikers_trader = {
-        -- Stands next to the wheel rack and tool boxes in the workshop (imp_prop_impexp_hub_rack_01a). Ymap-derived, absolute (961.12, -208.64, 73.03).
-        label = 'Bikers Trader', role = 'trader', faction = 'bikers',
-        zone = 'bikers', offset = vector3(3.88, -2.47, 0.98), heading = 57.5,
-        model = 'g_m_y_lost_02', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
-
-        buys = {
-            { item = 'scrap_metal', price = 3 },
-            { item = 'battery',     price = 145 },
-            { item = 'engine_part', price = 215 },
-            { item = 'spark_plug',  price = 65 },
-        },
-        sells = {
-            { item = 'water_bottle', price = 12,  stock = 30 },
-            { item = 'canned_food',  price = 18,  stock = 30 },
-            { item = 'bandage',      price = 25,  stock = 20 },
-            { item = 'lockpick',     price = 200, stock = 6 },
-            { item = 'fuel_can',     price = 180, stock = 6 },
-            { item = 'spark_plug',   price = 340, stock = 3 },
-        },
-    },
-    bikers_missions = {
-        -- Stands next to the sandbag post (prop_mb_sandblock_01) inside the main gate. Ymap-derived, absolute (965.11, -186.39, 72.64).
-        label = 'Bikers Quartermaster', role = 'quest', faction = 'bikers',
-        zone = 'bikers', offset = vector3(7.87, 19.78, 0.59), heading = 158.3,
-        model = 'g_m_y_lost_03', scenario = 'WORLD_HUMAN_CLIPBOARD',
-
-        missions = { 'kill_walkers_50', 'gather_scrap_30', 'gather_wood_20', 'gather_teeth_50' },
-    },
-    bikers_tailor = {
-        -- Stands next to the camp beds in the bunk corner (gr_prop_gr_campbed_01). Ymap-derived, absolute (954.53, -197.92, 73.18), check in game.
-        label = 'The Tailor', role = 'clothing', faction = 'bikers',
-        zone = 'bikers', offset = vector3(-2.71, 8.25, 1.13), heading = 198.2,
-        model = 'g_f_y_lost_01', scenario = 'WORLD_HUMAN_STAND_IMPATIENT',
     },
 }
 

@@ -1,4 +1,5 @@
--- bs_vip - config: vIP buys looks and comfort, never an edge: no damage, armour, speed, loot, XP, money, storage
+-- bs_vip - config. VIP buys looks and comfort, never an edge: no damage, armour, speed, loot, XP, money, storage, queue skipping or teleports.
+-- Three tiers, each a level. A perk has a `minTier`; a player gets it when their tier level is at least that.
 
 Vip = {}
 
@@ -124,7 +125,8 @@ Vip.KillfeedStyles = { { id = 'default', label = 'Standard' }, { id = 'rust', la
 Vip.DeathStyles    = { { id = 'default', label = 'Standard' }, { id = 'ash', label = 'Ash fade' }, { id = 'static', label = 'Static' } }
 Vip.Banners        = { { id = 'none', label = 'None' }, { id = 'wasteland', label = 'Wasteland' }, { id = 'ember', label = 'Ember' }, { id = 'redline', label = 'Redline' } }
 
--- Plate customiser: checked after upper-casing; any listed word inside the plate (spaces removed) refuses it.
+-- Plate customiser. Checked after upper-casing; any listed word inside the
+-- plate (spaces removed) refuses it.
 Vip.Plate = {
     minLength = 1,
     maxLength = 8,

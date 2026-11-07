@@ -213,7 +213,7 @@ local function skillOf(src)
     end
     local player = exports.bs_core:GetPlayer(src)
     local bonus = (player and (J().classes or {})[player.classId or '']) and 0.25 or 0.0
-    return math.min(1.0, lvl / 20.0 + bonus)
+    return math.min(1.0, lvl / 50.0 + bonus)
 end
 
 -- The needle game for this crank. Harder with low skill, a weak battery, a worn pump and rain.

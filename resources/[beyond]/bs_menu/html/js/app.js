@@ -1,4 +1,4 @@
-// BeyondSurvival hub - entries either render here or hand off to another resource.
+// BeyondSurvival hub - entries either render here or hand off to another resource. Renders a server snapshot and decides nothing itself.
 
 const RES = (typeof GetParentResourceName === 'function')
     ? GetParentResourceName() : 'bs_menu';
@@ -27,6 +27,7 @@ const ICONS = {
     shirt: 'M8 3l4 2 4-2 4 3-2.5 3L17 21H7l-.5-12L4 6l4-3z',
     anvil: 'M4 8h9l3 3h4v3a4 4 0 0 1-4 4H9l-5-5V8zm3 13h10',
     wall:  'M3 6h18v12H3V6zm0 6h18M9 6v6m6-6v6m-3 6v-6',
+    key:   'M7 14a5 5 0 1 1 3.8 1.8L9 18H7v2H5v-2H3v-2h3l1-2z',
 };
 
 function icon(name, cls) {
@@ -47,7 +48,7 @@ async function refresh() {
     if (r && r.ok && r.data) { S.data = r.data; renderStage(); }
 }
 
-// One request at a time: every skill action rebuilds the panel when it returns
+// One request at a time: every skill action rebuilds the panel when it returns, so parallel clicks left dead handlers and a stuck hub. Extra clicks while one is in flight are ignored.
 let actionBusy = false;
 
 async function once(fn) {
@@ -108,7 +109,7 @@ function choose(entry) {
 
 // stage
 
-// Stats rows stack label above value so long values (e.g.
+// Stats rows stack label above value so long values (e.g. XP pair) cannot overlap a neighbour. `wide` spans the whole grid for long values.
 function row(k, v, cls, wide) {
     return `<div class="row ${wide ? 'row--wide' : ''}">
               <span class="row__k">${esc(k).toUpperCase()}</span>
@@ -133,6 +134,36 @@ function renderStageInner() {
     const d = S.data;
 
     if (!d) { stage.innerHTML = `<p class="hollow">${tr('m.no_char')}</p>`; return; }
+
+
+    if (S.current === 'keyboard') {
+        const K=(t,c='')=>`<span class="kb-key ${c}">${t}</span>`;
+        const used=new Set(['ESC','F1','F2','F3','F5','F9','F11','TAB','ALT','E','F','G','B','Z','U','N','M','K','.','L','H','X','1','2','3','4','5','^','CTRL','UP','NUM1','NUM2','NUM3','NUM4','NUM5','NUM6','NUM7','NUM8','NUM9','NUM0']);
+        const key=(t,c='')=>K(t,(used.has(t)?'is-used ':'')+c);
+        stage.innerHTML=`<div class="kb-wrap">
+          <div class="block"><div class="block__title">TASTATURBELEGUNG</div><p class="kb-note">Die obere Ansicht zeigt nur die Tasten. Die Funktionen stehen übersichtlich darunter.</p>
+          <div class="kb-board">
+            <div class="kb-row kb-row--f">${key('ESC')}${K('','kb-gap')}${key('F1')}${key('F2')}${key('F3')}${K('F4')}${K('','kb-gap')}${key('F5')}${K('F6')}${K('F7')}${K('F8')}${K('','kb-gap')}${key('F9')}${K('F10')}${key('F11')}${K('F12')}</div>
+            <div class="kb-row">${key('^')}${key('1')}${key('2')}${key('3')}${key('4')}${key('5')}${K('6')}${K('7')}${K('8')}${K('9')}${K('0')}${K('ß')}${K('´')}${K('BACK','w2')}</div>
+            <div class="kb-row">${key('TAB','w15')}${K('Q')}${K('W')}${key('E')}${K('R')}${K('T')}${K('Z')}${key('U')}${K('I')}${K('O')}${K('P')}${K('Ü')}${K('+')}${K('ENTER','w15')}</div>
+            <div class="kb-row">${K('CAPS','w2')}${K('A')}${K('S')}${K('D')}${key('F')}${key('G')}${key('H')}${K('J')}${key('K')}${key('L')}${K('Ö')}${K('Ä')}${K('#')}</div>
+            <div class="kb-row">${K('SHIFT','w25')}${K('<')}${K('Y')}${key('X')}${K('C')}${K('V')}${key('B')}${key('N')}${key('M')}${K(',')}${key('.')}${K('-')}${K('SHIFT','w25')}</div>
+            <div class="kb-row">${key('CTRL','w15')}${K('WIN','w15')}${key('ALT','w15')}${K('SPACE','space')}${K('ALT GR','w15')}${K('WIN','w15')}${K('MENU','w15')}${K('CTRL','w15')}</div>
+            <div class="kb-row">${K('','w25')}${K('←')}${key('UP')}${K('→')}${K('','kb-gap')}${key('NUM7')}${key('NUM8')}${key('NUM9')}${key('NUM4')}${key('NUM5')}${key('NUM6')}${key('NUM1')}${key('NUM2')}${key('NUM3')}${key('NUM0','w2')}</div>
+          </div></div>
+          <div class="block"><div class="kb-legend">
+            <div class="kb-section">ESC- / F-Tasten</div>
+            <div class="kb-bind">Menüs schließen</div><div class="kb-bind">Emotes</div><div class="kb-bind">Squad-Menü</div><div class="kb-bind">Fraktionsmenü</div><div class="kb-bind">Spieler melden</div><div class="kb-bind">Admin-Menü</div>
+            <div class="kb-section">Andere Tasten</div>
+            <div class="kb-bind">Inventar</div><div class="kb-bind">Aktionsmenü</div><div class="kb-bind">Interaktion</div><div class="kb-bind">Ein-/Aussteigen</div><div class="kb-bind">Einsteigen (Beifahrer)</div><div class="kb-bind">Mit Finger zeigen</div><div class="kb-bind">Motor an/aus</div><div class="kb-bind">Baumenü</div><div class="kb-bind">Verdauungsmenü</div><div class="kb-bind">Karte</div><div class="kb-bind">Kofferraum auf/zu</div><div class="kb-bind">An-/Abschnallen</div><div class="kb-bind">Fahrzeuge auf/zu</div><div class="kb-bind">Hände hoch</div><div class="kb-bind">Animation abbrechen</div><div class="kb-bind">Hotkeys 1 bis 5</div>
+            <div class="kb-section">Sprache & Mikrofon</div>
+            <div class="kb-bind">Sprachreichweite 2m / 4m / 8m / 16m / 25m</div><div class="kb-bind">Sprachreichweite genau: STRG + Mausrad</div>
+            <div class="kb-section">Navigation & Sonstiges</div>
+            <div class="kb-bind">Handy öffnen/schließen</div><div class="kb-bind">Numpad 1–9: Shortcut-Animationen</div><div class="kb-bind">Numpad 0: Animation beenden</div>
+          </div></div>
+        </div>`;
+        return;
+    }
 
     if (S.current === 'faction') {
         stage.innerHTML = renderFaction();
@@ -458,13 +489,8 @@ const labelProxy = (prefix, base) => new Proxy(base, { get: (o, k) => (typeof k 
 const RANK_LABEL = labelProxy('m.rank_', { owner: 'Leader', officer: 'Vice Leader', member: 'Member' });
 const RANK_IDX = { owner: 0, officer: 1, member: 2 };
 // Ranks are per faction now (custom names); the server sends the label, the fixed three are only a fallback.
-function vanillaRank(rank, label) {
-    const id = S.faction && S.faction.faction && S.faction.faction.identity;
-    if (id && id.ranks && id.ranks[rank] && id.ranks[rank] === label) return tr(`fi.${id.id}.r.${rank}`, { fallback: label });
-    return label;
-}
-const rankName = (m) => (m && (vanillaRank(m.rank, m.rankLabel) || RANK_LABEL[m.rank] || m.rank)) || '';
-const PERM_LABEL = labelProxy('m.perm_', { deposit: 'Deposit', withdraw: 'Withdraw', invite: 'Invite', kick: 'Kick', promote: 'Promote', sanction: 'Sanction', build: 'Build', demolish: 'Demolish', storage: 'Base storage', jail: 'Jail', squad_manage: 'Squads', skills: 'Skills', raid: 'Declare raids', jobs: 'Jobs', emblem_edit: 'Emblem' });
+const rankName = (m) => (m && (m.rankLabel || RANK_LABEL[m.rank] || m.rank)) || '';
+const PERM_LABEL = labelProxy('m.perm_', { deposit: 'Deposit', withdraw: 'Withdraw', invite: 'Invite', kick: 'Kick', promote: 'Promote', sanction: 'Sanction', build: 'Build', demolish: 'Demolish', storage: 'Base storage', jail: 'Jail', squad_manage: 'Squads', skills: 'Skills', raid: 'Declare raids', jobs: 'Jobs' });
 
 function dur(sec) {
     sec = Math.max(0, Math.floor(Number(sec) || 0));
@@ -495,8 +521,12 @@ function factionLogo(raw) {
     if (typeof raw === 'string') { try { logo = JSON.parse(raw); } catch (_) { logo = {}; } }
     logo = logo || {};
     const mark = FACTION_MARKS[logo.mark] ? logo.mark : 'shield';
-    const color = /^#[0-9a-f]{6}$/i.test(logo.color || '') ? logo.color : '#e08c46';
+    const color = /^#[0-9a-f]{6}$/i.test(logo.color || '') ? logo.color : '#728c42';
     return { mark, color };
+}
+function factionCrest(raw, small = false) {
+    const logo = factionLogo(raw);
+    return `<span class="faction-crest${small ? ' faction-crest--small' : ''}" style="--crest:${logo.color}" title="${esc(logo.mark)}">${FACTION_MARKS[logo.mark]}</span>`;
 }
 function memberMetrics(m) {
     return `<span class="faction-member__metrics">${tr('m.lv')} ${num(m.level || 1)} · ${num(m.zombieKills || 0)} ${tr('m.walkers')} · ${num(m.survivorKills || 0)} ${tr('m.survivors')} · ${num(m.xp || 0)} XP · <b>${num(m.score || 0)} ${tr('m.score')}</b></span>`;
@@ -506,7 +536,7 @@ function factionEmblemEditor(faction, prefix, action) {
     return `<div class="emblem-workshop"><div id="${prefix}EmblemPreview" class="faction-crest faction-crest--preview" style="--crest:${logo.color}">${FACTION_MARKS[logo.mark]}</div><div class="emblem-workshop__controls"><label>${tr('m.symbol')}<select id="${prefix}LogoMark">${marks.map(k => `<option value="${k}"${logo.mark === k ? ' selected' : ''}>${k.toUpperCase()}</option>`).join('')}</select></label><label>${tr('m.colour')}<input id="${prefix}LogoColor" type="color" value="${logo.color}"></label><div class="emblem-workshop__marks">${marks.map(k => `<button class="${logo.mark === k ? 'is-selected' : ''}" data-emblem-select="${prefix}" data-mark="${k}" title="${k}">${FACTION_MARKS[k]}</button>`).join('')}</div><button class="hx-btn hx-btn--go" data-act="${action}">${tr('m.save_emblem')}</button></div></div>`;
 }
 
-/* data loaders, one per tab */
+/* ---- data loaders, one per tab */
 const HUB_LOAD = {
     roster: async () => {
         const [roster, squad] = await Promise.all([fx('factions:roster'), post('fx', { name: 'squad:get' })]);
@@ -552,8 +582,19 @@ function hubTabs(f) {
         if (f.admin) t.push(['admin', tr('m.tab_admin')]);
         return t;
     }
-    const t = [['overview', tr('m.tab_overview')], ['roster', tr('m.tab_roster')], ['squad', tr('m.tab_squad')], ['progress', tr('m.tab_progression')], ['treasury', tr('m.tab_treasury')], ['raids', tr('m.tab_raids')], ['jobs', tr('m.tab_jobs')], ['board', tr('m.tab_board')], ['jobscore', tr('m.tab_jobscore')], ['ranks', tr('m.tab_ranks')], ['emblem', tr('m.tab_emblem', { fallback: 'Emblem' })], ['sanctions', tr('m.tab_sanctions')]];
-    if (f.rank === 'owner' || (f.myPerms || {}).jail || f.admin) t.push(['jail', tr('m.tab_jail')]);
+    // Mechaniker Werkstatt is a service faction: Trupp, progression, raids, job rating,
+    // sanctions and jail are hidden there. Civilians keeps the full faction feature set.
+    const isMechanic = f.faction && f.faction.id === 'mechanic_workshop';
+    const t = [['overview', tr('m.tab_overview')], ['roster', tr('m.tab_roster')]];
+    if (!isMechanic) t.push(['squad', tr('m.tab_squad')]);
+    if (!isMechanic) t.push(['progress', tr('m.tab_progression')]);
+    t.push(['treasury', tr('m.tab_treasury')]);
+    if (!isMechanic) t.push(['raids', tr('m.tab_raids')]);
+    t.push(['jobs', tr('m.tab_jobs')], ['board', tr('m.tab_board')]);
+    if (!isMechanic) t.push(['jobscore', tr('m.tab_jobscore')]);
+    t.push(['ranks', tr('m.tab_ranks')]);
+    if (!isMechanic) t.push(['sanctions', tr('m.tab_sanctions')]);
+    if (!isMechanic && (f.rank === 'owner' || (f.myPerms || {}).jail || f.admin)) t.push(['jail', tr('m.tab_jail')]);
     t.push(['settings', tr('m.tab_settings')], ['intel', tr('m.tab_factions')]);
     if (f.admin) t.push(['admin', tr('m.tab_admin')]);
     return t;
@@ -574,56 +615,31 @@ function renderFaction() {
     S.hubLastTab = tab;
 
     const fac = f.faction;
-    const id = fac && fac.identity;
-    const motto = id && id.motto ? tr(`fi.${id.id}.motto`, { fallback: id.motto }) : '';
-    const myRank = fac ? vanillaRank(f.rank, f.rankLabel) || RANK_LABEL[f.rank] || f.rank || RANK_LABEL.member : '';
-    const online = (f.members || []).filter((m) => m.src).length;
     const hero = fac
-        ? `<header class="hx-hero" style="${factionTint(fac)}"><div class="hx-hero__crest">${factionCrest(fac)}</div><div class="hx-hero__id"><span class="hx-eyebrow"><b>[${esc(fac.short || tr('m.tag'))}]</b><i></i>${esc(myRank)}${fac.lore ? `<i></i>${tr('m.lore_faction', { fallback: 'Founding faction' })}` : ''}</span><h2>${esc(fac.label)}</h2>${motto ? `<p class="hx-hero__motto">“${esc(motto)}”</p>` : ''}</div><div class="hx-hero__stats"><span><b>${num(fac.reputation)}</b>${tr('m.score')}</span><span><b>$${num((fac.bank || {}).balance)}</b>${tr('m.treasury_word')}</span><span><b>${online}<small style="font-size:18px;color:var(--hx-ash)">/${(f.members || []).length}</small></b>${tr('m.online')}</span></div></header>`
-        : `<header class="hx-hero hx-hero--solo"><div class="hx-hero__crest hx-hero__crest--empty">?</div><div class="hx-hero__id"><span class="hx-eyebrow">${tr('m.unaffiliated')}</span><h2>${tr('m.no_faction')}</h2><p class="hx-hero__motto">${tr('m.find_crew_text')}</p></div></header>`;
+        ? `<header class="hx-hero">${factionCrest(fac.logo)}<div class="hx-hero__id"><span class="hx-eyebrow">[${esc(fac.short || tr('m.tag'))}] · ${esc(f.rankLabel || RANK_LABEL[f.rank] || f.rank || RANK_LABEL.member).toUpperCase()}</span><h2>${esc(fac.label)}</h2></div><div class="hx-hero__stats"><span><b>${num(fac.reputation)}</b>${tr('m.score')}</span><span><b>$${num((fac.bank || {}).balance)}</b>${tr('m.treasury_word')}</span><span><b>${(f.members || []).filter((m) => m.src).length}/${(f.members || []).length}</b>${tr('m.online')}</span></div></header>`
+        : `<header class="hx-hero hx-hero--solo"><div class="hx-hero__id"><span class="hx-eyebrow">${tr('m.unaffiliated')}</span><h2>${tr('m.no_faction')}</h2></div></header>`;
 
-    const GROUPS = [
-        [tr('m.grp_command', { fallback: 'Command' }), ['overview', 'roster', 'squad', 'progress']],
-        [tr('m.grp_operations', { fallback: 'Operations' }), ['raids', 'jobs', 'board', 'jobscore']],
-        [tr('m.grp_admin', { fallback: 'Administration' }), ['treasury', 'ranks', 'emblem', 'sanctions', 'jail', 'settings', 'admin']],
-        [tr('m.grp_intel', { fallback: 'Intelligence' }), ['intel']],
-    ];
-    const grouped = GROUPS.flatMap((g) => g[1]);
-    const tabBtn = ([tid, l]) => `<button class="hx-tab${tid === tab ? ' is-active' : ''}" data-hubtab="${tid}" aria-current="${tid === tab ? 'page' : 'false'}">${l}</button>`;
-    const nav = GROUPS.map(([group, ids]) => {
-        const entries = tabs.filter(([tid]) => ids.includes(tid));
-        return entries.length ? `<div class="hx-navgroup"><span class="hx-navgroup__label">${group}</span>${entries.map(tabBtn).join('')}</div>` : '';
-    }).join('') + tabs.filter(([tid]) => !grouped.includes(tid)).map(tabBtn).join('');
-
-    return `<div class="hub-x${fresh ? ' is-fresh' : ''}" style="${fac ? factionTint(fac) : ''}">${hero}<nav class="hx-tabs" aria-label="Faction sections">${nav}</nav><section class="hx-body" data-tab="${tab}">${body}</section></div>`;
+    return `<div class="hub-x${fresh ? ' is-fresh' : ''}"><div class="hub-x__scan"></div>${hero}<nav class="hx-tabs">${tabs.map(([id, l], i) => `<button class="hx-tab${id === tab ? ' is-active' : ''}" data-hubtab="${id}" style="--i:${i}">${l}</button>`).join('')}</nav><section class="hx-body" data-tab="${tab}">${body}</section></div>`;
 }
 
-/* tabs */
+/* ---- tabs */
 const HUB_RENDER = {};
 
 HUB_RENDER.overview = (f) => {
     if (!f.faction) {
-        const join = (f.vanilla || []).map((v, k) => {
-            const id = v.identity || {};
-            const motto = id.motto ? tr(`fi.${v.id}.motto`, { fallback: id.motto }) : '';
-            return `<div class="hx-join hx-row" style="--i:${k};${factionTint(v)}">${factionCrest(v)}<span><b>${esc(v.label)}</b>${motto ? `<small>“${esc(motto)}”</small>` : ''}</span><button class="hx-btn hx-btn--go" data-act="joinVanilla" data-id="${esc(v.id)}">${tr('m.join_x', { name: esc(v.label) })}</button></div>`;
-        }).join('');
-        return `<div class="hx-grid">${card(tr('m.find_crew'), `<p>${tr('m.find_crew_text')}</p>${join ? `<div class="hx-joins">${join}</div>` : ''}${f.joinCooldown > 0 ? `<p>${tr('m.join_again', { h: Math.ceil(f.joinCooldown / 3600) })}</p>` : ''}${f.invite ? `<div class="hx-form"><button class="hx-btn hx-btn--go" data-act="accept">${tr('m.accept_x', { name: esc(f.invite.label) })}</button></div>` : ''}`, 'hx-row hx-span2')}${f.canCreate ? card(tr('m.found'), `<div class="hx-form"><input id="facTag" class="hx-in hx-in--tag" maxlength="8" placeholder="${tr('m.tag')}"><input id="facName" class="hx-in" maxlength="48" placeholder="${tr('m.fac_name')}"><button class="hx-btn hx-btn--go" data-act="create">${tr('m.create')}</button></div>`, 'hx-row hx-span2') : ''}</div>`;
+        return `<div class="hx-grid">${card(tr('m.find_crew'), `<p>${tr('m.find_crew_text')}</p>${(f.vanilla || []).length ? `<div class="hx-form">${f.vanilla.map(v => `<button class="hx-btn hx-btn--go" data-act="joinVanilla" data-id="${esc(v.id)}">${tr('m.join_x', { name: esc(v.label) })}</button>`).join('')}</div>` : ''}${f.joinCooldown > 0 ? `<p>${tr('m.join_again', { h: Math.ceil(f.joinCooldown / 3600) })}</p>` : ''}${f.invite ? `<button class="hx-btn hx-btn--go" data-act="accept">${tr('m.accept_x', { name: esc(f.invite.label) })}</button>` : ''}`, 'hx-row')}${f.canCreate ? card(tr('m.found'), `<div class="hx-form"><input id="facTag" class="hx-in hx-in--tag" maxlength="8" placeholder="${tr('m.tag')}"><input id="facName" class="hx-in" maxlength="48" placeholder="${tr('m.fac_name')}"><button class="hx-btn hx-btn--go" data-act="create">${tr('m.create')}</button></div>`, 'hx-row') : ''}</div>`;
     }
-    const fac = f.faction, owner = f.rank === 'owner', st = fac.scoreboard || {}, id = fac.identity;
+    const fac = f.faction, owner = f.rank === 'owner', st = fac.scoreboard || {};
     let i = 0;
-    const row = (extra) => `hx-row ${extra || ''}" style="--i:${i++}`;
-    const lore = id ? `<article class="hx-paper ${row()}"><span class="hx-card__kicker">${tr('m.lore_title', { fallback: 'Field notes' })}</span>${id.motto ? `<span class="hx-paper__motto">${esc(tr(`fi.${id.id}.motto`, { fallback: id.motto }))}</span>` : ''}<p>${esc(tr(`fi.${id.id}.lore`, { fallback: id.lore || '' }))}</p></article>` : '';
     const brief = owner
-        ? `<textarea id="factionDescription" class="hx-in hx-area" maxlength="360" placeholder="${tr('m.brief_ph')}">${esc(fac.description || '')}</textarea><div class="hx-form"><button class="hx-btn hx-btn--go" data-act="description">${tr('m.save_brief')}</button></div>`
+        ? `<textarea id="factionDescription" class="hx-in hx-area" maxlength="360" placeholder="${tr('m.brief_ph')}">${esc(fac.description || '')}</textarea><button class="hx-btn hx-btn--go" data-act="description">${tr('m.save_brief')}</button>`
         : `<p>${esc(fac.blurb || '')}</p>`;
-    const emblem = `<article class="hx-card ${row()}"><span class="hx-card__kicker">${tr('m.emblem', { fallback: 'Emblem' })}</span><div class="hx-emcard">${factionCrest(fac)}<div><p>${fac.canEditEmblem ? tr('m.emblem_edit_n', { fallback: 'Design the mark your people wear. It shows on the hub, the character screen, name tags and the banners at your base.' }) : tr('m.emblem_view_n', { fallback: 'Your faction mark. The leader decides how it looks.' })}</p><div class="hx-form"><button class="hx-btn${fac.canEditEmblem ? ' hx-btn--go' : ''}" data-hubtab="emblem">${fac.canEditEmblem ? tr('m.emblem_open', { fallback: 'Open workshop' }) : tr('m.emblem_look', { fallback: 'View emblem' })}</button></div></div></div></article>`;
     return `<div class="hx-grid">
-        ${lore}${emblem}
-        ${card(tr('m.briefing'), brief, row(id ? '' : 'hx-span2'))}
-        ${card(tr('m.field_report'), `<div class="hx-stats"><span><b>${num(st.members || 0)}</b>${tr('m.members')}</span><span><b>${num(st.zombieKills || 0)}</b>${tr('m.walkers')}</span><span><b>${num(st.survivorKills || 0)}</b>${tr('m.survivors')}</span><span><b>${num(st.xp || 0)}</b>XP</span></div>`, row(id ? '' : 'hx-span2'))}
-        ${f.nearby && f.nearby.length ? card(tr('m.recruit'), f.nearby.map((p) => `<div class="hx-line"><span>${esc(p.name)}</span><button class="hx-btn hx-btn--sm" data-act="invite" data-target="${p.src}">${tr('m.invite')}</button></div>`).join(''), row()) : ''}
-        ${card(tr('m.membership'), `<p>${tr('m.leave_note')}</p><div class="hx-form"><button class="hx-btn" data-act="leave">${tr('m.leave_fac')}</button>${owner ? `<button class="hx-btn hx-btn--bad" data-act="disband">${tr('m.disband')}</button>` : ''}</div>`, row())}
+        ${card(tr('m.briefing'), brief, 'hx-row hx-span2" style="--i:' + (i++))}
+        ${card(tr('m.field_report'), `<div class="hx-stats"><span><b>${num(st.members || 0)}</b>${tr('m.members')}</span><span><b>${num(st.zombieKills || 0)}</b>${tr('m.walkers')}</span><span><b>${num(st.survivorKills || 0)}</b>${tr('m.survivors')}</span><span><b>${num(st.xp || 0)}</b>XP</span></div>`, 'hx-row hx-span2" style="--i:' + (i++))}
+        ${owner ? card(tr('m.emblem'), factionEmblemEditor(fac, 'faction', 'logo'), 'hx-row hx-span2" style="--i:' + (i++)) : ''}
+        ${f.nearby && f.nearby.length ? card(tr('m.recruit'), f.nearby.map((p) => `<div class="hx-line"><span>${esc(p.name)}</span><button class="hx-btn hx-btn--sm" data-act="invite" data-target="${p.src}">${tr('m.invite')}</button></div>`).join(''), 'hx-row" style="--i:' + (i++)) : ''}
+        ${card(tr('m.membership'), `<p>${tr('m.leave_note')}</p><div class="hx-form"><button class="hx-btn" data-act="leave">${tr('m.leave_fac')}</button>${owner ? `<button class="hx-btn hx-btn--bad" data-act="disband">${tr('m.disband')}</button>` : ''}</div>`, 'hx-row" style="--i:' + (i++))}
     </div>`;
 };
 
@@ -754,8 +770,7 @@ function missionRow(m, period, i) {
     const pct = m.target ? Math.min(100, (m.progress / m.target) * 100) : 0;
     const what = m.kind === 'deliver' ? tr('m.x_deliver') : m.kind === 'extract' ? tr('m.x_extract') : tr('m.x_field');
     const act = m.done ? `<span class="hx-tag hx-tag--done">${tr('m.done')}</span>`
-        : !m.accepted ? btn('Accept mission', 'msAccept', `data-offer="${esc(m.offerId || '')}"`, 'hx-btn--sm hx-btn--go')
-        : m.kind === 'deliver' ? btn(tr('m.b_deliver'), 'msDeliver', `data-period="${period}" data-slot="${m.slot}" data-offer="${esc(m.offerId || '')}"`, 'hx-btn--sm hx-btn--go') : '<span class="hx-tag">Accepted</span>';
+        : m.kind === 'deliver' ? btn(tr('m.b_deliver'), 'msDeliver', `data-period="${period}" data-slot="${m.slot}"`, 'hx-btn--sm hx-btn--go') : '<span></span>';
     return `<div class="hx-mission hx-row${m.done ? ' is-done' : ''}" style="--i:${i}"><span class="hx-tag">${what}</span><span class="hx-mission__txt"><b>${esc(m.label || m.id)}</b><small>${num(m.progress)} / ${num(m.target)} · +${num(m.xp)} XP · +$${num(m.money)} ${tr('m.treasury_word')}</small><i class="hx-bar"><em style="width:${pct}%"></em></i></span>${act}</div>`;
 }
 HUB_RENDER.progress = (f, d) => {
@@ -793,7 +808,7 @@ HUB_RENDER.progress = (f, d) => {
     const swatches = (c.colours || []).map((x) => `<button class="hx-swatch${x.id === c.colour ? ' is-sel' : ''}${x.unlocked ? '' : ' is-locked'}" style="--sw:${esc(x.hex)}" ${lead && x.unlocked ? '' : 'disabled'} data-hx="cosColour" data-id="${esc(x.id)}" title="${esc(x.id)}${x.unlocked ? '' : ' · ' + tr('m.level_n', { n: x.level })}">${x.unlocked ? '' : x.level}</button>`).join('');
     const styles = (c.styles || []).map((x) => `<button class="hx-btn hx-btn--sm${x.id === c.style ? ' is-sel' : ''}" ${lead && x.unlocked ? '' : 'disabled'} data-hx="cosStyle" data-id="${esc(x.id)}">${esc(x.label).toUpperCase()}${x.unlocked ? '' : ' · L' + x.level}</button>`).join('');
     const tag = (f.faction && f.faction.short) || 'TAG';
-    const cosm = card(tr('m.c_tag_style'), `<div class="hx-tagprev hx-tagprev--${esc(c.style || 'plain')}" style="--sw:${esc(cur.hex || '#e08c46')}">${esc(tag)}</div><div class="hx-swatches">${swatches}</div><div class="hx-form">${styles}</div>${lead ? '' : `<p class="hx-muted">${tr('m.lead_only')}</p>`}`, 'hx-row" style="--i:5');
+    const cosm = card(tr('m.c_tag_style'), `<div class="hx-tagprev hx-tagprev--${esc(c.style || 'plain')}" style="--sw:${esc(cur.hex || '#728c42')}">${esc(tag)}</div><div class="hx-swatches">${swatches}</div><div class="hx-form">${styles}</div>${lead ? '' : `<p class="hx-muted">${tr('m.lead_only')}</p>`}`, 'hx-row" style="--i:5');
 
     return `<div class="hx-grid">${level}${missions}${skills}${donate}${cosm}</div>`;
 };
@@ -838,16 +853,16 @@ HUB_RENDER.intel = (f) => ((f.directory || []).find((x) => x.id === S.factionVie
 HUB_RENDER.admin = (f) => (f.admin ? renderFactionAdmin(f) : empty(tr('m.e_admins_only')));
 
 function renderFactionRanking(f) {
-    const rows = (f.directory || []).map((x, i) => `<button class="faction-ranking__row hx-row" style="--i:${i}" data-faction-open="${esc(x.id)}"><b>#${i + 1}</b>${factionCrest(x, true)}<span>${esc(x.label)} <em>[${esc(x.short)}]</em></span><small>${num(x.members)} ${tr('m.members')} · ${num(x.zombieKills)} ${tr('m.walkers')} · ${num(x.survivorKills)} ${tr('m.survivors')}</small><strong>${num(x.reputation)} ${tr('m.score')}</strong></button>`).join('') || empty(tr('m.e_no_faction_has_enough_active_m'));
+    const rows = (f.directory || []).map((x, i) => `<button class="faction-ranking__row hx-row" style="--i:${i}" data-faction-open="${esc(x.id)}"><b>#${i + 1}</b>${factionCrest(x.logo, true)}<span>${esc(x.label)} <em>[${esc(x.short)}]</em></span><small>${num(x.members)} ${tr('m.members')} · ${num(x.zombieKills)} ${tr('m.walkers')} · ${num(x.survivorKills)} ${tr('m.survivors')}</small><strong>${num(x.reputation)} ${tr('m.score')}</strong></button>`).join('') || empty(tr('m.e_no_faction_has_enough_active_m'));
     return card(tr('m.c_faction_scoreboard'), `<p>${tr('m.ranked_note')}</p><div class="faction-ranking">${rows}</div>`, 'hx-wide');
 }
 function renderFactionDirectory(f) {
     const selected = (f.directory || []).find((x) => x.id === S.factionView);
     if (!selected) return '';
     const people = (selected.memberList || []).map((m, i) => `<div class="hx-roster hx-row" style="--i:${i}"><i class="hx-dot hx-dot--${m.src ? 'on' : 'off'}"></i><span class="hx-roster__name"><b>${esc(m.name)}</b>${memberMetrics(m)}</span><span class="hx-tag">${esc(rankName(m)).toUpperCase()}</span></div>`).join('') || empty(tr('m.e_no_members'));
-    return card(tr('m.c_faction_profile'), `<button class="hx-btn hx-btn--sm" data-faction-back>&lt;- ${tr('m.all_factions')}</button><div class="hx-profile">${factionCrest(selected)}<div><h3>${esc(selected.label)} <em>[${esc(selected.short)}]</em></h3><p>${esc(selected.description || tr('m.x_no_public_briefing_has_been_po'))}</p><div class="hx-tags"><span class="hx-tag">${num(selected.members)} ${tr('m.members')}</span><span class="hx-tag">${num(selected.reputation)} ${tr('m.score')}</span></div></div></div><div class="hx-list">${people}</div>`, 'hx-wide');
+    return card(tr('m.c_faction_profile'), `<button class="hx-btn hx-btn--sm" data-faction-back>&lt;- ${tr('m.all_factions')}</button><div class="hx-profile">${factionCrest(selected.logo)}<div><h3>${esc(selected.label)} <em>[${esc(selected.short)}]</em></h3><p>${esc(selected.description || tr('m.x_no_public_briefing_has_been_po'))}</p><div class="hx-tags"><span class="hx-tag">${num(selected.members)} ${tr('m.members')}</span><span class="hx-tag">${num(selected.reputation)} ${tr('m.score')}</span></div></div></div><div class="hx-list">${people}</div>`, 'hx-wide');
 }
-// Admin tab (staff console).
+// Admin tab (staff console). Only present when the server sends f.admin; every button goes through factions:admin:*, which re-checks the ACE.
 S.adm = { id: null, detail: null, overview: null, busy: false };
 
 async function admLoad(force) {
@@ -889,14 +904,14 @@ function renderFactionAdmin(f) {
     const d = S.adm.detail;
     if (!S.adm.id || !d) {
         if (S.adm.id && !d) { admLoad(); return `<div class="hx-grid">${picker}${card(tr('m.c_loading'), loading(), 'hx-span2')}</div>`; }
-        const rows = list.map((x, i) => `<button class="hx-line hx-line--btn hx-row" style="--i:${Math.min(i, 20)}" data-hx="admOpen" data-id="${esc(x.id)}">${factionCrest(x, true)}<b>${esc(x.label)} <em>[${esc(x.short)}]</em></b><span class="hx-muted">${x.isConfig ? 'LORE' : 'PLAYER'} · LV ${num(x.level)} · ${num(x.members)} MEMBERS</span></button>`).join('') || empty(tr('m.e_no_factions_registered'));
+        const rows = list.map((x, i) => `<button class="hx-line hx-line--btn hx-row" style="--i:${Math.min(i, 20)}" data-hx="admOpen" data-id="${esc(x.id)}">${factionCrest(x.logo, true)}<b>${esc(x.label)} <em>[${esc(x.short)}]</em></b><span class="hx-muted">${x.isConfig ? 'LORE' : 'PLAYER'} · LV ${num(x.level)} · ${num(x.members)} MEMBERS</span></button>`).join('') || empty(tr('m.e_no_factions_registered'));
         return `<div class="hx-grid">${picker}${card(tr('m.c_all_factions'), `<div class="hx-list hx-list--scroll">${rows}</div>`, 'hx-row hx-span2" style="--i:1')}</div>`;
     }
     const p = d.progress || {};
     const members = d.members || [];
     let i = 1;
 
-    const head = card(`${d.isConfig ? 'LORE' : 'PLAYER'} FACTION · ${esc(d.id)}`, `<div class="hx-profile">${factionCrest(d)}<div><h3>${esc(d.label)} <em>[${esc(d.short)}]</em></h3><div class="hx-stats"><span><b>${num(p.level || 1)}</b>LEVEL</span><span><b>${num(p.xp || 0)}</b>XP</span><span><b>${num(p.points || 0)}</b>FREE POINTS</span><span><b>$${num(d.treasury || 0)}</b>TREASURY</span><span><b>${num(members.length)}</b>MEMBERS</span></div></div></div>`, 'hx-row hx-span2" style="--i:' + (i++));
+    const head = card(`${d.isConfig ? 'LORE' : 'PLAYER'} FACTION · ${esc(d.id)}`, `<div class="hx-profile">${factionCrest(d.logo)}<div><h3>${esc(d.label)} <em>[${esc(d.short)}]</em></h3><div class="hx-stats"><span><b>${num(p.level || 1)}</b>LEVEL</span><span><b>${num(p.xp || 0)}</b>XP</span><span><b>${num(p.points || 0)}</b>FREE POINTS</span><span><b>$${num(d.treasury || 0)}</b>TREASURY</span><span><b>${num(members.length)}</b>MEMBERS</span></div></div></div>`, 'hx-row hx-span2" style="--i:' + (i++));
 
     const who = `<select id="admRepWho" class="hx-in hx-in--sm"><option value="">ALL MEMBERS</option>${members.map((m) => `<option value="${m.charId}">${esc(m.name)} · ${num(m.rep)}</option>`).join('')}</select>`;
     const numRow = (label, id, ph, acts) => `<div class="hx-line hx-adm__row"><span>${label}</span><input id="${id}" class="hx-in hx-in--sm" inputmode="numeric" placeholder="${ph}">${acts}</div>`;
@@ -921,16 +936,12 @@ function renderFactionAdmin(f) {
     const flags = card(`FLAGS & OUTPOSTS · ${(d.flags || []).length}`, `<div class="hx-list">${(d.flags || []).map((fl) => `<div class="hx-line hx-row"><span class="hx-tag">${esc((fl.kind || '').toUpperCase())}</span><span class="hx-muted">#${fl.id} · ${Math.round(fl.x)}, ${Math.round(fl.y)}, ${Math.round(fl.z)} · ${esc(fl.status)}</span><span class="hx-roster__acts">${btn(tr('m.b_teleport'), 'admFlagTp', `data-flag="${fl.id}"`, 'hx-btn--sm')}${btn(tr('m.b_remove'), 'admFlagRm', `data-flag="${fl.id}"`, 'hx-btn--sm hx-btn--bad')}</span></div>`).join('') || empty(tr('m.e_no_flags_placed'))}</div>`, 'hx-row" style="--i:' + (i++));
 
     // emblem editor without its own save button - SAVE IDENTITY covers it
-    const emblem = `<div class="hx-emcard" style="margin:12px 0">${factionCrest(d)}<div><p class="hx-muted">${d.custom ? tr('m.emblem_custom', { fallback: 'Custom emblem.' }) : tr('m.emblem_default', { fallback: 'Default emblem.' })}</p><div class="hx-form">${btn(tr('m.emblem_open', { fallback: 'Open workshop' }), 'admEmblem', '', 'hx-btn--go')}</div></div></div>`;
+    const emblem = factionEmblemEditor(d, 'adminFaction', 'noop').replace(/<button class="hx-btn hx-btn--go" data-act="noop">SAVE EMBLEM<\/button>/, '');
     const tagCol = `<select id="admTagColour" class="hx-in hx-in--sm"><option value="">TAG COLOUR: KEEP</option>${(p.colours || []).map((c) => `<option value="${esc(c.id)}"${c.id === p.colour ? ' selected' : ''}>${esc(c.id.toUpperCase())}</option>`).join('')}</select>`;
     const ident = card(tr('m.c_identity'), `<div class="hx-form"><input id="admName" class="hx-in" maxlength="48" value="${esc(d.label)}" placeholder="NAME"><input id="admTag" class="hx-in hx-in--tag" maxlength="8" value="${esc(d.short)}" placeholder="TAG">${tagCol}</div>${emblem}<div class="hx-form">${btn(tr('m.b_save_identity'), 'admIdentity', '', 'hx-btn--go')}${btn(tr('m.b_clear_briefing'), 'admClear')}</div><p class="hx-muted">Briefing: ${esc(d.description || '- empty -')}</p>`, 'hx-row hx-span2" style="--i:' + (i++));
 
     const danger = card(tr('m.c_danger_zone'), `<p>${d.isConfig ? 'Lore factions are emptied (members and flags cleared), never deleted.' : 'Removes every member, flag and permission row, then deletes the faction.'}</p>${btn(tr('m.b_force_disband'), 'admDisband', '', 'hx-btn--bad')}`, 'hx-row hx-span2 hx-alert" style="--i:' + (i++));
 
-    if (S.adm.emblem) {
-        if (!S.eb || !S.eb.admin || S.eb.fid !== d.id) ebOpen({ fid: d.id, admin: true, label: `${d.label} [${d.short}]`, spec: emblemSpec(d), canEdit: true, custom: !!d.custom, isConfig: !!d.isConfig });
-        return `<div class="hx-grid hx-adm">${picker}${card(tr('m.emblem', { fallback: 'Emblem' }), `<div class="hx-form" style="margin:0 0 12px"><button class="hx-btn hx-btn--sm" data-eb="close">&lt;- ${tr('m.back', { fallback: 'Back' })}</button></div>${ebMarkup()}`, 'hx-span2')}</div>`;
-    }
     return `<div class="hx-grid hx-adm">${picker}${head}${prog}${skills}${mem}${missions}${flags}${ident}${danger}</div>`;
 }
 
@@ -938,8 +949,7 @@ function renderFactionAdmin(f) {
 async function admAction(a, ds) {
     switch (a) {
     case 'admRefresh': return admLoad(true);
-    case 'admOpen': S.adm.id = ds.id; S.adm.detail = null; S.adm.emblem = false; renderStage(); return admLoad();
-    case 'admEmblem': S.adm.emblem = true; S.eb = null; return renderStage();
+    case 'admOpen': S.adm.id = ds.id; S.adm.detail = null; renderStage(); return admLoad();
     case 'admProg': { const v = admNum('admXp'); if (v === null) return toast(tr('m.a_enter_number', { fallback: 'Enter a number.' }), 'bad'); return admDo('progress', { op: ds.op, value: v }, tr('m.a_xp', { fallback: 'XP updated.' })); }
     case 'admLevelSet': { const v = admNum('admLevel'); if (v === null) return toast(tr('m.a_enter_level', { fallback: 'Enter a level.' }), 'bad'); return admDo('progress', { op: 'setLevel', value: v }, tr('m.a_level_set', { fallback: 'Level set.' })); }
     case 'admPts': { const v = admNum('admPts'); if (v === null) return toast(tr('m.a_enter_number', { fallback: 'Enter a number.' }), 'bad'); return admDo('points', { op: ds.op, value: v }, tr('m.a_points_upd', { fallback: 'Skill points updated.' })); }
@@ -963,7 +973,7 @@ async function admAction(a, ds) {
     case 'admFlagTp': { const r = await fx('factions:admin:flagTeleport', { flagId: Number(ds.flag) }); if (r.ok) toast(tr('m.a_teleported', { fallback: 'Teleported.' })); return; }
     case 'admFlagRm': return admDo('flagRemove', { flagId: Number(ds.flag) }, tr('m.a_flag_removed', { fallback: 'Flag removed.' }));
     case 'admIdentity': {
-        const args = { label: val('admName'), short: val('admTag') };
+        const args = { label: val('admName'), short: val('admTag'), mark: val('adminFactionLogoMark'), color: val('adminFactionLogoColor') };
         const tc = val('admTagColour'); if (tc) args.tagColour = tc;
         return admDo('identity', args, tr('m.a_identity_saved', { fallback: 'Identity saved.' }));
     }
@@ -973,7 +983,7 @@ async function admAction(a, ds) {
     }
 }
 
-function updateEmblemPreview(prefix) { const mark=(document.getElementById(`${prefix}LogoMark`) || {}).value || 'shield'; const colour=(document.getElementById(`${prefix}LogoColor`) || {}).value || '#e08c46'; const preview=document.getElementById(`${prefix}EmblemPreview`);if(preview){preview.textContent=FACTION_MARKS[mark] || FACTION_MARKS.shield;preview.style.setProperty('--crest',colour);} }
+function updateEmblemPreview(prefix) { const mark=(document.getElementById(`${prefix}LogoMark`) || {}).value || 'shield'; const colour=(document.getElementById(`${prefix}LogoColor`) || {}).value || '#728c42'; const preview=document.getElementById(`${prefix}EmblemPreview`);if(preview){preview.textContent=FACTION_MARKS[mark] || FACTION_MARKS.shield;preview.style.setProperty('--crest',colour);} }
 
 // Faction actions: description, emblem, invite, promote, kick, ...
 function wireFaction(stage) {
@@ -1116,13 +1126,8 @@ async function hubAction(el) {
     case 'jailCell': await fx('jail:addCell'); return reload('jail');
     case 'jailRmCell': await fx('jail:removeCell', { n: Number(ds.n) }); return reload('jail');
     case 'jailRelease': await fx('jail:release', { charId: Number(ds.char) }); return reload('jail');
-    case 'msAccept': {
-        const r = await fx('factions:missions:accept', { offerId: ds.offer });
-        if (r.ok) toast('Mission accepted.');
-        return reload('progress');
-    }
     case 'msDeliver': {
-        const r = await fx('factions:missions:deliver', { period: ds.period, slot: Number(ds.slot), offerId: ds.offer });
+        const r = await fx('factions:missions:deliver', { period: ds.period, slot: Number(ds.slot) });
         if (r.ok) { toast(tr('m.t_delivered', { n: num(r.delivered), fallback: `Delivered ${num(r.delivered)}.` })); if (S.hub.progress) S.hub.progress.missions = r; }
         return reload('progress');
     }
@@ -1277,7 +1282,7 @@ async function jobAction(a, ds) {
         if (!el) return;
         const k = el.dataset.hxchange;
         if (k === 'squadRank') once(async () => afterSquad(await fx('squad:setRank', { charId: Number(el.dataset.char), rankId: Number(el.value) })));
-        else if (k === 'admPick') { S.adm.id = el.value || null; S.adm.detail = null; S.adm.emblem = false; renderStage(); if (S.adm.id) admLoad(); }
+        else if (k === 'admPick') { S.adm.id = el.value || null; S.adm.detail = null; renderStage(); if (S.adm.id) admLoad(); }
         else if (k === 'admRank') once(() => admDo('setRank', { charId: Number(el.dataset.char), rank: el.value }, tr('m.a_rank_set', { fallback: 'Rank set.' })));
         else if (k === 'facRank') once(() => factionPost('factionPromoteChar', { charId: el.dataset.char, rank: el.value }));
         else if (k === 'fRankName') once(async () => afterRanks(await fx('factions:ranks:rename', { rank: el.dataset.rank, label: el.value })));
@@ -1343,7 +1348,7 @@ window.addEventListener('message', (e) => {
     }
 });
 
-// The U press that opens Faction ends as a keyup once NUI has focus.
+// The U press that opens Faction ends as a keyup once NUI has focus. Ignore that one release so the panel does not behave like hold-to-view; later U presses toggle-close as normal.
 let ignoreInitialURelease = false;
 
 document.addEventListener('keyup', (e) => {

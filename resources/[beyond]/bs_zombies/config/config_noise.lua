@@ -50,7 +50,7 @@ Noise.POI = {
 
     -- How far a point reaches, as a multiple of the noise's own carry (1.0 = as far as it travelled)
     -- Capped by maxReach so one loud noise cannot drain the whole map
-    reachScale = 1.6,
+    reachScale = 1.0,
     maxReach = 520.0,
 }
 
@@ -134,7 +134,7 @@ Noise.Materialise = {
     holdRadius = 180.0,
 
     -- Hard floor in metres: nothing is ever created inside this radius, whatever the view test says.
-    hardFloor = 70.0,  -- matches spawnFloor
+    hardFloor = 80.0,  -- matches spawnFloor
 
     -- Keep at 0
     -- Any value above zero lets walkers appear right on top of the player. cl_sync only reads it to warn at boot.

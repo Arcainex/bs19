@@ -1,7 +1,5 @@
 -- bs_inventory strings (ru)
 return {
-    ['inv.rotate'] = 'Повернуть предмет',
-    ['inv.rotate_hint'] = 'R — повернуть',
     ['ammo.added'] = '+{n} патронов',
     ['ammo.mag_full'] = 'Магазин уже полон.',
     ['ammo.no_gun'] = 'В руках нет ничего под эти патроны.',
@@ -219,7 +217,7 @@ return {
     ['item.rags'] = 'Тряпьё',
     ['item.raw_meat'] = 'Сырое мясо',
     ['item.rehab_kit'] = 'Набор для реабилитации',
-    ['item.reinforced_bat'] = 'Усиленная бита',
+    ['item.reinforced_bat'] = 'Einhornkuss',
     ['item.repair_kit'] = 'Ремкомплект',
     ['item.revolver'] = 'Револьвер',
     ['item.rotten_flesh'] = 'Гнилая плоть',
@@ -682,18 +680,4 @@ return {
     ['item.rabbit_pelt'] = 'Шкурка кролика',
     ['item.coyote_pelt'] = 'Шкура койота',
     ['item.mtlion_pelt'] = 'Шкура пумы',
-    -- Dark Zone (bs_darkzone)
-    ['item.dz_flare'] = 'Сигнальная ракета',
-    ['item.dz_intel'] = 'Разведданные',
-    ['item.dz_sample'] = 'Образец заражённой ткани',
-    ['item.dz_pdw_warden'] = 'ПП «Страж»',
-    ['item.dz_rifle_revenant'] = 'Винтовка «Ревенант»',
-    ['item.dz_shotgun_breacher'] = 'Дробовик «Таран»',
-    ['item.booster_dz_overdrive'] = 'Форсаж',
-    ['item.booster_dz_ironhide'] = 'Железная шкура',
-    ['item.booster_dz_sentry'] = 'Турель-часовой',
-    ['inv.e_sealed'] = 'Заражено: остаётся в этой сумке до эвакуации.',
-    ['inv.e_dz_full'] = 'Ваша заражённая сумка полна.',
-    ['inv.cant_sprint_heavy'] = 'Слишком тяжело, чтобы бежать. Сбросьте часть груза.',
-    ['ui.customize_weapon'] = "НАСТРОИТЬ ОРУЖИЕ",
 }

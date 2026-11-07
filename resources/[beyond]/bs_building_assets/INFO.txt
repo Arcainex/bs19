@@ -1,0 +1,5 @@
+ALPHA-Z / BS19 – Kenney Building Kit CC0
+Erzeugte, noch NICHT in FiveM getestete Resource.
+Quelle: Kenney Building Kit, Lizenz CC0 (siehe 03_TOOLS/Kenney_Building_Kit/License.txt).
+Nur in Testserver uebernehmen. NICHT automatisch im Live-Server installiert.
+Modellzahl: 79

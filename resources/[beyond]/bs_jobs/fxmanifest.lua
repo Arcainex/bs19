@@ -13,7 +13,6 @@ shared_scripts {
     '@bs_core/shared/sh_locale.lua',
     'config/config_jobs.lua',
     'config/config_garage.lua',
-    'config/config_outdoors.lua',
     -- live overrides from the F1 config console (bs_config); after the config files
     '@bs_config/shared/apply.lua',
 }
@@ -23,7 +22,6 @@ server_scripts {
     'server/sv_core.lua',
     'server/sv_board.lua',
     'server/sv_world.lua',
-    'server/sv_outdoors.lua',
     'server/sv_garage.lua',
     'server/sv_rebels.lua',
 }
@@ -31,7 +29,6 @@ server_scripts {
 client_scripts {
     'client/cl_main.lua',
     'client/cl_world.lua',
-    'client/cl_outdoors.lua',
     'client/cl_garage.lua',
     'client/cl_rebels.lua',
 }
@@ -42,7 +39,6 @@ files {
     'html/index.html',
     'html/style.css',
     'html/app.js',
-    'html/fishing.js',
     'locales/*.lua',
 }
 

@@ -33,16 +33,21 @@ server_scripts {
     -- After sv_main: both read the BSAdmin table it publishes.
     'server/sv_staff.lua',
     'server/sv_commands.lua',
-    'server/sv_link.lua',   -- Survivor Link test tools
 }
 
 ui_page 'html/index.html'
 
 files {
+    'html/img/book_themes/*.png',
     'html/index.html',
     'html/css/style.css',
+    'html/css/craft_editor.css',
     'html/js/app.js',
     'html/js/staff.js',   -- Simple view, player lists
+    'html/js/books.js',
+    'html/js/prop_studio.js',
+    'html/js/craft_editor.js',
+    'html/js/building_debug.js',
     'locales/*.lua',
 }
 

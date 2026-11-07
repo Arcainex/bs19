@@ -1,0 +1,1431 @@
+<?xml version='1.0' encoding='utf-8'?>
+<CMapTypes>
+  <extensions />
+  <archetypes>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.98184747" y="-0.15250000" z="-0.55866253" />
+      <bbMax x="0.98184764" y="0.04000000" z="1.34656370" />
+      <bsCentre x="0.00000008" y="-0.05625000" z="0.39395058" />
+      <bsRadius value="1.39640819" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_barricade_doorway_a</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_barricade_doorway_a</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_barricade_doorway_a</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.98165923" y="-0.15250000" z="-0.65026230" />
+      <bbMax x="0.98165923" y="0.04000000" z="1.40906370" />
+      <bsCentre x="0.00000000" y="-0.05625000" z="0.37940070" />
+      <bsRadius value="1.45087685" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_barricade_doorway_b</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_barricade_doorway_b</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_barricade_doorway_b</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.98165923" y="-0.19000000" z="-0.74707800" />
+      <bbMax x="0.98165923" y="0.04000000" z="1.51692000" />
+      <bsCentre x="0.00000000" y="-0.07500000" z="0.38492100" />
+      <bsRadius value="1.52776465" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_barricade_doorway_c</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_barricade_doorway_c</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_barricade_doorway_c</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.98184747" y="-0.15250000" z="0.06633756" />
+      <bbMax x="0.98184764" y="0.04000000" z="1.34656370" />
+      <bsCentre x="0.00000008" y="-0.05625000" z="0.70645063" />
+      <bsRadius value="1.20102442" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_barricade_window_a</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_barricade_window_a</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_barricade_window_a</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.98165923" y="-0.15250000" z="-0.02526217" />
+      <bbMax x="0.98165923" y="0.04000000" z="1.40906370" />
+      <bsCentre x="0.00000000" y="-0.05625000" z="0.69190076" />
+      <bsRadius value="1.24452515" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_barricade_window_b</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_barricade_window_b</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_barricade_window_b</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.98165923" y="-0.19000000" z="-0.19763350" />
+      <bbMax x="0.98165923" y="0.04000000" z="1.57728490" />
+      <bsCentre x="0.00000000" y="-0.07500000" z="0.68982570" />
+      <bsRadius value="1.35333116" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_barricade_window_c</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_barricade_window_c</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_barricade_window_c</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.41500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="0.18750000" />
+      <bsRadius value="2.42582401" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_corner_diagonal</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_corner_diagonal</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_corner_diagonal</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.41500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="0.18750000" />
+      <bsRadius value="2.42582401" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_corner_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_corner_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_corner_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.04000000" y="-0.04000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.41500000" />
+      <bsCentre x="0.89999995" y="0.89999995" z="0.18750000" />
+      <bsRadius value="1.37368679" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_corner_small</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_corner_small</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_corner_small</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.41500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="0.18750000" />
+      <bsRadius value="2.42582401" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_corner</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_corner</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_corner</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.66500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="0.31250000" />
+      <bsRadius value="2.44087581" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_high_corner_d_6f4eb</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_high_corner_d_6f4eb</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_high_corner_d_6f4eb</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.66500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="0.31250000" />
+      <bsRadius value="2.44087581" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_high_corner_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_high_corner_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_high_corner_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.04000000" y="-0.04000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.66500000" />
+      <bsCentre x="0.89999995" y="0.89999995" z="0.31250000" />
+      <bsRadius value="1.40030217" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_high_corner_small</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_high_corner_small</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_high_corner_small</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="0.66500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="0.31250000" />
+      <bsRadius value="2.44087581" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_high_corner</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_high_corner</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_high_corner</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="0.03499997" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.41500000" z="0.66500000" />
+      <bsCentre x="0.00000000" y="0.22499999" z="0.31250000" />
+      <bsRadius value="1.61621220" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border_high</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border_high</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border_high</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="0.03499997" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.41500000" z="0.41500000" />
+      <bsCentre x="0.00000000" y="0.22499999" z="0.18750000" />
+      <bsRadius value="1.59326536" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_border</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_border</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_border</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.34000000" y="-0.34000000" z="-0.04000000" />
+      <bbMax x="0.34000000" y="0.34000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="1.63831956" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_column_thin</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_column_thin</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_column_thin</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.56500000" y="-0.56500000" z="-0.04000000" />
+      <bbMax x="0.56500000" y="0.56500000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="1.75994957" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_column_wide</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_column_wide</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_column_wide</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.41500000" y="-0.41500000" z="-0.04000000" />
+      <bbMax x="0.41500000" y="0.41500000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="1.67304430" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_column</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_column</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_column</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.36562000" y="-0.36562000" z="-0.04000000" />
+      <bbMax x="0.36562000" y="0.36562000" z="0.57460004" />
+      <bsCentre x="0.00000000" y="0.00000000" z="0.26730002" />
+      <bsRadius value="0.62648921" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_detail_pipe</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_detail_pipe</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_detail_pipe</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_round_a</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_round_a</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_round_a</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_round_b</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_round_b</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_round_b</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_round_c</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_round_c</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_round_c</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_round_d</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_round_d</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_round_d</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_square_a</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_square_a</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_square_a</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_square_b</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_square_b</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_square_b</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_square_c</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_square_c</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_square_c</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.07749993" y="-0.22749999" z="-0.04000000" />
+      <bbMax x="1.39000000" y="0.22749999" z="2.66500000" />
+      <bsCentre x="0.65625004" y="0.00000000" z="1.31250000" />
+      <bsRadius value="1.58044254" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_door_rotate_square_d</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_door_rotate_square_d</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_door_rotate_square_d</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.16499999" />
+      <bbMax x="1.54000000" y="1.54000000" z="0.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="-0.06250000" />
+      <bsRadius value="2.20529958" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_floor_corner_diagonal</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_floor_corner_diagonal</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_floor_corner_diagonal</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.16499999" />
+      <bbMax x="1.54000000" y="1.54000000" z="0.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="-0.06250000" />
+      <bsRadius value="2.20529958" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_floor_corner_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_floor_corner_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_floor_corner_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.79000000" z="-0.16499999" />
+      <bbMax x="1.54000000" y="0.79000000" z="0.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="-0.06250000" />
+      <bsRadius value="1.75884147" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_floor_half</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_floor_half</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_floor_half</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.79000000" z="-0.16499999" />
+      <bbMax x="0.04000000" y="0.79000000" z="0.04000000" />
+      <bsCentre x="-0.75000000" y="0.00000000" z="-0.06250000" />
+      <bsRadius value="1.14692079" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_floor_quarter</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_floor_quarter</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_floor_quarter</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.16499999" />
+      <bbMax x="1.54000000" y="1.54000000" z="0.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="-0.06250000" />
+      <bsRadius value="2.20529958" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_floor</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_floor</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_floor</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.34000000" y="-0.19000000" z="-0.41500000" />
+      <bbMax x="0.19000000" y="0.19000000" z="0.04000000" />
+      <bsCentre x="-0.07500000" y="0.00000000" z="-0.18750000" />
+      <bsRadius value="0.42259433" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_gutter_vertical_bottom</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_gutter_vertical_bottom</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_gutter_vertical_bottom</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.27117940" y="-0.27117940" z="-0.04000000" />
+      <bbMax x="0.27117940" y="0.27117940" z="1.29000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="0.62500000" />
+      <bsRadius value="0.79265978" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_gutter_vertical_short</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_gutter_vertical_short</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_gutter_vertical_short</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.19000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="0.34000000" y="0.19000000" z="0.41500000" />
+      <bsCentre x="0.07500000" y="0.00000000" z="0.18750000" />
+      <bsRadius value="0.42259433" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_gutter_vertical_top</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_gutter_vertical_top</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_gutter_vertical_top</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.27117940" y="-0.27117940" z="-0.04000000" />
+      <bbMax x="0.27117940" y="0.27117940" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="1.61203388" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_gutter_vertical_wall</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_gutter_vertical_wall</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_gutter_vertical_wall</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.27117940" y="-0.27117940" z="-0.04000000" />
+      <bbMax x="0.27117940" y="0.27117940" z="2.54000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.25000000" />
+      <bsRadius value="1.37079959" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_gutter_vertical</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_gutter_vertical</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_gutter_vertical</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.15250003" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.11500002" z="1.29000000" />
+      <bsCentre x="0.00000000" y="-0.01875001" z="0.62500000" />
+      <bsRadius value="1.70776976" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_plating_detailed_wide</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_plating_detailed_wide</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_plating_detailed_wide</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.15250003" z="-0.04000000" />
+      <bbMax x="0.04000000" y="0.11500002" z="1.29000000" />
+      <bsCentre x="-0.75000000" y="-0.01875001" z="0.62500000" />
+      <bsRadius value="1.06625601" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_plating_detailed</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_plating_detailed</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_plating_detailed</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.11500002" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.11500002" z="1.29000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="0.62500000" />
+      <bsRadius value="1.70638336" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_plating_wide</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_plating_wide</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_plating_wide</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.11500002" z="-0.04000000" />
+      <bbMax x="0.04000000" y="0.11500002" z="1.29000000" />
+      <bsCentre x="-0.75000000" y="0.00000000" z="0.62500000" />
+      <bsRadius value="1.06401396" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_plating</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_plating</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_plating</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="2.96000000" />
+      <bbMax x="1.54000000" y="1.54000000" z="3.16500000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="3.06250000" />
+      <bsRadius value="2.20529958" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_center</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_center</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_center</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="2.96000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="3.66500000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="3.31250000" />
+      <bsRadius value="2.44087581" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_corner_inner</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_corner_inner</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_corner_inner</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="2.96000000" />
+      <bbMax x="1.83999990" y="1.83999990" z="3.54000000" />
+      <bsCentre x="0.14999995" y="0.14999995" z="3.25000000" />
+      <bsRadius value="2.43255055" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_corner</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_corner</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_corner</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.24000000" y="-1.24000000" z="2.96000000" />
+      <bbMax x="1.24000000" y="1.24000000" z="3.10250000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="3.03125000" />
+      <bsRadius value="1.78007167" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_patch_large</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_patch_large</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_patch_large</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.86500000" y="-0.86500000" z="2.96000000" />
+      <bbMax x="0.86500000" y="0.86500000" z="3.10250000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="3.03125000" />
+      <bsRadius value="1.25036793" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_patch</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_patch</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_patch</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="2.96000000" />
+      <bbMax x="1.54000000" y="1.83999990" z="3.54000000" />
+      <bsCentre x="0.00000000" y="0.14999995" z="3.25000000" />
+      <bsRadius value="2.32973422" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_side</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_side</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_side</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.83588700" y="-1.83588700" z="2.96000000" />
+      <bbMax x="1.83588700" y="1.83588700" z="3.54000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="3.25000000" />
+      <bsRadius value="2.63748199" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_roof_flat_square</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_roof_flat_square</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_roof_flat_square</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.01500000" z="-0.04000000" />
+      <bbMax x="0.04000000" y="1.01500000" z="1.59999990" />
+      <bsCentre x="-1.50000000" y="0.00000000" z="0.77999995" />
+      <bsRadius value="2.04347094" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_center_short</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_center_short</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_center_short</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.01500000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="1.01500000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.58075941" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_center</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_center</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_center</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.01500000" z="-0.04000000" />
+      <bbMax x="0.04000002" y="1.01500000" z="1.59999990" />
+      <bsCentre x="-1.49999999" y="0.00000000" z="0.77999995" />
+      <bsRadius value="2.04347094" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_closed_short</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_closed_short</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_closed_short</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.01500000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="1.01500000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.58075941" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_closed</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_closed</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_closed</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.01500000" z="-0.04000000" />
+      <bbMax x="0.04000000" y="1.01500000" z="1.59999990" />
+      <bsCentre x="-1.50000000" y="0.00000000" z="0.77999995" />
+      <bsRadius value="2.04347094" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_open_short</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_open_short</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_open_short</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.01500000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="1.01500000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.58075941" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_open</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_open</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_open</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.16500000" z="-0.04000000" />
+      <bbMax x="0.04000000" y="1.16500000" z="1.66000000" />
+      <bsCentre x="-1.50000000" y="0.00000000" z="0.81000000" />
+      <bsRadius value="2.13481634" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_sides_short</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_sides_short</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_sides_short</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-1.16500000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="1.16500000" z="3.10000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.53000000" />
+      <bsRadius value="3.63937754" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_stairs_sides</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_stairs_sides</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_stairs_sides</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.72750000" y="1.72750000" z="3.04000000" />
+      <bsCentre x="0.09375000" y="0.09375000" z="1.50000000" />
+      <bsRadius value="2.80166673" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner_column_bottom</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner_column_bottom</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner_column_bottom</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.04000000" y="-0.04000000" z="-0.04000000" />
+      <bbMax x="1.72750000" y="1.72750000" z="3.04000000" />
+      <bsCentre x="0.84375000" y="0.84375000" z="1.50000000" />
+      <bsRadius value="2.00833762" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner_column_s_b6c17</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner_column_s_b6c17</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner_column_s_b6c17</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.04000000" y="-0.04000000" z="-0.04000000" />
+      <bbMax x="1.65661300" y="1.65249990" z="3.04000000" />
+      <bsCentre x="0.80830650" y="0.80624995" z="1.50000000" />
+      <bsRadius value="1.97624650" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner_column_small</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner_column_small</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner_column_small</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.65249990" y="1.65249990" z="3.04000000" />
+      <bsCentre x="0.05624995" y="0.05624995" z="1.50000000" />
+      <bsRadius value="2.75769607" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner_column</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner_column</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner_column</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="1.54000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.69235824" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner_diagonal</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner_diagonal</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner_diagonal</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="1.54000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.69235824" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-1.54000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="1.54000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.69235824" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_corner</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_corner</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_corner</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.21116102" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_doorway_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_doorway_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_doorway_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.19000015" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.19000015" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.21116103" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_doorway_square</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_doorway_square</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_doorway_square</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.43810709" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_doorway_wide_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_doorway_wide_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_doorway_wide_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-0.19000030" z="-0.04000000" />
+      <bbMax x="3.04000000" y="0.19000030" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.43810711" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_doorway_wide_square</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_doorway_wide_square</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_doorway_wide_square</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-0.79000000" y="-0.11500003" z="-0.04000000" />
+      <bbMax x="0.79000000" y="0.11500003" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="1.75962532" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_half</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_half</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_half</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.11500003" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.11500000" z="1.54000000" />
+      <bsCentre x="0.00000000" y="-0.00000001" z="0.75000000" />
+      <bsRadius value="1.75962532" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_low</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_low</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_low</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.21116102" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_round_detailed</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_round_detailed</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_round_detailed</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.21116102" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.21116102" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_square_d_05baf</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_square_d_05baf</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_square_d_05baf</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.21116102" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_square</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_square</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_square</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="0.18999997" z="3.04000000" />
+      <bsCentre x="0.00000000" y="-0.00000002" z="1.50000000" />
+      <bsRadius value="3.43810709" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_wide_rou_72985</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_wide_rou_72985</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_wide_rou_72985</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="0.18999997" z="3.04000000" />
+      <bsCentre x="0.00000000" y="-0.00000002" z="1.50000000" />
+      <bsRadius value="3.43810709" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_wide_round</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_wide_round</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_wide_round</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.43810709" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_wide_squ_d035e</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_wide_squ_d035e</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_wide_squ_d035e</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-3.04000000" y="-0.19000000" z="-0.04000000" />
+      <bbMax x="3.04000000" y="0.19000000" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="3.43810709" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall_window_wide_square</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall_window_wide_square</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall_window_wide_square</assetName>
+      <extensions />
+    </Item>
+    <Item type="CBaseArchetypeDef">
+      <lodDist value="200.00000000" />
+      <flags value="32" />
+      <specialAttribute value="0" />
+      <bbMin x="-1.54000000" y="-0.11500003" z="-0.04000000" />
+      <bbMax x="1.54000000" y="0.11500003" z="3.04000000" />
+      <bsCentre x="0.00000000" y="0.00000000" z="1.50000000" />
+      <bsRadius value="2.20592297" />
+      <hdTextureDist value="5.00000000" />
+      <name>bs_k_wall</name>
+      <textureDictionary>bs_building_textures</textureDictionary>
+      <clipDictionary />
+      <drawableDictionary />
+      <physicsDictionary>bs_k_wall</physicsDictionary>
+      <assetType>ASSET_TYPE_DRAWABLE</assetType>
+      <assetName>bs_k_wall</assetName>
+      <extensions />
+    </Item>
+  </archetypes>
+  <name>bs_building_assets</name>
+  <dependencies />
+  <compositeEntityTypes />
+</CMapTypes>

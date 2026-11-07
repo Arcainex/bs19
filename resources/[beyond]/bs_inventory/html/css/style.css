@@ -1,21 +1,25 @@
-/* bs_inventory - stylesheet. */
+/*
+   bs_inventory - stylesheet.
+   Keep each selector defined once; edit rules in place instead of appending overrides.
+   No backdrop-filter: a NUI page has no game pixels to sample, so it paints an opaque slab. The world blur comes from GTA (TriggerScreenblurFadeIn in cl_main.lua).
+*/
 
 :root {
-    --soot:   rgb(var(--t-bg, 10,10,9));
-    --panel:  rgba(var(--t-bg, 14,13,11), 0.82);
-    --panel2: rgba(var(--t-bg, 20,18,15), 0.90);
-    --bone:   rgb(var(--t-ink, 240,235,221));
-    --dust:   rgb(var(--t-dim, 168,162,147));
-    --amber:  rgb(var(--t-acc, 224,140,70));
-    --blood:  rgb(var(--t-bad, 110,43,33));
-    --good:   rgb(var(--t-ok, 127,212,162));
-    --danger: rgb(var(--t-bad, 180,87,74));
-    --line:   rgba(var(--t-ink, 240,235,221), 0.12);
-    --line2:  rgba(var(--t-ink, 240,235,221), 0.06);
-    --mono:   var(--t-f-mono, 'Consolas', 'Courier New', monospace);/* Proportion: everything is measured in --cell (one grid square), clamped on viewport height */
+    --soot:   #0a0a09;
+    --panel:  rgba(14, 13, 11, 0.82);
+    --panel2: rgba(20, 18, 15, 0.90);
+    --bone:   #f0ebdd;
+    --dust:   #a8a293;
+    --amber:  #4f8a51;
+    --blood:  #6e2b21;
+    --good:   #7fd4a2;
+    --danger: #b4574a;
+    --line:   rgba(240, 235, 221, 0.12);
+    --line2:  rgba(240, 235, 221, 0.06);
+    --mono:   'Segoe UI Variable', 'Segoe UI', Arial, sans-serif;
 
-    
-    --cell: clamp(42px, calc(4.4vh / var(--ui-scale, 1)), 64px);
+    /* Proportion: everything is measured in --cell (one grid square), clamped on viewport height, so the panel does not stretch with the monitor. --icon is the single size every item picture is drawn at. */
+    --cell: clamp(50.4px, calc(5.28vh / var(--ui-scale, 1)), 76.8px);
     --gap:  2px;
     --icon: calc(var(--cell) * 0.68);
 }
@@ -24,40 +28,29 @@
 
 html, body {
     margin: 0; padding: 0; height: 100%;
-    background: transparent !important;/* the world shows through */                
-    font-family: var(--mono);
+    background: transparent !important;                /* the world shows through */
+    font-family: 'Segoe UI Variable', 'Segoe UI', Arial, sans-serif;/*font-family: var(--mono);*/
     color: var(--bone);
     overflow: hidden;
     user-select: none;
 }
 
-.hidden { display: none !important; }/* A vignette rather than a blackout; the ped in the middle column is lit by the world behind. */
-
-
-/* Placement/fade belongs to the wrapper. The item plate retains every native grid style. */
-.pickup-visual {
-    position: fixed; left: 50%; bottom: calc(22vh / var(--ui-scale, 1));
-    transform: translateX(-50%); pointer-events: none; z-index: 100;
-    opacity: 1; transition: opacity 180ms ease-out;
-}
-.pickup-visual[hidden] { display: none !important; }
-.pickup-visual.is-fading { opacity: 0; }
-.pickup-visual .grid { padding: 0; }
+.hidden { display: none !important; }
 
 /* A vignette rather than a blackout; the ped in the middle column is lit by the world behind. */
 .scrim {
     position: fixed; inset: 0;
     background: radial-gradient(120% 90% at 50% 50%,
-        rgba(var(--t-shade, 0,0,0), calc(0.14 * var(--t-shade-k, 1))) 0%, rgba(var(--t-shade, 0,0,0), calc(0.46 * var(--t-shade-k, 1))) 62%, rgba(var(--t-shade, 0,0,0), calc(0.68 * var(--t-shade-k, 1))) 100%);
+        rgba(0,0,0,0.14) 0%, rgba(0,0,0,0.46) 62%, rgba(0,0,0,0.68) 100%);
     pointer-events: none;
-}/* shell */
+}
 
-
+/* shell */
 
 .wrap {
     position: relative;
     height: 100%;
-    width: calc(66vw / var(--ui-scale, 1));/* the right third stays empty: the camera shows you there */                
+    width: calc(66vw / var(--ui-scale, 1));                /* the right third stays empty: the camera shows you there */
     max-width: 1500px;
     margin: 0;
     display: flex;
@@ -70,12 +63,12 @@ html, body {
     display: flex; align-items: center; gap: 14px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--line);
-    box-shadow: 0 1px 0 rgba(224,140,70,.10);
+    box-shadow: 0 1px 0 rgba(79,138,81,.10);
     flex: 0 0 auto;
 }
 .topbar__title {
     margin-left: auto; margin-right: auto;
-    font-size: 11px; letter-spacing: .42em; color: var(--dust);
+    font-size: 12px; letter-spacing: .42em; color: var(--dust);
     text-transform: uppercase;
 }
 .tabs { display: flex; gap: 4px; }
@@ -84,7 +77,7 @@ html, body {
     background: transparent;
     border: 1px solid transparent;
     color: var(--dust);
-    font: 600 10px/1 var(--mono);
+    font: 600 11px/1 var(--mono);
     letter-spacing: .16em;
     text-transform: uppercase;
     padding: 8px 16px;
@@ -101,9 +94,12 @@ html, body {
 .tab--close:hover { border-color: var(--danger); color: var(--danger); }
 
 .pane { display: none; flex: 1 1 auto; min-height: 0; }
-.pane.is-active { display: flex; flex-direction: column; gap: calc(1vh / var(--ui-scale, 1)); }/* layout: three explicit columns own the horizontal space; everything else lives inside one of them. */
+.pane.is-active { display: flex; flex-direction: column; gap: calc(1vh / var(--ui-scale, 1)); }
 
-
+/*
+   layout
+   Three explicit columns own the horizontal space; everything else lives inside one of them.
+*/
 .layout {
     flex: 1 1 auto;
     min-height: 0;
@@ -112,13 +108,58 @@ html, body {
     width: min(100%, 1130px);
     gap: calc(1.4vw / var(--ui-scale, 1));
 }
-.col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }/* Columns do not stretch their children, so the panels sit under the frames and grid. */
+.col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
 
+/* Columns do not stretch their children, so the panels sit under the frames and grid. */
+.col--character .boosters {
+    display: none !important;
+}
 
-.col--character, .col--stash { justify-content: flex-start; }
-.col--stash .board { flex: 0 0 auto; }/* character: equipment rails on either side of a hole. */
+/* Ausrüstung (.gear) im Charakter-Bereich maximieren */
+.col--character .gear {
+    display: flex !important;
+    flex: 1 1 100% !important;
+    min-width: 0;
+}
 
+/* Gearrow im Charakter-Bereich anpassen */
+.col--character .gearrow {
+    display: flex;
+    flex-direction: column;
+}
 
+/* Hinweistexte im Charakter-Bereich ausblenden */
+.col--character .boosters__hint, 
+.col--character .gear__hint {
+    display: none !important;
+}
+.col--stash .board { flex: 0 0 auto; }
+
+/* Player inventory: the panel ends exactly at the 8-column raster instead of
+   stretching into unused space. 20px accounts for the grid's 10px padding on
+   both sides; seven gaps sit between eight columns. */
+.col--stash > .board,
+.col--stash > .sheet,
+.col--stash > .col--bags {
+    width: calc((var(--cell) * 8) + (var(--gap) * 7) + 20px);
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.col--stash > .col--bags > .board {
+    width: 100%;
+    box-sizing: border-box;
+}
+.col--stash > .board > .board__head {
+    flex-wrap: wrap;
+}
+.col--stash > .board > .board__head .catfilter {
+    margin-left: 0;
+}
+
+/*
+   character
+   Equipment rails on either side of a hole. They use the grid's gap so the rails and the grid read as one lattice.
+*/
 .doll {
     flex: 0 0 auto;
     min-height: 0;
@@ -130,9 +171,9 @@ html, body {
 .doll__rail {
     display: flex; flex-direction: column; gap: var(--gap);
     justify-content: flex-start;
-}/* A frame is 1.5 cells tall. `flex: 0 0 auto` stops frames from dividing the column height. `overflow: hidden` */
+}
 
-
+/* A frame is 1.5 cells tall. `flex: 0 0 auto` stops frames from dividing the column height. `overflow: hidden` clips the worn garment plate (inset: 0) so its icon and name stay inside the border. */
 .eq {
     position: relative;
     flex: 0 0 auto;
@@ -140,42 +181,45 @@ html, body {
     min-height: 0;
     overflow: hidden;
     background: var(--panel);
-    border: 1px solid var(--line);/* Hatch for an empty socket. */
-    
+    border: 1px solid var(--line);
+    /* Hatch for an empty socket. */
     background-image: repeating-linear-gradient(
-        135deg, transparent 0 5px, rgba(var(--t-ink, 240,235,221), .035) 5px 6px);
+        135deg, transparent 0 5px, rgba(240,235,221,.035) 5px 6px);
     transition: border-color .12s ease, box-shadow .12s ease;
 }
-.eq:hover { border-color: rgba(var(--t-acc, 224,140,70), .6); }/* The label is the empty frame's caption, not a corner tag. */
+.eq:hover { border-color: rgba(79,138,81,.6); }
 
-
+/* The label is the empty frame's caption, not a corner tag. A small chip over a frame (about 63px tall on a laptop) covered too much and clipped long names, so it is laid out as a caption instead. */
 .eq__label {
     position: absolute; inset: 0; z-index: 1;
     display: flex; align-items: center; justify-content: center;
     padding: calc(var(--cell) * 0.08);
-    font: 600 clamp(7px, calc(var(--cell) * 0.17), 10px)/1.25 var(--mono);
+    font: 600 clamp(8px, calc(var(--cell) * 0.17), 11px)/1.25 var(--mono);
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--dust);
-    text-align: center;/* Two words may wrap to two lines; anything longer is clipped instead of pushed over the border. */
-    
+    text-align: center;
+    /* Two words may wrap to two lines; anything longer is clipped instead of pushed over the border. */
     overflow: hidden;
-    pointer-events: none;/* the FRAME is the drop target, not the caption */    
-}/* silhouette: the middle column is a dark diagram figure (the live ped is on the right, see cl_pedcam.lua). */
+    pointer-events: none;    /* the FRAME is the drop target, not the caption */
+}
 
-
+/*
+   silhouette
+   The middle column is a dark diagram figure (the live ped is on the right, see cl_pedcam.lua). The figure has no fixed height: `.doll` is a grid with align-items: stretch, so it matches the tallest rail whatever Clothing.Slots holds.
+*/
 .figure {
     position: relative;
-    background: linear-gradient(180deg, rgba(var(--t-bg, 20,18,15), .55), rgba(var(--t-bg, 10,10,9), .75));
+    background: linear-gradient(180deg, rgba(20,18,15,.55), rgba(10,10,9,.75));
     border: 1px solid var(--line2);
     overflow: hidden;
     pointer-events: none;
-}/* Viewfinder corners. */
-
+}
+/* Viewfinder corners. */
 .figure::before, .figure::after {
     content: '';
     position: absolute; width: 24px; height: 24px;
-    border: 1px solid rgba(var(--t-acc, 224,140,70), .5);
+    border: 1px solid rgba(79,138,81,.5);
 }
 .figure::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
 .figure::after  { bottom: 0; right: 0; border-left: 0; border-top: 0; }
@@ -183,19 +227,19 @@ html, body {
 .figure__body {
     position: absolute; inset: 6% 0 2%;
     width: 100%; height: 92%;
-    fill: rgb(var(--t-bg, 8,8,10));/* near-black, like the reference */                 
+    fill: #08080a;                 /* near-black, like the reference */
     opacity: .92;
     pointer-events: none;
-}/* The two frames on the body use percentage heights against the figure and stay above the silhouette. */
+}
 
-
+/* The two frames on the body use percentage heights against the figure and stay above the silhouette. */
 .eq--onbody {
     position: absolute;
     left: 50%; transform: translateX(-50%);
     width: 62%; height: auto; min-height: 0;
     z-index: 2;
     pointer-events: auto;
-    background-color: rgba(var(--t-bg, 14,13,11), .55);
+    background-color: rgba(14,13,11,.55);
 }
 .eq--onbody[data-eq="armour"]   { top: 16%;  height: 22%; }
 .eq--onbody[data-eq="backpack"] { top: 44%;  height: 22%; }
@@ -204,22 +248,25 @@ html, body {
     position: absolute; left: 0; right: 0; bottom: 0; height: 34px;
     pointer-events: auto; cursor: ew-resize;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, transparent, rgba(var(--t-bg, 10,10,8), .6));
+    background: linear-gradient(180deg, transparent, rgba(10,10,8,.6));
 }
 .figure__turn span {
-    font: 600 8px/1 var(--mono); letter-spacing: .18em;
+    font: 600 9px/1 var(--mono); letter-spacing: .18em;
     text-transform: uppercase; color: var(--dust); opacity: .75;
 }
-.figure__turn:hover span { color: var(--amber); opacity: 1; }/* board: the board wraps its grid, leaving room underneath for the character sheet. */
+.figure__turn:hover span { color: var(--amber); opacity: 1; }
 
-
+/*
+   board
+   The board wraps its grid, leaving room underneath for the character sheet.
+*/
 .board {
     flex: 0 0 auto;
     min-height: 0;
     display: flex; flex-direction: column;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), linear-gradient(180deg, rgba(var(--t-bg, 20,18,15), .90), rgba(var(--t-bg, 11,10,9), .88));
+    background: linear-gradient(180deg, rgba(20,18,15,.90), rgba(11,10,9,.88));
     border: 1px solid var(--line);
-    border-top: 2px solid rgba(var(--t-acc, 224,140,70), .55);
+    border-top: 2px solid rgba(79,138,81,.55);
     box-shadow: 0 10px 30px rgba(0,0,0,.35);
     animation: panelIn .22s ease-out both;
 }
@@ -243,7 +290,7 @@ html, body {
 }
 .weight__track {
     flex: 1 1 auto; height: 4px;
-    background: rgba(var(--t-ink, 240,235,221), .10);
+    background: rgba(240,235,221,.10);
 }
 .weight__fill {
     height: 100%; width: 0;
@@ -252,7 +299,7 @@ html, body {
 }
 .weight__fill.is-heavy { background: var(--danger); }
 .weight {
-    font: 600 9px/1 var(--mono); letter-spacing: .1em; color: var(--dust);
+    font: 600 10px/1 var(--mono); letter-spacing: .1em; color: var(--dust);
     white-space: nowrap;
 }
 
@@ -260,20 +307,23 @@ html, body {
 .catfilter button {
     background: transparent; border: 1px solid var(--line);
     color: var(--dust);
-    font: 600 8px/1 var(--mono); letter-spacing: .12em;
+    font: 600 9px/1 var(--mono); letter-spacing: .12em;
     padding: 5px 9px; cursor: pointer;
 }
 .catfilter button { transition: color .12s, border-color .12s, background .12s; }
-.catfilter button:hover { color: var(--bone); border-color: rgba(var(--t-acc, 224,140,70), .5); }
+.catfilter button:hover { color: var(--bone); border-color: rgba(79,138,81,.5); }
 .catfilter button.is-active { color: var(--soot); background: var(--amber); border-color: var(--amber); }
 
 .hollow {
     margin: auto; padding: 20px;
-    font-size: 10px; line-height: 1.7; color: var(--dust);
+    font-size: 11px; line-height: 1.7; color: var(--dust);
     text-align: center; max-width: 26ch;
-}/* grid: two layers in one CSS grid: a lattice of cells and item plates placed on top (see renderGrid in app.js). */
+}
 
-
+/*
+   grid
+   Two layers in one CSS grid: a lattice of cells and item plates placed on top (see renderGrid in app.js). Tracks use the fixed cell size so items are the same size everywhere; the grid stays top-left.
+*/
 .grid {
     flex: 0 0 auto;
     min-height: 0;
@@ -293,23 +343,27 @@ html, body {
 }
 
 .grid .cell {
-    background: rgba(var(--t-ink, 240,235,221), .03);
+    /* Alpha-Z: olivgruener Rasterhintergrund, Transparenz unveraendert */
+    background: rgba(79,138,81,.03);
     border: 1px solid var(--line2);
     transition: background .1s ease, border-color .1s ease;
 }
-.grid .cell:hover { background: rgba(var(--t-acc, 224,140,70), .08); }
+.grid .cell:hover { background: rgba(79,138,81,.08); }
 body.is-carrying .grid .cell:hover {
-    background: rgba(var(--t-acc, 224,140,70), .18);
-    border-color: rgba(var(--t-acc, 224,140,70), .6);
-}/* item plates: a plate is a frame, not a stack. */
+    background: rgba(79,138,81,.18);
+    border-color: rgba(79,138,81,.6);
+}
 
-
+/*
+   item plates
+   A plate is a frame, not a stack. The icon is centred on the whole plate (not what is left after the name), and sizing uses --icon with min() because a percentage max-height against an indefinite height does nothing.
+*/
 .grid .slot.has-item,
 .slot--loose {
     position: relative;
     container-type: inline-size;
-    background: linear-gradient(180deg, rgba(var(--t-panel2, 48,44,38), .96), rgba(var(--t-bg, 26,24,20), .98));
-    border: 1px solid rgba(var(--t-ink, 240,235,221), .18);
+    background: linear-gradient(180deg, rgba(48,44,38,.96), rgba(26,24,20,.98));
+    border: 1px solid rgba(240,235,221,.18);
     box-shadow: inset 0 1px 0 rgba(240,235,221,.06), 0 2px 7px rgba(0,0,0,.55);
     cursor: grab;
     overflow: hidden;
@@ -318,17 +372,17 @@ body.is-carrying .grid .cell:hover {
 }
 .grid .slot.has-item:hover,
 .slot--loose:hover {
-    border-color: rgba(var(--t-acc, 224,140,70), .8);
-    box-shadow: 0 0 0 1px rgba(224,140,70,.3), 0 5px 14px rgba(0,0,0,.6);
+    border-color: rgba(79,138,81,.8);
+    box-shadow: 0 0 0 1px rgba(79,138,81,.3), 0 5px 14px rgba(0,0,0,.6);
     z-index: 3;
 }
 .grid .slot.has-item:active { cursor: grabbing; transform: scale(.98); }
-.grid .slot.is-filtered { opacity: .2; }/* Loose items in the overflow strip are off the lattice, so they get an explicit one-cell size. */
+.grid .slot.is-filtered { opacity: .2; }
 
+/* Loose items in the overflow strip are off the lattice, so they get an explicit one-cell size. */
+.slot--loose { width: var(--cell); height: var(--cell); }
 
-.slot--loose { width: var(--cell); height: var(--cell); }/* A corner notch marks a rotated item. */
-
-
+/* A corner notch marks a rotated item. */
 .grid .slot.is-rot::before {
     content: '';
     position: absolute; top: 0; right: 0;
@@ -340,15 +394,15 @@ body.is-carrying .grid .cell:hover {
 
 .slot__name {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
-    padding: 2px 3px 3px;/* The strip keeps a pale name readable over a dark icon; it uses the panel colour. */
-    
-    background: linear-gradient(180deg, rgba(var(--t-shade, 10,10,9), calc(0 * var(--t-shade-k, 1))), rgba(var(--t-bg, 10,10,9), .78) 45%);
-    font: 600 8px/1.1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+    padding: 2px 3px 3px;
+    /* The strip keeps a pale name readable over a dark icon; it uses the panel colour. */
+    background: linear-gradient(180deg, rgba(10,10,9,0), rgba(10,10,9,.78) 45%);
+    font: 600 9px/1.1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
     color: var(--dust); text-align: center; max-width: 100%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     pointer-events: none;
-}/* On a 1x1 the icon is the label; four clipped characters are worse. */
-
+}
+/* On a 1x1 the icon is the label; four clipped characters are worse. */
 @container (max-width: 64px) { .slot__name { display: none; } }
 
 .slot__foot {
@@ -360,13 +414,18 @@ body.is-carrying .grid .cell:hover {
 
 .slot__fill {
     position: absolute; left: 3px; right: 3px; bottom: 3px; z-index: 3;
-    height: 2px; background: rgba(var(--t-ink, 240,235,221), .15);
+    height: 2px; background: rgba(240,235,221,.15);
 }
-.slot__fill i { display: block; height: 100%; background: var(--amber); }/* Every icon the same size, and none outside its plate Icons are sized off `--icon` (derived from the cell) *//* Centred on the whole plate with a cell-based inset so artwork never touches the border. */
+.slot__fill i { display: block; height: 100%; background: var(--amber); }
+.slot__fill--durability { left: 0; right: 0; bottom: 0; height: 3px; background: rgba(0,0,0,.55); }
+.slot__fill--durability i { background: #d8c35b; transition: width 180ms linear; }
 
+/*
+   Every icon the same size, and none outside its plate
+   Icons are sized off `--icon` (derived from the cell), not a percentage of the slot, so a toolbox and a bandage draw at the same size. It is the same in the bag, bar, equipment frames, bar picker and drag ghost. `min(var(--icon), 100%)` keeps it inside the plate.
+*/
 
-
-
+/* Centred on the whole plate with a cell-based inset so artwork never touches the border. */
 .slot__icon {
     position: absolute; inset: 0; z-index: 1;
     display: flex; align-items: center; justify-content: center;
@@ -378,24 +437,34 @@ body.is-carrying .grid .cell:hover {
     width: min(var(--icon), 100%);
     height: min(var(--icon), 100%);
     object-fit: contain;
-}/* Items the grid could not seat. Kept visible so players do not think they lost them. */
+}
 
+/* 4x4 items keep their slot footprint, but their artwork is drawn at twice the normal icon size. */
+.grid .slot.has-item.is-4x4 .slot__icon svg,
+.grid .slot.has-item.is-4x4 .slot__icon img {
+    width: min(calc(var(--icon) * 2), 100%);
+    height: min(calc(var(--icon) * 2), 100%);
+}
 
+/* Items the grid could not seat. Kept visible so players do not think they lost them. */
 .overflow {
     display: flex; flex-wrap: wrap; gap: 4px;
     margin: 0 10px 10px; padding: 8px;
-    background: rgba(var(--t-bad, 110,43,33), .16);
-    border: 1px solid rgba(var(--t-bad, 180,87,74), .5);
+    background: rgba(110,43,33,.16);
+    border: 1px solid rgba(180,87,74,.5);
 }
 .overflow__label { width: 100%; font: 700 8px/1 var(--mono);
-    letter-spacing: .14em; color: var(--danger); }/* bar: five slots at exactly one cell each, left-aligned, so a hotbar slot is the same square as a bag square. */
+    letter-spacing: .14em; color: var(--danger); }
 
-
+/*
+   bar
+   Five slots at exactly one cell each, left-aligned, so a hotbar slot is the same square as a bag square.
+*/
 .bar {
     flex: 0 0 auto;
     display: flex; align-items: center; gap: 10px;
     padding: 8px 10px;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel);
+    background: var(--panel);
     border: 1px solid var(--line);
 }
 .bar__label { font: 700 9px/1 var(--mono); letter-spacing: .2em; color: var(--dust); }
@@ -404,53 +473,53 @@ body.is-carrying .grid .cell:hover {
     position: relative;
     flex: 0 0 auto;
     width: var(--cell); height: var(--cell);
-    background: rgba(var(--t-ink, 240,235,221), .035);
+    background: rgba(240,235,221,.035);
     border: 1px solid var(--line);
     cursor: pointer;
     overflow: hidden;
 }
-.bar__slot:hover { border-color: rgba(var(--t-acc, 224,140,70), .6); }
-.bar__slot.is-refused { border-color: var(--danger); }/* The key number is a real element (see renderBar), not a ::after on a data attribute. */
-
+.bar__slot:hover { border-color: rgba(79,138,81,.6); }
+.bar__slot.is-refused { border-color: var(--danger); }
+/* The key number is a real element (see renderBar), not a ::after on a data attribute. */
 .bar__key {
     position: absolute; top: 2px; left: 4px; z-index: 2;
     font: 700 8px/1 var(--mono); color: var(--amber);
     pointer-events: none;
-}/* A bar slot has no room for a name. The count goes to the opposite corner because the key number owns the top left. */
-
+}
+/* A bar slot has no room for a name. The count goes to the opposite corner because the key number owns the top left. */
 .bar__slot .slot__name { display: none; }
-.bar__slot .slot__foot { top: auto; left: auto; right: 4px; bottom: 2px; }/* foot */
+.bar__slot .slot__foot { top: auto; left: auto; right: 4px; bottom: 2px; }
 
-
+/* foot */
 .foot { flex: 0 0 auto; padding-top: 4px; text-align: center; }
-.foot__hint { font: 600 8px/1 var(--mono); letter-spacing: .16em;
-    text-transform: uppercase; color: var(--dust); opacity: .65; }/* settings */
+.foot__hint { font: 600 9px/1 var(--mono); letter-spacing: .16em;
+    text-transform: uppercase; color: var(--dust); opacity: .65; }
 
-
+/* settings */
 .settings {
     display: flex; flex-direction: column; gap: 18px; padding: 16px; overflow-y: auto;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel); border: 1px solid var(--line);
+    background: var(--panel); border: 1px solid var(--line);
 }
 .settings__bar { position: sticky; top: -16px; z-index: 2; margin: -16px -16px 0; padding: 10px 16px;
     background: var(--panel); border-bottom: 1px solid var(--line); }
-.settings__search { width: 100%; background: rgba(var(--t-shade, 0,0,0), calc(.35 * var(--t-shade-k, 1))); border: 1px solid var(--line); color: var(--bone);
-    font: 600 10px/1 var(--mono); letter-spacing: .1em; padding: 9px 10px; outline: none; }
+.settings__search { width: 100%; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); color: var(--bone);
+    font: 600 11px/1 var(--mono); letter-spacing: .1em; padding: 9px 10px; outline: none; }
 .settings__search:focus { border-color: var(--amber); }
 .sgroup__title { margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
     font: 700 10px/1 var(--mono); letter-spacing: .24em; text-transform: uppercase; color: var(--amber); }
 .sgroup__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .setting--wide { grid-column: 1 / -1; }
 .seg button .swatch { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -1px; }
-.seg button .swatch i { width: 7px; height: 7px; border: 1px solid rgba(var(--t-ink, 255,255,255), .25); }/* live HUD style preview (mirrors bs_ui hud.css, scaled down) */
+.seg button .swatch i { width: 7px; height: 7px; border: 1px solid rgba(255, 255, 255, .25); }
 
-
-.hudprev { width: 230px; padding: 8px 10px; margin: 2px 0; background: rgba(var(--t-shade, 0,0,0), calc(.35 * var(--t-shade-k, 1))); border-left: 2px solid rgba(var(--t-bad, 110,43,33), .8);
-    font: 600 8px/1 var(--mono); color: var(--bone); }
+/* live HUD style preview (mirrors bs_ui hud.css, scaled down) */
+.hudprev { width: 230px; padding: 8px 10px; margin: 2px 0; background: rgba(0, 0, 0, .35); border-left: 2px solid rgba(110, 43, 33, .8);
+    font: 600 9px/1 var(--mono); color: var(--bone); }
 .hudprev__id { margin-bottom: 6px; letter-spacing: .08em; } .hudprev__id i { color: var(--amber); font-style: normal; letter-spacing: .2em; margin-left: 6px; }
 .hudprev__row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
 .hudprev__row b { flex: 0 0 48px; font-weight: 600; letter-spacing: .15em; opacity: .75; }
 .hudprev__row em { flex: 0 0 26px; text-align: right; font-style: normal; opacity: .85; }
-.hudprev__track { flex: 1; height: 3px; background: rgba(var(--t-shade, 0,0,0), calc(.55 * var(--t-shade-k, 1))); overflow: hidden; }
+.hudprev__track { flex: 1; height: 3px; background: rgba(0, 0, 0, .55); overflow: hidden; }
 .hudprev__track u { display: block; height: 100%; width: var(--w); background: var(--c); text-decoration: none; }
 .hudprev[data-style='slim'] .hudprev__row b { display: none; }
 .hudprev[data-style='slim'] .hudprev__track { height: 2px; }
@@ -458,7 +527,7 @@ body.is-carrying .grid .cell:hover {
 .hudprev[data-style='blocks'] .hudprev__track u { -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); mask-image: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); }
 .hudprev[data-style='capsule'] { border-left-color: transparent; }
 .hudprev[data-style='capsule'] .hudprev__track, .hudprev[data-style='capsule'] .hudprev__track u { height: 7px; border-radius: 7px; }
-.hudprev[data-style='glow'] { border-left-color: var(--amber); background: linear-gradient(90deg, rgba(var(--t-shade, 0,0,0), calc(.5 * var(--t-shade-k, 1))), transparent); }
+.hudprev[data-style='glow'] { border-left-color: var(--amber); background: linear-gradient(90deg, rgba(0, 0, 0, .5), transparent); }
 .hudprev[data-style='glow'] .hudprev__track { height: 4px; }
 .hudprev[data-style='glow'] .hudprev__track u { box-shadow: 0 0 6px rgba(255, 255, 255, .45); filter: brightness(1.25); }
 .hudprev[data-style='glow'] .hudprev__row em { color: var(--amber); }
@@ -466,23 +535,23 @@ body.is-carrying .grid .cell:hover {
 .hudprev[data-style='plate'] .hudprev__track { height: 5px; clip-path: polygon(0 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
 .setting { display: flex; flex-direction: column; gap: 7px; }
 .setting__label { font: 700 9px/1 var(--mono); letter-spacing: .18em; color: var(--dust); }
-.setting__note { margin: 0; font-size: 9px; line-height: 1.5; color: var(--dust); opacity: .7; }
-.setting__value { font: 600 9px/1 var(--mono); color: var(--amber); }
+.setting__note { margin: 0; font-size: 10px; line-height: 1.5; color: var(--dust); opacity: .7; }
+.setting__value { font: 600 10px/1 var(--mono); color: var(--amber); }
 .seg { display: flex; gap: 3px; }
 .seg button {
     flex: 1 1 0; background: transparent; border: 1px solid var(--line);
-    color: var(--dust); font: 600 9px/1 var(--mono); letter-spacing: .1em;
+    color: var(--dust); font: 600 10px/1 var(--mono); letter-spacing: .1em;
     padding: 8px; cursor: pointer;
 }
 .seg button.is-active { color: var(--soot); background: var(--amber); border-color: var(--amber); }
 input[type=range] { width: 100%; accent-color: var(--amber); }
 .setting.is-disabled input[type=range], .setting.is-disabled .setting__value { opacity: .35; }
-input[type=range]:disabled { cursor: default; }/* menus and modals */
+input[type=range]:disabled { cursor: default; }
 
-
+/* menus and modals */
 .ctx {
     position: fixed; z-index: 40; min-width: 170px;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel2); border: 1px solid var(--line);
+    background: var(--panel2); border: 1px solid var(--line);
     box-shadow: 0 10px 30px rgba(0,0,0,.7);
 }
 .ctx__head {
@@ -493,11 +562,11 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 .ctx__item {
     display: block; width: 100%; text-align: left;
     background: transparent; border: 0; color: var(--bone);
-    font: 600 10px/1 var(--mono); letter-spacing: .1em;
+    font: 600 11px/1 var(--mono); letter-spacing: .1em;
     padding: 9px 11px; cursor: pointer;
 }
-.ctx__item:hover { background: rgba(var(--t-acc, 224,140,70), .16); }
-.ctx__item--danger:hover { background: rgba(var(--t-bad, 180,87,74), .22); color: var(--danger); }
+.ctx__item:hover { background: rgba(79,138,81,.16); }
+.ctx__item--danger:hover { background: rgba(180,87,74,.22); color: var(--danger); }
 .ctx__bind { display: flex; align-items: center; gap: 4px;
     padding: 8px 11px; border-top: 1px solid var(--line); }
 .ctx__bindlabel { font: 700 8px/1 var(--mono); letter-spacing: .16em; color: var(--dust); }
@@ -510,46 +579,49 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 
 .modal { position: fixed; inset: 0; z-index: 50;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(var(--t-shade, 0,0,0), calc(.55 * var(--t-shade-k, 1))); }
+    background: rgba(0,0,0,.55); }
 .modal__box {
     min-width: 280px; padding: 18px;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel2); border: 1px solid var(--line);
+    background: var(--panel2); border: 1px solid var(--line);
 }
 .modal__box h3 { margin: 0 0 12px;
     font: 700 11px/1 var(--mono); letter-spacing: .2em; color: var(--bone); }
 .modal__actions { display: flex; gap: 8px; margin-top: 14px; }
 .btn {
     flex: 1 1 0; background: transparent; border: 1px solid var(--line);
-    color: var(--dust); font: 600 10px/1 var(--mono); letter-spacing: .12em;
+    color: var(--dust); font: 600 11px/1 var(--mono); letter-spacing: .12em;
     padding: 10px; cursor: pointer;
 }
 .btn:hover { color: var(--bone); border-color: var(--amber); }
 .btn--primary { background: var(--amber); border-color: var(--amber); color: var(--soot); }
 #splitInput {
-    width: 100%; padding: 9px; background: rgba(var(--t-shade, 0,0,0), calc(.45 * var(--t-shade-k, 1)));
+    width: 100%; padding: 9px; background: rgba(0,0,0,.45);
     border: 1px solid var(--line); color: var(--bone);
-    font: 600 12px/1 var(--mono); text-align: center;
+    font: 600 13px/1 var(--mono); text-align: center;
 }
-.who { display: flex; flex-direction: column; gap: 4px; max-height: calc(40vh / var(--ui-scale, 1)); overflow-y: auto; }/* Built by app.js, so easy to miss when restyling; an unstyled runtime element looks like a broken feature. */
-
+.who { display: flex; flex-direction: column; gap: 4px; max-height: calc(40vh / var(--ui-scale, 1)); overflow-y: auto; }
+/* Built by app.js, so easy to miss when restyling; an unstyled runtime element looks like a broken feature. */
 .who__btn {
     width: 100%; text-align: left;
     background: transparent; border: 1px solid var(--line);
-    color: var(--bone); font: 600 10px/1 var(--mono); letter-spacing: .08em;
+    color: var(--bone); font: 600 11px/1 var(--mono); letter-spacing: .08em;
     padding: 9px 11px; cursor: pointer;
 }
-.who__btn:hover { border-color: var(--amber); color: var(--amber); }/* runtime-built elements: created by app.js rather than index.html. *//* Dragging: the source plate dims, the destination lights. */
+.who__btn:hover { border-color: var(--amber); color: var(--amber); }
 
+/*
+   runtime-built elements
+   Created by app.js rather than index.html.
+*/
 
-
-
+/* Dragging: the source plate dims, the destination lights. */
 .is-dragging { opacity: .35; }
 .is-over {
-    border-color: rgba(var(--t-acc, 224,140,70), .8) !important;
-    background: rgba(var(--t-acc, 224,140,70), .16) !important;
-}/* A refused drop says why, in the element that refused it. */
+    border-color: rgba(79,138,81,.8) !important;
+    background: rgba(79,138,81,.16) !important;
+}
 
-
+/* A refused drop says why, in the element that refused it. */
 .is-refused { border-color: var(--danger) !important; animation: refuse .35s ease; }
 .is-refused::after {
     content: attr(data-why);
@@ -557,24 +629,24 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     transform: translateX(-50%);
     padding: 4px 8px; white-space: nowrap; z-index: 30;
     background: var(--panel2); border: 1px solid var(--danger);
-    font: 600 8px/1 var(--mono); letter-spacing: .1em;
+    font: 600 9px/1 var(--mono); letter-spacing: .1em;
     text-transform: uppercase; color: var(--danger);
 }
 @keyframes refuse {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-3px); }
     75% { transform: translateX(3px); }
-}/* thresholds x0.6: body is ui-scaled (bs_ui/html/shared/scale.js); local width is >=1920 until the 0.6 floor */
+}
+/* thresholds x0.6: body is ui-scaled (bs_ui/html/shared/scale.js); local width is >=1920 until the 0.6 floor */
+@media (prefers-reduced-motion: reduce) { .is-refused { animation: none; } }
 
-@media (prefers-reduced-motion: reduce) { .is-refused { animation: none; } }/* The drag ghost follows the cursor and must never take pointer events. */
-
-
+/* The drag ghost follows the cursor and must never take pointer events. It uses the same icon size as the plate, so picking up does not resize it. */
 .ghost {
     position: fixed; z-index: 60; pointer-events: none; opacity: .9;
     width: auto; height: auto;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-}/* The ghost is not inside a plate, so its icon box carries the size itself */
-
+}
+/* The ghost is not inside a plate, so its icon box carries the size itself (a percentage would resolve against a shrink-to-fit parent). */
 .ghost__icon {
     display: flex; align-items: center; justify-content: center;
     width: var(--icon); height: var(--icon);
@@ -583,16 +655,16 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     width: 100%; height: 100%; object-fit: contain;
 }
 .ghost__name {
-    font: 600 8px/1 var(--mono); letter-spacing: .08em;
+    font: 600 9px/1 var(--mono); letter-spacing: .08em;
     text-transform: uppercase; color: var(--bone);
     text-shadow: 0 1px 3px #000; white-space: nowrap;
-}/* Clicking an empty bar slot opens a picker of what could go there. */
+}
 
-
+/* Clicking an empty bar slot opens a picker of what could go there. */
 .barpick {
     position: fixed; z-index: 45; min-width: 200px; max-height: calc(44vh / var(--ui-scale, 1));
     overflow-y: auto; padding: 5px;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel2); border: 1px solid var(--line);
+    background: var(--panel2); border: 1px solid var(--line);
     box-shadow: 0 10px 30px rgba(0,0,0,.7);
 }
 .barpick__head {
@@ -603,10 +675,10 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     display: flex; align-items: center; gap: 9px;
     width: 100%; padding: 7px 9px;
     background: transparent; border: 0; cursor: pointer;
-    color: var(--bone); font: 600 10px/1 var(--mono); text-align: left;
+    color: var(--bone); font: 600 11px/1 var(--mono); text-align: left;
 }
-.barpick__row:hover { background: rgba(var(--t-acc, 224,140,70), .16); }/* The picker icon needs a fixed box with a contained image; otherwise a large PNG renders at natural size and breaks the row. */
-
+.barpick__row:hover { background: rgba(79,138,81,.16); }
+/* The picker icon needs a fixed box with a contained image; otherwise a large PNG renders at natural size and breaks the row. */
 .barpick__icon {
     flex: 0 0 auto;
     display: flex; align-items: center; justify-content: center;
@@ -617,12 +689,15 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 }
 .barpick__count { margin-left: auto; color: var(--dust); font-weight: 700; }
 .barpick__empty { margin: 0; padding: 12px;
-    font-size: 9px; line-height: 1.6; color: var(--dust); }/* stats: fills the space under the bar with info you would otherwise close the bag to read. */
+    font-size: 10px; line-height: 1.6; color: var(--dust); }
 
-
+/*
+   stats
+   Fills the space under the bar with info you would otherwise close the bag to read.
+*/
 .stats {
     flex: 0 0 auto;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel);
+    background: var(--panel);
     border: 1px solid var(--line);
 }
 .stats__head {
@@ -633,38 +708,41 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     font: 700 11px/1 var(--mono); letter-spacing: .1em; color: var(--bone);
 }
 .stats__class {
-    font: 600 8px/1 var(--mono); letter-spacing: .16em;
+    font: 600 9px/1 var(--mono); letter-spacing: .16em;
     text-transform: uppercase; color: var(--amber);
 }
 .stats__rows { padding: 8px 11px 10px; display: flex; flex-direction: column; gap: 7px; }
 
 .stat { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 8px; }
 .stat__label {
-    font: 600 8px/1 var(--mono); letter-spacing: .12em;
+    font: 600 9px/1 var(--mono); letter-spacing: .12em;
     text-transform: uppercase; color: var(--dust);
 }
-.stat__track { height: 4px; background: rgba(var(--t-ink, 240,235,221), .10); }/* `.stat__fill` is a span (inline by default), which ignores width and height, so bars rendered empty. */
+.stat__track { height: 4px; background: rgba(240,235,221,.10); }
 
-
+/* `.stat__fill` is a span (inline by default), which ignores width and height, so bars rendered empty. Declared display: block explicitly so restructuring the row cannot break it. */
 .stat__fill { display: block; height: 100%; width: 0; transition: width .2s ease; }
 .stat__val {
-    font: 600 9px/1 var(--mono); color: var(--bone);
+    font: 600 10px/1 var(--mono); color: var(--bone);
     text-align: right; font-variant-numeric: tabular-nums;
-}/* Semantic colours, separate from the amber accent. */
+}
 
-
-.stat--health .stat__fill { background: rgb(var(--t-ok, 127,212,162)); }
+/* Semantic colours, separate from the amber accent. */
+.stat--health .stat__fill { background: #7fd4a2; }
 .stat--armour .stat__fill { background: #6fa8c8; }
-.stat--hunger .stat__fill { background: rgb(var(--t-acc, 216,162,74)); }
+.stat--hunger .stat__fill { background: #93ab63; }
 .stat--thirst .stat__fill { background: #5fa8d0; }
 .stat--infect .stat__fill { background: #a86fc0; }
 .stat--xp     .stat__fill { background: var(--amber); }
-.stat.is-low .stat__fill  { background: var(--danger); }/* character sheet: levels on the left, their effects (modifiers) on the right. */
+.stat.is-low .stat__fill  { background: var(--danger); }
 
-
+/*
+   character sheet
+   Levels on the left, their effects (modifiers) on the right.
+*/
 .sheet {
     flex: 0 0 auto;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel);
+    background: var(--panel);
     border: 1px solid var(--line);
 }
 .sheet__head {
@@ -686,10 +764,10 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 
 .tree { display: grid; grid-template-columns: 62px 1fr 30px; align-items: center; gap: 8px; }
 .tree__name {
-    font: 600 8px/1 var(--mono); letter-spacing: .1em;
+    font: 600 9px/1 var(--mono); letter-spacing: .1em;
     text-transform: uppercase; color: var(--dust);
 }
-.tree__track { height: 3px; background: rgba(var(--t-ink, 240,235,221), .10); }
+.tree__track { height: 3px; background: rgba(240,235,221,.10); }
 .tree__fill { height: 100%; background: var(--amber); transition: width .2s ease; }
 .tree__lvl {
     font: 700 9px/1 var(--mono); color: var(--bone);
@@ -703,19 +781,22 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 .mod {
     display: flex; align-items: baseline; gap: 6px;
     padding: 2px 0;
-    font: 600 9px/1.4 var(--mono);
+    font: 600 10px/1.4 var(--mono);
 }
 .mod__label { color: var(--dust); }
-.mod__val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }/* Green is good, red is bad, and which is which depends on the stat */
-
+.mod__val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Green is good, red is bad, and which is which depends on the stat, not the sign (slower hunger is a negative rate and a good thing). */
 .mod--good .mod__val { color: var(--good); }
 .mod--bad  .mod__val { color: var(--danger); }
-.mod__none { font: 600 9px/1.6 var(--mono); color: var(--dust); opacity: .6; }/* worn equipment: a garment in a body frame reuses the grid's `.slot` plate (drag, category tint, fill bar). */
+.mod__none { font: 600 10px/1.6 var(--mono); color: var(--dust); opacity: .6; }
 
-
+/*
+   worn equipment
+   A garment in a body frame reuses the grid's `.slot` plate (drag, category tint, fill bar). It fills the frame and drops the amount and the hatch. The icon is deliberately not resized; `.slot__icon` already centres it.
+*/
 .eq.has-worn {
     background-image: none;
-    border-color: rgba(var(--t-acc, 224,140,70), .45);
+    border-color: rgba(79,138,81,.45);
 }
 .slot.is-worn {
     position: absolute;
@@ -725,9 +806,9 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     overflow: hidden;
     z-index: 3;
     cursor: grab;
-}/* A worn container (pack) gets a small corner mark so it is discoverable that clicking opens it. */
+}
 
-
+/* A worn container (pack) gets a small corner mark so it is discoverable that clicking opens it. */
 .eq.is-openable { cursor: pointer; }
 .eq.is-openable::after {
     content: '';
@@ -735,17 +816,17 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     right: 3px; bottom: 3px;
     width: 0; height: 0;
     border-left: 7px solid transparent;
-    border-bottom: 7px solid rgba(var(--t-acc, 224,140,70), .85);
+    border-bottom: 7px solid rgba(79,138,81,.85);
     z-index: 4;
     pointer-events: none;
 }
-.eq.is-openable:hover { border-color: rgba(var(--t-acc, 224,140,70), .9); }
+.eq.is-openable:hover { border-color: rgba(79,138,81,.9); }
 
 @media (max-width: 840px) {
     .layout { grid-template-columns: minmax(260px, 26%) minmax(0, 1fr) minmax(210px, 24%); }
-}/* The plate clips its contents and the name is not drawn in the grid. */
+}
 
-
+/* The plate clips its contents and the name is not drawn in the grid. A 1x1 plate is one cell tall, too small for icon + name + quantity, so the icon spilled out. The icon says what the item is, and hover, right-click and the drag ghost show the full label. */
 
 .grid .slot.has-item {
     overflow: hidden;
@@ -753,12 +834,12 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     flex-direction: column;
     align-items: center;
     justify-content: center;
-}/* The label stays in the DOM for the context menu and screen readers; it just is not drawn in the grid. */
+}
 
+/* The label stays in the DOM for the context menu and screen readers; it just is not drawn in the grid. */
+.grid .slot.has-item .slot__name { display: none; }
 
-.grid .slot.has-item .slot__name { display: none; }/* The count sits in the corner so it costs the icon nothing. */
-
-
+/* The count sits in the corner so it costs the icon nothing. */
 .grid .slot.has-item .slot__foot {
     position: absolute;
     top: 2px; left: 3px;
@@ -770,21 +851,24 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     text-shadow: 0 1px 2px rgba(0,0,0,.9);
 }
 
-.slot__icon { overflow: hidden; }/* rarity and wear: rarity is a border, not a fill, since the background carries the category tint. */
+.slot__icon { overflow: hidden; }
 
-
-.slot[data-rarity="worn"]     { border-color: rgba(var(--t-dim, 139,133,120), .55); }
+/*
+   rarity and wear
+   Rarity is a border, not a fill, since the background carries the category tint. Common is left unstyled so the grid is not a colour chart.
+*/
+.slot[data-rarity="worn"]     { border-color: rgba(139,133,120,.55); }
 .slot[data-rarity="good"]     { border-color: rgba(95,168,211,.75); }
-.slot[data-rarity="military"] { border-color: rgba(var(--t-acc, 224,140,70), .85); }
+.slot[data-rarity="military"] { border-color: rgba(79,138,81,.85); }
 .eq[data-rarity="good"]       { border-color: rgba(95,168,211,.55); }
-.eq[data-rarity="military"]   { border-color: rgba(var(--t-acc, 224,140,70), .65); }/* Condition bar along the bottom of a worn garment; the fill colour shows low condition. */
+.eq[data-rarity="military"]   { border-color: rgba(79,138,81,.65); }
 
-
+/* Condition bar along the bottom of a worn garment; the fill colour shows low condition. */
 .cond {
     position: absolute;
     left: 3px; right: 3px; bottom: 2px;
     height: 2px;
-    background: rgba(var(--t-shade, 0,0,0), calc(.55 * var(--t-shade-k, 1)));
+    background: rgba(0,0,0,.55);
     overflow: hidden;
 }
 .cond__fill {
@@ -793,19 +877,22 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     transition: width .2s ease;
 }
 .slot.is-worn .cond__fill { background: var(--good); }
-.slot.is-worn[data-rarity] .cond { bottom: 2px; }/* Under ~35% the bar changes colour (cosmetic threshold). */
+.slot.is-worn[data-rarity] .cond { bottom: 2px; }
 
-
+/* Under ~35% the bar changes colour (cosmetic threshold). */
 .cond__fill[style*="width:3"],
 .cond__fill[style*="width:2"],
 .cond__fill[style*="width:1"],
-.cond__fill[style*="width:0"] { background: var(--danger); }/* gear list: attribution lines sit under the totals, indented and quieter. */
+.cond__fill[style*="width:0"] { background: var(--danger); }
 
-
+/*
+   gear list
+   Attribution lines sit under the totals, indented and quieter.
+*/
 .gear__src {
     display: flex; justify-content: space-between; gap: 10px;
     padding: 2px 0 2px 10px;
-    font: 500 8px/1.4 var(--mono);
+    font: 500 9px/1.4 var(--mono);
     letter-spacing: .04em;
     text-transform: uppercase;
     color: var(--dust);
@@ -813,25 +900,28 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 }
 .gear__empty {
     margin: 4px 0 0;
-    font: 500 8px/1.5 var(--mono);
+    font: 500 9px/1.5 var(--mono);
     letter-spacing: .04em;
     color: var(--dust);
     opacity: .7;
-}/* Eight filter presets will not fit on one row, so the control wraps instead of scrolling. */
+}
 
-
+/* Eight filter presets will not fit on one row, so the control wraps instead of scrolling. */
 .seg--wrap { flex-wrap: wrap; }
-.seg--wrap button { flex: 0 0 auto; }/* field medical: body snapshot on a dark plate (left), vitals + active effects (right). */
+.seg--wrap button { flex: 0 0 auto; }
 
-
+/*
+   field medical
+   Body snapshot on a dark plate (left), vitals + active effects (right).
+*/
 .fieldmed {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     color: var(--bone);
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), linear-gradient(160deg, rgba(var(--t-bg, 18,19,17), .94), rgba(var(--t-bg, 8,9,8), .95));
-    border: 1px solid rgba(var(--t-ink2, 214,205,178), .22);
-    box-shadow: inset 3px 0 0 rgba(193, 117, 56, .88), 0 10px 30px rgba(0, 0, 0, .35);
+    background: linear-gradient(160deg, rgba(18, 19, 17, .94), rgba(8, 9, 8, .95));
+    border: 1px solid rgba(214, 205, 178, .22);
+    box-shadow: inset 3px 0 0 rgba(79, 138, 81, .88), 0 10px 30px rgba(0, 0, 0, .35);
     animation: panelIn .22s ease-out both;
 }
 .fieldmed__head {
@@ -840,21 +930,21 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(var(--t-ink2, 214,205,178), .16);
-    background: rgba(var(--t-bg, 10,11,10), .9);
+    border-bottom: 1px solid rgba(214, 205, 178, .16);
+    background: rgba(10, 11, 10, .9);
 }
-.fieldmed__title { font: 800 12px/1 var(--mono); letter-spacing: .2em; color: rgb(var(--t-ink, 244,240,223)); }
+.fieldmed__title { font: 800 12px/1 var(--mono); letter-spacing: .2em; color: #f4f0df; }
 .fieldmed__state {
     padding: 6px 9px;
     font: 800 10px/1 var(--mono);
     letter-spacing: .14em;
     color: var(--good);
-    background: rgba(var(--t-ok, 127,212,162), .08);
-    border: 1px solid rgba(var(--t-ok, 127,212,162), .35);
+    background: rgba(127, 212, 162, .08);
+    border: 1px solid rgba(127, 212, 162, .35);
     transition: color .2s, background .2s, border-color .2s;
 }
-.fieldmed__state.is-watch { color: rgb(var(--t-acc2, 242,164,81)); background: rgba(var(--t-acc, 218,137,65), .10); border-color: rgba(var(--t-acc, 218,137,65), .45); }
-.fieldmed__state.is-critical { color: rgb(var(--t-bad2, 255,121,105)); background: rgba(var(--t-bad, 195,57,47), .16); border-color: rgba(var(--t-bad2, 224,93,79), .62); animation: critPulse 1.4s ease-in-out infinite; }
+.fieldmed__state.is-watch { color: #4f8a51; background: rgba(79, 138, 81, .10); border-color: rgba(79, 138, 81, .45); }
+.fieldmed__state.is-critical { color: #ff7969; background: rgba(195, 57, 47, .16); border-color: rgba(224, 93, 79, .62); animation: critPulse 1.4s ease-in-out infinite; }
 @keyframes critPulse { 50% { box-shadow: 0 0 12px rgba(224, 93, 79, .45); } }
 .fieldmed__body {
     display: grid;
@@ -870,52 +960,52 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     align-items: center;
     min-height: 30px;
     gap: 8px;
-    border-bottom: 1px solid rgba(var(--t-ink, 231,226,205), .09);
+    border-bottom: 1px solid rgba(231, 226, 205, .09);
     transition: background .12s;
 }
-.medrow:hover { background: rgba(var(--t-ink, 240,235,221), .03); }
+.medrow:hover { background: rgba(240, 235, 221, .03); }
 .medrow__label {
     font: 700 10px/1.2 var(--mono);
     letter-spacing: .08em;
-    color: rgb(var(--t-ink2, 185,186,172));
+    color: #b9baac;
     text-transform: uppercase;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.medrow__value { justify-self: end; white-space: nowrap; font: 800 13px/1 var(--mono); color: rgb(var(--t-ink, 250,245,231)); }
-.medrow.is-watch .medrow__label, .medrow.is-watch .medrow__value { color: rgb(var(--t-acc2, 240,160,78)); }
-.medrow.is-critical .medrow__label, .medrow.is-critical .medrow__value { color: rgb(var(--t-bad2, 255,117,101)); }
-.fieldmed__refresh { margin-top: 6px; padding: 4px 10px; font: 700 9px/1.3 var(--mono); letter-spacing: .1em; color: rgba(var(--t-ink2, 220,224,208), .85); background: rgba(var(--t-ink2, 220,224,208), .06); border: 1px solid rgba(var(--t-ink2, 220,224,208), .25); cursor: pointer; }
-.fieldmed__refresh:hover:not(:disabled) { background: rgba(var(--t-ink2, 220,224,208), .14); }
+.medrow__value { justify-self: end; white-space: nowrap; font: 800 13px/1 var(--mono); color: #faf5e7; }
+.medrow.is-watch .medrow__label, .medrow.is-watch .medrow__value { color: #4f8a51; }
+.medrow.is-critical .medrow__label, .medrow.is-critical .medrow__value { color: #ff7565; }
+.fieldmed__refresh { margin-top: 6px; padding: 4px 10px; font: 700 9px/1.3 var(--mono); letter-spacing: .1em; color: rgba(220, 224, 208, .85); background: rgba(220, 224, 208, .06); border: 1px solid rgba(220, 224, 208, .25); cursor: pointer; }
+.fieldmed__refresh:hover:not(:disabled) { background: rgba(220, 224, 208, .14); }
 .fieldmed__refresh:disabled { opacity: .45; cursor: default; }
-.fieldmed__note { margin-top: 8px; font: 700 9px/1.3 var(--mono); letter-spacing: .1em; color: rgba(var(--t-ink2, 220,224,208), .55); }
+.fieldmed__note { margin-top: 8px; font: 700 9px/1.3 var(--mono); letter-spacing: .1em; color: rgba(220, 224, 208, .55); }
 .fieldmed__foot {
     min-height: 34px;
     padding: 8px 16px;
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border-top: 1px solid rgba(var(--t-ink2, 214,205,178), .14);
-    background: rgba(var(--t-bg, 10,11,10), .9);
+    border-top: 1px solid rgba(214, 205, 178, .14);
+    background: rgba(10, 11, 10, .9);
     font: 700 8px/1.35 var(--mono);
     letter-spacing: .08em;
-    color: rgba(var(--t-ink2, 225,221,202), .6);
+    color: rgba(225, 221, 202, .6);
 }
-.fieldmed__foot span { color: rgb(var(--t-acc, 220,160,96)); text-align: right; }/* snapshot plate: charcoal radial, character on top */
+.fieldmed__foot span { color: #4f8a51; text-align: right; }
 
-
+/* snapshot plate: charcoal radial, character on top */
 .bodycard { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.bodycard__label { font: 800 9px/1 var(--mono); letter-spacing: .22em; color: rgba(var(--t-acc, 224,140,70), .9); }
+.bodycard__label { font: 800 9px/1 var(--mono); letter-spacing: .22em; color: rgba(79, 138, 81, .9); }
 .bodycard__stage {
     position: relative;
     height: 300px;
     cursor: ew-resize;
     overflow: hidden;
     background:
-        radial-gradient(ellipse 60% 8% at 50% 94%, rgba(var(--t-shade, 0,0,0), calc(.65 * var(--t-shade-k, 1))), transparent 70%),
-        radial-gradient(ellipse 70% 60% at 50% 45%, rgb(var(--t-panel, 29,30,27)) 0%, rgb(var(--t-bg, 17,18,16)) 55%, rgb(var(--t-bg, 7,7,7)) 100%);
+        radial-gradient(ellipse 60% 8% at 50% 94%, rgba(0, 0, 0, .65), transparent 70%),
+        radial-gradient(ellipse 70% 60% at 50% 45%, #1d1e1b 0%, #111210 55%, #070707 100%);
     box-shadow: inset 0 0 0 1px rgba(214, 205, 178, .12), inset 0 0 40px rgba(0, 0, 0, .7);
 }
-.bodycard__stage::after {/* faint scan lines */    
+.bodycard__stage::after {    /* faint scan lines */
     content: ''; position: absolute; inset: 0; pointer-events: none;
-    background: repeating-linear-gradient(0deg, rgba(var(--t-ink, 255,255,255), .018) 0 1px, transparent 1px 3px);
+    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 3px);
 }
 .bodycard__img {
     position: absolute; inset: 4% 0 2%;
@@ -936,39 +1026,39 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     pointer-events: none;
 }
 .bodycard__sil[data-angle="1"], .bodycard__sil[data-angle="3"] { transform: translateX(-50%) scaleX(.55); }
-.bodycard__silbody { fill: url(#silFill); stroke: rgba(var(--t-acc, 224,140,70), .55); stroke-width: .8; }
-.bodycard__siline { fill: none; stroke: rgba(var(--t-acc, 224,140,70), .18); stroke-width: .6; }
+.bodycard__silbody { fill: url(#silFill); stroke: rgba(79, 138, 81, .55); stroke-width: .8; }
+.bodycard__siline { fill: none; stroke: rgba(79, 138, 81, .18); stroke-width: .6; }
 .bodycard__sil[data-angle="1"] .bodycard__siline, .bodycard__sil[data-angle="3"] .bodycard__siline { display: none; }
 .bodycard__stage.has-shots .bodycard__sil { opacity: 0; }
-.bodycard__corner { position: absolute; width: 14px; height: 14px; border: 0 solid rgba(var(--t-acc, 193,117,56), .8); pointer-events: none; transition: border-color .15s; }
+.bodycard__corner { position: absolute; width: 14px; height: 14px; border: 0 solid rgba(79, 138, 81, .8); pointer-events: none; transition: border-color .15s; }
 .bodycard__corner:nth-of-type(1) { left: 4px; top: 4px; border-width: 2px 0 0 2px; }
 .bodycard__corner:nth-of-type(2) { right: 4px; top: 4px; border-width: 2px 2px 0 0; }
 .bodycard__corner:nth-of-type(3) { left: 4px; bottom: 4px; border-width: 0 0 2px 2px; }
 .bodycard__corner:nth-of-type(4) { right: 4px; bottom: 4px; border-width: 0 2px 2px 0; }
 .bodycard__stage:hover .bodycard__corner { border-color: var(--amber); }
 .bodycard__marks { position: absolute; inset: 4% 0 2%; pointer-events: none; }
-.bmark { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: rgb(var(--t-bad, 224,57,45)); box-shadow: 0 0 0 2px rgba(20, 0, 0, .6), 0 0 10px rgba(255, 60, 45, .8); }
-.bmark i { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(var(--t-bad2, 255,70,55), .7); animation: bmarkPing 1.6s ease-out infinite; }
+.bmark { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #e0392d; box-shadow: 0 0 0 2px rgba(20, 0, 0, .6), 0 0 10px rgba(255, 60, 45, .8); }
+.bmark i { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(255, 70, 55, .7); animation: bmarkPing 1.6s ease-out infinite; }
 .bmark--2 { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; }
-.bmark--3 { width: 18px; height: 18px; margin: -9px 0 0 -9px; background: rgb(var(--t-bad2, 255,45,31)); }
+.bmark--3 { width: 18px; height: 18px; margin: -9px 0 0 -9px; background: #ff2d1f; }
 @keyframes bmarkPing { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
-.bodycard__foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 8px/1 var(--mono); letter-spacing: .14em; color: rgba(var(--t-ink2, 221,225,206), .55); }
+.bodycard__foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; font: 700 8px/1 var(--mono); letter-spacing: .14em; color: rgba(221, 225, 206, .55); }
 .bodycard__angle { color: var(--bone); }
 .bodycard__dots { display: flex; gap: 4px; }
-.bodycard__dots b { width: 6px; height: 6px; background: rgba(var(--t-ink, 240,235,221), .18); transition: background .15s; }
-.bodycard__dots b.is-on { background: var(--amber); }/* active drugs / boosters / hurt zones */
+.bodycard__dots b { width: 6px; height: 6px; background: rgba(240, 235, 221, .18); transition: background .15s; }
+.bodycard__dots b.is-on { background: var(--amber); }
 
-
+/* active drugs / boosters / hurt zones */
 .fxchips { display: flex; flex-wrap: wrap; gap: 4px; }
 .fxchip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 4px 7px;
     font: 700 8px/1 var(--mono); letter-spacing: .1em;
-    border: 1px solid var(--line); background: rgba(var(--t-shade, 0,0,0), calc(.3 * var(--t-shade-k, 1))); color: var(--dust);
+    border: 1px solid var(--line); background: rgba(0, 0, 0, .3); color: var(--dust);
     animation: panelIn .18s ease-out both;
 }
-.fxchip small { font-size: 8px; opacity: .75; }
-.fxchip--hurt { color: rgb(var(--t-bad2, 255,138,124)); border-color: rgba(var(--t-bad2, 224,93,79), .55); background: rgba(var(--t-bad, 195,57,47), .12); }
+.fxchip small { font-size: 9px; opacity: .75; }
+.fxchip--hurt { color: #ff8a7c; border-color: rgba(224, 93, 79, .55); background: rgba(195, 57, 47, .12); }
 .fxchip--drug { color: #d6a8ff; border-color: rgba(190, 130, 255, .5); background: rgba(150, 90, 230, .10); }
 .fxchip--boost { color: #7fd8ff; border-color: rgba(96, 210, 255, .5); background: rgba(60, 200, 255, .08); }
 .fxchip--none { opacity: .5; }
@@ -983,28 +1073,28 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     overflow: auto;
     padding: 24px;
     box-sizing: border-box;
-    color: rgb(var(--t-ink, 238,233,216));
-    background: rgba(var(--t-bg, 17,25,26), .97);
-    border: 1px solid rgba(var(--t-acc, 218,169,91), .8);
+    color: #eee9d8;
+    background: rgba(17, 25, 26, .97);
+    border: 1px solid rgba(79, 138, 81, .8);
     box-shadow: 0 18px 52px rgba(0, 0, 0, .65);
-    font: 14px/1.45 var(--mono);
+    font: 15px/1.45 var(--mono);
 }
 .trade-active .wrap, .trade-active .scrim { display: none; }
-.trade-panel__eyebrow { display: block; color: rgb(var(--t-ink2, 183,177,161)); font-size: 11px; letter-spacing: .25em; }
-.trade-panel__head strong { display: block; font-size: 21px; }
-.trade-panel__bag { margin: 16px 0; padding: 14px; border: 1px solid rgba(var(--t-ink2, 222,218,195), .22); background: rgba(var(--t-shade, 0,0,0), calc(.25 * var(--t-shade-k, 1))); }
+.trade-panel__eyebrow { display: block; color: #b7b1a1; font-size: 12px; letter-spacing: .25em; }
+.trade-panel__head strong { display: block; font-size: 22px; }
+.trade-panel__bag { margin: 16px 0; padding: 14px; border: 1px solid rgba(222, 218, 195, .22); background: rgba(0,0,0,.25); }
 .trade-panel__bag h4, .trade-panel__offers h4 { display: flex; justify-content: space-between; align-items: center; }
-.trade-panel__bag small, .trade-panel__offers small { color: rgb(var(--t-ink2, 165,169,159)); font-size: 10px; }
+.trade-panel__bag small, .trade-panel__offers small { color: #a5a99f; font-size: 11px; }
 .trade-panel__bag-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 7px; max-height: calc(30vh / var(--ui-scale, 1)); overflow: auto; }
-.trade-panel__bag-item { min-height: 64px; display: flex; align-items: center; gap: 8px; padding: 8px; color: rgb(var(--t-ink, 238,233,216)); border: 1px solid rgba(var(--t-ink2, 222,218,195), .19); background: rgba(var(--t-ink, 255,255,255), .04); cursor: grab; text-align: left; font: inherit; }
+.trade-panel__bag-item { min-height: 64px; display: flex; align-items: center; gap: 8px; padding: 8px; color: #eee9d8; border: 1px solid rgba(222,218,195,.19); background: rgba(255,255,255,.04); cursor: grab; text-align: left; font: inherit; }
 .trade-panel__bag-item:active { cursor: grabbing; }
 .trade-panel__bag-item[disabled] { opacity: .4; cursor: default; }
 .trade-panel__bag-item .trade-panel__icon { width: 34px; height: 34px; flex: none; }
 .trade-panel__bag-item span:last-child { overflow-wrap: anywhere; }
-.trade-panel__offers > div.is-over { border-color: rgb(var(--t-acc, 224,140,70)); background: rgba(var(--t-acc, 224,140,70), .16); }
-.trade-panel__cash { display: flex; align-items: center; gap: 8px; margin-top: 12px; border-top: 1px solid rgba(var(--t-ink2, 222,218,195), .18); padding-top: 12px; }
-.trade-panel__cash input { min-width: 0; width: 125px; padding: 8px; background: rgb(var(--t-bg, 17,27,28)); border: 1px solid rgb(var(--t-dim, 114,105,88)); color: rgb(var(--t-ink, 255,255,255)); font: inherit; }
-.trade-panel__cash-note { display: block; margin-top: 6px; color: rgb(var(--t-ink2, 170,167,151)); font-size: 11px; }
+.trade-panel__offers > div.is-over { border-color: #4f8a51; background: rgba(79,138,81,.16); }
+.trade-panel__cash { display: flex; align-items: center; gap: 8px; margin-top: 12px; border-top: 1px solid rgba(222,218,195,.18); padding-top: 12px; }
+.trade-panel__cash input { min-width: 0; width: 125px; padding: 8px; background: #111b1c; border: 1px solid #726958; color: #fff; font: inherit; }
+.trade-panel__cash-note { display: block; margin-top: 6px; color: #aaa797; font-size: 12px; }
 .trade-panel.hidden, .trade-notice.hidden { display: none; }
 .trade-panel__head, .trade-panel__actions {
     display: flex;
@@ -1012,25 +1102,25 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     align-items: center;
     gap: 12px;
 }
-.trade-panel__head strong { color: rgb(var(--t-acc2, 233,187,117)); letter-spacing: .14em; }
-.trade-panel__status { margin: 16px 0; color: rgb(var(--t-ink2, 213,208,187)); }
+.trade-panel__head strong { color: #4f8a51; letter-spacing: .14em; }
+.trade-panel__status { margin: 16px 0; color: #d5d0bb; }
 .trade-panel__offers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .trade-panel__offers > div {
     min-height: 200px;
     padding: 10px;
-    background: rgba(var(--t-shade, 0,0,0), calc(.28 * var(--t-shade-k, 1)));
-    border: 1px solid rgba(var(--t-ink2, 222,218,195), .16);
+    background: rgba(0, 0, 0, .28);
+    border: 1px solid rgba(222, 218, 195, .16);
 }
-.trade-panel__offers h4 { margin: 0 0 9px; color: rgb(var(--t-acc2, 233,187,117)); }
+.trade-panel__offers h4 { margin: 0 0 9px; color: #4f8a51; }
 .trade-panel__item {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     padding: 5px 0;
-    border-top: 1px solid rgba(var(--t-ink2, 222,218,195), .12);
+    border-top: 1px solid rgba(222, 218, 195, .12);
 }
-.trade-panel__item button { border: 0; background: transparent; color: rgb(var(--t-acc2, 233,187,117)); cursor: pointer; }
+.trade-panel__item button { border: 0; background: transparent; color: #4f8a51; cursor: pointer; }
 .trade-panel__icon { display: inline-flex; width: 22px; height: 22px; vertical-align: middle; margin-right: 6px; }
 .trade-panel__icon svg, .trade-panel__icon img { max-width: 100%; max-height: 100%; }
 .trade-panel__actions { justify-content: flex-end; margin-top: 12px; }
@@ -1041,37 +1131,67 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     bottom: calc(2vh / var(--ui-scale, 1));
     right: calc(3vw / var(--ui-scale, 1));
     padding: 8px 12px;
-    background: rgb(var(--t-panel, 22,32,37));
-    border: 1px solid rgb(var(--t-acc, 217,169,91));
-    color: rgb(var(--t-ink, 255,240,213));
-    font: 12px var(--mono);
+    background: #162025;
+    border: 1px solid #4f8a51;
+    color: #fff0d5;
+    font: 13px var(--mono);
 }
 @media (max-width: 708px), (max-height: 456px) {
     .fieldmed { min-height: 0; }
     .bodycard__stage { height: 250px; }
     .medrow { min-height: 26px; }
-    .medrow__label { font-size: 9px; }
-    .medrow__value { font-size: 12px; }
-    .fieldmed__foot { min-height: 30px; padding: 7px 11px; font-size: 7px; }
-}/* boosters: three single-use gadget slots (bs_boosters). */
+    .medrow__label { font-size: 10px; }
+    .medrow__value { font-size: 13px; }
+    .fieldmed__foot { min-height: 30px; padding: 7px 11px; font-size: 8px; }
+}
 
-
+/*
+   boosters
+   Three single-use gadget slots (bs_boosters).
+*/
 .boosters {
     margin-top: 8px;
     padding: 8px 10px 10px;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel);
+    background: var(--panel);
     border: 1px solid var(--line);
     border-left: 2px solid var(--amber);
 }
-.boosters__head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-.boosters__title { font: 700 11px/1 var(--mono); letter-spacing: .18em; color: var(--amber); }
-.boosters__hint { font: 600 8px/1 var(--mono); letter-spacing: .1em; color: var(--dust); opacity: .6; }
+.boosters__head, 
+.gear__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    width: 100%;
+}
+.boosters__title, 
+.gear__title {
+    font: 700 9px/1 var(--mono);
+    letter-spacing: .1em;
+    color: var(--amber);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.boosters__hint, 
+.gear__hint {
+    font: 600 8px/1 var(--mono);
+    letter-spacing: .04em;
+    color: var(--dust);
+    opacity: .6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    text-align: right;
+}
 .boosters__slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .booster {
     position: relative;
     height: calc(var(--cell, 56px) * 1.1);
     border: 1px dashed rgba(96, 210, 255, .28);
-    background: linear-gradient(180deg, rgba(60, 200, 255, .05), rgba(var(--t-shade, 0,0,0), calc(.25 * var(--t-shade-k, 1))));
+    background: linear-gradient(180deg, rgba(60, 200, 255, .05), rgba(0, 0, 0, .25));
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 2px; overflow: hidden; cursor: default;
     transition: border-color .15s, box-shadow .15s;
@@ -1081,10 +1201,10 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 .booster__key {
     position: absolute; top: 3px; left: 4px;
     font: 700 9px/1 var(--mono); color: var(--bone);
-    padding: 2px 4px; border: 1px solid var(--line); background: rgba(var(--t-shade, 0,0,0), calc(.45 * var(--t-shade-k, 1)));
+    padding: 2px 4px; border: 1px solid var(--line); background: rgba(0, 0, 0, .45);
 }
 .booster__count { position: absolute; top: 3px; right: 5px; font: 700 9px/1 var(--mono); color: var(--dust); }
-.booster__empty { font: 600 8px/1 var(--mono); letter-spacing: .14em; color: var(--dust); opacity: .5; }
+.booster__empty { font: 600 9px/1 var(--mono); letter-spacing: .14em; color: var(--dust); opacity: .5; }
 .booster__icon { width: 55%; height: 45%; display: flex; align-items: center; justify-content: center; color: #60d2ff; }
 .booster__icon svg { width: 100%; height: 100%; }
 .booster__name { font: 700 8px/1.1 var(--mono); letter-spacing: .06em; color: var(--bone); text-align: center; padding: 0 4px; }
@@ -1092,85 +1212,91 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 .booster__cd {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(var(--t-bg, 10,10,9), .72);
+    background: rgba(10, 10, 9, .72);
     font: 700 13px/1 var(--mono); color: var(--amber);
 }
-.booster.is-refused { border-color: var(--danger); }/* gear: armour + backpack frames, left of the boosters. */
+.booster.is-refused { border-color: var(--danger); }
 
-
+/*
+   gear
+   Armour + backpack frames, left of the boosters.
+*/
 .gearrow { display: flex; gap: 8px; align-items: stretch; }
 .gearrow > .boosters { flex: 3 1 0; min-width: 0; }
 .gearrow > .gear { flex: 2 1 0; }
-.gearrow > .boosters.gadgets { flex: 2 1 0; border-left-color: rgb(var(--t-ok, 143,209,111)); }
-.gadgets .boosters__title { color: rgb(var(--t-ok, 143,209,111)); }
+.gearrow > .boosters.gadgets { flex: 2 1 0; border-left-color: #8fd16f; }
+.gadgets .boosters__title { color: #8fd16f; }
 .gadgets__slots { grid-template-columns: repeat(2, 1fr); }
-.booster.gadget { border-color: rgba(var(--t-ok, 143,209,111), .28); }
-.booster.gadget.has-booster { border-color: rgba(var(--t-ok, 143,209,111), .5); }
-.booster.gadget.is-over, .booster.gadget:hover { border-color: rgba(var(--t-ok, 143,209,111), .8); box-shadow: inset 0 0 12px rgba(143, 209, 111, .18); }
-.booster.gadget .booster__icon { color: rgb(var(--t-ok, 143,209,111)); }
+.booster.gadget { border-color: rgba(143, 209, 111, .28); }
+.booster.gadget.has-booster { border-color: rgba(143, 209, 111, .5); }
+.booster.gadget.is-over, .booster.gadget:hover { border-color: rgba(143, 209, 111, .8); box-shadow: inset 0 0 12px rgba(143, 209, 111, .18); }
+.booster.gadget .booster__icon { color: #8fd16f; }
 .gear__slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .gear__slot.slot {
     position: relative; width: auto;
     height: calc(var(--cell, 56px) * 1.1);
-    border: 1px dashed rgba(var(--t-acc, 215,160,70), .3);
-    background: linear-gradient(180deg, rgba(var(--t-acc, 215,160,70), .05), rgba(var(--t-shade, 0,0,0), calc(.25 * var(--t-shade-k, 1))));
+    border: 1px dashed rgba(79, 138, 81, .3);
+    background: linear-gradient(180deg, rgba(79, 138, 81, .05), rgba(0, 0, 0, .25));
 }
-.gear__slot.slot.has-item { border-style: solid; border-color: rgba(var(--t-acc, 215,160,70), .5); cursor: grab; }
-.gear__slot.is-over { border-color: var(--amber); box-shadow: inset 0 0 12px rgba(215, 160, 70, .2); }
+.gear__slot.slot.has-item { border-style: solid; border-color: rgba(79, 138, 81, .5); cursor: grab; }
+.gear__slot.is-over { border-color: var(--amber); box-shadow: inset 0 0 12px rgba(79, 138, 81, .2); }
 .gear__label {
     position: absolute; top: 3px; left: 4px;
     font: 700 8px/1 var(--mono); letter-spacing: .12em; color: var(--dust);
 }
-.gear__slot:not(.has-item) .gear__label { inset: 0; display: flex; align-items: center; justify-content: center; opacity: .55; }/* snapshot cover: opaque: the camera is elsewhere while it is up. */
+.gear__slot:not(.has-item) .gear__label { inset: 0; display: flex; align-items: center; justify-content: center; opacity: .55; }
 
-
+/*
+   snapshot cover
+   Opaque on purpose: the camera is elsewhere while it is up.
+*/
 .capcover {
     position: fixed; inset: 0; z-index: 200;
     display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(ellipse at 40% 50%, rgb(var(--t-bg, 21,21,18)), rgba(var(--t-shade, 5,5,5), calc(1 * var(--t-shade-k, 1))) 75%);
+    background: radial-gradient(ellipse at 40% 50%, #151512, #050505 75%);
 }
-.capcover span { font: 700 11px/1 var(--mono); letter-spacing: .35em; color: var(--dust); animation: critPulse 1s ease-in-out infinite; }/* search / sort bar */
+.capcover span { font: 700 11px/1 var(--mono); letter-spacing: .35em; color: var(--dust); animation: critPulse 1s ease-in-out infinite; }
 
-
+/* search / sort bar */
 .invsearch, .invsort {
-    background: rgba(var(--t-shade, 0,0,0), calc(.35 * var(--t-shade-k, 1)));
+    background: rgba(0, 0, 0, .35);
     border: 1px solid var(--line);
     color: var(--bone);
-    font: 600 9px/1 var(--mono); letter-spacing: .12em;
+    font: 600 10px/1 var(--mono); letter-spacing: .12em;
     padding: 5px 8px; outline: none;
     transition: border-color .12s, background .12s;
 }
 .invsearch { width: 110px; }
 .invsearch::placeholder { color: var(--dust); opacity: .6; }
-.invsearch:focus, .invsort:focus, .invsearch:hover, .invsort:hover { border-color: rgba(var(--t-acc, 224,140,70), .6); background: rgba(var(--t-shade, 0,0,0), calc(.5 * var(--t-shade-k, 1))); }
-.invsort option { background: rgb(var(--t-bg, 20,18,15)); color: var(--bone); }/* sorted list view (view only; the grid is the real layout) */
+.invsearch:focus, .invsort:focus, .invsearch:hover, .invsort:hover { border-color: rgba(79, 138, 81, .6); background: rgba(0, 0, 0, .5); }
+.invsort option { background: #14120f; color: var(--bone); }
 
-
+/* sorted list view (view only; the grid is the real layout) */
 .invlist { display: flex; flex-direction: column; gap: 2px; padding: 10px; max-height: calc(var(--cell) * 5 + 8px); overflow-y: auto; }
 .invlist::-webkit-scrollbar { width: 5px; }
-.invlist::-webkit-scrollbar-thumb { background: rgba(var(--t-acc, 224,140,70), .4); }
-.invlist__empty { margin: 16px auto; font: 600 9px/1 var(--mono); letter-spacing: .16em; color: var(--dust); }
+.invlist::-webkit-scrollbar-thumb { background: rgba(79, 138, 81, .4); }
+.invlist__empty { margin: 16px auto; font: 600 10px/1 var(--mono); letter-spacing: .16em; color: var(--dust); }
 .invrow {
     display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 46px 58px; align-items: center; gap: 8px;
     min-height: 32px; padding: 2px 8px 2px 4px;
-    background: rgba(var(--t-ink, 240,235,221), .03); border: 1px solid var(--line2);
-    font: 600 10px/1 var(--mono); cursor: pointer;
+    background: rgba(240, 235, 221, .03); border: 1px solid var(--line2);
+    font: 600 11px/1 var(--mono); cursor: pointer;
     transition: border-color .1s, background .1s;
 }
-.invrow:hover { border-color: rgba(var(--t-acc, 224,140,70), .6); background: rgba(var(--t-acc, 224,140,70), .06); }
+.invrow:hover { border-color: rgba(79, 138, 81, .6); background: rgba(79, 138, 81, .06); }
 .invrow__icon { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; }
 .invrow__icon svg, .invrow__icon img { max-width: 100%; max-height: 100%; }
 .invrow__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bone); }
-.invrow__cat { font-size: 8px; letter-spacing: .12em; color: var(--dust); }
-.invrow__amt, .invrow__kg { text-align: right; color: var(--dust); }/* selection */
+.invrow__cat { font-size: 9px; letter-spacing: .12em; color: var(--dust); }
+.invrow__amt, .invrow__kg { text-align: right; color: var(--dust); }
 
-
+/* selection */
 .grid .slot.has-item.is-selected, .invrow.is-selected {
     border-color: var(--amber);
-    box-shadow: 0 0 0 1px var(--amber), inset 0 0 14px rgba(224, 140, 70, .22);
-}/* quick actions */
+    box-shadow: 0 0 0 1px var(--amber), inset 0 0 14px rgba(79, 138, 81, .22);
+}
 
-
+/* quick actions */
 .quick {
     display: flex; align-items: center; gap: 4px;
     padding: 6px 10px;
@@ -1183,51 +1309,54 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     font: 700 9px/1 var(--mono); letter-spacing: .14em; padding: 6px 11px; cursor: pointer;
     transition: color .12s, border-color .12s, background .12s, opacity .12s;
 }
-.quick__btn:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); background: rgba(var(--t-acc, 224,140,70), .08); }
-.quick__btn--danger:hover:not(:disabled) { border-color: var(--danger); color: rgb(var(--t-bad2, 255,138,124)); background: rgba(var(--t-bad, 180,87,74), .12); }
-.quick__btn:disabled { opacity: .3; cursor: default; }/* weight by category */
+.quick__btn:hover:not(:disabled) { border-color: var(--amber); color: var(--amber); background: rgba(79, 138, 81, .08); }
+.quick__btn--danger:hover:not(:disabled) { border-color: var(--danger); color: #ff8a7c; background: rgba(180, 87, 74, .12); }
+.quick__btn:disabled { opacity: .3; cursor: default; }
 
-
+/* weight by category */
 .wbreak { padding: 0 12px 9px; display: flex; flex-direction: column; gap: 5px; }
-.wbreak__bar { display: flex; height: 5px; background: rgba(var(--t-ink, 240,235,221), .06); overflow: hidden; }
-.wbreak__bar i { display: block; height: 100%; background: var(--c, rgb(var(--t-dim, 138,133,121))); transition: width .2s ease; }
-.wbreak__legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 600 8px/1 var(--mono); letter-spacing: .08em; color: var(--dust); }
-.wbreak__legend b { display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--c, rgb(var(--t-dim, 138,133,121))); vertical-align: -1px; }
-.wbreak__warn { font: 800 9px/1 var(--mono); letter-spacing: .16em; color: rgb(var(--t-bad2, 255,117,101)); padding: 5px 7px; border: 1px solid rgba(var(--t-bad2, 224,93,79), .5); background: rgba(var(--t-bad, 195,57,47), .12); animation: critPulse 1.4s ease-in-out infinite; }
-.wbreak__warn.is-near { color: rgb(var(--t-acc2, 240,160,78)); border-color: rgba(var(--t-acc, 218,137,65), .45); background: rgba(var(--t-acc, 218,137,65), .08); animation: none; }
-[data-cat="weapon"]   { --c: rgb(var(--t-bad, 201,87,63)); }
-[data-cat="ammo"]     { --c: rgb(var(--t-acc, 217,154,62)); }
-[data-cat="food"]     { --c: rgb(var(--t-ok, 143,179,90)); }
+.wbreak__bar { display: flex; height: 5px; background: rgba(240, 235, 221, .06); overflow: hidden; }
+.wbreak__bar i { display: block; height: 100%; background: var(--c, #8a8579); transition: width .2s ease; }
+.wbreak__legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 600 9px/1 var(--mono); letter-spacing: .08em; color: var(--dust); }
+.wbreak__legend b { display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--c, #8a8579); vertical-align: -1px; }
+.wbreak__warn { font: 800 9px/1 var(--mono); letter-spacing: .16em; color: #ff7565; padding: 5px 7px; border: 1px solid rgba(224, 93, 79, .5); background: rgba(195, 57, 47, .12); animation: critPulse 1.4s ease-in-out infinite; }
+.wbreak__warn.is-near { color: #4f8a51; border-color: rgba(79, 138, 81, .45); background: rgba(79, 138, 81, .08); animation: none; }
+[data-cat="weapon"]   { --c: #c9573f; }
+[data-cat="ammo"]     { --c: #93ab63; }
+[data-cat="food"]     { --c: #8fb35a; }
 [data-cat="drink"]    { --c: #4fa3c9; }
-[data-cat="medical"]  { --c: rgb(var(--t-bad2, 224,106,122)); }
-[data-cat="gear"]     { --c: rgb(var(--t-acc, 163,139,98)); }
+[data-cat="medical"]  { --c: #e06a7a; }
+[data-cat="gear"]     { --c: #a38b62; }
 [data-cat="booster"]  { --c: #60d2ff; }
-[data-cat="gadget"]   { --c: rgb(var(--t-ok, 143,209,111)); }
-[data-cat="material"] { --c: rgb(var(--t-dim, 141,138,128)); }
-[data-cat="tool"]     { --c: rgb(var(--t-warn, 179,163,107)); }
-[data-cat="clothing"] { --c: #9a7fc4; }/* tooltip */
+[data-cat="gadget"]   { --c: #8fd16f; }
+[data-cat="material"] { --c: #8d8a80; }
+[data-cat="tool"]     { --c: #b3a36b; }
+[data-cat="clothing"] { --c: #9a7fc4; }
 
-
+/* tooltip */
 .tip {
     position: fixed; z-index: 120; pointer-events: none;
     width: 230px; padding: 9px 10px;
-    background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), linear-gradient(180deg, rgba(var(--t-bg, 24,22,19), .97), rgba(var(--t-bg, 12,11,10), .98));
-    border: 1px solid rgba(var(--t-acc, 224,140,70), .45);
+    background: linear-gradient(180deg, rgba(24, 22, 19, .97), rgba(12, 11, 10, .98));
+    border: 1px solid rgba(79, 138, 81, .45);
     box-shadow: 0 10px 26px rgba(0, 0, 0, .6);
-    font: 600 10px/1.3 var(--mono);
+    font: 600 11px/1.3 var(--mono);
     animation: tipIn .12s ease-out both;
 }
 @keyframes tipIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 .tip__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--line); }
 .tip__name { font-weight: 800; color: var(--bone); letter-spacing: .04em; }
-.tip__cat { font-size: 8px; letter-spacing: .14em; color: var(--c, var(--dust)); white-space: nowrap; }
-.tip__row { display: flex; justify-content: space-between; gap: 8px; color: var(--dust); font-size: 9px; letter-spacing: .08em; padding: 1px 0; }
+.tip__cat { font-size: 9px; letter-spacing: .14em; color: var(--c, var(--dust)); white-space: nowrap; }
+.tip__row { display: flex; justify-content: space-between; gap: 8px; color: var(--dust); font-size: 10px; letter-spacing: .08em; padding: 1px 0; }
 .tip__row b { color: var(--bone); font-weight: 700; }
 .tip__row small { color: var(--dust); font-weight: 600; }
-.tip__desc { margin: 6px 0 0; color: rgb(var(--t-ink2, 207,201,184)); font-size: 9px; line-height: 1.45; letter-spacing: .02em; }
-.tip__keys { margin-top: 7px; font-size: 7px; letter-spacing: .14em; color: var(--dust); opacity: .7; }/* gear / booster / gadget plates Shared by all three panels: icon in the middle, key top-left */
+.tip__desc { margin: 6px 0 0; color: #cfc9b8; font-size: 10px; line-height: 1.45; letter-spacing: .02em; }
+.tip__keys { margin-top: 7px; font-size: 8px; letter-spacing: .14em; color: var(--dust); opacity: .7; }
 
-
+/*
+   gear / booster / gadget plates
+   Shared by all three panels: icon in the middle, key top-left, count bottom-right, small name along the bottom.
+*/
 .gear__slot.slot, .booster { container-type: normal; }
 .lslot__icon {
     position: absolute; inset: 12px 4px 13px; z-index: 1;
@@ -1238,13 +1367,13 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     max-width: 100%; max-height: 100%; width: auto; height: 100%;
     object-fit: contain;
 }
-.gear__slot .lslot__icon { color: rgb(var(--t-acc, 215,160,70)); }
+.gear__slot .lslot__icon { color: #4f8a51; }
 .booster .lslot__icon { color: #60d2ff; }
-.booster.gadget .lslot__icon { color: rgb(var(--t-ok, 143,209,111)); }
+.booster.gadget .lslot__icon { color: #8fd16f; }
 .lslot__key {
     position: absolute; top: 2px; left: 3px; z-index: 2;
     font: 700 8px/1 var(--mono); color: var(--bone);
-    padding: 1px 3px; border: 1px solid var(--line); background: rgba(var(--t-shade, 0,0,0), calc(.55 * var(--t-shade-k, 1)));
+    padding: 1px 3px; border: 1px solid var(--line); background: rgba(0, 0, 0, .55);
 }
 .lslot__count {
     position: absolute; right: 3px; bottom: 12px; z-index: 2;
@@ -1252,8 +1381,8 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
 }
 .lslot__name {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
-    padding: 1px 3px 2px; background: rgba(var(--t-bg, 10,10,9), .7);
-    font: 600 7px/1.1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+    padding: 1px 3px 2px; background: rgba(10, 10, 9, .7);
+    font: 600 8px/1.1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
     color: var(--dust); text-align: center;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -1262,134 +1391,1229 @@ input[type=range]:disabled { cursor: default; }/* menus and modals */
     opacity: .55; text-align: center; padding: 0 4px;
 }
 .gear__slot.slot:not(.has-item) { display: flex; align-items: center; justify-content: center; }
-.booster__cd { z-index: 3; }/* A worn backpack adds rows; the bag scrolls instead of pushing the panel. */
+.booster__cd { z-index: 3; }
 
-
+/* A worn backpack adds rows; the bag scrolls instead of pushing the panel. */
 #playerGrid { max-height: calc((var(--cell) + var(--gap, 2px)) * 8 + 20px); overflow-y: auto; }
 #playerGrid::-webkit-scrollbar { width: 5px; }
-#playerGrid::-webkit-scrollbar-thumb { background: rgba(var(--t-acc, 224,140,70), .4); }/* locked VIP choice in a segmented picker */
+#playerGrid::-webkit-scrollbar-thumb { background: rgba(79, 138, 81, .4); }
 
-
+/* locked VIP choice in a segmented picker */
 .seg button.is-locked { opacity: .45; cursor: not-allowed; position: relative; }
 .seg button.is-locked::after {
     content: 'VIP'; position: absolute; top: -7px; right: -4px;
-    font-size: 9px; padding: 0 3px; color: var(--soot); background: var(--amber); letter-spacing: .05em;
+    font-size: 10px; padding: 0 3px; color: var(--soot); background: var(--amber); letter-spacing: .05em;
 }
-.seg--wrap { flex-wrap: wrap; }/* Worn vest pockets and backpack: own grids under the pockets. Scrolls if the screen is short. */
+.seg--wrap { flex-wrap: wrap; }
 
-
+/* Worn vest pockets and backpack: own grids under the pockets. Scrolls if the screen is short. */
 .bags { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 0 10px 10px; border-top: 1px solid var(--line); }
-.bags::-webkit-scrollbar { width: 5px; } .bags::-webkit-scrollbar-thumb { background: rgba(var(--t-acc, 224,140,70), .4); }
-.bagbox { flex: 0 0 auto; border: 1px solid var(--line); background: rgba(var(--t-shade, 0,0,0), calc(.22 * var(--t-shade-k, 1))); margin-top: 8px; }
+.bags::-webkit-scrollbar { width: 5px; } .bags::-webkit-scrollbar-thumb { background: rgba(79,138,81,.4); }
+.bagbox { flex: 0 0 auto; border: 1px solid var(--line); background: rgba(0,0,0,.22); margin-top: 8px; }
 .bagbox__head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line2); font: 700 10px/1 var(--mono); letter-spacing: 2px; color: var(--dust); }
 .bagbox__title { color: var(--bone); flex: 1; white-space: nowrap; }
 .bagbox__w { color: var(--dust); white-space: nowrap; }
-.bagbox__look { background: rgba(var(--t-shade, 0,0,0), calc(.45 * var(--t-shade-k, 1))); color: var(--bone); border: 1px solid var(--line); font: 10px var(--mono); padding: 2px 4px; max-width: 110px; }
-.bagbox__btn { background: rgba(var(--t-ink, 240,235,221), .05); border: 1px solid var(--line); color: var(--bone); font: 10px var(--mono); letter-spacing: 1px; padding: 3px 7px; cursor: pointer; }
+.bagbox__look { background: rgba(0,0,0,.45); color: var(--bone); border: 1px solid var(--line); font: 11px var(--mono); padding: 2px 4px; max-width: 110px; }
+.bagbox__btn { background: rgba(240,235,221,.05); border: 1px solid var(--line); color: var(--bone); font: 11px var(--mono); letter-spacing: 1px; padding: 3px 7px; cursor: pointer; }
 .bagbox__btn:hover, .bagbox__btn.is-on { border-color: var(--amber); color: var(--amber); }
-.grid--bag { padding: 6px; }/* The left dossier scrolls independently of the item grids. */
-
-
-.col--character { overflow-y: auto; overscroll-behavior: contain; padding-right: 5px; }
-.col--character > * { flex-shrink: 0; }
-.col--character .sheet { order: 8; background: rgba(var(--t-bg, 12,13,11), .94); }
-.col--character .sheet__body { display: grid; grid-template-columns: 1fr; gap: 14px; }
-.col--character .sheet__mods { border-left: 0; padding-left: 0; }
-.col--character .sheet__head { cursor: pointer; }
-.fieldmed, .vitals { background-color: rgba(var(--t-bg, 12,13,11), .92); }
-.layout { grid-template-columns: minmax(300px,36%) minmax(0,1fr); }
-.col--character .sheet__title, .col--character .sheet__modhead { font-size:11px; letter-spacing:.08em; }
-.col--character .sheet__points, .col--character .tree__name, .col--character .tree__lvl { font-size:11px; }
-.col--character .tree { grid-template-columns:85px 1fr 32px; min-height:20px; }
-.col--character .stat { grid-template-columns:68px 1fr 40px; min-height:18px; }
-.col--character .stat__label, .col--character .stat__val, .col--character .stats__class { font-size:10px; }
-.col--character .sheet__head:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
-
-.sheet .mod { position:static; width:auto; height:auto; border:0; pointer-events:auto; font-size:11px; }/* Fit the dossier before falling back to scrolling on short displays. */
-
-
-#root { height:100%; min-height:0; }
-.layout { grid-template-rows:minmax(0,1fr); }
-.col--character { gap:6px; padding-right:2px; }
-.col--character .fieldmed__head { min-height:30px; padding:0 10px; }
-.col--character .fieldmed__title { font-size:10px; }
-.col--character .fieldmed__state { padding:4px 6px; font-size:9px; }
-.col--character .fieldmed__body { grid-template-columns:minmax(105px,42%) minmax(0,1fr); padding:8px; gap:8px; }
-.col--character .bodycard__stage { height:clamp(140px,calc(21vh / var(--ui-scale,1)),220px); }
-.col--character .fieldmed__side { gap:5px; }
-.col--character .medrow { min-height:23px; gap:4px; }
-.col--character .medrow__label { font-size:9px; letter-spacing:.03em; }
-.col--character .medrow__value { font-size:11px; }
-.col--character .fieldmed__foot { min-height:24px; padding:5px 9px; font-size:7px; }
-.col--character .stats__head, .col--character .sheet__head { padding:7px 9px; }
-.col--character .stats__rows { padding:7px 9px; gap:3px; }
-.col--character .stat { min-height:16px; }
-.col--character .sheet__body { padding:7px 9px; gap:8px; }
-.col--character .sheet__trees { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px 12px; }
-.col--character .tree { grid-template-columns:68px minmax(12px,1fr) 16px; gap:4px; min-height:17px; }
-.col--character .tree__name, .col--character .tree__lvl { font-size:10px; letter-spacing:.02em; }
-.col--character .sheet__modhead { font-size:9px; margin-bottom:3px; }
-#root, #root * { scrollbar-width:thin; scrollbar-color:var(--amber) var(--soot); }
-#root ::-webkit-scrollbar { width:5px; height:5px; }
-#root ::-webkit-scrollbar-track { background:var(--soot); border:1px solid var(--line); }
-#root ::-webkit-scrollbar-thumb { background:var(--amber); border:1px solid var(--soot); border-radius:0; }
-#root ::-webkit-scrollbar-thumb:hover { background:var(--bone); }
-#root ::-webkit-scrollbar-button { display:none; width:0; height:0; }
-#root ::-webkit-scrollbar-corner { background:var(--soot); }
-@media(max-height:800px) {
-    .col--character .stats__rows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 10px; }
-    .col--character .stat { grid-template-columns:45px minmax(8px,1fr) 25px; gap:3px; }
-    .col--character .stat--xp { grid-column:1/-1; }
-}/* Item art stays inside its footprint at every grid and UI scale. */
-
-
-.slot__icon { display:flex; align-items:center; justify-content:center; min-width:0; min-height:0; padding:5px; }
-.slot__icon .bs-icon, .slot__icon .bs-icon--art { width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; display:block; }
-.slot.is-rot .slot__icon .bs-icon { width:var(--art-base-w); height:var(--art-base-h); max-width:none; max-height:none; transform:rotate(90deg); }
-.bar__slot .bs-icon, .booster .bs-icon, .tip .bs-icon { max-width:100%; max-height:100%; object-fit:contain; }
-.slot.is-dragging { opacity:.26; filter:saturate(.5); transition:opacity .12s; }
-.ghost { pointer-events:none; width:132px; padding:10px; background:linear-gradient(135deg,rgba(var(--t-panel, 40,42,32), 0.961),rgba(var(--t-bg, 17,22,15), 0.961)); border:1px solid var(--amber); box-shadow:0 14px 30px #0008; border-radius:3px; display:grid; gap:6px; animation:itemLift .14s ease-out; z-index:15000; }
-.ghost__icon { display:flex; justify-content:center; align-items:center; height:76px; width:100%; }
-.ghost__icon .bs-icon { width:76px; height:76px; max-width:100%; max-height:100%; object-fit:contain; transition:transform .16s ease; }
-.ghost.is-rotated .ghost__icon .bs-icon { transform:rotate(90deg); }
-.ghost__name { font:600 11px/1.3 var(--t-f-text, 'Segoe UI',Arial,sans-serif); color:var(--bone); white-space:normal; overflow-wrap:anywhere; }
-.ghost__hint { font:10px/1.3 var(--t-f-text, 'Segoe UI',Arial,sans-serif); color:var(--amber); }
-.ghost.is-settling { animation:none; }
-.is-carrying #tip { display:none!important; }
-.cell.is-placeable { background:rgba(var(--t-ok, 127,212,162), 0.102); box-shadow:inset 0 0 0 1px #7fd4a299; }
-.cell.is-blocked { background:rgba(var(--t-bad, 180,87,74), 0.149); box-shadow:inset 0 0 0 1px #b4574aaa; }
-@keyframes itemLift { from { opacity:.4; scale:.88; } to { opacity:1; scale:1; } }
-@media(prefers-reduced-motion:reduce) { .ghost,.ghost *,.slot { animation:none!important; transition:none!important; } }/* Safe margins are saved per player; scaling keeps pointer coordinates unchanged. */
-
-
-.wrap {
-    padding-left: max(calc(2.4vw / var(--ui-scale,1)), var(--ui-safe-x,0px));
-    padding-top: max(calc(2.2vh / var(--ui-scale,1)), var(--ui-safe-y,0px));
-    padding-bottom: max(calc(2.2vh / var(--ui-scale,1)), var(--ui-safe-y,0px));
+.grid--bag { padding: 6px; }
+.boosters {
+    display: none !important;
 }
 
-.gear__slots{grid-template-columns:repeat(2,minmax(0,1fr))}.gear__radio.slot{grid-column:1/-1;height:calc(var(--cell,56px)*.62);border-color:rgba(var(--t-ink2, 175,181,143), .45)}
-.gear__radio .lslot__icon{inset:3px auto 3px 5px;width:24px}.gear__radio .lslot__name{left:33px;top:0;bottom:0;display:flex;align-items:center;background:none;text-align:left;white-space:normal;font-size:8px;line-height:1.25}
+/* Ausrüstung (.gear) als einziges Element sichtbar machen und maximieren */
+.gear {
+    display: flex !important;
+    flex: 1 1 100% !important;
+    min-width: 0;
+}
 
-/* A portrait is a render, not a tinted paper panel. Keep its compositing neutral. */
-html[data-theme] .bodycard__stage { isolation:isolate; background:radial-gradient(ellipse at 50% 40%,#282a26,#10120f 75%); }
-html[data-theme] .bodycard__img { mix-blend-mode:normal; mask-image:none; -webkit-mask-image:none; }
-html[data-theme] .bodycard__stage::after { background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px); }
-.setting input[type=color] { width:72px;height:30px;padding:2px;background:transparent;border:1px solid var(--line);cursor:pointer; }
+/* Falls die umgebende Zeile sich anpassen muss */
+.gearrow {
+    display: flex;
+    flex-direction: column;
+}
+.boosters__hint, 
+.gear__hint {
+    display: none !important;
+}
+/* Erzwingt den grünen Look für absolut jeden Scrollbalken im UI (inkl. Crafting) */
+*::-webkit-scrollbar {
+    width: 5px !important;
+    height: 5px !important;
+}
 
-.vicinity-items{display:flex;gap:4px;overflow-x:auto;overflow-y:hidden;scrollbar-color:var(--amber) var(--soot);scrollbar-width:thin;padding:5px 7px 7px;min-height:52px;}
-.vicinity-item{display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:18px 13px;align-items:center;gap:1px 5px;flex:0 0 132px;min-width:0;height:42px;text-align:left;background:var(--panel2);color:var(--bone);border:1px solid var(--line);padding:4px 5px;font:inherit;cursor:grab;}
-.vicinity-item:hover{border-color:var(--amber);}.vicinity-item.is-dragging{opacity:.45;}.vicinity-item .slot__icon{position:static;grid-row:1/3;width:18px;height:18px;min-width:18px;min-height:18px;}.vicinity-item span:nth-child(2){overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10px;}.vicinity-item small{grid-column:2;color:var(--dust);font-size:9px;}.vicinity-item img,.vicinity-item svg{width:18px;height:18px;object-fit:contain;}.vicinity-status{margin:0 7px 5px;color:var(--dust);font-size:10px;}.vicinity-items:not(:empty)+.vicinity-status{display:none;}
-#vicinityBoard[hidden]{display:none;}
+*::-webkit-scrollbar-track {
+    background: rgba(10, 10, 9, 0.8) !important;
+}
 
-#containerBoard[hidden], #vicinityBoard[hidden] { display: none; }
+*::-webkit-scrollbar-thumb {
+    background: rgba(79, 138, 81, 0.7) !important; /* Dein Militärgrün */
+    border-radius: 0px !important;
+}
 
-/* Worn pack storage opens above the inventory instead of extending its column. */
-.bagbox__open { width:100%; display:flex; align-items:center; gap:12px; padding:9px 11px; margin-top:8px; border:1px solid var(--line); border-left:2px solid var(--amber); background:rgba(var(--t-bg,12,13,11),.94); color:var(--bone); font:700 10px/1 var(--mono); letter-spacing:.08em; cursor:pointer; }
-.bagbox__open span:first-child { flex:1; text-align:left; }
-.bagbox__open span:last-child { color:var(--amber); }
-.bagbox__open:hover { border-color:var(--amber); }
-.bagbox--window { position:fixed; z-index:65; left:50%; top:12%; transform:translateX(-50%); width:max-content; max-width:calc(100vw / var(--ui-scale, 1) - 24px); max-height:calc(80vh / var(--ui-scale, 1)); margin:0; display:flex; flex-direction:column; overflow:hidden; background:rgba(var(--t-bg,12,13,11),.98); box-shadow:0 20px 70px #000b; }
-.bagbox--window .bagbox__head { cursor:move; user-select:none; }
-.bagbox--window .grid--bag { overflow:auto; max-height:calc(72vh / var(--ui-scale, 1)); max-width:100%; }
-.bagbox--window.hidden, .bagbox__open.hidden { display:none; }
+*::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 138, 81, 1) !important;
+}
+
+
+/* Loot/container panel: completely hidden while no container is open.
+   It is only created visually when the player actually opens loot/storage.
+   This removes the permanent bottom "NOTHING OPEN" window without disabling looting. */
+.col--stash > .col--bags {
+    display: none;
+}
+.col--stash > .col--bags.is-open {
+    display: block;
+}
+
+/* Open container / personal storage. As soon as a container is open, JS anchors
+   the panel directly to the right of the carried inventory using viewport coordinates. */
+.col--stash > .col--bags.is-open {
+    position: fixed;
+    top: var(--container-top, 0px);
+    left: var(--container-left, 0px);
+    width: max-content;
+    max-width: none;
+    z-index: 50;
+}
+.col--stash > .col--bags.is-open > .board {
+    width: max-content;
+    max-width: none;
+}
+.col--stash > .col--bags.is-open #containerGrid {
+    width: max-content;
+}
+
+
+/* v2 hard fallback: never show the empty NOTHING OPEN panel. */
+#lootContainerPanel:not(.is-open) {
+    display: none !important;
+}
+#lootContainerPanel.is-open {
+    display: block;
+}
+
+
+/* ALPHA-Z virtual cash item -------------------------------------------------
+   Displays the real bs_core cash account. It deliberately sits outside the
+   draggable grid so cash can never be duplicated, dropped or moved as an item. */
+.cashitem {
+    position: relative;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 66px;
+    margin: 8px 10px 10px;
+    padding: 6px 10px 6px 6px;
+    border: 1px solid rgba(127, 151, 77, .58);
+    background: linear-gradient(135deg, rgba(33, 38, 27, .96), rgba(14, 16, 13, .96));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+    overflow: hidden;
+}
+.cashitem::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(135deg, transparent 0 10px, rgba(140,160,83,.035) 10px 11px);
+}
+.cashitem__icon {
+    position: relative;
+    z-index: 1;
+    width: 58px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cashitem__icon img { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+.cashitem__name {
+    position: relative;
+    z-index: 1;
+    color: #d8dccd;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+.cashitem__amount {
+    position: relative;
+    z-index: 1;
+    color: #a8c56a;
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: .02em;
+    text-shadow: 0 1px 0 #000;
+    white-space: nowrap;
+}
+
+/* Cash behaves like a hand-over item while its amount stays tied to bs_core cash. */
+.cashitem { cursor: pointer; }
+.cashitem:hover { filter: brightness(1.12); }
+
+
+/* Permanent cash + identity row */
+.identityrow { display:flex; align-items:stretch; gap:10px; margin:8px 10px 10px; min-height:66px; }
+.identityrow .cashitem { width:50%; min-width:0; margin:0; box-sizing:border-box; }
+.iditem { width:66px; height:66px; flex:0 0 66px; border:1px solid rgba(150,170,120,.58); background:linear-gradient(145deg,rgba(39,44,34,.98),rgba(15,17,14,.98)); color:#e8eadf; cursor:pointer; padding:5px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+.iditem:hover { filter:brightness(1.14); border-color:rgba(190,215,145,.85); }
+.iditem__photo { width:52px; height:39px; display:grid; place-items:center; overflow:hidden; border:1px solid rgba(220,230,200,.5); background:rgba(255,255,255,.04); }
+.iditem__photo img { width:100%; height:100%; object-fit:cover; display:block; }
+.iditem__label { font-size:9px; font-weight:800; letter-spacing:.08em; }
+.idmenu__box { min-width:310px; }
+.idmenu__actions { display:grid; gap:8px; margin-top:12px; }
+.idcard-overlay { position:absolute; inset:0; z-index:10050; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(0,0,0,.55); pointer-events:auto; }
+.idcard-overlay.hidden { display:none; }
+.idcard { width:520px; max-width:82vw; border:1px solid rgba(187,207,154,.85); background:linear-gradient(145deg,#d9ddcf,#aeb7a0); color:#171a15; box-shadow:0 18px 55px rgba(0,0,0,.5); font-family:Arial,sans-serif; }
+.idcard__top { display:flex; justify-content:space-between; align-items:center; padding:13px 17px; background:#283124; color:#eef2e7; letter-spacing:.12em; }
+.idcard__top span { font-size:13px; font-weight:900; }
+.idcard__top strong { font-size:17px; }
+.idcard__body { display:grid; grid-template-columns:125px 1fr; gap:18px; padding:18px; }
+.idcard__portrait { height:145px; border:2px solid rgba(30,40,28,.45); display:grid; place-items:center; font-size:32px; font-weight:900; color:rgba(25,35,23,.55); background:rgba(255,255,255,.28); }
+.idcard__data { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; }
+.idcard__data label { font-size:10px; letter-spacing:.08em; color:#465040; display:flex; flex-direction:column; gap:3px; }
+.idcard__data strong { font-size:16px; letter-spacing:.02em; color:#151a13; overflow-wrap:anywhere; }
+.idcard__foot { padding:9px 17px; border-top:1px solid rgba(30,40,28,.25); font-size:9px; font-weight:800; letter-spacing:.14em; }
+body.cash-target-mode #idCardOverlay, body.id-target-mode #idCardOverlay { display:none !important; }
+
+
+/* San Andreas ID card: use the actual inventory card artwork and place live character data on it. */
+.idcard--sanandreas {
+    position:relative; width:min(576px,82vw); max-width:none; aspect-ratio:288/175;
+    border:0; background:transparent; box-shadow:0 18px 55px rgba(0,0,0,.5);
+    overflow:hidden; font-family:Arial,sans-serif; color:#1a1711;
+}
+.idcard--sanandreas .idcard__background { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; user-select:none; }
+.idcard--sanandreas .idcard__value { position:absolute; z-index:2; font-size:clamp(8px,1.15vw,13px); line-height:1; font-weight:900; letter-spacing:.015em; text-transform:uppercase; white-space:nowrap; text-shadow:0 1px 0 rgba(255,255,255,.35); }
+.idcard--sanandreas .idcard__name    { left:60.5%; top:36.0%; }
+.idcard--sanandreas .idcard__dob     { left:60.5%; top:44.3%; }
+.idcard--sanandreas .idcard__sex     { left:60.5%; top:52.2%; }
+.idcard--sanandreas .idcard__citizen { left:60.5%; top:60.2%; }
+.idcard--sanandreas .idcard__issue   { left:60.5%; top:68.1%; }
+.idcard--sanandreas .idcard__signature {
+    position:absolute; z-index:2; left:58%; top:80.5%; width:34%; overflow:hidden;
+    font-family:'Segoe Script','Brush Script MT','Lucida Handwriting',cursive;
+    font-size:clamp(11px,1.8vw,21px); font-weight:600; line-height:1; color:#17140f;
+    transform:rotate(-3deg); white-space:nowrap; text-overflow:clip;
+}
+
+
+/* ID-CARD UI final layout -------------------------------------------------- */
+.iditem__label {
+    font-weight: 400 !important;
+    letter-spacing: .08em !important;
+    font-size: 11px !important;
+}
+
+/* No bright panel: only the physical ID card is visible. */
+.idcard-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding-top: 18px;
+    padding-right: 18px;
+    background: rgba(0,0,0,.42);
+    pointer-events: auto;
+}
+.idcard-overlay.hidden { display:none; }
+
+.idcard--sanandreas {
+    position: relative;
+    width: min(576px, 82vw);
+    max-width: none;
+    aspect-ratio: 288 / 175;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+    font-family: Arial, sans-serif;
+    color: #17140f;
+}
+.idcard--sanandreas .idcard__background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    user-select: none;
+}
+.idcard--sanandreas .idcard__value {
+    position: absolute;
+    z-index: 2;
+    left: 62.5%;
+    font-size: clamp(9px, 1.12vw, 13px);
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: .01em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #211c14;
+    text-shadow: 0 1px 0 rgba(255,255,255,.28);
+}
+/* Values sit directly beside the labels printed on the card artwork. */
+.idcard--sanandreas .idcard__name    { top: 38.2%; }
+.idcard--sanandreas .idcard__dob     { top: 47.6%; }
+.idcard--sanandreas .idcard__sex     { top: 54.3%; }
+.idcard--sanandreas .idcard__citizen { top: 60.7%; }
+.idcard--sanandreas .idcard__issue   { top: 67.2%; }
+.idcard--sanandreas .idcard__signature {
+    position: absolute;
+    z-index: 2;
+    left: 55.5%;
+    top: 80.4%;
+    width: 31%;
+    overflow: hidden;
+    font-family: 'Segoe Script','Brush Script MT','Lucida Handwriting',cursive;
+    font-size: clamp(11px, 1.65vw, 20px);
+    font-weight: 600;
+    line-height: 1;
+    color: #17140f;
+    transform: rotate(-3deg);
+    white-space: nowrap;
+}
+.idcard__close {
+    position: absolute;
+    z-index: 5;
+    right: 7px;
+    bottom: 7px;
+    width: 25px;
+    height: 25px;
+    padding: 0;
+    border: 1px solid rgba(80,0,0,.85);
+    border-radius: 3px;
+    background: rgba(155,15,15,.92);
+    color: #fff;
+    font: 700 21px/21px Arial,sans-serif;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.idcard__close:hover { background: rgba(205,25,25,.98); }
+.idcard__close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Received ID card: make the NUI root visible without opening/showing the recipient's inventory. */
+body.id-card-only #root > *:not(#idCardOverlay) { display:none !important; }
+body.id-card-only #idCardOverlay { display:flex; background:transparent; }
+
+/* FIX: Large ID card is anchored to the viewport, always top-right. */
+#idCardOverlay.idcard-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    box-sizing: border-box !important;
+    display: flex;
+    align-items: flex-start !important;
+    justify-content: flex-end !important;
+    padding: 18px 18px 0 0 !important;
+}
+#idCardOverlay.idcard-overlay.hidden { display: none !important; }
+#idCardOverlay .idcard--sanandreas {
+    position: relative !important;
+    margin: 0 !important;
+    flex: 0 0 auto !important;
+}
+body.id-card-only #idCardOverlay.idcard-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: flex-end !important;
+    padding: 18px 18px 0 0 !important;
+}
+
+
+/* ID CARD VIEWPORT FIX v2 -------------------------------------------------
+   idCardOverlay is a direct child of <body>, outside #root. #root is scaled by
+   bs_ui, which made position:fixed behave relative to the inventory canvas. */
+body.id-card-only #root { display:none !important; }
+body.id-card-only #idCardOverlay { display:flex !important; background:transparent !important; }
+#idCardOverlay.idcard-overlay {
+    position:fixed !important;
+    top:0 !important; right:0 !important; bottom:0 !important; left:0 !important;
+    width:auto !important; height:auto !important;
+    box-sizing:border-box !important;
+    align-items:flex-start !important;
+    justify-content:flex-end !important;
+    padding:25px 25px 0 0 !important;
+    margin:0 !important;
+    transform:none !important;
+}
+#idCardOverlay .idcard--sanandreas {
+    margin:0 !important;
+    transform:none !important;
+}
+
+/* ID CARD POSITION FIX v3: anchor the physical card itself to the viewport.
+   This avoids any flex/overlay/root scaling interaction in the inventory NUI. */
+#idCardOverlay.idcard-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    display: block !important;
+    background: transparent !important;
+    pointer-events: none !important;
+}
+#idCardOverlay.idcard-overlay.hidden { display: none !important; }
+#idCardOverlay > .idcard--sanandreas {
+    position: fixed !important;
+    top: 25px !important;
+    right: 25px !important;
+    bottom: auto !important;
+    left: auto !important;
+    margin: 0 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+}
+body.id-card-only #idCardOverlay.idcard-overlay { display: block !important; }
+body.id-card-only #idCardOverlay.idcard-overlay.hidden { display: none !important; }
+
+/* ID CARD TYPOGRAPHY FIX v4 -------------------------------------------------
+   Character values use a narrower, printed-document face and softer weight
+   so they blend into the worn San Andreas card artwork. */
+.idcard--sanandreas .idcard__value {
+    font-family: "Arial Narrow", "Liberation Sans Narrow", "Roboto Condensed", Arial, sans-serif !important;
+    font-size: clamp(9px, 1.06vw, 12.5px) !important;
+    font-weight: 600 !important;
+    letter-spacing: .025em !important;
+    line-height: 1 !important;
+    color: #292117 !important;
+    text-shadow: 0 .5px 0 rgba(255,255,255,.20) !important;
+}
+/* The NAME line in the artwork sits slightly lower than the old overlay. */
+.idcard--sanandreas .idcard__name {
+    top: 39.6% !important;
+    font-family: "Arial Narrow", "Liberation Sans Narrow", "Roboto Condensed", Arial, sans-serif !important;
+    font-weight: 600 !important;
+    letter-spacing: .03em !important;
+}
+.idcard--sanandreas .idcard__dob     { top: 47.9% !important; }
+.idcard--sanandreas .idcard__sex     { top: 54.5% !important; }
+.idcard--sanandreas .idcard__citizen { top: 60.9% !important; }
+.idcard--sanandreas .idcard__issue   { top: 67.4% !important; }
+
+
+/* ==========================================================================
+   ALPHA-Z ID CARD FINAL TUNING v5
+   - large card 20% smaller
+   - live personal data shifted right
+   - larger printed-document typography
+   - signature slightly lower
+   ========================================================================== */
+
+#idCardOverlay > .idcard--sanandreas,
+body.id-card-only #idCardOverlay > .idcard--sanandreas {
+    /* Previous size: min(576px, 82vw). Exactly 20% smaller. */
+    width: min(461px, 65.6vw) !important;
+    max-width: none !important;
+    aspect-ratio: 288 / 175 !important;
+}
+
+/* Personal data: placed farther right so it no longer crowds the
+   NAME / DOB / SEX / CITIZEN ID / ISSUE DATE labels printed in the artwork. */
+.idcard--sanandreas .idcard__value {
+    left: 65.4% !important;
+
+    font-family:
+        "Arial Narrow",
+        "Aptos Narrow",
+        "Roboto Condensed",
+        "Liberation Sans Narrow",
+        Arial,
+        sans-serif !important;
+
+    font-size: clamp(11px, 1.28vw, 15.5px) !important;
+    line-height: .98 !important;
+    font-weight: 700 !important;
+    letter-spacing: .018em !important;
+    text-transform: uppercase !important;
+
+    /* Warm ink colour blends into the old paper instead of looking digital. */
+    color: #302619 !important;
+    opacity: .96 !important;
+    text-shadow:
+        0 .45px 0 rgba(255,245,220,.30),
+        0 0 .35px rgba(44,31,18,.28) !important;
+    mix-blend-mode: multiply !important;
+}
+
+/* Fine vertical alignment against the artwork. */
+.idcard--sanandreas .idcard__name    { top: 39.3% !important; }
+.idcard--sanandreas .idcard__dob     { top: 47.7% !important; }
+.idcard--sanandreas .idcard__sex     { top: 54.4% !important; }
+.idcard--sanandreas .idcard__citizen { top: 60.8% !important; }
+.idcard--sanandreas .idcard__issue   { top: 67.3% !important; }
+
+/* Signature: a little farther down, handwritten and slightly ink-faded. */
+.idcard--sanandreas .idcard__signature {
+    left: 59.0% !important;
+    top: 83.8% !important;
+    width: 34% !important;
+
+    font-family:
+        "Segoe Script",
+        "Bradley Hand",
+        "Brush Script MT",
+        "Lucida Handwriting",
+        cursive !important;
+
+    font-size: clamp(13px, 1.75vw, 21px) !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    letter-spacing: .015em !important;
+    color: #241b12 !important;
+    opacity: .94 !important;
+    text-shadow: 0 .4px 0 rgba(255,245,220,.20) !important;
+    mix-blend-mode: multiply !important;
+    transform: rotate(-3.5deg) !important;
+    white-space: nowrap !important;
+}
+
+
+/* ==========================================================================
+   ALPHA-Z ID CARD FINAL TUNING v6
+   - values remain in bright right field
+   - signature slightly left and lower
+   - maintain smaller large card
+   ========================================================================== */
+
+#idCardOverlay > .idcard--sanandreas,
+body.id-card-only #idCardOverlay > .idcard--sanandreas {
+    width: min(461px, 65.6vw) !important;
+    max-width: none !important;
+    aspect-ratio: 288 / 175 !important;
+}
+
+.idcard--sanandreas .idcard__value {
+    left: 66.9% !important;
+    width: 26.8% !important;
+    max-width: 26.8% !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+    text-align: left !important;
+
+    font-family:
+        "Arial Narrow",
+        "Aptos Narrow",
+        "Roboto Condensed",
+        "Liberation Sans Narrow",
+        Arial,
+        sans-serif !important;
+
+    font-size: clamp(10px, 1.12vw, 14.2px) !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+    letter-spacing: .01em !important;
+    text-transform: uppercase !important;
+
+    color: #31271b !important;
+    opacity: .97 !important;
+    text-shadow:
+        0 .45px 0 rgba(255,245,220,.28),
+        0 0 .30px rgba(52,38,22,.20) !important;
+    mix-blend-mode: multiply !important;
+}
+
+.idcard--sanandreas .idcard__name    { top: 39.2% !important; }
+.idcard--sanandreas .idcard__dob     { top: 47.7% !important; }
+.idcard--sanandreas .idcard__sex     { top: 54.4% !important; }
+.idcard--sanandreas .idcard__citizen { top: 60.8% !important; }
+.idcard--sanandreas .idcard__issue   { top: 67.3% !important; }
+
+.idcard--sanandreas .idcard__signature {
+    left: 56.8% !important;
+    top: 85.4% !important;
+    width: 35% !important;
+
+    font-family:
+        "Segoe Script",
+        "Bradley Hand",
+        "Brush Script MT",
+        "Lucida Handwriting",
+        cursive !important;
+
+    font-size: clamp(13px, 1.72vw, 20px) !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    letter-spacing: .015em !important;
+    color: #241b12 !important;
+    opacity: .94 !important;
+    text-shadow: 0 .4px 0 rgba(255,245,220,.20) !important;
+    mix-blend-mode: multiply !important;
+    transform: rotate(-3.4deg) !important;
+    white-space: nowrap !important;
+}
+
+
+/* ALPHA-Z ID CARD v7 - move NAME only farther left */
+.idcard--sanandreas .idcard__name {
+    left: 63.0% !important;
+    width: 30.5% !important;
+    max-width: 30.5% !important;
+}
+
+
+/* ALPHA-Z ID CARD v8 - signature slightly farther left and lower */
+.idcard--sanandreas .idcard__signature {
+    left: 54.8% !important;
+    top: 87.0% !important;
+}
+
+
+/* ==========================================================================
+   ALPHA-Z ID CARD v9 - permanent character passport photo
+   ========================================================================== */
+.idcard--sanandreas .idcard__portrait-photo {
+    position: absolute !important;
+    z-index: 1 !important;
+
+    /* Exact blank photo panel in idcard_large.png */
+    left: 26.9% !important;
+    top: 39.5% !important;
+    width: 22.0% !important;
+    height: 42.6% !important;
+
+    object-fit: cover !important;
+    object-position: 50% 42% !important;
+    pointer-events: none !important;
+    user-select: none !important;
+
+    /* Old government-card / printed-photo treatment */
+    filter:
+        grayscale(.32)
+        sepia(.48)
+        saturate(.58)
+        contrast(1.08)
+        brightness(.91) !important;
+    opacity: .90 !important;
+    mix-blend-mode: multiply !important;
+
+    border-radius: 1px !important;
+    box-shadow:
+        inset 0 0 10px rgba(71,54,32,.22),
+        0 0 1px rgba(48,34,20,.35) !important;
+}
+
+.idcard--sanandreas .idcard__portrait-photo.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   ALPHA-Z ID CARD v10 - new Republic of San Andreas artwork
+   - portrait and character data positions intentionally unchanged
+   - character data uses a readable light beige ink colour
+   ========================================================================== */
+#idCardOverlay > .idcard--sanandreas,
+body.id-card-only #idCardOverlay > .idcard--sanandreas {
+    aspect-ratio: 2048 / 1137 !important;
+}
+
+.idcard--sanandreas .idcard__value {
+    color: #ead8b5 !important;
+    opacity: 1 !important;
+    mix-blend-mode: normal !important;
+    text-shadow:
+        0 1px 1px rgba(0,0,0,.85),
+        0 0 2px rgba(0,0,0,.55) !important;
+}
+
+.idcard--sanandreas .idcard__signature {
+    color: #ead8b5 !important;
+    opacity: .98 !important;
+    mix-blend-mode: normal !important;
+    text-shadow:
+        0 1px 1px rgba(0,0,0,.80),
+        0 0 2px rgba(0,0,0,.45) !important;
+}
+
+/* ========================================================================== 
+   ALPHA-Z ID CARD v11 - portrait visibility + signature placement
+   ========================================================================== */
+.idcard--sanandreas .idcard__portrait-photo {
+    /* Keep the exact existing photo position/size, but make the character
+       clearly visible on the dark-blue Republic card. */
+    filter:
+        grayscale(.10)
+        sepia(.16)
+        saturate(.92)
+        contrast(1.02)
+        brightness(1.48) !important;
+    opacity: 1 !important;
+    mix-blend-mode: normal !important;
+}
+
+.idcard--sanandreas .idcard__signature {
+    /* Smaller, higher and black as requested. */
+    top: 83.4% !important;
+    font-size: clamp(9px, 1.18vw, 14px) !important;
+    font-weight: 600 !important;
+    color: #11100e !important;
+    opacity: .96 !important;
+    mix-blend-mode: multiply !important;
+    text-shadow: none !important;
+}
+
+/* ========================================================================== 
+   ALPHA-Z ID CARD v12 - authentic printed character data typography
+   - positions intentionally unchanged
+   - narrower official-document typeface
+   - softer aged beige ink, reduced weight and subtle print shadow
+   ========================================================================== */
+.idcard--sanandreas .idcard__value {
+    font-family: "Arial Narrow", "Liberation Sans Narrow", "Roboto Condensed", "Segoe UI", Arial, sans-serif !important;
+    font-size: clamp(8.5px, 1.02vw, 12px) !important;
+    font-weight: 600 !important;
+    letter-spacing: .035em !important;
+    color: #d8c59d !important;
+    opacity: .94 !important;
+    mix-blend-mode: normal !important;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+    text-shadow: 0 1px 1px rgba(13,18,25,.42) !important;
+}
+
+/* Name gets only a tiny emphasis, like a real preprinted ID data field. */
+.idcard--sanandreas .idcard__name {
+    font-weight: 650 !important;
+    letter-spacing: .025em !important;
+}
+
+
+/* ========================================================================== 
+   ALPHA-Z ID CARD v13 - closer passport portrait crop
+   - frame stays at the exact established passport-photo position
+   - image is enlarged inside that frame, so only the portrait zoom changes
+   ========================================================================== */
+.idcard--sanandreas .idcard__portrait-frame {
+    position: absolute !important;
+    z-index: 1 !important;
+    left: 26.9% !important;
+    top: 39.5% !important;
+    width: 22.0% !important;
+    height: 42.6% !important;
+    overflow: hidden !important;
+    border-radius: 1px !important;
+    pointer-events: none !important;
+}
+
+.idcard--sanandreas .idcard__portrait-frame .idcard__portrait-photo {
+    position: absolute !important;
+    left: -12.5% !important;
+    top: -10.0% !important;
+    width: 125% !important;
+    height: 125% !important;
+    max-width: none !important;
+    object-fit: cover !important;
+    object-position: 50% 40% !important;
+    border-radius: 0 !important;
+}
+
+
+
+/* Alpha-Z V15: inventory opens without survivor preparation/loading cover. */
+
+
+
+
+/* Alpha-Z V17 — skills inside the existing body/medical panel, below Medizin-Fertigkeit. */
+.fieldmed__skills {
+    margin: 7px 0 6px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(126,151,83,.18);
+    display: grid;
+    gap: 5px;
+}
+.fieldmedskill {
+    display: grid;
+    grid-template-columns: 72px 1fr 49px;
+    align-items: center;
+    gap: 6px;
+    min-height: 12px;
+}
+.fieldmedskill__name {
+    color: #8f987f;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+.fieldmedskill__track {
+    height: 3px;
+    overflow: hidden;
+    background: rgba(125,151,80,.12);
+}
+.fieldmedskill__track i {
+    display: block;
+    height: 100%;
+    background: #829b54;
+}
+.fieldmedskill__level {
+    color: #d9ddcf;
+    font-size: 7px;
+    font-weight: 900;
+    text-align: right;
+    white-space: nowrap;
+}
+
+
+/* Alpha-Z V18 — custom inventory loader using the ORIGINAL capture-cover timing and fullscreen placement. */
+.capcover {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at 50% 48%, rgba(85,103,58,.10), transparent 30%),
+        radial-gradient(ellipse at 40% 50%, #151512, #050505 75%);
+}
+.alphaLoad {
+    width: min(430px, 78vw);
+    padding: 27px 30px 23px;
+    text-align: center;
+    border: 1px solid rgba(143,166,104,.42);
+    background: linear-gradient(145deg, rgba(27,31,23,.95), rgba(9,11,8,.96));
+    box-shadow: 0 18px 55px rgba(0,0,0,.56), inset 0 0 0 1px rgba(255,255,255,.02);
+    font-family: var(--mono);
+}
+.alphaLoad__mark {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 15px;
+    animation: alphaLoadSpin 1.35s steps(8) infinite;
+}
+.alphaLoad__mark i {
+    position: absolute;
+    left: 19px;
+    top: 1px;
+    width: 4px;
+    height: 11px;
+    background: #93ab63;
+    transform-origin: 2px 20px;
+}
+.alphaLoad__mark i:nth-child(1){transform:rotate(0deg);opacity:1}
+.alphaLoad__mark i:nth-child(2){transform:rotate(90deg);opacity:.75}
+.alphaLoad__mark i:nth-child(3){transform:rotate(180deg);opacity:.50}
+.alphaLoad__mark i:nth-child(4){transform:rotate(270deg);opacity:.30}
+.alphaLoad__eyebrow {
+    color: #93ab63;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .28em;
+    margin-bottom: 8px;
+}
+.alphaLoad__title {
+    color: #e3e5d9;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: .13em;
+}
+.alphaLoad__bar {
+    height: 3px;
+    margin: 19px 0 12px;
+    overflow: hidden;
+    background: rgba(147,171,99,.13);
+    border: 1px solid rgba(147,171,99,.17);
+}
+.alphaLoad__bar i {
+    display: block;
+    width: 34%;
+    height: 100%;
+    background: #93ab63;
+    animation: alphaLoadBar 1.25s ease-in-out infinite;
+}
+.alphaLoad__status {
+    color: #858a7c;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .18em;
+}
+@keyframes alphaLoadSpin { to { transform: rotate(360deg); } }
+@keyframes alphaLoadBar {
+    0% { transform: translateX(-110%); }
+    55% { transform: translateX(120%); }
+    100% { transform: translateX(310%); }
+}
+
+
+/* Alpha-Z V19 — larger, clearer skill text in character panel. */
+.fieldmed__skills {
+    margin-top: 9px;
+    padding-top: 9px;
+    gap: 7px;
+}
+.fieldmedskill {
+    grid-template-columns: 88px 1fr 58px;
+    gap: 8px;
+    min-height: 16px;
+}
+.fieldmedskill__name {
+    color: #c0c6b4;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .055em;
+    text-shadow: 0 1px 2px rgba(0,0,0,.85);
+}
+.fieldmedskill__track {
+    height: 4px;
+    background: rgba(137,163,91,.16);
+    border: 1px solid rgba(137,163,91,.12);
+}
+.fieldmedskill__track i {
+    background: #91aa61;
+    box-shadow: 0 0 4px rgba(145,170,97,.22);
+}
+.fieldmedskill__level {
+    color: #f0f1e9;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .02em;
+    text-shadow: 0 1px 2px rgba(0,0,0,.9);
+}
+
+
+/* Alpha-Z V20 — skill rank names instead of numeric levels. */
+.fieldmedskill {
+    grid-template-columns: 82px 1fr 102px;
+}
+.fieldmedskill__level {
+    font-size: 8px;
+    letter-spacing: .035em;
+    overflow: visible;
+}
+
+
+/* Alpha-Z V21 — clearly visible progress through the current skill rank. */
+.fieldmedskill__track {
+    height: 6px;
+    min-width: 54px;
+    border: 1px solid rgba(215,220,204,.20);
+    background: rgba(4,6,4,.62);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.65);
+}
+.fieldmedskill__track i {
+    min-width: 2px;
+    transition: width .22s ease, background-color .22s ease;
+}
+
+
+/* Alpha-Z V22 — rank text directly beside its progress bar. */
+.fieldmedskill {
+    grid-template-columns: 82px 64px 102px;
+    justify-content: start;
+    column-gap: 7px;
+}
+.fieldmedskill__track {
+    width: 64px;
+    min-width: 64px;
+}
+.fieldmedskill__level {
+    text-align: left;
+    justify-self: start;
+    margin-left: 0;
+}
+
+
+/* Alpha-Z V24 — bs_gadgets is the authoritative 2-slot attachment/gadget system.
+   The original two bs_gadgets slots are shown inside AUSRÜSTUNG next to armour/backpack. */
+#gearPanel .gear__slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+#gearPanel .gear__gadget {
+    min-width: 0;
+    width: auto;
+    height: calc(var(--cell, 56px) * 1.05);
+    position: relative;
+    border-color: rgba(196,168,82,.34);
+    background: linear-gradient(180deg, rgba(196,168,82,.055), rgba(0,0,0,.25));
+}
+#gearPanel .gear__gadget.has-booster {
+    border-color: rgba(196,168,82,.62);
+}
+#gadgetPanel {
+    display: none !important;
+}
+
+
+/* ==========================================================================
+   ALPHA-Z INVENTAR SCALE V1
+   Vorgabe:
+   - linke Charakter-/Statusseite deutlich groesser wie Vorschau
+   - getragenes Inventar + Rucksack nur ca. 5% groesser
+   - weiterhin komplett auf einem Bildschirm
+   ========================================================================== */
+
+/* Hauptinventar insgesamt nur leicht (+5%) groesser. */
+:root {
+    --cell: clamp(52.9px, calc(5.54vh / var(--ui-scale, 1)), 80.6px);
+}
+
+/* Etwas mehr Gesamtbreite, damit +5% Raster und groessere linke Spalte passen,
+   ohne die freie Charakteransicht rechts zu verlieren. */
+.wrap {
+    width: calc(69vw / var(--ui-scale, 1));
+    max-width: 1575px;
+}
+
+/* Linkes Fenster deutlich groesser, rechter Inventarbereich nur moderat.
+   Vorher 36% links -> jetzt 43% links. */
+.layout {
+    grid-template-columns: minmax(390px, 43%) minmax(0, 1fr);
+    width: min(100%, 1240px);
+    gap: calc(1.25vw / var(--ui-scale, 1));
+}
+
+/* --------------------------------------------------------------------------
+   Linke Charakter-/Statusspalte: deutlich besser lesbar
+   -------------------------------------------------------------------------- */
+.col--character {
+    gap: 9px;
+}
+
+/* Der grosse Charakter-/Koerperzustand-Bereich bekommt mehr Raum. */
+.col--character .fieldmed {
+    font-size: 1.08em;
+}
+
+.col--character .fieldmed__head {
+    min-height: 34px;
+}
+
+.col--character .fieldmed__title {
+    font-size: 13px;
+}
+
+.col--character .fieldmed__state {
+    font-size: 9px;
+}
+
+/* Charakterbild deutlich groesser wie im Mockup. */
+.col--character .bodycard__stage {
+    height: 330px;
+}
+
+/* Texte im linken Fenster vergroessern, ohne das Layout umzubauen. */
+.col--character .bodycard__label {
+    font-size: 10px;
+}
+
+.col--character .bodycard__foot,
+.col--character .fieldmed__metric,
+.col--character .fieldmed__row,
+.col--character .fieldmed__skill,
+.col--character .skill,
+.col--character .skill__name,
+.col--character .skill__rank {
+    font-size: 1.06em;
+}
+
+/* Hotbar / Ausruestung / untere Statusanzeige links ebenfalls besser lesbar. */
+.col--character .hotbar,
+.col--character .gear,
+.col--character .stats {
+    font-size: 1.06em;
+}
+
+.col--character .stats__name {
+    font-size: 12px;
+}
+.col--character .stats__class {
+    font-size: 10px;
+}
+.col--character .stat__label {
+    font-size: 10px;
+}
+.col--character .stat__val {
+    font-size: 11px;
+}
+.col--character .stat {
+    grid-template-columns: 60px 1fr 42px;
+}
+
+/* --------------------------------------------------------------------------
+   Rechte Inventar-/Rucksackseite: nur etwa +5%
+   -------------------------------------------------------------------------- */
+.col--stash {
+    font-size: 1.05em;
+}
+
+/* 8er Rasterbreite folgt automatisch dem +5%-Cell-Wert. */
+.col--stash > .board,
+.col--stash > .sheet,
+.col--stash > .col--bags {
+    width: calc((var(--cell) * 8) + (var(--gap) * 7) + 20px);
+}
+
+/* Suchfeld, Sortierung und Kopfzeile etwas lesbarer. */
+.col--stash .board__head h2 {
+    font-size: 1.05em;
+}
+.col--stash .invsearch,
+.col--stash .invsort {
+    font-size: 10.5px;
+}
+.col--stash .catfilter button {
+    font-size: 1.05em;
+}
+
+/* Bargeld + ID-Karte passend mitwachsen. */
+.col--stash .identityrow {
+    min-height: 69px;
+}
+.col--stash .iditem {
+    width: 69px;
+    height: 69px;
+    flex-basis: 69px;
+}
+.col--stash .iditem__photo {
+    width: 55px;
+    height: 41px;
+}
+
+/* Tooltip ebenfalls minimal groesser. */
+.tooltip,
+.itemtip,
+.contextmenu {
+    font-size: 1.05em;
+}
+
+/* --------------------------------------------------------------------------
+   Bildschirm-Hoehen-Sicherung:
+   Falls ein Spieler wenig vertikale Pixel hat, nur vertikal leicht reduzieren,
+   damit weiterhin ALLES auf einer Seite bleibt.
+   -------------------------------------------------------------------------- */
+@media (max-height: 900px) {
+    :root {
+        --cell: clamp(50.4px, calc(5.28vh / var(--ui-scale, 1)), 76.8px);
+    }
+
+    .col--character .bodycard__stage {
+        height: 300px;
+    }
+
+    .wrap {
+        padding-top: calc(1.8vh / var(--ui-scale, 1));
+        padding-bottom: calc(1.8vh / var(--ui-scale, 1));
+        gap: calc(.9vh / var(--ui-scale, 1));
+    }
+}
+
+
+/* ==========================================================================
+   ALPHA-Z INVENTAR SCALE V2
+   - linke Spalte ca. 10% schmaler als V1
+   - Schriftgroessen unveraendert
+   - VORNE / Ziehen zum Drehen ausgeblendet
+   - mittlere Inventarspalte minimal breiter, kein horizontaler Scrollbalken
+   ========================================================================== */
+
+/* V1 links 43% -> jetzt ca. 39% (knapp 10% schmaler relativ). */
+.layout {
+    grid-template-columns: minmax(350px, 39%) minmax(0, 1fr) !important;
+    width: min(100%, 1285px) !important;
+}
+
+/* Gesamten Inventarbereich minimal breiter, damit das 8er Raster sauber passt. */
+.wrap {
+    width: calc(70.5vw / var(--ui-scale, 1)) !important;
+    max-width: 1605px !important;
+}
+
+/* Charakter-Fusszeile: nur die Drehpunkte behalten. */
+.bodycard__angle,
+.bodycard__hint {
+    display: none !important;
+}
+.bodycard__foot {
+    justify-content: center !important;
+}
+.bodycard__dots {
+    margin: 0 auto !important;
+}
+
+/* Mittlere Spalte etwas breiter und horizontal niemals scrollen. */
+.col--stash {
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+}
+.col--stash > .board,
+.col--stash > .sheet,
+.col--stash > .col--bags {
+    width: calc((var(--cell) * 8) + (var(--gap) * 7) + 24px) !important;
+    max-width: 100% !important;
+}
+
+/* Raster selbst sauber innerhalb des Boards halten. */
+.col--stash .grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+/* Falls ein interner Scrollcontainer horizontal scrollen will: nur vertikal erlauben. */
+.col--stash .grid--scroll,
+.col--stash .invlist,
+.col--stash .board {
+    overflow-x: hidden !important;
+}
+
+/* Schriftgroessen aus V1 bewusst NICHT veraendern. */
+
+
+/* ==========================================================================
+   ALPHA-Z INVENTAR SCALE V3
+   - linkes Fenster nochmal ca. 5% schmaler
+   - linke Textgroessen unveraendert
+   - ALLE / WAFFEN / GEGENSTAENDE etwas kleiner
+   - HANDEL oben entfernt
+   ========================================================================== */
+
+/* V2 links 39% -> ca. 37% */
+.layout {
+    grid-template-columns: minmax(335px, 37%) minmax(0, 1fr) !important;
+}
+
+/* Kategorien im mittleren Fenster etwas kompakter */
+.col--stash .catfilter {
+    gap: 4px !important;
+}
+.col--stash .catfilter button {
+    font-size: 9px !important;
+    padding: 5px 10px !important;
+    letter-spacing: .10em !important;
+}
+
+/* Linke Textgroessen bewusst NICHT veraendern. */
+
+/* Alpha-Z: weapon inventory summary on the character panel. */
+.alpha-z-carried-weapons { display:flex; flex-direction:column; gap:5px; padding:8px; min-width:0; }
+.alpha-z-carried-weapons__title { font-size:10px; font-weight:700; letter-spacing:1px; color:#d5d0bd; }
+.alpha-z-carried-weapons__item { display:flex; align-items:center; gap:7px; min-width:0; font-size:11px; color:#eee9dc; }
+.alpha-z-carried-weapons__item .item-icon, .alpha-z-carried-weapons__item img { width:24px; height:24px; object-fit:contain; flex-shrink:0; }
+.alpha-z-carried-weapons__item span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.alpha-z-carried-weapons__empty { font-size:11px; color:#999; }
+
+/* ALPHA-Z Six Slot + subtle green outline skills. Only presentation; gameplay enforced server-side. */
+.fieldmedskill__name {display:flex!important;align-items:center;justify-content:center;width:28px!important;min-width:28px!important;max-width:28px!important; color:#77a96b!important;opacity:.85;}
+.fieldmedskill__name svg {width:19px;height:19px;stroke:#77a96b;fill:none;filter:drop-shadow(0 0 1px rgba(83,148,71,.18));}
+.fieldmedskill {grid-template-columns:28px minmax(32px,1fr) minmax(55px,auto)!important;gap:7px!important;}
+.bar__slots {display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px!important;flex:1 1 auto!important;min-width:0;}
+.bar__slot {width:100%!important;min-width:0!important;height:calc(var(--cell,56px) + 16px)!important;overflow:hidden;}
+.bar__slot .slot__icon {bottom:15px!important;}
+.az-bar-caption {position:absolute;bottom:0;left:0;right:0;z-index:3;display:flex;align-items:center;justify-content:center;height:14px;border-top:1px solid rgba(103,158,85,.26);background:rgba(0,0,0,.55);font:600 7px/1 sans-serif;letter-spacing:0;color:#a7bca0;white-space:nowrap;pointer-events:none;}
+.bar {gap:7px!important;}
+.bar__label {flex:0 0 auto;}
+#gearPanel .gear__gadget {border-color:rgba(103,158,85,.32)!important;}

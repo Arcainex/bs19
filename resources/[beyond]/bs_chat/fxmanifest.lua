@@ -7,7 +7,8 @@ author 'BeyondSurvival'
 description 'BeyondSurvival - the chat, replacing the stock one'
 version '1.0.0'
 
--- Replaces the stock `chat`: remove `ensure chat` from server.cfg and add `ensure bs_chat`.
+-- Replaces the stock `chat`: remove `ensure chat` from server.cfg and add `ensure bs_chat`. Running both shows two chat boxes and doubled messages.
+-- Provides chat:addMessage, chat:clear, chat:addSuggestion and chat:removeSuggestion under their original names.
 
 shared_scripts {
     '@bs_core/shared/sh_bridge.lua',

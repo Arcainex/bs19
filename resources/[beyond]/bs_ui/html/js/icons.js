@@ -9,9 +9,15 @@
 
     // Each entry is the inside of the svg, as raw path data.
     const ART = {
-        sticks: '<path d="M5 20 16 4M10 13l-5-4M12 10l7 1M9 19l11-9"/>',
-        leaves: '<path d="M5 20C3 8 10 3 21 3c0 12-5 18-16 17ZM5 20 17 7M9 15l-1-5M12 12l5 1"/>',
-        cranberries: '<circle cx="8" cy="14" r="4"/><circle cx="16" cy="14" r="4"/><circle cx="12" cy="19" r="3"/><path d="M12 10V4M12 7c-4 0-6-2-6-4 4 0 6 1 6 4ZM12 7c4 0 6-2 6-4-4 0-6 1-6 4Z"/>',
+        // BS19 book items (SVG fallback, no PNG required)
+        tourism_guide:
+            '<path d="M12 6c-2.5-1.5-5.5-1.5-9-1v14c3.5-.5 6.5-.5 9 1"/>' +
+            '<path d="M12 6c2.5-1.5 5.5-1.5 9-1v14c-3.5-.5-6.5-.5-9 1"/>' +
+            '<path d="M12 6v14M5.5 9h4M14.5 9h4M5.5 12h4M14.5 12h4"/>',
+        pacific_blueprints:
+            '<rect x="4" y="3" width="16" height="18" rx="1"/>' +
+            '<path d="M8 3v18M11 7h6M11 10h6M11 14h3"/>' +
+            '<path d="M14 14v4h4v-4z"/>',
         // boosters
         booster_drone:
             '<rect x="9" y="10" width="6" height="4" rx="1"/><path d="M9 11 5 8M15 11l4-3M9 13l-4 3M15 13l4 3"/>' +
@@ -76,6 +82,12 @@
         water_bottle:
             '<path d="M10 3.2h4v2l1.3 1.6a2.6 2.6 0 0 1 .6 1.7v10.1a2.4 2.4 0 0 1-2.4 2.4h-3a2.4 2.4 0 0 1-2.4-2.4V8.5a2.6 2.6 0 0 1 .6-1.7L10 5.2Z"/>' +
             '<path d="M8.1 12.4c1.4-.9 2.5-.9 3.9 0s2.5.9 3.9 0"/><path d="M8.1 15.4c1.4-.9 2.5-.9 3.9 0s2.5.9 3.9 0"/>',
+        // ALPHA-Z survival food: own recognisable line icons (not recycled cooked-meat artwork).
+        salt: '<path d="M9 4h6l1 3v3H8V7Z"/><path d="M8 10h8l2 9H6Z"/><path d="M9 13h6M12 15v2"/><path d="M11 2h2"/>',
+        dried_herbs: '<path d="M12 3v18M12 9C8 4 5 6 5 8c0 3 4 4 7 5M12 11c4-6 7-5 7-3 0 3-3 5-7 7"/><path d="M5 19c3-2 11-2 14 0M7 17l-2 4M17 17l2 4"/>',
+        beef_jerky: '<path d="M4 9c3-4 6-4 10-3l6 4-2 8c-4 3-9 2-14-2Z"/><path d="M7 11c3-2 5-1 8 1M7 15c3-1 5 0 7 2"/><path d="M17 9l-2 4"/>',
+        dried_fish: '<path d="M3 12c5-6 10-7 15 0l4-4v8l-4-4c-5 7-10 6-15 0Z"/><circle cx="7" cy="11" r=".8"/><path d="M11 10l2 4M14 9l2 6M4 16l3 2"/>',
+        herb_steak: '<path d="M4 13C4 7 11 4 17 6c5 2 5 9 1 12-3 3-10 2-13-1-1-1-1-2-1-4Z"/><path d="M8 11c3-2 7-1 10 2M8 16c3-1 7-1 9 0"/><path d="M12 7c-1-3 1-4 3-5M12 7c-3-2-5-1-6 0"/>',
         canned_food:
             '<ellipse cx="12" cy="6.4" rx="6" ry="2.4"/>' +
             '<path d="M6 6.4v11.2c0 1.3 2.7 2.4 6 2.4s6-1.1 6-2.4V6.4"/>' +
@@ -267,76 +279,6 @@
             '<path d="M3.6 7.6 12 11m0 0 8.4-3.4M12 11v8.8"/>',
     };
 
-    function sidearmArt(barrel, magazine, sight) {
-        return '<path d="M3 8.5h' + barrel + 'l2 1v2.6h-3l-1.5 2H10l-1 5H6.5l1-5H4.5L3 12Z"/>' +
-            (magazine ? '<path d="M8 14.2 7.1 20h3l1.2-5.8"/>' : '') +
-            (sight ? '<path d="M9 8.5V6.8h5v1.7M11 5.8h1"/>' : '<path d="M5 7.4v1.1M14 7.4v1.1"/>');
-    }
-
-    function longGunArt(stock, magazine, sight, muzzle) {
-        return '<path d="M2.2 9h18.6v2.3H2.2Z"/>' +
-            (stock ? '<path d="M2.2 11.3 4.4 17h3l-1.3-5.7"/>' : '<path d="M2.2 11.3v3.5h3v-3.5"/>') +
-            (magazine ? '<path d="M10 11.3 9.5 17.8h3l1.2-6.5"/>' : '<path d="M10.2 11.3v2.2h4v-2.2"/>') +
-            (sight ? '<path d="M10.1 9V6.9h5.1V9M11.2 6.9V5.5h2.7v1.4"/>' : '<path d="M16.3 7.5V9"/>') +
-            (muzzle ? '<path d="M20.8 8.2H23v4h-2.2"/>' : '<path d="M20.8 8.4v3.5"/>');
-    }
-
-    function heavyGunArt(box, bipod, sight) {
-        return '<path d="M2 8.2h19.6v3.2H2Z"/><path d="M2 11.4 4.3 18h3.3l-1.5-6.6"/>' +
-            (box ? '<path d="M9 11.4h5.4v6.2H9Z"/><path d="M10 13h3.4M10 15h3.4"/>' : '<path d="M10 11.4 9.3 18h3.1l1.4-6.6"/>') +
-            (bipod ? '<path d="m18.5 11.4-2 7M18.5 11.4l3 7"/>' : '<path d="M17 11.4v2.1"/>') +
-            (sight ? '<path d="M10 8.2V6h6v2.2"/>' : '<path d="M15.5 7v1.2"/>');
-    }
-
-    Object.assign(ART, {
-        ap_pistol: sidearmArt(14, true, false) + '<path d="M12 12.1h3"/>',
-        heavy_pistol: sidearmArt(16, false, false) + '<path d="M4 10h8"/>',
-        vintage_pistol: sidearmArt(13, false, false) + '<path d="M4.5 12h4"/>',
-        pistol_50: sidearmArt(17, false, true) + '<path d="M16 10h2"/>',
-        pistol_mk2: sidearmArt(15, true, true) + '<path d="M4 10h6"/>',
-        sns_pistol_mk2: sidearmArt(12, false, true) + '<path d="M4 10h3"/>',
-        revolver_mk2: sidearmArt(15, false, true) + '<circle cx="9.5" cy="11" r="1.8"/>',
-        micro_smg: sidearmArt(17, true, false) + '<path d="M5 14v4"/>',
-        assault_smg: sidearmArt(19, true, true) + '<path d="M5 14v4"/>',
-        machine_pistol: sidearmArt(18, true, false) + '<path d="M15 12v3"/>',
-        advanced_rifle: longGunArt(true, true, true, true) + '<path d="M7 10.2h2"/>',
-        special_carbine: longGunArt(true, true, true, false) + '<path d="M17 9h2"/>',
-        bullpup_rifle: longGunArt(true, false, true, true) + '<path d="M7 13h2"/>',
-        compact_rifle: longGunArt(false, true, false, true) + '<path d="M6 9v2.3"/>',
-        military_rifle: longGunArt(true, true, true, true) + '<path d="M15.9 9v2.3"/>',
-        combat_pdw: longGunArt(false, true, true, false) + '<path d="M6 11.3v3"/>',
-        gusenberg: longGunArt(true, false, false, true) + '<circle cx="12" cy="14.7" r="2.2"/>',
-        assault_rifle_mk2: longGunArt(true, true, true, true) + '<path d="M17 7.7V9"/>',
-        carbine_mk2: longGunArt(true, true, true, false) + '<path d="M7.2 9v2.3"/>',
-        special_carbine_mk2: longGunArt(true, true, true, true) + '<path d="M17 9h2"/>',
-        bullpup_rifle_mk2: longGunArt(true, false, true, true) + '<path d="M7 13h2M17 7.7V9"/>',
-        smg_mk2: longGunArt(false, true, true, true) + '<path d="M5 11.3v3"/>',
-        assault_shotgun: longGunArt(true, false, false, true) + '<path d="M14 12h3"/>',
-        bullpup_shotgun: longGunArt(false, false, true, true) + '<path d="M6 11.3v4"/>',
-        heavy_shotgun: heavyGunArt(false, false, false) + '<path d="M20 7v1.2"/>',
-        pump_shotgun_mk2: longGunArt(true, false, true, false) + '<path d="M14 12h4"/>',
-        musket: '<path d="M2 10h20v1.5H2Z"/><path d="M2 11.5 5 18h2l-1.3-6.5"/><path d="M17 8v2M19.4 8v2"/>',
-        heavy_sniper: heavyGunArt(false, true, true) + '<path d="M19 7.2v1"/>',
-        heavy_sniper_mk2: heavyGunArt(false, true, true) + '<path d="M18 6.3v1.9M20 7.2v1"/>',
-        marksman_mk2: longGunArt(true, false, true, true) + '<path d="M17 11.3v4"/>',
-        mg: heavyGunArt(true, true, false) + '<path d="M5 9.5h3"/>',
-        combat_mg: heavyGunArt(true, true, true) + '<path d="M5 9.5h3"/>',
-        combat_mg_mk2: heavyGunArt(true, true, true) + '<path d="M5 9.5h3M18 7v1.2"/>',
-        att_muzzle_brake: '<path d="M3 9h18v6H3Z"/><path d="M7 9v6M12 9v6M17 9v6M20 10.5h2M20 13.5h2"/>',
-        att_reflex: '<path d="M4 18h16v2H4Z"/><path d="M7 18v-8a5 5 0 0 1 10 0v8"/><path d="M12 10v5M9.5 12.5h5"/>',
-        att_scope_long: '<path d="M2 9h20v6H2Z"/><path d="M5 9v6M19 9v6M9 15v3h6v-3M12 10v4M10 12h4"/>',
-    });
-
-    Object.assign(ART, {
-        axe: '<path d="M11 3v18h2V3Z"/><path d="M11 5C7 4 4 6 2 9c2 2 5 3 9 2M13 5c4-1 7 1 9 4-2 2-5 3-9 2"/>',
-        c4: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M6 9h5v6H6zM14 8h4v3h-4zM14 14h4M5 19v2M19 19v2"/>',
-        copper: '<path d="M4 16l4-8 9-3 3 9-6 5-9 1Z"/><path d="m8 8 4 7 8-1M12 15l2 4"/>',
-        pipe_bomb: '<path d="M5 8h14v9H5zM3 10h2v5H3zM19 10h2v5h-2zM9 8V5h5l2-2M8 12h8M8 15h5"/>',
-        pipe_pistol: sidearmArt(13, false, false) + '<path d="M4 9h11M13 8v4M16 12h4"/>',
-        pipe_shotgun: longGunArt(true, false, false, false) + '<path d="M4 9h17M18 8v4M12 11v4"/>',
-        spiked_bat: '<path d="m5 19 12-15 3 3L8 22zM12 8l-2-4M16 7l1-4M17 11l4-1M13 13l3 2"/>',
-    });
-
     const CATEGORY_KEY = {
         weapon: '_weapon', medical: '_medical', food: '_food', drink: '_drink',
         ammo: '_ammo', material: '_material', tool: '_tool',
@@ -348,11 +290,11 @@
         vehicle: '_vehicle',
     };
 
-    // Painted art: real raster icons, one file per item, served from bs_ui's img/ folder via the nui:// path.
+    // Painted art: real raster icons, one file per item, served from bs_ui's img/ folder via the nui:// path. The line-art SVGs above are the fallback for anything without an entry here. Two subfolders so sources do not overwrite each other: img/weapons/ (IconPack, GTA V weapon-class art) and img/items/.
     const IMG_BASE = 'nui://bs_ui/html/img/';
 
     const IMG = {
-        // weapons/ (old IconPack): filenames do not describe the art: assault_rifle_01.png is a break-action long gun
+        // weapons/ (old IconPack). Filenames do not describe the art: assault_rifle_01.png is a break-action long gun, so the mapping follows the pictures, not the names.
         pistol:         'weapons/handgun_01.png',
         revolver:       'weapons/handgun_09.png',
         smg:            'weapons/submachine_gun_09.png',
@@ -374,6 +316,7 @@
 
         // items/ - SwisserDev fivem-inventory-icons (CC0-1.0)
         crowbar:        'items/crowbar.png',
+        flashlight:      'items/flashlight.png',
         armour_plate:   'items/armor.png',
         bandage:        'items/bandage.png',
         cloth:          'items/cloth.png',
@@ -392,7 +335,9 @@
         att_suppressor: 'items/suppressor_attachment.png',
         toolbox:        'items/toolbox.png',
         brake_pads:     'items/veh_brakes.png',
-        engine_part:    'items/veh_engine.png',
+        engine_part:    'items/motor.png',
+        bonnet:         'items/motorhaube.png',
+        rear_bumper:    'items/heckstossstange.png',
         tyre:           'items/veh_wheels.png',
         water_bottle:   'items/water_bottle.png',
         wood_plank:     'items/wood_plank.png',
@@ -400,6 +345,9 @@
 
 
     Object.assign(IMG, {
+        book: 'items/book.png',
+        tourism_guide: 'items/book.png',
+        pacific_blueprints: 'items/book.png',
         bandage: 'xanderp/items/bandage.png', medkit: 'xanderp/items/medkit.png',
         water_bottle: 'xanderp/items/water_bottle.png', canned_food: 'xanderp/items/canned_food.png',
         antiseptic: 'xanderp/items/antiseptic.png', antibiotics: 'xanderp/items/antibiotics.png',
@@ -413,14 +361,45 @@
 
     Object.assign(IMG, {
         // Garment icons for the clothing items.
-        hiking_pack:'xanderp/clothing/hiking_pack-bs19-20261026.png', armour_plate:'xanderp/clothing/armour_plate.png',
-        // Keep retired pack icons for saved inventories and staff item lists.
-        pack_small:'xanderp/clothing/pack_civilian.png', pack_medium:'xanderp/clothing/pack_hiking.png',
-        pack_large:'xanderp/clothing/pack_survival.png', pack_military:'xanderp/clothing/pack_field_military.png',
-        pack_civilian:'xanderp/clothing/pack_civilian.png', pack_hiking:'xanderp/clothing/pack_hiking.png',
-        pack_survival:'xanderp/clothing/pack_survival.png', pack_field_military:'xanderp/clothing/pack_field_military.png',
+        hiking_pack:'xanderp/clothing/hiking_pack.png', armour_plate:'xanderp/clothing/armour_plate.png',
+        // Backpack tiers and vests reuse the pack / vest art until they get their own.
+        pack_small:'xanderp/clothing/hiking_pack.png', pack_medium:'xanderp/clothing/hiking_pack.png',
+        pack_large:'xanderp/clothing/hiking_pack.png', pack_military:'xanderp/clothing/hiking_pack.png',
         vest_tactical:'xanderp/clothing/plain_vest.png', vest_plate:'xanderp/clothing/armour_plate.png'
     });
+
+    // Dedicated item art supplied for loot / vehicle / clothing parts.
+    Object.assign(IMG, {
+        bicycle_handlebar: 'items/bicycle_handlebar.png',
+        bicycle_tyre: 'items/bicycle_tyre.png',
+        bicycle_frame: 'items/bicycle_frame.png',
+        bicycle_saddle: 'items/bicycle_saddle.png',
+        bicycle_chain: 'items/bicycle_chain.png',
+        bicycle_pedals: 'items/bicycle_pedals.png',
+        motorcycle_handlebar: 'items/motorcycle_handlebar.png',
+        motorcycle_tank: 'items/motorcycle_tank.png',
+        motorcycle_seat: 'items/motorcycle_seat.png',
+        motorcycle_brakes: 'items/motorcycle_brakes.png',
+        motorcycle_engine: 'items/motorcycle_engine.png',
+        motorcycle_chassis: 'items/motorcycle_chassis.png',
+        bonnet: 'items/bonnet.png',
+        car_door: 'items/car_door.png',
+        exhaust: 'items/exhaust.png',
+        gearbox: 'items/gearbox.png',
+        rear_bumper: 'items/rear_bumper.png',
+        pack_small: 'items/pack_small.png',
+        pack_medium: 'items/pack_medium.png',
+        pack_large: 'items/pack_large.png',
+        pack_military: 'items/pack_military.png',
+        vest_plate: 'items/vest_plate.png',
+        vest_tactical: 'items/vest_tactical.png',
+        wine: 'items/wine.png',
+        tequila: 'items/tequila.png',
+        moonshine: 'items/moonshine.png',
+        steel: 'items/steel.png',
+        stick: 'items/stick.png'
+    });
+
 
     Object.assign(IMG, {
         hunting_knife: 'xanderp/weapons/hunting_knife.png',
@@ -436,18 +415,15 @@
         sawn_off: 'xanderp/weapons/sawn_off.png',
         carbine: 'xanderp/weapons/carbine.png',
         assault_rifle: 'xanderp/weapons/assault_rifle.png',
-        compact_rifle: 'xanderp/weapons/compact_rifle.png',
-        advanced_rifle: 'xanderp/weapons/advanced_rifle.png',
-        ap_pistol: 'xanderp/weapons/ap_pistol.png',
-        assault_rifle_mk2: 'xanderp/weapons/assault_rifle_mk2.png',
-        assault_shotgun: 'xanderp/weapons/assault_shotgun.png',
-        assault_smg: 'xanderp/weapons/assault_smg.png',
-        bullpup_rifle: 'xanderp/weapons/bullpup_rifle.png',
-        bullpup_rifle_mk2: 'xanderp/weapons/bullpup_rifle_mk2.png',
-        bullpup_shotgun: 'xanderp/weapons/bullpup_shotgun.png',
         marksman: 'xanderp/weapons/marksman.png',
         hunting_rifle: 'xanderp/weapons/hunting_rifle.png',
-        hammer: 'xanderp/weapons/hammer.png'
+        crossbow: 'xanderp/weapons/crossbow.png',
+        hammer: 'xanderp/weapons/tcm_hammer.png',
+        reinforced_bat: 'xanderp/weapons/baseball_bat.png',
+        crowbar: 'xanderp/weapons/sledgehammer.png',
+        weapon_poolcue: 'xanderp/weapons/barbed_wire_bat.png',
+        weapon_barbedbat: 'xanderp/weapons/barbed_wire_bat.png',
+        zombie_arm: 'xanderp/weapons/zombie_arm.png'
     });
 
     Object.assign(IMG, {
@@ -499,6 +475,13 @@
         bird_meat: 'xanderp/items/bird_meat.png',
         boar_hide: 'xanderp/items/boar_hide.png',
         boar_meat: 'xanderp/items/boar_meat.png',
+        paper: 'xanderp/items/paper.png',
+        poop: 'xanderp/items/poop.png',
+        toilet_paper: 'xanderp/items/toilet_paper.png',
+        banana: 'xanderp/items/banana.png',
+        apple: 'xanderp/items/apple.png',
+        expired_meat: 'xanderp/items/expired_meat.png',
+        cement: 'xanderp/items/cement.png',
         bone: 'xanderp/items/bone.png',
         boombox: 'xanderp/items/boombox.png',
         coyote_pelt: 'xanderp/items/coyote_pelt.png',
@@ -520,7 +503,6 @@
         dog_saddlebag: 'xanderp/items/dog_saddlebag.png',
         drone_battery: 'xanderp/items/drone_battery.png',
         electronics: 'xanderp/items/electronics.png',
-        vehicle_inverter: 'xanderp/items/electronics.png',
         faction_xp_token: 'xanderp/items/faction_xp_token.png',
         fertilizer: 'xanderp/items/fertilizer.png',
         fish_bass: 'xanderp/items/fish_bass.png',
@@ -610,90 +592,6 @@
         contract_board: 'xanderp/items/contract_board.png'
     });
 
-    Object.assign(IMG, {radio:'xanderp/items/radio-bs19-20261026.png',radio_advanced:'xanderp/items/radio_advanced-bs19-20261026.png',radio_military:'xanderp/items/radio_military-bs19-20261026.png',portable_antenna:'xanderp/items/portable_antenna-bs19-20261026.png'});
-
-    // Dark Zone items (bs_darkzone): tinted copies of existing art.
-    Object.assign(IMG, {
-        dz_flare: 'xanderp/items/dz_flare.png',
-        dz_intel: 'xanderp/items/dz_intel.png',
-        dz_sample: 'xanderp/items/dz_sample.png',
-        dz_pdw_warden: 'xanderp/items/dz_pdw_warden.png',
-        dz_rifle_revenant: 'xanderp/items/dz_rifle_revenant.png',
-        dz_shotgun_breacher: 'xanderp/items/dz_shotgun_breacher.png',
-        booster_dz_overdrive: 'xanderp/items/booster_dz_overdrive.png',
-        booster_dz_ironhide: 'xanderp/items/booster_dz_ironhide.png',
-        booster_dz_sentry: 'xanderp/items/booster_dz_sentry.png'
-    });
-
-    Object.assign(IMG, {
-        "flashlight": "xanderp/items/flashlight-bs19-20261026.png",
-        "transfusion_kit": "xanderp/items/transfusion_kit-bs19-20261026.png",
-        "saline": "xanderp/items/saline-bs19-20261026.png",
-        "tourniquet": "xanderp/items/tourniquet-bs19-20261026.png",
-        "splint": "xanderp/items/splint-bs19-20261026.png",
-        "antiviral": "xanderp/items/antiviral-bs19-20261026.png",
-        "leaves": "xanderp/items/leaves-bs19-20261026.png",
-        "sticks": "xanderp/items/sticks-bs19-20261026.png",
-        "rag": "xanderp/items/rag-bs19-20261026.png",
-        "painkillers": "xanderp/items/painkillers-bs19-20261026.png",
-        "cranberries": "xanderp/items/cranberries-bs19-20261026.png",
-        "surgical_kit": "xanderp/items/surgical_kit-bs19-20261026.png",
-        "defibrillator": "xanderp/items/defibrillator-bs19-20261026.png",
-        "blood_bag": "xanderp/items/blood_bag-bs19-20261026.png",
-        "pipe_pistol": "xanderp/items/pipe_pistol-bs19-20261026.png",
-        "pipe_shotgun": "xanderp/items/pipe_shotgun-bs19-20261026.png",
-        "axe": "xanderp/items/axe-bs19-20261026.png",
-        "spiked_bat": "xanderp/items/spiked_bat-bs19-20261026.png",
-        "pipe_bomb": "xanderp/items/pipe_bomb-bs19-20261026.png",
-        "c4": "xanderp/items/c4-bs19-20261026.png"
-});
-
-    Object.assign(IMG,{
-        att_custom_supp_scrap:'custom_attachments/att_custom_supp_scrap.png',
-        att_custom_light_salvage:'custom_attachments/att_custom_light_salvage.png',
-        att_custom_bayonet_mount:'custom_attachments/att_custom_bayonet_mount.png',
-        att_custom_supp_compact:'custom_attachments/att_custom_supp_compact.png',
-        att_custom_supp_long:'custom_attachments/att_custom_supp_long.png',
-        att_custom_brake_ported:'custom_attachments/att_custom_brake_ported.png',
-        att_custom_hider_cage:'custom_attachments/att_custom_hider_cage.png',
-        att_custom_grip_angled:'custom_attachments/att_custom_grip_angled.png',
-        att_custom_grip_wrap:'custom_attachments/att_custom_grip_wrap.png',
-        att_custom_optic_micro:'custom_attachments/att_custom_optic_micro.png',
-        att_custom_rail_offset:'custom_attachments/att_custom_rail_offset.png',
-        att_custom_stock_brace:'custom_attachments/att_custom_stock_brace.png',
-        att_custom_shroud_wire:'custom_attachments/att_custom_shroud_wire.png',
-        att_factory_bipod_folded_03:'custom_attachments/att_factory_bipod_folded_03.png',
-        att_factory_brake_radial_03:'custom_attachments/att_factory_brake_radial_03.png',
-        att_factory_brake_threeport_03:'custom_attachments/att_factory_brake_threeport_03.png',
-        att_factory_compensator_linear_03:'custom_attachments/att_factory_compensator_linear_03.png',
-        att_factory_grip_stubby_03:'custom_attachments/att_factory_grip_stubby_03.png',
-        att_factory_grip_swept_03:'custom_attachments/att_factory_grip_swept_03.png',
-        att_factory_grip_vertical_03:'custom_attachments/att_factory_grip_vertical_03.png',
-        att_factory_handguard_quad_03:'custom_attachments/att_factory_handguard_quad_03.png',
-        att_factory_handguard_vented_03:'custom_attachments/att_factory_handguard_vented_03.png',
-        att_factory_handstop_hook_03:'custom_attachments/att_factory_handstop_hook_03.png',
-        att_factory_hider_closed_03:'custom_attachments/att_factory_hider_closed_03.png',
-        att_factory_laser_compact_03:'custom_attachments/att_factory_laser_compact_03.png',
-        att_factory_light_compact_03:'custom_attachments/att_factory_light_compact_03.png',
-        att_factory_optic_holo_03:'custom_attachments/att_factory_optic_holo_03.png',
-        att_factory_optic_precision_03:'custom_attachments/att_factory_optic_precision_03.png',
-        att_factory_optic_prism_03:'custom_attachments/att_factory_optic_prism_03.png',
-        att_factory_optic_reflex_03:'custom_attachments/att_factory_optic_reflex_03.png',
-        att_factory_rail_bridge_03:'custom_attachments/att_factory_rail_bridge_03.png',
-        att_factory_stock_precision_03:'custom_attachments/att_factory_stock_precision_03.png',
-        att_factory_stock_telescopic_03:'custom_attachments/att_factory_stock_telescopic_03.png',
-        att_factory_suppressor_integral_03:'custom_attachments/att_factory_suppressor_integral_03.png',
-        att_factory_suppressor_qd_03:'custom_attachments/att_factory_suppressor_qd_03.png',
-        att_factory_suppressor_rect_03:'custom_attachments/att_factory_suppressor_rect_03.png',
-        att_factory_suppressor_slim_03:'custom_attachments/att_factory_suppressor_slim_03.png'
-    });
-
-    for (const id of Object.keys(IMG)) {
-        if (id.startsWith('att_factory_') && id.endsWith('_03')) {
-            IMG[id.slice(0, -3)] = IMG[id];
-        }
-    }
-
     // The raw path data for an item, falling back to its category.
     function art(item, category) {
         if (item && ART[item]) return ART[item];
@@ -718,10 +616,10 @@
         // True when this item has its own art (painted or line-art) rather than a fallback.
         has(item) { return !!(item && (IMG[item] || ART[item])); },
 
-        /* Register art at runtime - used by resources that add their own items. */
+        /** Register art at runtime - used by resources that add their own items. */
         register(item, markup) { if (item && markup) ART[item] = markup; },
 
-        /* Every item key that has its own drawing. For the icon audit. */
+        /** Every item key that has its own drawing. For the icon audit. */
         keys() {
             return Array.from(new Set(Object.keys(ART).filter((k) => k[0] !== '_').concat(Object.keys(IMG))));
         },

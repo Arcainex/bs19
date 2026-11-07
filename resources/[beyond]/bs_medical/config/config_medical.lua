@@ -1,4 +1,6 @@
--- bs_medical - downed state, bleedout and revive settings. At zero health you go down instead of respawning.
+-- bs_medical - downed state, bleedout and revive settings.
+-- At zero health you go down instead of respawning. You can call for help,
+-- bandage yourself, or bleed out and wake up at a clinic.
 
 Medical = {}
 
@@ -13,19 +15,21 @@ Medical.Settings = {
     -- downed. The server accepts 'medical:down' up to catchHealth + 5.
     catchHealth      = 125,
 
-    -- Lethal damage goes to downed first, whatever the cause, except the causes switched off below.
+    -- Lethal damage goes to downed first, whatever the cause, except the causes
+    -- switched off below.
     catchAllDeaths   = true,
     hardDeathOnExplosion = true,    -- explosions still kill outright
     hardDeathOnDrown     = true,    -- drowning still kills outright
     hardDeathFallHeight  = 15.0,    -- falls from higher than this (m) kill outright
 
-    -- A player on the death screen (not yet respawned) can still be revived with a medkit.
+    -- A player on the death screen (not yet respawned) can still be revived with a
+    -- medkit. Their items stay with them until they respawn.
     reviveDead       = true,
 
     -- Bandage packs (self or other) are not limited per downing.
     stabiliseUnlimited = true,
 
-    -- Health restored on revive. Kept low.
+    -- Health restored on revive. Kept low on purpose.
     reviveHealth     = 30,
 
     -- Revive duration in ms. Field medic shortens it.
@@ -50,7 +54,13 @@ Medical.Settings = {
         { x = 297.5,  y = -584.6, z = 43.26, h = 70.0,  label = 'Pillbox Hill Medical' },
     },
 
-    -- Item loss on death (default ON). bs_inventory's WipeInventory empties every slot
+    -- Item loss on death (default ON).
+    -- bs_inventory's WipeInventory empties every slot, including the equipment
+    -- slots, so worn clothing is lost too. This is intended and not separable
+    -- without a second wipe implementation.
+    -- No player-corpse container exists on the death path; if one is added,
+    -- sv_main.lua fires `bs:medical:death:beforeWipe` first so it can be filled
+    -- from the full inventory.
     wipeOnDeath      = true,
 
     -- Death penalty. Infection survives death.
@@ -59,7 +69,9 @@ Medical.Settings = {
     respawnThirst    = 45.0,
 }
 
--- Player bodies: on a real death everything carried (bag, bar, worn gear) goes into the corpse
+-- Player bodies. On a real death everything carried (bag, bar, worn gear) goes
+-- into the corpse, which stays where you fell until looted or `lifetime`
+-- runs out. Lost on resource restart.
 Medical.Corpse = {
     enabled        = true,
     lifetime       = 3600,   -- seconds, hard cap
@@ -90,13 +102,15 @@ Medical.Keys = {
     shout     = 'E',
     -- Use a bandage on yourself.
     stabilise = 'G',
-    -- HOLD for 2.5s to give up and bleed out. A hold, so it is not triggered by accident.
+    -- HOLD for 2.5s to give up and bleed out. A hold, so it is not triggered by
+    -- accident. Hold length and key are in cl_downed.lua.
     giveUp    = 'X (hold)',
     -- Ask for help: see Medical.Help below.
     help      = 'H',
 }
 
--- Wake-up spot after a real death: random open ground this far from where you fell.
+-- Wake-up spot after a real death: random open ground this far from where you
+-- fell. Bedrolls still win; the clinics above are the fallback.
 Medical.Respawn = {
     minDistance = 500.0,
     maxDistance = 1000.0,
@@ -107,7 +121,8 @@ Medical.Respawn = {
     },
 }
 
--- Calling for help while down: pings nearby players, your squad and faction on the map.
+-- Calling for help while down: pings nearby players, your squad and faction
+-- on the map.
 Medical.Help = {
     control   = 74,        -- H (INPUT_VEH_HEADLIGHT)
     label     = 'H',
@@ -116,23 +131,29 @@ Medical.Help = {
     blipTime  = 90,        -- seconds the ping stays on their map
 }
 
--- Self-revive: a medkit used while down (R on the downed screen, or 'use' in the inventory) goes through the
+-- Self-revive: a medkit used while down (R on the downed screen, or 'use' in
+-- the inventory) goes through the normal revive path.
 Medical.SelfRevive = {
-    enabled  = true,
+    enabled  = false,
     item     = 'medkit',
     control  = 45,         -- R (INPUT_RELOAD)
     label    = 'R',
     time     = 6000,       -- ms of patching yourself before you get up
 }
 
--- Being shot down by another player.
+-- Being shot down by another player. One bullet can exceed the catch window
+-- (headshots, most rifles) and kill outright. With downFirst on, a death caused
+-- by another player is caught and the player goes into the downed state.
 Medical.PvP = {
     downFirst       = true,
-    -- false: a downed player cannot be finished off; only the clock
+    -- false: a downed player cannot be finished off; only the clock, giving up or
+    -- a revive ends it. true: other players can kill them for real.
     allowExecution  = false,
 }
 
 -- Dragging and carrying downed players (client/cl_carry.lua). Anyone can drag.
+-- Carrying needs the Fireman carry perk (bs_skills Survival tree): level 1
+-- shuffle, 2 normal walk, 3 can jog.
 Medical.Carry = {
     enabled       = true,
     distance      = 2.0,       -- to start

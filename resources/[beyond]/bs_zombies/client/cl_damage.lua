@@ -63,9 +63,6 @@ local function regionForImpact(ped, hit)
     return bestRegion, headshot
 end
 
--- Shared with cl_filler.lua, so a hit on a filler walker is resolved the same way before it is replayed
-Zombies.RegionForImpact = regionForImpact
-
 -- Bones the engine can report for a head hit
 local ENGINE_HEAD = { [31086] = true, [12844] = true }
 local HEAD_POINTS = { 31086 }
@@ -120,7 +117,7 @@ local function walkerIdFor(entity)
     -- Networked peds must still carry the zombie marker (handles get reused; faction NPCs are never walkers)
     if NetworkGetEntityIsNetworked(entity) then
         local okS, st = pcall(function() return Entity(entity).state end)
-        if not okS or not st or st.fnpc or st.bsFnpc or st.bsZombie == nil or st.bsZombieDead then return nil end
+        if not okS or not st or st.fnpc or st.bsZombie == nil then return nil end
         -- Not adopted yet (another client owns it): fall back to the id in the state bag.
         if not id then id = tonumber(st.bsZombie) end
         if id and NetworkHasControlOfEntity(entity) then
@@ -178,11 +175,10 @@ function Zombies.IsMeleeWeapon(hash)
     return MELEE_GROUPS[GetWeapontypeGroup(hash)] == true
 end
 
-local function report(id, region, headshot, weaponHash, dist, point)
+local function report(id, region, headshot, weaponHash, dist)
     if Zombies.IsMeleeWeapon and Zombies.IsMeleeWeapon(weaponHash) then
         Crumb('melee', 'hit id=%s region=%s', tostring(id), tostring(region))
     end
-    TriggerEvent('bs:z:localImpact', id, headshot == true, Zombies.IsMeleeWeapon(weaponHash), point)
     TriggerServerEvent('bs:z:dmg', id, region, headshot and 1 or 0,
                        weaponHash, dist)
 
@@ -289,7 +285,7 @@ local function onShotFired(impact)
 
     if headshot then
         clearEngineHit(entity)
-        report(id, region, headshot, weaponHash or 0, dist, hit)
+        report(id, region, headshot, weaponHash or 0, dist)
         return
     end
 
@@ -301,7 +297,7 @@ local function onShotFired(impact)
             Wait(0)
         until GetGameTimer() > deadline
         clearEngineHit(entity)
-        report(id, region, headshot, weaponHash or 0, dist, hit)
+        report(id, region, headshot, weaponHash or 0, dist)
     end)
 end
 
@@ -324,43 +320,124 @@ end)
 
 -- MELEE
 
--- Melee sweeps an arc in front of the player instead of tracing a ray
-local function onMeleeSwing()
-    local ped = PlayerPedId()
-    local at = GetEntityCoords(ped)
-    local fwd = GetEntityForwardVector(ped)
+-- Alpha-Z ground-melee fix:
+-- GTA's melee animation can connect with a ragdolled / downed walker without the old
+-- forward-arc test seeing the body correctly. We therefore prefer the engine's actual
+-- damage flag for a short window after every swing. The arc test remains as a fallback
+-- so normal standing hits keep the same responsive behaviour.
+local function meleeCandidate(ped, playerPos, maxRange)
+    if not ped or not DoesEntityExist(ped) or IsEntityDead(ped) then return false end
+    return #(GetEntityCoords(ped) - playerPos) <= maxRange
+end
 
+local function meleeRegionFromEngine(zped, playerPed)
+    local ok, bone = GetPedLastDamageBone(zped)
+    if ok and bone then
+        local region = BONE_REGION[bone] or 'torso'
+        local headshot = ENGINE_HEAD[bone] == true
+        if region == 'head' and not headshot then region = 'torso' end
+        return region, headshot
+    end
+    return 'torso', false
+end
+
+local function reportConfirmedMelee(playerPed, weaponHash, alreadyReported)
+    local at = GetEntityCoords(playerPed)
+    local range = (D.meleeRange or 2.4) + 0.65 -- extra reach for bodies lying away from their ped origin
+
+    for _, entry in pairs(Zed.live or {}) do
+        local zped = entry.ped
+        if entry.id and not entry.dying and meleeCandidate(zped, at, range)
+           and HasEntityBeenDamagedByEntity(zped, playerPed, true) then
+            local id = tonumber(entry.id)
+            if id and id ~= alreadyReported then
+                local region, headshot = meleeRegionFromEngine(zped, playerPed)
+                local dist = #(GetEntityCoords(zped) - at)
+                clearEngineHit(zped)
+                report(id, region, headshot, weaponHash or 0, dist)
+                return id
+            end
+            clearEngineHit(zped)
+            return id
+        end
+    end
+    return nil
+end
+
+-- Melee sweeps an arc in front of the player. For a downed walker we use the pelvis/
+-- torso position rather than only the entity origin, because ragdoll origins are unreliable.
+local function fallbackMeleeTarget(playerPed)
+    local at = GetEntityCoords(playerPed)
+    local fwd = GetEntityForwardVector(playerPed)
     local range = D.meleeRange or 2.4
     local halfAngle = math.rad(D.meleeHalfAngle or 60.0)
 
     local bestId, bestPed, bestDist = nil, nil, math.huge
 
     for _, entry in pairs(Zed.live or {}) do
-        if entry.ped and DoesEntityExist(entry.ped) and not entry.dying then
-            local to = GetEntityCoords(entry.ped)
-            local d = #(to - at)
-            if d <= range and d < bestDist then
-                local dir = (to - at)
-                local len = #dir
-                if len > 0.01 then
-                    dir = dir / len
-                    local dot = (dir.x * fwd.x) + (dir.y * fwd.y)
+        local zped = entry.ped
+        if zped and DoesEntityExist(zped) and not IsEntityDead(zped) and not entry.dying then
+            local down = IsPedRagdoll(zped) or IsPedGettingUp(zped)
+            local targetPos = down and GetPedBoneCoords(zped, 11816, 0.0, 0.0, 0.0) or GetEntityCoords(zped)
+            local d = #(targetPos - at)
+            local allowedRange = down and (range + 0.65) or range
+
+            if d <= allowedRange and d < bestDist then
+                local dir = targetPos - at
+                local flatLen = math.sqrt(dir.x * dir.x + dir.y * dir.y)
+                if flatLen > 0.01 then
+                    local dot = ((dir.x / flatLen) * fwd.x) + ((dir.y / flatLen) * fwd.y)
                     if dot > math.cos(halfAngle) then
-                        bestId, bestPed, bestDist = entry.id, entry.ped, d
+                        bestId, bestPed, bestDist = entry.id, zped, d
                     end
                 end
             end
         end
     end
 
-    if not bestId then return end
+    return bestId, bestPed, bestDist
+end
 
-    -- Melee region comes from where the swing lands: chest height on a standing walker is a torso hit
-    local aim = GetEntityCoords(bestPed) + vector3(0.0, 0.0, 0.45)
-    local region, headshot = regionForImpact(bestPed, aim)
+local meleeSwingSerial = 0
 
-    local _, weaponHash = GetCurrentPedWeapon(ped, true)
-    report(bestId, region, headshot, weaponHash or 0, bestDist, aim)
+local function onMeleeSwing()
+    local playerPed = PlayerPedId()
+    if IsEntityDead(playerPed) then return end
+
+    local _, weaponHash = GetCurrentPedWeapon(playerPed, true)
+    if not (Zombies.IsMeleeWeapon and Zombies.IsMeleeWeapon(weaponHash)) then return end
+
+    meleeSwingSerial = meleeSwingSerial + 1
+    local serial = meleeSwingSerial
+
+    -- Wait briefly for GTA to register the actual melee contact. This is especially
+    -- important for downward strikes against ragdolled walkers.
+    CreateThread(function()
+        local deadline = GetGameTimer() + 420
+        local confirmed = nil
+
+        repeat
+            if serial ~= meleeSwingSerial then return end
+            confirmed = reportConfirmedMelee(playerPed, weaponHash, nil)
+            if confirmed then return end
+            Wait(20)
+        until GetGameTimer() >= deadline
+
+        -- Fallback for weapon/animation combinations that do not expose the engine damage flag.
+        if serial ~= meleeSwingSerial then return end
+        local bestId, bestPed, bestDist = fallbackMeleeTarget(playerPed)
+        if not bestId then return end
+
+        local down = IsPedRagdoll(bestPed) or IsPedGettingUp(bestPed)
+        local aim
+        if down then
+            aim = GetPedBoneCoords(bestPed, 11816, 0.0, 0.0, 0.0) -- pelvis/torso on the ground
+        else
+            aim = GetEntityCoords(bestPed) + vector3(0.0, 0.0, 0.45)
+        end
+        local region, headshot = regionForImpact(bestPed, aim)
+        report(bestId, region, headshot, weaponHash or 0, bestDist)
+    end)
 end
 
 CreateThread(function()
@@ -373,7 +450,7 @@ CreateThread(function()
         if swinging and not wasSwinging then onMeleeSwing() end
         wasSwinging = swinging
 
-        if not swinging then Wait(80) end
+        if not swinging then Wait(50) end
     end
 end)
 

@@ -5,10 +5,11 @@
     --ash:    #16150f;
     --bone:   #d8d2c2;
     --dust:   #6f6a5c;
-    --amber:  #c8763a;
-    --blood:  #6e2b21;
-    --mono:   'Courier New', 'Consolas', monospace;
-    --serif:  'Times New Roman', Georgia, serif;
+    --amber:  #4f8a51;  /* Dunkelgrün */
+    --blood:  #4b573e;   /* Olivgrün */
+    --font:   'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Neue Schriftart-Variable */
+    --mono:   var(--font);   /* Ersetzt den Terminal-Look durch Segoe UI */
+    --serif:  var(--font);   /* Ersetzt auch die Serif-Schrift durch Segoe UI, falls alles einheitlich sein soll */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -19,13 +20,124 @@ html, body {
     overflow: hidden;
     background: var(--soot);
     color: var(--bone);
-    font-family: var(--mono);
+    font-family: var(--font); /* Setzt Segoe UI als globale Standardschrift */
     cursor: none;
+}
+/* Alpha-Z background watermark. Kept separate from all existing atmosphere/effects. */
+.alpha-z-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    overflow: hidden;
+    background: #050605;
+}
+
+.alpha-z-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.24);
+}
+
+.alpha-z-background .alpha-z-logo-base {
+    width: min(86vw, 1800px);
+    max-height: 58vh;
+    object-fit: contain;
+    opacity: 0.13;
+    filter: brightness(0.56) contrast(1.10) saturate(0.78);
+}
+
+
+/* Alpha-Z fuse / welding-torch burn. Ultra-thin distressed contour only. */
+.alpha-z-burn,
+.alpha-z-burn-front {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(86vw, 1800px);
+    aspect-ratio: 2048 / 661;
+    max-height: 58vh;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    -webkit-mask: url('alpha-z-outline-fuse-thin.png') center / contain no-repeat;
+    mask: url('alpha-z-outline-fuse-thin.png') center / contain no-repeat;
+}
+
+/* Nearly black burnt trail with a very narrow red ember wake. */
+.alpha-z-burn {
+    z-index: 1;
+    opacity: 0;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(18,1,1,.05) 48.75%,
+        rgba(48,2,2,.20) 49.30%,
+        rgba(94,5,3,.34) 49.66%,
+        rgba(126,8,4,.42) 49.82%,
+        rgba(54,2,2,.18) 50.06%,
+        transparent 50.42%);
+    background-size: 420% 100%;
+    filter: blur(.12px) drop-shadow(0 0 1px rgba(90,5,3,.24));
+    animation: alphaZBurnSweep 58s linear 3s infinite, alphaZEmberPulse 1.15s steps(7,end) infinite;
+}
+
+/* Welding/fuse head: tiny white-hot core, red edge, almost no halo. */
+.alpha-z-burn-front {
+    z-index: 2;
+    opacity: 0;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        transparent 49.68%,
+        rgba(105,5,3,.22) 49.76%,
+        rgba(184,20,8,.56) 49.84%,
+        rgba(255,72,25,.82) 49.90%,
+        rgba(255,184,112,.94) 49.945%,
+        rgba(255,232,205,.98) 49.975%,
+        rgba(246,80,28,.82) 50.01%,
+        rgba(138,8,4,.42) 50.08%,
+        transparent 50.18%);
+    background-size: 520% 100%;
+    filter: blur(.05px)
+            drop-shadow(0 0 1px rgba(255,74,24,.55))
+            drop-shadow(0 0 2px rgba(120,6,3,.32));
+    animation: alphaZBurnFront 58s linear 3s infinite, alphaZFrontFlicker .72s steps(9,end) infinite;
+}
+
+@keyframes alphaZBurnSweep {
+    0%, 5%   { opacity: 0; background-position: 100% 0; }
+    7%       { opacity: .42; }
+    91%      { opacity: .42; }
+    94%,100% { opacity: 0; background-position: -100% 0; }
+}
+
+@keyframes alphaZBurnFront {
+    0%, 5%   { opacity: 0; background-position: 100% 0; }
+    7%       { opacity: .76; }
+    91%      { opacity: .76; }
+    94%,100% { opacity: 0; background-position: -100% 0; }
+}
+
+@keyframes alphaZEmberPulse {
+    0%,100% { filter: blur(.10px) drop-shadow(0 0 1px rgba(86,4,3,.22)); opacity:.34; }
+    31%     { filter: blur(.18px) drop-shadow(0 0 2px rgba(122,7,4,.30)); opacity:.46; }
+    63%     { filter: blur(.06px) drop-shadow(0 0 1px rgba(64,3,2,.18)); opacity:.29; }
+}
+
+@keyframes alphaZFrontFlicker {
+    0%,100% { filter: blur(.04px) drop-shadow(0 0 1px rgba(255,72,24,.52)) drop-shadow(0 0 2px rgba(108,5,3,.28)); }
+    18%     { filter: blur(.10px) drop-shadow(0 0 2px rgba(255,111,45,.68)) drop-shadow(0 0 3px rgba(132,7,3,.34)); }
+    37%     { filter: blur(.02px) drop-shadow(0 0 1px rgba(206,32,12,.42)); }
+    54%     { filter: blur(.12px) drop-shadow(0 0 2px rgba(255,151,73,.72)) drop-shadow(0 0 3px rgba(118,5,3,.30)); }
+    76%     { filter: blur(.03px) drop-shadow(0 0 1px rgba(175,18,8,.38)); }
 }
 
 /* atmosphere */
 
 body::before {                       /* slow heat haze across the floor */
+    z-index: 1;
     content: '';
     position: fixed;
     inset: 0;
@@ -39,6 +151,7 @@ body::before {                       /* slow heat haze across the floor */
 
 .grain {
     position: fixed;
+    z-index: 1;
     inset: -50%;
     pointer-events: none;
     opacity: 0.05;
@@ -57,6 +170,7 @@ body::before {                       /* slow heat haze across the floor */
 
 .vignette {
     position: fixed;
+    z-index: 1;
     inset: 0;
     pointer-events: none;
     background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.82) 100%);
@@ -64,6 +178,7 @@ body::before {                       /* slow heat haze across the floor */
 
 #spores {
     position: fixed;
+    z-index: 1;
     inset: 0;
     pointer-events: none;
     opacity: 0.5;
@@ -212,3 +327,7 @@ body::before {                       /* slow heat haze across the floor */
     color: var(--amber);
     font-variant-numeric: tabular-nums;
 }
+
+/* Smooth handoff to the already-rendered character selection. */
+html { opacity: 1; transition: opacity 1000ms ease-in-out; }
+html.bs-fade-out { opacity: 0; pointer-events: none; }

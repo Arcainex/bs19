@@ -1,4 +1,5 @@
-/* bs_vip panel: no backdrop-filter (NUI has no game pixels behind it) - the blur comes from */
+/* bs_vip panel. No backdrop-filter (NUI has no game pixels behind it) -
+   the blur comes from TriggerScreenblurFadeIn in cl_main.lua. */
 :root {
     --charcoal: #141312; --char2: #1d1b19; --char3: #2a2724;
     --ash: #8f8b83; --bone: #e6dcc6; --rust: #b7472a; --copper: #e08c46;

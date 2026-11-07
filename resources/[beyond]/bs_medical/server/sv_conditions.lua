@@ -1,4 +1,6 @@
--- bs_medical - conditions: wounds, fractures, infection, sickness, blood. The server owns all of it.
+-- bs_medical - conditions: wounds, fractures, infection, sickness, blood.
+-- The server owns all of it. Clients only report what hit them and ask to
+-- treat; every result is decided here. One 5 s loop for everyone.
 
 local SYS   = Medical.System
 local PARTS = Medical.Parts
@@ -351,7 +353,8 @@ RegisterNetEvent('bs:medical:injury', function(part, kind, amount)
     if changed then touch(src) end
 end)
 
--- Zombie hits. bs_zombies still sends this; with bs_medical running it no longer touches infection itself.
+-- Zombie hits. bs_zombies still sends this; with bs_medical running it no
+-- longer touches infection itself.
 local lastBite = {}
 RegisterNetEvent('bs:zombies:bitten', function(typeId)
     local src = source
@@ -685,33 +688,106 @@ CreateThread(function()
         local ok, list = pcall(function() return exports.bs_zombies:SafeZones() end)
         if ok and type(list) == 'table' then for _, z in ipairs(list) do zones[z.id] = z end end
     end
+    local function addDoctorOnce(x, y, z, h)
+        -- Alpha-Z FIX: never publish the same Medic position twice.
+        for _, existing in ipairs(doctors) do
+            local dx, dy, dz = existing.x - x, existing.y - y, existing.z - z
+            if (dx * dx + dy * dy + dz * dz) < 0.25 then return end
+        end
+        doctors[#doctors + 1] = { x = x, y = y, z = z, h = h or 0.0 }
+    end
+
     for _, d in ipairs(Medical.Doctors or {}) do
-        local z = zones[d.zone]
-        if z then
-            doctors[#doctors + 1] = { x = z.x + d.offset.x, y = z.y + d.offset.y, z = z.z + d.offset.z, h = d.heading or 0.0 }
+        -- Doctors may either be anchored to a safe-zone or use an explicit
+        -- world position. Explicit positions are useful for hand-placed service NPCs.
+        if d.pos then
+            addDoctorOnce(d.pos.x, d.pos.y, d.pos.z, d.heading)
+        else
+            local z = zones[d.zone]
+            if z then
+                addDoctorOnce(z.x + d.offset.x, z.y + d.offset.y, z.z + d.offset.z, d.heading)
+            end
         end
     end
     GlobalState.bsMedDoctors = doctors
 end)
 
-BSB.RegisterCallback('medical:doctor', function(src)
-    if not MedicalOn() then return { ok = false, error = Lp(src, 'err_system_off') } end
-    local ped = GetPlayerPed(src)
-    if not ped or ped == 0 then return { ok = false } end
-    local at, near = GetEntityCoords(ped), false
+-- Server entscheidet über Beginn, Reservierung und Abschluss der Behandlung.
+-- Keine Sofortheilung und kein vertrauenswürdiger Client-Timer.
+local doctorTreatments = {}
+local doctorSession = 0
+local function doctorNearby(at, maxDist)
     for _, d in ipairs(doctors) do
-        if #(at - vector3(d.x, d.y, d.z)) <= 5.0 then near = true break end
+        if #(at - vector3(d.x, d.y, d.z)) <= maxDist then return d end
     end
-    if not near then return { ok = false, error = Lp(src, 'err_too_far') } end
+end
+local function doctorAlive(src)
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 or GetEntityHealth(ped) <= 100 then return nil end
+    if MedicalIsDown and MedicalIsDown(src) then return nil end
+    return ped
+end
+
+BSB.RegisterCallback('medical:doctorStart', function(src, bed)
+    if not MedicalOn() then return { ok = false, error = Lp(src, 'err_system_off') } end
+    if doctorTreatments[src] then return { ok = false, error = 'Du wirst bereits behandelt.' } end
+    local ped = doctorAlive(src)
+    if not ped then return { ok = false, error = 'Du kannst derzeit nicht behandelt werden.' } end
+    local at = GetEntityCoords(ped)
+    local doc = doctorNearby(at, 5.0)
+    if not doc then return { ok = false, error = Lp(src, 'err_too_far') } end
+    local opts = Medical.DoctorTreatment or {}
+    if type(bed) ~= 'table' or type(bed.x) ~= 'number' or type(bed.y) ~= 'number'
+        or type(bed.z) ~= 'number' then return { ok = false, error = 'Keine gültige Liege.' } end
+    local pt = vector3(bed.x, bed.y, bed.z)
+    if #(pt - vector3(doc.x, doc.y, doc.z)) > (opts.bedSearchRadius or 16.0) + 2.0 then
+        return { ok = false, error = 'Die Liege ist zu weit entfernt.' }
+    end
+    for id, session in pairs(doctorTreatments) do
+        if id ~= src and #(pt - session.bed) < 1.8 then
+            return { ok = false, error = 'Diese Liege ist belegt.' }
+        end
+    end
+    doctorSession = doctorSession + 1
+    local token = doctorSession
+    local duration = math.max(1000, math.floor(opts.duration or 60000))
+    doctorTreatments[src] = { token = token, bed = pt, doctor = vector3(doc.x, doc.y, doc.z),
+        started = GetGameTimer(), duration = duration }
+    return { ok = true, token = token, duration = duration }
+end)
+
+BSB.RegisterCallback('medical:doctorFinish', function(src, token)
+    local p = doctorTreatments[src]
+    if not p or token ~= p.token then return { ok = false, error = 'Keine laufende Behandlung.' } end
+    -- Zeitmessung auf dem Server; die lokale Animation kann das nicht verkürzen.
+    if GetGameTimer() - p.started < p.duration then
+        return { ok = false, error = 'Behandlung noch nicht abgeschlossen.' }
+    end
+    doctorTreatments[src] = nil
+    if not MedicalOn() then return { ok = false, error = Lp(src, 'err_system_off') } end
+    local ped = doctorAlive(src)
+    if not ped then return { ok = false, error = 'Behandlung abgebrochen.' } end
+    local at = GetEntityCoords(ped)
+    if #(at - p.bed) > 3.0 or #(at - p.doctor) > 20.0 then
+        return { ok = false, error = 'Du hast die Liege verlassen.' }
+    end
     local price = math.floor(SYS.doctorPrice or 0)
     if price > 0 and not exports.bs_core:RemoveMoney(src, 'cash', price, 'medical doctor') then
         return { ok = false, error = Lp(src, 'err_money', { price = price }) }
     end
     MedicalClear(src)
     TriggerClientEvent('bs:medical:heal', src, 1000)
-    logMed(src, ('doctor full heal for $%d'):format(price))
+    logMed(src, ('doctor 60s bed treatment for $%d'):format(price))
     return { ok = true, message = Lp(src, 'doctor_done') }
 end)
+
+RegisterNetEvent('bs:medical:doctorCancel', function(token)
+    local src = source
+    local p = doctorTreatments[src]
+    if p and p.token == token then doctorTreatments[src] = nil end
+end)
+
+AddEventHandler('playerDropped', function() doctorTreatments[source] = nil end)
 
 exports('ClearConditions', function(src) return MedicalClear(src) end)
 exports('Inflict', function(src, kind) return MedicalInflict(src, kind) end)

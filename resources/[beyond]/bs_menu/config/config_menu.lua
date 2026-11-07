@@ -3,13 +3,15 @@
 Menu = {}
 
 Menu.Settings = {
-    openKey     = 'F5',
-    openCommand = 'survivorwheel',
+    openKey     = '',
+    openCommand = 'survivorwheel_disabled',
     -- Dedicated key straight to the Craft panel (reuses the hub, see the RegisterCommand note in cl_main.lua).
-    factionKey   = 'U',
-    factionCommand = 'factionmenu',
-    craftKey     = 'Y',
-    craftCommand = 'craftmenu_y',
+    factionKey   = 'F5',
+    factionCommand = 'factionmenu_unbound_v2',
+    craftKey     = '',
+    craftCommand = 'craftmenu',
+    buildKey     = 'U',
+    buildCommand = 'buildmenu_u',
     -- Slow the world slightly while the hub is open, like a pause screen.
     dimWorld      = false,
 }
@@ -53,7 +55,7 @@ Menu.Entries = {
         icon   = 'anvil',
         kind   = 'panel',
     },
-    -- Factions: a panel rather than a resource, since it is read as often as acted on
+    -- Factions: a panel rather than a resource, since it is read as often as acted on (members, your rank, who is near enough to recruit).
     {
         id     = 'faction',
         label  = 'Faction',
@@ -62,13 +64,11 @@ Menu.Entries = {
         kind   = 'panel',
     },
     {
-        id     = 'clothing',
-        label  = 'Clothing',
-        blurb  = 'Take off or put back on what you are wearing.',
-        icon   = 'shirt',
-        kind   = 'resource',
-        resource = 'bs_emotes',
-        action = 'OpenClothingWheel',
+        id     = 'keyboard',
+        label  = 'Tastaturbelegung',
+        blurb  = 'Wichtige Tasten und Funktionen.',
+        icon   = 'key',
+        kind   = 'panel',
     },
     {
         id     = 'settings',

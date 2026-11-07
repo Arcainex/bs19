@@ -46,7 +46,7 @@ function DrugAnim.Play(key)
     end)
 end
 
--- Cigarette: enter to looping base to exit. shouldStop() returns true to end early.
+-- Cigarette: enter -> looping base -> exit. shouldStop() returns true to end early.
 function DrugAnim.Smoke(duration, shouldStop, onEnd)
     local a = Drugs.Anims.smoke
     CreateThread(function()

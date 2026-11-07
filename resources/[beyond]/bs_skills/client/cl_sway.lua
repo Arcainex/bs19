@@ -1,4 +1,8 @@
 -- bs_skills - weapon sway, stronger at low combat skill.
+-- Skills.Sway.mode: 'aim' offsets the aim point, 'crosshair' only wobbles the reticle, 'both' does both.
+-- Sway is the per-frame delta of two slow sines (0.31 and 0.79 Hz) added to camera pitch/heading, so mouse input is kept and the offset stays bounded. No camera shake (nausea).
+-- Exactly 0 at max skill and when no firearm is aimed.
+-- NOTE: the heading part is unreliable in third person free-aim (the engine rewrites it from the mouse); vertical carries most of the effect and the reticle shows the error. /skilltest prints the resolved amplitude.
 
 -- Declarations first: in Lua a `local` used above its declaration is a nil global.
 
@@ -13,12 +17,15 @@ local lastActive   = false      -- for /skilltest
 local lastFactor   = 0.0        -- for /skilltest
 local lastReason   = 'never evaluated'
 
---- Shared with cl_dodge.lua and cl_skilldebug.lua.
+--- Shared with cl_dodge.lua and cl_skilldebug.lua. One Lua state per resource,
+--- so a global is the whole mechanism. See the note in cl_dodge.lua.
 BS_SkillsDebug = BS_SkillsDebug or {}
 
 local UNARMED = GetHashKey('WEAPON_UNARMED')
 
+--------------------------------------------------------------------------------
 -- How much sway, right now
+--------------------------------------------------------------------------------
 
 local function combatLevel()
     local tree = (cfg and cfg.tree) or 'combat'
@@ -59,7 +66,8 @@ local function situationalMultiplier(ped)
         m = m * (cfg.movingMultiplier or 1.0)
     end
 
-    -- Crouch/prone state belongs to bs_emotes, so ask it through its exports. `Crouch.active` would be nil here
+    -- Crouch/prone state belongs to bs_emotes, so ask it through its exports. `Crouch.active` would be nil here (each resource has its own Lua state).
+    -- Guarded on the resource being started.
     if GetResourceState('bs_emotes') == 'started' then
         local okStance, low = pcall(function()
             return exports.bs_emotes:IsCrouched() or exports.bs_emotes:IsProne()
@@ -90,9 +98,11 @@ local function situationalMultiplier(ped)
     return m
 end
 
+--------------------------------------------------------------------------------
 -- The curve
+--------------------------------------------------------------------------------
 
--- Offset in roughly -1..+1 per axis.
+-- Offset in roughly -1..+1 per axis. Driven by GetGameTimer (wall clock), so it looks the same at any frame rate. The 0.6/0.4 layer weighting keeps the peak under 1.0; `seed` is per session so players do not sway in lockstep.
 local function swayOffset()
     local t     = GetGameTimer() / 1000.0 + seed
     local slow  = (cfg.slowHz or 0.31) * 2.0 * math.pi
@@ -104,9 +114,12 @@ local function swayOffset()
     return x, y * (cfg.verticalRatio or 1.0)
 end
 
+--------------------------------------------------------------------------------
 -- Is this a firearm, and is it being aimed
+--------------------------------------------------------------------------------
 
--- Asked of the engine: GetWeaponDamageType is 3 for bullet weapons (melee 2, unarmed 0).
+-- Asked of the engine: GetWeaponDamageType is 3 for bullet weapons (melee 2, unarmed 0). Fallback is GetMaxAmmoInClip, as in bs_weapons/cl_reload.lua. Throwables are excluded.
+-- Returns true/false plus the reason, so /skilltest can show why a weapon did or did not qualify.
 local function isFirearm(ped, hash)
     if not hash or hash == 0 or hash == -1 or hash == UNARMED then return false end
     if not IsWeaponValid(hash) then return false end
@@ -119,9 +132,12 @@ local function isFirearm(ped, hash)
     return (GetMaxAmmoInClip(ped, hash, 0) or 0) > 1
 end
 
+--------------------------------------------------------------------------------
 -- Am I aiming a gun, and if not, which half of that failed
+--------------------------------------------------------------------------------
 
 -- Shared with /skilltest so the diagnostic runs the same check as the loop.
+-- Three aim reads are ORed on purpose: IsPlayerFreeAiming, IsControlPressed(0, 25) for the first frame of aiming, and IsDisabledControlPressed(0, 25) for when another resource disabled the aim control.
 local function evaluate(ped)
     local aiming = IsPlayerFreeAiming(PlayerId())
         or IsControlPressed(0, 25) or IsDisabledControlPressed(0, 25)
@@ -140,9 +156,12 @@ local function evaluate(ped)
     return true, 'aiming a firearm'
 end
 
+--------------------------------------------------------------------------------
 -- The crosshair, when the config asks for one
+--------------------------------------------------------------------------------
 
 -- Drawn natively with DrawRect instead of NUI: a per-frame SendNUIMessage is costly and lags behind the movement.
+-- The centre dot stays fixed on purpose (where you pointed); the ticks move (where your hands are).
 local function drawCrosshair(ox, oy)
     local c    = cfg.crosshair or {}
     local col  = c.colour or { 235, 235, 235, 170 }
@@ -150,7 +169,7 @@ local function drawCrosshair(ox, oy)
     local len  = c.length or 0.010
     local th   = c.thickness or 0.0016
 
-    -- Natives use square screen space, so the horizontal size is divided by the aspect ratio to keep the crosshair
+    -- Natives use square screen space, so the horizontal size is divided by the aspect ratio to keep the crosshair from stretching on wide monitors.
     local aspect = GetAspectRatio(false)
     if not aspect or aspect <= 0.0 then aspect = 16.0 / 9.0 end
 
@@ -168,7 +187,9 @@ local function drawCrosshair(ox, oy)
     end
 end
 
+--------------------------------------------------------------------------------
 -- The loop
+--------------------------------------------------------------------------------
 
 CreateThread(function()
     cfg = Skills.Sway or {}
@@ -202,7 +223,7 @@ CreateThread(function()
         lastActive, lastReason = active, reason
 
         if not active then
-            -- Offset memory is reset when the state ends
+            -- Offset memory is reset when the state ends, so the next aim does not apply a delta against a stale curve position (one big camera jerk).
             prevX, prevY = 0.0, 0.0
             lastFactor   = 0.0
             Wait(250)
@@ -229,7 +250,7 @@ CreateThread(function()
             local mode   = cfg.mode or 'both'
 
             -- Crosshair first, outside the `stepMs` throttle: DrawRect only lasts one frame, so skipped frames make the reticle flicker.
-            if not LocalPlayer.state.bsFieldView and (mode == 'crosshair' or mode == 'both') then
+            if mode == 'crosshair' or mode == 'both' then
                 local amp = ((cfg.crosshair or {}).maxOffset or 0.011) * factor
                 drawCrosshair(ox * amp, oy * amp)
             end
@@ -244,6 +265,8 @@ CreateThread(function()
                     local x, y    = ox * degrees, oy * degrees
 
                     -- Apply the change (delta) so the player's own aim is kept and the offset sums back to zero over a cycle.
+                    -- Pitch is the axis that survives third person free-aim; heading is applied anyway.
+                    -- Both are pcall'd: a camera native can throw when a cutscene takes over, which would kill this thread.
                     pcall(function()
                         SetGameplayCamRelativeHeading(GetGameplayCamRelativeHeading() - (x - prevX))
                         SetGameplayCamRelativePitch(GetGameplayCamRelativePitch() + (y - prevY), 1.0)
@@ -269,7 +292,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- The debug surface, for /skilltest
+--------------------------------------------------------------------------------
 
 BS_SkillsDebug.sway = function()
     local ped = PlayerPedId()
@@ -307,13 +332,13 @@ BS_SkillsDebug.sway = function()
         degrees     = (cfg and cfg.maxDegrees or 1.8) * base * situational,
         screenFrac  = ((cfg and cfg.crosshair or {}).maxOffset or 0.011) * base * situational,
         lastFactor  = lastFactor,
-        -- What the loop last decided, vs what `evaluate` says now.
+        -- What the loop last decided, vs what `evaluate` says now. They only differ when the loop is not running, which is what /skilltest is meant to catch.
         loopActive  = lastActive,
         loopReason  = lastReason,
     }
 end
 
--- Never stuck: this file holds no engine state, so a stop has nothing to unwind.
+-- Never stuck: this file holds no engine state, so a stop has nothing to unwind. Only the offset memory is cleared, so a stale `prev` cannot cause a one-frame jerk after a respawn.
 
 local function release() prevX, prevY = 0.0, 0.0 end
 

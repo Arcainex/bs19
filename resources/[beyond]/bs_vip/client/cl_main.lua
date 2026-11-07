@@ -1,4 +1,5 @@
--- bs_vip - local mirror of the account's VIP state, exports other resources read (non-yielding), and the F7 panel.
+-- bs_vip - local mirror of the account's VIP state, exports other resources
+-- read (non-yielding), and the F7 panel.
 
 local current = { tier = nil, level = 0, prefs = {}, unlocks = {}, appearance = {} }
 

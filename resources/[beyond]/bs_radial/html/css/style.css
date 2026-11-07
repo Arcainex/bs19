@@ -1,14 +1,17 @@
-/* the radial wheel: no backdrop-filter: NUI is composited over the game with no game pixels to sample */
+/*
+   the radial wheel.
+   No backdrop-filter: NUI is composited over the game with no game pixels to sample, so it blurs transparent black into an opaque slab. The blur comes from the game (TriggerScreenblurFadeIn in cl_main.lua).
+*/
 
 :root {
     --soot:  #0a0a09;
-    --bone:  #f0ebdd;
-    --dust:  #8b8474;
-    --amber: #e08c46;
-    --blood: #6e2b21;
+    --bone:  #e2f0eb;
+    --dust:  #748b80;
+    --green: #5bf1a2;
+    --blood: #216e4e;
     --good:  #7fd4a2;
-    --mono:  'Courier New', 'Consolas', monospace;
-    --serif: 'Times New Roman', Georgia, serif;
+    --mono:  'Segoe UI Variable','Segoe UI',Arial,sans-serif;
+    --serif: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,7 +28,7 @@ html, body {
 .veil {
     position: fixed; inset: 0;
     background: radial-gradient(60% 60% at 50% 50%,
-        rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.30) 70%, rgba(0,0,0,0.55) 100%);
+        rgba(0,10,5,0.05) 0%, rgba(0,10,5,0.30) 70%, rgba(0,10,5,0.55) 100%);
     animation: fade 140ms ease-out;
 }
 
@@ -49,16 +52,16 @@ html, body {
 /* Slices are drawn as paths by app.js. */
 
 .slice {
-    fill: rgba(10, 10, 9, 0.55);
-    stroke: rgba(216, 210, 194, 0.10);
+    fill: rgba(10, 15, 12, 0.55);
+    stroke: rgba(127, 212, 162, 0.10);
     stroke-width: 0.35;
     transition: fill 120ms ease;
     cursor: pointer;
 }
-.slice.is-hot      { fill: rgba(200, 118, 58, 0.30); stroke: rgba(200,118,58,0.75); }
+.slice.is-hot      { fill: rgba(91, 241, 162, 0.30); stroke: rgba(91,241,162,0.75); }
 .slice.is-active   { fill: rgba(127, 212, 162, 0.16); }
-.slice.is-disabled { fill: rgba(10, 10, 9, 0.35); cursor: default; }
-.slice.is-danger.is-hot { fill: rgba(110, 43, 33, 0.45); stroke: rgba(180,70,55,0.8); }
+.slice.is-disabled { fill: rgba(10, 15, 12, 0.35); cursor: default; }
+.slice.is-danger.is-hot { fill: rgba(33, 110, 78, 0.45); stroke: rgba(70,180,120,0.8); }
 
 .slice__icon { pointer-events: none; }
 .slice__icon path {
@@ -67,11 +70,11 @@ html, body {
     transition: stroke 120ms ease;
     vector-effect: non-scaling-stroke;
 }
-.is-hot      .slice__icon path { stroke: var(--amber); }
+.is-hot      .slice__icon path { stroke: var(--green); }
 .is-active   .slice__icon path { stroke: var(--good); }
-.is-disabled .slice__icon path { stroke: rgba(139, 132, 116, 0.35); }
+.is-disabled .slice__icon path { stroke: rgba(116, 139, 128, 0.35); }
 
-.slice__tick { fill: none; stroke: rgba(200,118,58,0.55); stroke-width: 0.5; }
+.slice__tick { fill: none; stroke: rgba(91,241,162,0.55); stroke-width: 0.5; }
 
 /* the middle */
 
@@ -101,20 +104,23 @@ html, body {
 }
 
 .hub__label.is-disabled { color: var(--dust); }
-.hub__label.is-danger   { color: #c9705f; }
+.hub__label.is-danger   { color: #70c99f; }
 
-/* Off-center wheels (weapon wheel): the left half of the screen stays clear for the scripted gun camera. */
+/*
+   Off-center wheels (weapon wheel): the left half of the screen stays clear for the scripted gun camera. The wheel slides to its side, and the veil is re-centered with it and made much lighter on the far side.
+   No geometry in app.js: sliceAt() measures the wheel's bounding box on every mousemove.
+*/
 
 #root.is-right .wheel { left: 72%; }
 #root.is-left  .wheel { left: 28%; }
 
 #root.is-right .veil {
     background: radial-gradient(52% 62% at 72% 50%,
-        rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.26) 62%, rgba(0,0,0,0.44) 100%);
+        rgba(0,10,5,0.05) 0%, rgba(0,10,5,0.26) 62%, rgba(0,10,5,0.44) 100%);
 }
 #root.is-left .veil {
     background: radial-gradient(52% 62% at 28% 50%,
-        rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.26) 62%, rgba(0,0,0,0.44) 100%);
+        rgba(0,10,5,0.05) 0%, rgba(0,10,5,0.26) 62%, rgba(0,10,5,0.44) 100%);
 }
 
 /* On a narrow window 72% would push the wheel off the edge, so pull both sides toward the middle. */
@@ -132,11 +138,11 @@ html, body {
 .hint {
     position: fixed; left: 50%; bottom: calc(9vh / var(--ui-scale, 1));
     transform: translateX(-50%);
-    font-size: 0.847rem; letter-spacing: 0.26em; color: rgba(139,132,116,0.9);
+    font-size: 0.847rem; letter-spacing: 0.26em; color: rgba(116,139,128,0.9);
     text-shadow: 0 1px 3px #000; white-space: nowrap;
 }
 
-/* Readability in bright light without a background panel: text carries its own dark halo */
+/* Readability in bright light without a background panel: text carries its own dark halo (tight opaque plus wider soft), and SVG icons get a drop-shadow. Applied to the whole document and inherited, so new elements are readable by default. */
 :root {
     --bs-halo:
         0 0 1px rgba(0, 0, 0, 1),
@@ -167,27 +173,3 @@ svg, .icon, .ico { filter: var(--bs-ink-shadow); }
 
 /* Hairline rules and borders vanish over bright ground; give them an edge. */
 hr { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); }
-
-/* The survivor wheel has its own presentation; weapon and staff wheels keep theirs. */
-#root.is-survivor .wheel { width:min(calc(57vh / var(--ui-scale,1)),calc(84vw / var(--ui-scale,1))); height:min(calc(57vh / var(--ui-scale,1)),calc(84vw / var(--ui-scale,1))); }
-#root.is-survivor .veil { background:radial-gradient(ellipse at center,#0a100830, #060b0880 65%,#060b08b8); }
-#root.is-survivor .slice { fill:#131b17ed; stroke:#7d8b7050; stroke-width:.22; transition:fill .16s,stroke .16s; animation:survivorSlice .23s ease-out both; animation-delay:calc(var(--slice-i)*22ms); }
-#root.is-survivor .slice.is-hot { fill:#614521eb; stroke:var(--amber); }
-#root.is-survivor .slice.is-active { fill:#30412ced; }
-#root.is-survivor .slice.is-disabled { fill:#101712a0; }
-#root.is-survivor .slice.is-danger.is-hot { fill:#5a2721ed; stroke:var(--blood); }
-#root.is-survivor .slice__icon path { stroke:#c4cbbb; stroke-width:1.6; }
-#root.is-survivor .is-hot .slice__icon path { stroke:#f1c68b; }
-#root.is-survivor .slice__label { font:500 2.15px 'Segoe UI',Arial,sans-serif; text-anchor:middle; fill:#b4beaa; stroke:none; pointer-events:none; }
-#root.is-survivor .is-hot .slice__label { fill:#ffe3b7; }
-#root.is-survivor .slice__key { font:500 1.8px 'Segoe UI',Arial,sans-serif; text-anchor:middle; fill:#7c8b72; stroke:none; pointer-events:none; }
-#root.is-survivor .hub { width:31%; aspect-ratio:1; padding:8%; box-sizing:content-box; display:flex; flex-direction:column; justify-content:center; gap:4px; }
-#root.is-survivor .hub::before { content:''; position:absolute; width:64%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,#293023,#121a13); border:1px solid #ad8b4e70; box-shadow:0 0 0 5px #0a100c70,0 0 0 6px #a5864920,0 12px 30px #0006; left:18%; top:18%; z-index:-1; }
-#root.is-survivor .hub__title { font:600 8px/1.3 'Segoe UI',Arial,sans-serif; letter-spacing:.12em; color:#a5b198; }
-#root.is-survivor .hub__label { font:600 19px/1.15 'Segoe UI',Arial,sans-serif; letter-spacing:-.3px; margin:0; min-height:0; color:#f1eadb; }
-#root.is-survivor .hub__note { font:400 10px/1.4 'Segoe UI',Arial,sans-serif; letter-spacing:0; margin:0; min-height:0; color:#acb69f; }
-#root.is-survivor .hint { font:500 11px/1.4 'Segoe UI',Arial,sans-serif; letter-spacing:.06em; bottom:calc(15vh / var(--ui-scale,1)); color:#b6bea9; padding:8px 16px; border:1px solid #9a8c6d30; background:#101710b8; border-radius:3px; }
-#root.is-survivor .wheel__svg { filter:drop-shadow(0 8px 20px #0006); }
-#root.is-survivor * { text-shadow:0 1px 2px #0008; }
-@keyframes survivorSlice { from { opacity:0; } to { opacity:1; } }
-@media(prefers-reduced-motion:reduce) { #root.is-survivor * { animation:none!important; transition:none!important; } }

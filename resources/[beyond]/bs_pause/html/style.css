@@ -1,38 +1,38 @@
-:root { --acc: rgb(var(--t-acc, 200,161,74)); --acc2: rgb(var(--t-acc2, 224,194,122)); --txt: rgb(var(--t-ink, 232,226,212)); --dim: rgb(var(--t-dim, 154,147,132)); --line: rgba(var(--t-ink, 232,226,212), .12); --panel: rgba(var(--t-bg, 14,13,11), .55); --danger: rgb(var(--t-bad, 192,83,63)); }
+:root { --acc: #728c42; --acc2: #9aaa68; --txt: #e8e2d4; --dim: #9a9384; --line: rgba(232,226,212,.12); --panel: rgba(14,13,11,.55); --danger: #c0533f; }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: var(--t-f-text, 'Segoe UI', Roboto, Arial, sans-serif); color: var(--txt); user-select: none; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; font-family: 'Segoe UI Semibold', 'Segoe UI', Arial, sans-serif; color: var(--txt); user-select: none; }
 .hidden { display: none !important; }
 .pause { position: fixed; inset: 0; display: flex; animation: fade .25s ease; }
 @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
-.shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(var(--t-bg, 8,7,6), .82) 0%, rgba(var(--t-shade, 8,7,6), calc(.45 * var(--t-shade-k, 1))) 38%, rgba(var(--t-shade, 8,7,6), calc(.25 * var(--t-shade-k, 1))) 100%); pointer-events: none; }
-.side { position: relative; width: 300px; padding: 48px 28px 24px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)); }
+.shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8,7,6,.82) 0%, rgba(8,7,6,.45) 38%, rgba(8,7,6,.25) 100%); pointer-events: none; }
+.side { position: relative; width: 300px; padding: 48px 28px 24px; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
 .brand { font-size: 26px; letter-spacing: 6px; line-height: 1; }
 .brand b { color: var(--acc); font-weight: 800; display: block; }
 .brand span { font-size: 15px; letter-spacing: 9px; color: var(--dim); }
 .paused { margin: 26px 0 18px; font-size: 11px; letter-spacing: 4px; color: var(--dim); }
 nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 nav button { all: unset; cursor: pointer; padding: 11px 14px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: var(--txt); border-left: 2px solid transparent; transition: background .15s, border-color .15s, padding .15s; display: flex; align-items: center; gap: 10px; }
-nav button:hover { background: rgba(var(--t-acc, 200,161,74), .08); padding-left: 18px; }
-nav button.on { border-left-color: var(--acc); background: rgba(var(--t-acc, 200,161,74), .14); color: var(--acc2); }
+nav button:hover { background: rgba(114,140,66,.08); padding-left: 18px; }
+nav button.on { border-left-color: var(--acc); background: rgba(114,140,66,.14); color: var(--acc2); }
 nav button .ic { flex: 0 0 18px; width: 18px; overflow: hidden; white-space: nowrap; text-align: center; opacity: .8; }
-nav button .badge { margin-left: auto; font-size: 10px; background: var(--acc); color: rgb(var(--t-bg, 17,17,17)); padding: 1px 6px; border-radius: 2px; }
+nav button .badge { margin-left: auto; font-size: 10px; background: var(--acc); color: #111; padding: 1px 6px; border-radius: 2px; }
 nav hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100%; }
-nav button.quit { color: rgb(var(--t-bad2, 227,154,139)); }
+nav button.quit { color: #e39a8b; }
 .foot { font-size: 11px; color: var(--dim); letter-spacing: 2px; }
 .main { position: relative; flex: 1; padding: 48px 56px; overflow-y: auto; max-width: 980px; }
 .main h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: 4px; text-transform: uppercase; font-weight: 600; }
 .main .sub { color: var(--dim); font-size: 13px; margin-bottom: 22px; }
-.card { background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel); border: 1px solid var(--line); padding: 16px 18px; margin-bottom: 14px; backdrop-filter: blur(2px); }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 16px 18px; margin-bottom: 14px; backdrop-filter: blur(2px); }
 .card h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 3px; color: var(--acc); text-transform: uppercase; }
 .set { display: grid; grid-template-columns: 210px 1fr; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
 .set:last-child { border-bottom: 0; }
 .set label { font-size: 13px; color: var(--txt); }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
-.seg button, .btn { all: unset; cursor: pointer; font-size: 12px; padding: 6px 12px; border: 1px solid var(--line); background: rgba(var(--t-ink, 255,255,255), .03); letter-spacing: 1px; text-transform: uppercase; }
+.seg button, .btn { all: unset; cursor: pointer; font-size: 12px; padding: 6px 12px; border: 1px solid var(--line); background: rgba(255,255,255,.03); letter-spacing: 1px; text-transform: uppercase; }
 .seg button:hover, .btn:hover { border-color: var(--acc); }
-.seg button.on { background: var(--acc); color: rgb(var(--t-bg, 20,18,16)); border-color: var(--acc); }
-.btn.danger { border-color: var(--danger); color: rgb(var(--t-bad2, 240,176,163)); }
-.btn.primary { background: var(--acc); color: rgb(var(--t-bg, 20,18,16)); }
+.seg button.on { background: var(--acc); color: #141210; border-color: var(--acc); }
+.btn.danger { border-color: var(--danger); color: #f0b0a3; }
+.btn.primary { background: var(--acc); color: #141210; }
 input[type=range] { width: 260px; accent-color: var(--acc); }
 .val { font-size: 12px; color: var(--dim); margin-left: 8px; }
 .note { font-size: 12px; color: var(--dim); margin-top: 8px; }
@@ -40,24 +40,2201 @@ input[type=range] { width: 260px; accent-color: var(--acc); }
 .keys div { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
 kbd { font-family: inherit; font-size: 11px; min-width: 22px; text-align: center; padding: 2px 7px; border: 1px solid var(--acc); color: var(--acc2); border-radius: 2px; }
 .stats { display: flex; gap: 14px; margin-bottom: 14px; }
-.stat { flex: 1; background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), var(--panel); border: 1px solid var(--line); padding: 14px 16px; }
+.stat { flex: 1; background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; }
 .stat b { display: block; font-size: 26px; color: var(--acc2); }
 .stat span { font-size: 11px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; }
 ol.rules { margin: 0; padding-left: 20px; } ol.rules li { margin: 6px 0; font-size: 13px; }
 .news .d { font-size: 11px; color: var(--dim); } .news b { display: block; margin: 2px 0 4px; }
-.news p { margin: 0 0 10px; font-size: 13px; color: rgb(var(--t-ink2, 207,200,184)); }
-.frame { position: relative; width: 100%; height: calc(100vh - 170px); border: 1px solid var(--line); background: rgba(var(--t-shade, 0,0,0), calc(.35 * var(--t-shade-k, 1))); }
-.frame iframe { width: 100%; height: 100%; border: 0; background: rgb(var(--t-bg, 17,17,17)); }
+.news p { margin: 0 0 10px; font-size: 13px; color: #cfc8b8; }
+.frame { position: relative; width: 100%; height: calc(100vh - 170px); border: 1px solid var(--line); background: rgba(0,0,0,.35); }
+.frame iframe { width: 100%; height: 100%; border: 0; background: #111; }
 .frame .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 13px; text-align: center; padding: 20px; }
-.confirm { position: absolute; inset: 0; background: rgba(var(--t-shade, 0,0,0), calc(.55 * var(--t-shade-k, 1))); display: flex; align-items: center; justify-content: center; }
-.confirm .box { background: var(--t-deco, linear-gradient(transparent, transparent)), var(--t-tex, linear-gradient(transparent, transparent)), rgba(var(--t-bg, 18,16,13), .95); border: 1px solid var(--acc); padding: 22px 26px; min-width: 340px; }
+.confirm { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; }
+.confirm .box { background: rgba(18,16,13,.95); border: 1px solid var(--acc); padding: 22px 26px; min-width: 340px; }
 .confirm .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .resume-art { margin-top: 30vh; font-size: 13px; color: var(--dim); letter-spacing: 3px; }
 
-.search { width: 100%; max-width: 520px; margin: 0 0 16px; padding: 9px 12px; background: rgba(var(--t-shade, 0,0,0), calc(.4 * var(--t-shade-k, 1))); border: 1px solid var(--line); color: var(--txt); font-size: 13px; letter-spacing: 1px; outline: none; user-select: text; }
+.search { width: 100%; max-width: 520px; margin: 0 0 16px; padding: 9px 12px; background: rgba(0,0,0,.4); border: 1px solid var(--line); color: var(--txt); font-size: 13px; letter-spacing: 1px; outline: none; user-select: text; }
 .search:focus { border-color: var(--acc); }
 .set label small { display: block; margin-top: 3px; font-size: 11px; line-height: 1.4; color: var(--dim); }
 .seg button.lock { opacity: .45; cursor: not-allowed; position: relative; }
-.seg button.lock::after { content: 'VIP'; position: absolute; top: -7px; right: -4px; font-size: 9px; padding: 0 3px; color: rgb(var(--t-bg, 20,18,16)); background: var(--acc); letter-spacing: .05em; }
+.seg button.lock::after { content: 'VIP'; position: absolute; top: -7px; right: -4px; font-size: 9px; padding: 0 3px; color: #141210; background: var(--acc); letter-spacing: .05em; }
 .swatch { display: inline-flex; gap: 2px; margin-right: 6px; vertical-align: -1px; }
-.swatch i { width: 8px; height: 8px; border: 1px solid rgba(var(--t-ink, 255,255,255), .25); }
+.swatch i { width: 8px; height: 8px; border: 1px solid rgba(255,255,255,.25); }
+
+/* BeyondSurvival final green/olive pause theme */
+:root {
+    --acc: #728c42 !important;
+    --acc2: #9aaa68 !important;
+}
+html, body, button, input, select, textarea {
+    font-family: "Segoe UI Semibold", "Segoe UI", Arial, sans-serif !important;
+}
+nav button.on {
+    border-left-color: #728c42 !important;
+    background: rgba(114, 140, 66, .14) !important;
+    color: #9aaa68 !important;
+}
+
+
+/* Tastaturbelegung - komplettes ALPHA-Z Layout */
+.keyboard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.keyboard-head .sub { margin-bottom:14px; }
+.kb-legend { display:flex; align-items:center; gap:7px; color:var(--dim); font-size:11px; letter-spacing:1px; text-transform:uppercase; padding-top:5px; }
+.kb-legend i { width:11px; height:11px; border:1px solid var(--acc); background:rgba(114,140,66,.28); box-shadow:0 0 9px rgba(114,140,66,.22); }
+.keyboard-card { background:rgba(8,9,8,.66); border:1px solid rgba(154,170,104,.25); padding:14px; margin-bottom:14px; backdrop-filter:blur(3px); }
+.keyboard-wrap { display:flex; align-items:flex-end; gap:14px; min-width:920px; }
+.keyboard-main { flex:1; display:flex; flex-direction:column; gap:5px; }
+.keyboard-numpad { width:205px; display:flex; flex-direction:column; gap:5px; }
+.kb-row { display:flex; gap:5px; align-items:center; min-height:40px; }
+.kb-space { flex:var(--sp); min-width:4px; }
+.kb-key { flex:0 0 43px; height:39px; border:1px solid rgba(232,226,212,.2); border-radius:4px; background:linear-gradient(180deg,rgba(38,41,39,.96),rgba(16,18,17,.96)); box-shadow:inset 0 1px rgba(255,255,255,.07),0 2px 4px rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center; text-align:center; color:#ddd9cf; }
+.kb-key b { font-size:11px; letter-spacing:.25px; font-weight:700; line-height:1; white-space:nowrap; }
+.kb-key.small { flex-basis:43px; }
+.kb-key.tab { flex-basis:65px; } .kb-key.caps { flex-basis:75px; } .kb-key.shift { flex-basis:76px; } .kb-key.shift2 { flex-basis:98px; }
+.kb-key.backspace { flex-basis:75px; } .kb-key.enter { flex-basis:67px; } .kb-key.enter2 { visibility:hidden; flex-basis:67px; }
+.kb-key.ctrl { flex-basis:58px; } .kb-key.win { flex-basis:48px; } .kb-key.alt,.kb-key.altgr { flex-basis:58px; } .kb-key.menu { flex-basis:48px; }
+.kb-key.spacebar { flex:1 1 230px; } .kb-key.arrow { flex-basis:43px; } .kb-key.numzero { flex-basis:91px; }
+.kb-key.hot { border-color:#839b50; color:#f1f3e9; background:linear-gradient(180deg,rgba(91,111,53,.68),rgba(42,54,29,.78)); box-shadow:inset 0 0 16px rgba(154,170,104,.15),0 0 8px rgba(114,140,66,.16); }
+.kb-key.hot.hotbar { border-color:#9d8b3d; background:linear-gradient(180deg,rgba(120,99,34,.62),rgba(57,47,22,.78)); }
+.kb-key.hot.vehicle { border-color:#628f85; background:linear-gradient(180deg,rgba(48,104,93,.58),rgba(26,52,47,.78)); }
+.kb-key.hot.communication { border-color:#76618d; background:linear-gradient(180deg,rgba(92,67,113,.58),rgba(45,33,55,.78)); }
+.kb-key.hot.combat { border-color:#8f664f; background:linear-gradient(180deg,rgba(111,69,49,.58),rgba(57,35,26,.78)); }
+.bind-sections { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding-bottom:24px; }
+.bind-card { background:var(--panel); border:1px solid var(--line); padding:14px 16px; }
+.bind-card h3 { margin:0 0 9px; color:var(--acc2); font-size:12px; letter-spacing:2px; text-transform:uppercase; }
+.bind { display:flex; align-items:center; gap:12px; min-height:35px; padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px; }
+.bind:last-child { border-bottom:0; }
+.bind kbd { min-width:58px; padding:5px 8px; font-size:11px; }
+.bind span { color:var(--txt); }
+@media (max-width:1350px) { .main { max-width:none; padding-right:28px; } .keyboard-wrap { transform:scale(.88); transform-origin:left bottom; width:113.6%; margin-bottom:-6px; } }
+
+.alpha-brand { display:flex; align-items:baseline; gap:0; font-size:26px; letter-spacing:6px; }
+.alpha-brand span { font-size:26px; letter-spacing:6px; color:var(--txt); }
+.alpha-brand b { display:inline; color:#728c42; font-size:30px; letter-spacing:2px; }
+
+
+/* ============================================================
+   ALPHA-Z V2 - 20% groesser, passend zur Referenz
+   ============================================================ */
+.side {
+    width: 360px;
+    padding: 58px 34px 29px;
+}
+.alpha-brand,
+.brand { font-size: 31px; letter-spacing: 7px; }
+.alpha-brand span { font-size: 31px; letter-spacing: 7px; }
+.alpha-brand b { font-size: 36px; }
+.paused { margin: 31px 0 22px; font-size: 13px; letter-spacing: 5px; }
+
+nav { gap: 3px; }
+nav button {
+    padding: 13px 17px;
+    font-size: 17px;
+    letter-spacing: 2.4px;
+    gap: 12px;
+}
+nav button:hover { padding-left: 22px; }
+nav button .ic { flex-basis: 22px; width: 22px; }
+nav button .badge { font-size: 12px; padding: 2px 7px; }
+nav hr { margin: 10px 0; }
+.foot { font-size: 13px; letter-spacing: 2.4px; }
+
+.main {
+    padding: 58px 67px;
+    max-width: 1176px;
+}
+.main h1 {
+    margin-bottom: 7px;
+    font-size: 27px;
+    letter-spacing: 4.8px;
+}
+.main .sub { font-size: 16px; margin-bottom: 26px; }
+
+.card { padding: 19px 22px; margin-bottom: 17px; }
+.card h3 { margin-bottom: 14px; font-size: 14px; letter-spacing: 3.6px; }
+.set { grid-template-columns: 252px 1fr; gap: 12px; padding: 8px 0; }
+.set label { font-size: 16px; }
+.set label small { font-size: 13px; }
+.seg { gap: 5px; }
+.seg button, .btn { font-size: 14px; padding: 7px 14px; }
+input[type=range] { width: 312px; }
+.val, .note { font-size: 14px; }
+.keys { gap: 7px 26px; }
+.keys div { font-size: 16px; padding: 5px 0; }
+kbd { font-size: 13px; min-width: 27px; padding: 3px 8px; }
+.stats { gap: 17px; margin-bottom: 17px; }
+.stat { padding: 17px 19px; }
+.stat b { font-size: 31px; }
+.stat span { font-size: 13px; }
+ol.rules li, .news p { font-size: 16px; }
+.news .d { font-size: 13px; }
+.search { max-width: 624px; margin-bottom: 19px; padding: 11px 14px; font-size: 16px; }
+
+/* Tastaturbelegung ebenfalls exakt ca. 20% groesser */
+.keyboard-head { gap: 24px; }
+.keyboard-head .sub { margin-bottom: 17px; }
+.kb-legend { gap: 8px; font-size: 13px; letter-spacing: 1.2px; padding-top: 6px; }
+.kb-legend i { width: 13px; height: 13px; }
+
+.keyboard-card { padding: 17px; margin-bottom: 17px; }
+.keyboard-wrap { gap: 17px; min-width: 1104px; }
+.keyboard-main { gap: 6px; }
+.keyboard-numpad { width: 246px; gap: 6px; }
+.kb-row { gap: 6px; min-height: 48px; }
+.kb-space { min-width: 5px; }
+
+.kb-key { flex-basis: 52px; height: 47px; border-radius: 5px; }
+.kb-key b { font-size: 13px; }
+.kb-key.small { flex-basis: 52px; }
+.kb-key.tab { flex-basis: 78px; }
+.kb-key.caps { flex-basis: 90px; }
+.kb-key.shift { flex-basis: 91px; }
+.kb-key.shift2 { flex-basis: 118px; }
+.kb-key.backspace { flex-basis: 90px; }
+.kb-key.enter { flex-basis: 80px; }
+.kb-key.enter2 { flex-basis: 80px; }
+.kb-key.ctrl { flex-basis: 70px; }
+.kb-key.win { flex-basis: 58px; }
+.kb-key.alt, .kb-key.altgr { flex-basis: 70px; }
+.kb-key.menu { flex-basis: 58px; }
+.kb-key.spacebar { flex-basis: 276px; }
+.kb-key.arrow { flex-basis: 52px; }
+.kb-key.numzero { flex-basis: 109px; }
+
+.bind-sections { gap: 14px; padding-bottom: 29px; }
+.bind-card { padding: 17px 19px; }
+.bind-card h3 { margin-bottom: 11px; font-size: 14px; letter-spacing: 2.4px; }
+.bind { gap: 14px; min-height: 42px; padding: 7px 0; font-size: 16px; }
+.bind kbd { min-width: 70px; padding: 6px 10px; font-size: 13px; }
+
+/* Auf Full-HD nicht wieder auf 88% verkleinern. */
+@media (min-width: 1500px) {
+    .main { max-width: 1176px; padding-right: 34px; }
+    .keyboard-wrap {
+        transform: none;
+        width: auto;
+        margin-bottom: 0;
+    }
+}
+
+/* Kleinere Aufloesungen weiterhin sicher einpassen. */
+@media (max-width: 1499px) {
+    .side { width: 300px; padding: 48px 28px 24px; }
+    .main { max-width: none; padding: 48px 28px 48px 48px; }
+    .keyboard-wrap {
+        transform: scale(.82);
+        transform-origin: left top;
+        width: 122%;
+        margin-bottom: -48px;
+    }
+}
+
+
+/* ALPHA-Z V3: Numpad-Emotes + farblich passende Erklaerung */
+.kb-key.hot.emote {
+    border-color: rgba(193,157,48,.92);
+    background: linear-gradient(180deg, rgba(139,106,22,.58), rgba(82,61,13,.72));
+    box-shadow: inset 0 0 0 1px rgba(229,197,83,.10), 0 0 12px rgba(181,143,39,.08);
+}
+.kb-key.hot.emote b { color: #e2ca63; }
+
+.bind.bind-menu kbd {
+    color:#a9cf4a; border-color:rgba(139,176,48,.82); background:rgba(91,124,29,.24);
+}
+.bind.bind-interaction kbd {
+    color:#70d4c2; border-color:rgba(75,167,149,.85); background:rgba(39,117,103,.25);
+}
+.bind.bind-vehicle kbd {
+    color:#d4c15a; border-color:rgba(177,151,45,.85); background:rgba(126,103,24,.25);
+}
+.bind.bind-hotbar kbd {
+    color:#d8c35d; border-color:rgba(184,153,45,.86); background:rgba(132,102,21,.25);
+}
+.bind.bind-communication kbd {
+    color:#78bfae; border-color:rgba(70,145,129,.84); background:rgba(34,101,89,.24);
+}
+.bind.bind-emote kbd {
+    color:#e2ca63; border-color:rgba(193,157,48,.92); background:rgba(139,106,22,.27);
+}
+.bind.bind-combat kbd {
+    color:#c5a7df; border-color:rgba(142,105,174,.88); background:rgba(91,58,118,.28);
+}
+
+
+/* ============================================================
+   ALPHA-Z V4 - Tastatur komplett sichtbar / keine Scrollleiste
+   ============================================================ */
+html, body {
+    overflow-x: hidden !important;
+}
+#app, .screen, .main {
+    overflow-x: hidden !important;
+}
+.keyboard-card {
+    overflow: hidden !important;
+}
+.keyboard-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    transform: none !important;
+    margin-bottom: 0 !important;
+    display: flex !important;
+}
+.keyboard-main {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+.keyboard-numpad {
+    flex: 0 0 226px !important;
+    width: 226px !important;
+    min-width: 226px !important;
+}
+
+/* Die Tasten minimal kompakter, damit Haupttastatur + Numpad komplett in den Bereich passen. */
+.kb-row { gap: 5px !important; }
+.keyboard-main { gap: 5px !important; }
+.keyboard-numpad { gap: 5px !important; }
+.kb-key { flex-basis: 48px; height: 45px; }
+.kb-key.small { flex-basis: 48px; }
+.kb-key.tab { flex-basis: 72px; }
+.kb-key.caps { flex-basis: 83px; }
+.kb-key.shift { flex-basis: 84px; }
+.kb-key.shift2 { flex-basis: 108px; }
+.kb-key.backspace { flex-basis: 83px; }
+.kb-key.enter { flex-basis: 74px; }
+.kb-key.enter2 { flex-basis: 74px; }
+.kb-key.ctrl { flex-basis: 64px; }
+.kb-key.win { flex-basis: 53px; }
+.kb-key.alt, .kb-key.altgr { flex-basis: 64px; }
+.kb-key.menu { flex-basis: 53px; }
+.kb-key.spacebar { flex-basis: 252px; }
+.kb-key.arrow { flex-basis: 48px; }
+.kb-key.numzero { flex-basis: 101px; }
+
+/* Numpad-Emotes: genau ein goldenes Feld pro Taste 1-9. */
+.keyboard-numpad .kb-key.hot.emote {
+    border-color: rgba(193,157,48,.92) !important;
+    background: linear-gradient(180deg, rgba(139,106,22,.58), rgba(82,61,13,.72)) !important;
+}
+.keyboard-numpad .kb-key.hot.emote::before,
+.keyboard-numpad .kb-key.hot.emote::after {
+    display: none !important;
+}
+
+/* Auch auf Full-HD niemals horizontales Scrollen erzeugen. */
+@media (min-width: 1500px) {
+    .keyboard-wrap {
+        width: 100% !important;
+        min-width: 0 !important;
+        transform: none !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V5 - breite Tastatur + sauberes Numpad + Pfeil hoch
+   ============================================================ */
+
+/* Hauptbereich fuer Tastaturbelegung breiter machen. */
+.main {
+    max-width: 1390px !important;
+    padding-right: 28px !important;
+}
+.keyboard-card.full-layout {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+.keyboard-wrap {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 238px !important;
+    column-gap: 18px !important;
+    transform: none !important;
+}
+.keyboard-main {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+.keyboard-numpad {
+    width: 238px !important;
+    min-width: 238px !important;
+    max-width: 238px !important;
+    flex: none !important;
+}
+
+/* Jede Reihe bleibt in ihrem eigenen Bereich und kann nicht ins Numpad laufen. */
+.keyboard-main .kb-row,
+.keyboard-numpad .kb-row {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.keyboard-main .kb-key {
+    min-width: 0 !important;
+}
+
+/* Numpad exakt 4 gleich breite Spalten. */
+.keyboard-numpad .kb-row {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+}
+.keyboard-numpad .kb-key,
+.keyboard-numpad .kb-key.small,
+.keyboard-numpad .kb-key.numzero {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-basis: auto !important;
+}
+
+/* NUM 0 nimmt zwei Spalten ein; Komma und Enter je eine. */
+.keyboard-numpad .kb-row:last-child .kb-key:first-child {
+    grid-column: span 2 !important;
+}
+
+/* Pfeilblock: vier Pfeile kompakt sichtbar, inklusive ↑ fuer Handy. */
+.keyboard-main .kb-key.arrow {
+    flex-basis: 43px !important;
+    min-width: 43px !important;
+}
+
+/* Kein horizontaler Browser/NUI-Scrollbalken. */
+html, body, #app, .screen, .main {
+    overflow-x: hidden !important;
+}
+
+/* Bei Full-HD/Ultrawide die Breite nutzen statt die Tastatur zusammenzuquetschen. */
+@media (min-width: 1500px) {
+    .main {
+        max-width: 1390px !important;
+        width: calc(100vw - 390px) !important;
+    }
+}
+
+/* Falls die Aufloesung kleiner ist, lieber die komplette Tastatur leicht skalieren,
+   statt Tasten uebereinander zu legen. */
+@media (max-width: 1499px) {
+    .main {
+        width: calc(100vw - 320px) !important;
+        max-width: none !important;
+    }
+    .keyboard-card.full-layout {
+        overflow: hidden !important;
+    }
+    .keyboard-wrap {
+        transform: scale(.90) !important;
+        transform-origin: left top !important;
+        width: 111.111% !important;
+        margin-bottom: -30px !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V6 - obere Tastatur 15% groesser
+   Nur Tastaturgrafik; untere Erklaerungsfelder bleiben gleich.
+   ============================================================ */
+.keyboard-card.full-layout {
+    width: 115% !important;
+    max-width: none !important;
+    transform: scale(1.15) !important;
+    transform-origin: left top !important;
+    margin-bottom: 58px !important;
+    overflow: visible !important;
+}
+
+/* Hauptbereich bekommt genug Platz fuer die vergroesserte Tastatur. */
+.main {
+    max-width: 1550px !important;
+    width: calc(100vw - 390px) !important;
+    overflow-x: visible !important;
+}
+
+/* Keine Browser-Scrollleiste trotz vergroesserter Darstellung. */
+html, body, #app, .screen {
+    overflow-x: hidden !important;
+}
+
+/* Die Tastatur selbst bleibt sauber aufgeteilt. */
+.keyboard-wrap {
+    width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) 238px !important;
+}
+
+/* Auf kleineren Aufloesungen die 15%-Vergroesserung beibehalten,
+   aber innerhalb des sichtbaren Bereichs einpassen. */
+@media (max-width: 1499px) {
+    .keyboard-card.full-layout {
+        width: 115% !important;
+        transform: scale(1.15) !important;
+        transform-origin: left top !important;
+        margin-bottom: 58px !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V7 - echtes Tastaturlayout
+   ============================================================ */
+.keyboard-card.full-layout{
+    width:100% !important;
+    max-width:1280px !important;
+    transform:none !important;
+    margin-bottom:18px !important;
+    padding:18px !important;
+    overflow:hidden !important;
+}
+.main{
+    max-width:1400px !important;
+    width:calc(100vw - 370px) !important;
+}
+.keyboard-top-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 206px;
+    gap:18px;
+    align-items:start;
+    margin-bottom:12px;
+}
+.keyboard-bottom-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 274px;
+    gap:18px;
+    align-items:end;
+}
+.keyboard-nav-top{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding-top:0;
+}
+.keyboard-main.real-layout{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+.keyboard-right-side{
+    display:grid;
+    grid-template-columns:58px 1fr;
+    gap:12px;
+    align-items:end;
+}
+.keyboard-arrows{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    align-self:end;
+}
+.keyboard-numpad.real-numpad{
+    width:auto !important;
+    min-width:0 !important;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+.keyboard-card .kb-row{
+    display:flex;
+    gap:6px;
+    align-items:center;
+    min-height:46px;
+}
+.keyboard-nav-top .kb-row,
+.keyboard-arrows .kb-row,
+.keyboard-numpad.real-numpad .kb-row{
+    gap:6px;
+}
+.kb-gap{ flex:0 0 auto; }
+.kb-gap.w-24{ width:24px; }
+.kb-gap.w-16{ width:16px; }
+.kb-gap.arrow-pad{ width:52px; }
+
+.kb-key{
+    flex:0 0 52px !important;
+    height:46px !important;
+    min-width:52px !important;
+    border-radius:5px;
+}
+.kb-key b{ font-size:13px !important; }
+.kb-key.small{ flex-basis:52px !important; min-width:52px !important; }
+.kb-key.tab{ flex-basis:78px !important; min-width:78px !important; }
+.kb-key.caps{ flex-basis:88px !important; min-width:88px !important; }
+.kb-key.shift{ flex-basis:94px !important; min-width:94px !important; }
+.kb-key.shift2{ flex-basis:112px !important; min-width:112px !important; }
+.kb-key.backspace{ flex-basis:84px !important; min-width:84px !important; }
+.kb-key.enter{ flex-basis:84px !important; min-width:84px !important; }
+.kb-key.ctrl{ flex-basis:66px !important; min-width:66px !important; }
+.kb-key.win{ flex-basis:54px !important; min-width:54px !important; }
+.kb-key.alt, .kb-key.altgr{ flex-basis:66px !important; min-width:66px !important; }
+.kb-key.menu{ flex-basis:54px !important; min-width:54px !important; }
+.kb-key.spacebar{ flex:1 1 320px !important; min-width:240px !important; }
+.kb-key.arrow{ flex-basis:52px !important; min-width:52px !important; }
+.kb-key.numzero{ flex:0 0 110px !important; min-width:110px !important; }
+.kb-key.ghost{
+    opacity:0 !important;
+    pointer-events:none !important;
+    border-color:transparent !important;
+    background:transparent !important;
+    box-shadow:none !important;
+}
+.kb-key.tall2{
+    height:98px !important;
+    align-self:stretch;
+}
+.keyboard-nav-top .kb-key{
+    flex:1 1 0 !important;
+    min-width:0 !important;
+}
+.keyboard-arrows .kb-row:last-child .kb-key{
+    flex:0 0 52px !important;
+}
+.keyboard-numpad.real-numpad .kb-row{
+    align-items:stretch;
+}
+.keyboard-numpad.real-numpad .kb-row .kb-key.small{
+    flex:0 0 52px !important;
+}
+.keyboard-numpad.real-numpad .kb-row:nth-child(2),
+.keyboard-numpad.real-numpad .kb-row:nth-child(3),
+.keyboard-numpad.real-numpad .kb-row:nth-child(4),
+.keyboard-numpad.real-numpad .kb-row:nth-child(5){
+    min-height:46px;
+}
+.keyboard-numpad.real-numpad .kb-row:nth-child(2) .kb-key.tall2,
+.keyboard-numpad.real-numpad .kb-row:nth-child(4) .kb-key.tall2{
+    height:98px !important;
+}
+
+/* Browser/NUI Scrollbalken vermeiden */
+html, body, #app, .screen{ overflow-x:hidden !important; }
+
+/* Farbklassen unten beibehalten */
+.bind.bind-menu kbd { color:#a9cf4a; border-color:rgba(139,176,48,.82); background:rgba(91,124,29,.24); }
+.bind.bind-interaction kbd { color:#70d4c2; border-color:rgba(75,167,149,.85); background:rgba(39,117,103,.25); }
+.bind.bind-vehicle kbd { color:#d4c15a; border-color:rgba(177,151,45,.85); background:rgba(126,103,24,.25); }
+.bind.bind-hotbar kbd { color:#d8c35d; border-color:rgba(184,153,45,.86); background:rgba(132,102,21,.25); }
+.bind.bind-communication kbd { color:#78bfae; border-color:rgba(70,145,129,.84); background:rgba(34,101,89,.24); }
+.bind.bind-emote kbd { color:#e2ca63; border-color:rgba(193,157,48,.92); background:rgba(139,106,22,.27); }
+.bind.bind-combat kbd { color:#c5a7df; border-color:rgba(142,105,174,.88); background:rgba(91,58,118,.28); }
+
+@media (max-width: 1550px){
+    .keyboard-card.full-layout{
+        transform:scale(.92) !important;
+        transform-origin:left top !important;
+        width:108.7% !important;
+        margin-bottom:-35px !important;
+    }
+}
+
+/* ALPHA-Z V9 - Tastatur exakt in Fullsize-Blöcken wie Referenz */
+.reference-kb{width:100%!important;max-width:1450px!important;padding:18px!important;transform:none!important;margin-bottom:18px!important;overflow:hidden!important;box-sizing:border-box!important}
+.rk-shell{--u:47px;--h:42px;--g:5px;display:grid;grid-template-columns:minmax(0,1fr) 177px 214px;gap:14px;align-items:end;min-width:0}
+.rk-main{display:flex;flex-direction:column;gap:var(--g);min-width:0}
+.rk-row{display:flex;gap:var(--g);align-items:center;min-height:var(--h);white-space:nowrap}
+.rk-frow{margin-bottom:8px}
+.rk-gap{display:block;width:14px;flex:0 0 14px}.rk-gap.big{width:24px;flex-basis:24px}
+.rk-key{flex:0 0 var(--u);width:var(--u);min-width:var(--u);height:var(--h);box-sizing:border-box;border:1px solid rgba(232,226,212,.22);border-radius:5px;background:linear-gradient(180deg,rgba(39,42,40,.98),rgba(15,17,16,.98));box-shadow:inset 0 1px rgba(255,255,255,.07),0 2px 4px rgba(0,0,0,.34);display:flex;align-items:center;justify-content:center;color:#ddd9cf}
+.rk-key b{font-size:11px;font-weight:700;white-space:nowrap}
+.rk-key.esc{width:52px;min-width:52px;flex-basis:52px}.rk-key.backspace{flex:1 1 76px;min-width:76px}.rk-key.tab{width:72px;min-width:72px;flex-basis:72px}.rk-key.caps{width:82px;min-width:82px;flex-basis:82px}.rk-key.enter{flex:1 1 84px;min-width:84px}.rk-enter-spacer{flex:1 1 84px;min-width:84px}
+.rk-key.shift{width:92px;min-width:92px;flex-basis:92px}.rk-key.shift2{flex:1 1 112px;min-width:112px}.rk-key.ctrl{width:64px;min-width:64px;flex-basis:64px}.rk-key.win{width:52px;min-width:52px;flex-basis:52px}.rk-key.alt{width:64px;min-width:64px;flex-basis:64px}.rk-key.altgr{width:68px;min-width:68px;flex-basis:68px}.rk-key.fn{width:52px;min-width:52px;flex-basis:52px}.rk-key.menu{width:56px;min-width:56px;flex-basis:56px}.rk-key.space{flex:1 1 290px;min-width:250px}
+.rk-nav{display:flex;flex-direction:column;gap:10px;align-self:stretch}.rk-nav-top,.rk-nav-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.rk-nav-top{margin-bottom:8px}.rk-nav .rk-key{width:auto;min-width:0}
+.rk-arrows{display:grid;grid-template-columns:repeat(3,47px);grid-template-rows:repeat(2,42px);gap:5px;justify-content:center;margin-top:auto}
+.rk-num{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:42px;gap:5px;align-self:stretch}.rk-num .rk-key{width:auto;min-width:0;height:42px}.rk-num .plus{grid-row:2/span 2;height:auto}.rk-num .nenter{grid-column:4;grid-row:4/span 2;height:auto}.rk-num .nzero{grid-column:1/span 2}
+.rk-key.hot.menu{color:#a9cf4a;border-color:rgba(139,176,48,.9);background:linear-gradient(180deg,rgba(92,124,35,.62),rgba(42,58,22,.82))}
+.rk-key.hot.interaction{color:#70d4c2;border-color:rgba(75,167,149,.9);background:linear-gradient(180deg,rgba(39,117,103,.56),rgba(24,63,57,.84))}
+.rk-key.hot.vehicle{color:#d4c15a;border-color:rgba(177,151,45,.9);background:linear-gradient(180deg,rgba(126,103,24,.58),rgba(66,53,15,.84))}
+.rk-key.hot.hotbar,.rk-key.hot.emote{color:#e2ca63;border-color:rgba(193,157,48,.92);background:linear-gradient(180deg,rgba(139,106,22,.60),rgba(76,56,12,.85))}
+.rk-key.hot.communication{color:#78cdbb;border-color:rgba(70,145,129,.9);background:linear-gradient(180deg,rgba(34,101,89,.58),rgba(20,56,50,.85))}
+.rk-key.hot.combat{color:#c5a7df;border-color:rgba(142,105,174,.92);background:linear-gradient(180deg,rgba(91,58,118,.62),rgba(48,31,62,.86))}
+.main{max-width:1500px!important;width:calc(100vw - 390px)!important;overflow-x:hidden!important}html,body,#app,.screen{overflow-x:hidden!important}
+@media(max-width:1650px){.reference-kb{transform:scale(.91)!important;transform-origin:left top!important;width:109.89%!important;margin-bottom:-26px!important}}
+
+
+/* ============================================================
+   ALPHA-Z V10 - Tastaturbelegung: Vollbild / eine Seite / kein Scroll
+   ============================================================ */
+
+/* NUI darf in keiner Richtung scrollen. */
+html, body, #app, .screen {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+}
+
+/* Tastatur-Seite nutzt die komplette verbleibende Bildschirmflaeche. */
+.main {
+    width: calc(100vw - 360px) !important;
+    max-width: none !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    padding: 30px 34px 24px 44px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* Kopf kompakter, damit Tastatur + alle 4 Erklaerungsfelder auf eine Seite passen. */
+.keyboard-head {
+    margin: 0 0 10px 0 !important;
+    min-height: 48px !important;
+}
+.keyboard-head h1 {
+    margin: 0 0 3px 0 !important;
+    font-size: 24px !important;
+}
+.keyboard-head .sub {
+    margin: 0 !important;
+    font-size: 13px !important;
+}
+
+/* Tastatur bleibt gross, aber ohne alte Skalierungs-/Breitenreste. */
+.keyboard-card.full-layout.reference-kb {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    padding: 12px !important;
+    margin: 0 0 10px 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.rk-shell {
+    --u: 43px !important;
+    --h: 37px !important;
+    --g: 4px !important;
+    grid-template-columns: minmax(0,1fr) 164px 198px !important;
+    gap: 12px !important;
+}
+.rk-row { min-height: 37px !important; }
+.rk-frow { margin-bottom: 5px !important; }
+.rk-key {
+    height: 37px !important;
+    min-width: 43px !important;
+    flex-basis: 43px !important;
+}
+.rk-key b { font-size: 10px !important; }
+
+.rk-key.esc { width:48px !important; min-width:48px !important; flex-basis:48px !important; }
+.rk-key.backspace { min-width:68px !important; }
+.rk-key.tab { width:66px !important; min-width:66px !important; flex-basis:66px !important; }
+.rk-key.caps { width:75px !important; min-width:75px !important; flex-basis:75px !important; }
+.rk-key.enter { min-width:76px !important; }
+.rk-enter-spacer { min-width:76px !important; }
+.rk-key.shift { width:84px !important; min-width:84px !important; flex-basis:84px !important; }
+.rk-key.shift2 { min-width:100px !important; }
+.rk-key.ctrl { width:58px !important; min-width:58px !important; flex-basis:58px !important; }
+.rk-key.win { width:47px !important; min-width:47px !important; flex-basis:47px !important; }
+.rk-key.alt { width:58px !important; min-width:58px !important; flex-basis:58px !important; }
+.rk-key.altgr { width:62px !important; min-width:62px !important; flex-basis:62px !important; }
+.rk-key.fn { width:47px !important; min-width:47px !important; flex-basis:47px !important; }
+.rk-key.menu { width:50px !important; min-width:50px !important; flex-basis:50px !important; }
+.rk-key.space { min-width:220px !important; }
+.rk-key.small, .rk-key.arrow { min-width:0 !important; }
+.rk-arrows {
+    grid-template-columns: repeat(3,43px) !important;
+    grid-template-rows: repeat(2,37px) !important;
+    gap:4px !important;
+}
+.rk-num {
+    grid-auto-rows:37px !important;
+    gap:4px !important;
+}
+.rk-num .rk-key { height:37px !important; }
+
+/* Untere vier Bereiche in einem kompakten 2x2 Raster. */
+.bind-sections {
+    display:grid !important;
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    grid-template-rows: repeat(2, auto) !important;
+    gap: 8px 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.bind-card {
+    padding: 10px 13px !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+}
+.bind-card h3 {
+    margin: 0 0 5px 0 !important;
+    font-size: 12px !important;
+}
+.bind {
+    min-height: 27px !important;
+    padding: 3px 0 !important;
+    gap: 10px !important;
+    font-size: 13px !important;
+}
+.bind kbd {
+    min-width: 58px !important;
+    padding: 3px 7px !important;
+    font-size: 11px !important;
+}
+
+/* Alte Responsive-Regeln duerfen diese Vollbildansicht nicht wieder skalieren. */
+@media (max-width: 1650px) {
+    .keyboard-card.full-layout.reference-kb {
+        width: 100% !important;
+        transform: none !important;
+        margin-bottom: 10px !important;
+    }
+}
+
+/* Bei niedrigerer Hoehe alles proportional kompakter halten. */
+@media (max-height: 900px) {
+    .main { padding-top:20px !important; padding-bottom:16px !important; }
+    .keyboard-head { min-height:42px !important; margin-bottom:6px !important; }
+    .keyboard-card.full-layout.reference-kb { padding:9px !important; margin-bottom:7px !important; }
+    .rk-shell { --h:34px !important; }
+    .rk-row { min-height:34px !important; }
+    .rk-key { height:34px !important; }
+    .rk-arrows { grid-template-rows:repeat(2,34px) !important; }
+    .rk-num { grid-auto-rows:34px !important; }
+    .rk-num .rk-key { height:34px !important; }
+    .bind-card { padding:7px 11px !important; }
+    .bind { min-height:24px !important; padding:2px 0 !important; font-size:12px !important; }
+}
+
+
+/* ============================================================
+   ALPHA-Z V11 - ENTER + NUMPAD Positionsfix
+   ============================================================ */
+
+/* Haupttastatur: ENTER fuellt jetzt die beiden Felder unterhalb mit aus.
+   Es steht rechts neben + und reicht ueber zwei Buchstabenreihen. */
+.rk-main .rk-row:nth-child(3),
+.rk-main .rk-row:nth-child(4) {
+    position: relative !important;
+}
+
+.rk-key.enter.enter-tall {
+    align-self: flex-start !important;
+    height: calc((var(--h) * 2) + var(--g)) !important;
+    min-height: calc((var(--h) * 2) + var(--g)) !important;
+    z-index: 3 !important;
+}
+
+/* Platz unter dem hohen ENTER freihalten, statt zwei sichtbarer Leerfelder. */
+.rk-enter-under {
+    flex: 1 1 76px !important;
+    min-width: 76px !important;
+    height: var(--h) !important;
+    visibility: hidden !important;
+}
+
+/* Numpad exakt wie echte Tastatur:
+   NUM / * -
+   7   8 9 +
+   4   5 6 +
+   1   2 3 ENTER
+   0     , ENTER
+*/
+.rk-num {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+    grid-template-rows: repeat(5, var(--h)) !important;
+    grid-auto-flow: initial !important;
+    gap: var(--g) !important;
+    position: relative !important;
+}
+
+/* Kopfzeile */
+.rk-num > .rk-key:nth-child(1) { grid-column:1; grid-row:1; }
+.rk-num > .rk-key:nth-child(2) { grid-column:2; grid-row:1; }
+.rk-num > .rk-key:nth-child(3) { grid-column:3; grid-row:1; }
+.rk-num > .rk-key:nth-child(4) { grid-column:4; grid-row:1; }
+
+/* 7 8 9 und grosses + rechts */
+.rk-num > .rk-key:nth-child(5) { grid-column:1; grid-row:2; }
+.rk-num > .rk-key:nth-child(6) { grid-column:2; grid-row:2; }
+.rk-num > .rk-key:nth-child(7) { grid-column:3; grid-row:2; }
+.rk-num > .rk-key:nth-child(8) {
+    grid-column:4 !important;
+    grid-row:2 / span 2 !important;
+    height:auto !important;
+}
+
+/* 4 5 6 ruecken nach links */
+.rk-num > .rk-key:nth-child(9)  { grid-column:1; grid-row:3; }
+.rk-num > .rk-key:nth-child(10) { grid-column:2; grid-row:3; }
+.rk-num > .rk-key:nth-child(11) { grid-column:3; grid-row:3; }
+
+/* 1 2 3 und grosses ENTER rechts */
+.rk-num > .rk-key:nth-child(12) { grid-column:1; grid-row:4; }
+.rk-num > .rk-key:nth-child(13) { grid-column:2; grid-row:4; }
+.rk-num > .rk-key:nth-child(14) { grid-column:3; grid-row:4; }
+.rk-num > .rk-key:nth-child(15) {
+    grid-column:4 !important;
+    grid-row:4 / span 2 !important;
+    height:auto !important;
+}
+
+/* NUM 0 doppelt breit, Komma daneben */
+.rk-num > .rk-key:nth-child(16) {
+    grid-column:1 / span 2 !important;
+    grid-row:5 !important;
+}
+.rk-num > .rk-key:nth-child(17) {
+    grid-column:3 !important;
+    grid-row:5 !important;
+}
+
+/* Alte Platzierungsregeln sicher ueberschreiben */
+.rk-num .plus { grid-column:4 !important; grid-row:2 / span 2 !important; }
+.rk-num .nenter { grid-column:4 !important; grid-row:4 / span 2 !important; }
+.rk-num .nzero { grid-column:1 / span 2 !important; grid-row:5 !important; }
+
+
+/* ============================================================
+   ALPHA-Z V12 - normale Tastaturbreite + Erklaerung gleich breit
+   ============================================================ */
+
+/* Die Tastatur soll nicht mehr ueber fast den ganzen Bildschirm gezogen werden. */
+.main {
+    width: calc(100vw - 360px) !important;
+    max-width: none !important;
+    padding-left: 44px !important;
+    padding-right: 34px !important;
+}
+
+/* Gemeinsame feste Inhaltsbreite fuer Tastatur UND Erklaerungsbereich. */
+.keyboard-head,
+.keyboard-card.full-layout.reference-kb,
+.bind-sections {
+    width: min(1180px, 100%) !important;
+    max-width: 1180px !important;
+    box-sizing: border-box !important;
+}
+
+/* Tastatur wieder in normaler, kompakter Fullsize-Proportion. */
+.keyboard-card.full-layout.reference-kb {
+    transform: none !important;
+    transform-origin: left top !important;
+    margin: 0 0 10px 0 !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+}
+
+.rk-shell {
+    --u: 39px !important;
+    --h: 35px !important;
+    --g: 4px !important;
+    grid-template-columns: minmax(0,1fr) 152px 184px !important;
+    gap: 10px !important;
+}
+
+.rk-row {
+    min-height: 35px !important;
+}
+.rk-key {
+    height: 35px !important;
+    min-width: 39px !important;
+    flex-basis: 39px !important;
+}
+.rk-key b {
+    font-size: 9px !important;
+}
+
+/* Sondertasten proportional wie auf einer normalen Tastatur. */
+.rk-key.esc { width:44px !important; min-width:44px !important; flex-basis:44px !important; }
+.rk-key.backspace { min-width:64px !important; }
+.rk-key.tab { width:60px !important; min-width:60px !important; flex-basis:60px !important; }
+.rk-key.caps { width:69px !important; min-width:69px !important; flex-basis:69px !important; }
+.rk-key.enter { min-width:68px !important; }
+.rk-enter-under { min-width:68px !important; }
+.rk-key.shift { width:76px !important; min-width:76px !important; flex-basis:76px !important; }
+.rk-key.shift2 { min-width:90px !important; }
+.rk-key.ctrl { width:52px !important; min-width:52px !important; flex-basis:52px !important; }
+.rk-key.win { width:43px !important; min-width:43px !important; flex-basis:43px !important; }
+.rk-key.alt { width:52px !important; min-width:52px !important; flex-basis:52px !important; }
+.rk-key.altgr { width:56px !important; min-width:56px !important; flex-basis:56px !important; }
+.rk-key.fn { width:43px !important; min-width:43px !important; flex-basis:43px !important; }
+.rk-key.menu { width:46px !important; min-width:46px !important; flex-basis:46px !important; }
+.rk-key.space { min-width:205px !important; }
+
+.rk-arrows {
+    grid-template-columns: repeat(3,39px) !important;
+    grid-template-rows: repeat(2,35px) !important;
+}
+.rk-num {
+    grid-template-rows: repeat(5,35px) !important;
+}
+.rk-num .rk-key {
+    height:35px !important;
+}
+
+/* Die unteren vier Erklaerungen exakt so breit wie die Tastatur. */
+.bind-sections {
+    display:grid !important;
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap:8px 10px !important;
+    margin:0 !important;
+    padding:0 !important;
+}
+.bind-card {
+    width:100% !important;
+    box-sizing:border-box !important;
+}
+
+/* Kein Scrollbalken. Alles bleibt auf einer Seite. */
+html, body, #app, .screen, .main {
+    overflow-x:hidden !important;
+}
+html, body, #app, .screen {
+    overflow-y:hidden !important;
+}
+
+/* Alte responsive Skalierung komplett deaktivieren. */
+@media (max-width:1650px) {
+    .keyboard-card.full-layout.reference-kb {
+        width:min(1180px,100%) !important;
+        transform:none !important;
+        margin-bottom:10px !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V13 - komplette Tastaturseite 10% groesser
+   ============================================================ */
+
+/* Gemeinsame Breite +10%: 1180 -> 1298 px */
+.keyboard-head,
+.keyboard-card.full-layout.reference-kb,
+.bind-sections {
+    width: min(1298px, 100%) !important;
+    max-width: 1298px !important;
+}
+
+/* Tastatur selbst ca. 10% groesser */
+.rk-shell {
+    --u: 43px !important;
+    --h: 39px !important;
+    --g: 4.4px !important;
+    grid-template-columns: minmax(0,1fr) 167px 202px !important;
+    gap: 11px !important;
+}
+.rk-row { min-height:39px !important; }
+.rk-key {
+    height:39px !important;
+    min-width:43px !important;
+    flex-basis:43px !important;
+}
+.rk-key b { font-size:10px !important; }
+
+.rk-key.esc { width:48px !important; min-width:48px !important; flex-basis:48px !important; }
+.rk-key.backspace { min-width:70px !important; }
+.rk-key.tab { width:66px !important; min-width:66px !important; flex-basis:66px !important; }
+.rk-key.caps { width:76px !important; min-width:76px !important; flex-basis:76px !important; }
+.rk-key.enter { min-width:75px !important; }
+.rk-enter-under { min-width:75px !important; }
+.rk-key.shift { width:84px !important; min-width:84px !important; flex-basis:84px !important; }
+.rk-key.shift2 { min-width:99px !important; }
+.rk-key.ctrl { width:57px !important; min-width:57px !important; flex-basis:57px !important; }
+.rk-key.win { width:47px !important; min-width:47px !important; flex-basis:47px !important; }
+.rk-key.alt { width:57px !important; min-width:57px !important; flex-basis:57px !important; }
+.rk-key.altgr { width:62px !important; min-width:62px !important; flex-basis:62px !important; }
+.rk-key.fn { width:47px !important; min-width:47px !important; flex-basis:47px !important; }
+.rk-key.menu { width:51px !important; min-width:51px !important; flex-basis:51px !important; }
+.rk-key.space { min-width:226px !important; }
+
+.rk-arrows {
+    grid-template-columns:repeat(3,43px) !important;
+    grid-template-rows:repeat(2,39px) !important;
+    gap:4.4px !important;
+}
+.rk-num {
+    grid-template-rows:repeat(5,39px) !important;
+    gap:4.4px !important;
+}
+.rk-num .rk-key { height:39px !important; }
+
+/* Untere Erklaerungen ebenfalls etwa 10% groesser */
+.bind-sections {
+    gap:9px 11px !important;
+}
+.bind-card {
+    padding:11px 14px !important;
+}
+.bind-card h3 {
+    font-size:13px !important;
+    margin-bottom:6px !important;
+}
+.bind {
+    min-height:30px !important;
+    padding:3px 0 !important;
+    gap:11px !important;
+    font-size:14px !important;
+}
+.bind kbd {
+    min-width:64px !important;
+    padding:4px 8px !important;
+    font-size:12px !important;
+}
+
+/* Kopf ebenfalls 10% groesser */
+.keyboard-head h1 { font-size:26px !important; }
+.keyboard-head .sub { font-size:14px !important; }
+
+/* Vollbild ohne Scrollleisten beibehalten */
+html,body,#app,.screen,.main {
+    overflow:hidden !important;
+}
+
+@media (max-width:1650px) {
+    .keyboard-head,
+    .keyboard-card.full-layout.reference-kb,
+    .bind-sections {
+        width:min(1298px,100%) !important;
+        max-width:1298px !important;
+    }
+    .keyboard-card.full-layout.reference-kb {
+        transform:none !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V14 - Deutsche ISO-ENTER-Taste wie Referenzbild
+   Form:
+        ┌──────────┐
+        │  ENTER   │
+        └────┐     │
+             │     │
+             └─────┘
+   ============================================================ */
+
+/* Oberer Teil der Enter-Taste: breit, rechts neben + */
+.rk-key.iso-enter-top {
+    position: relative !important;
+    flex: 1 1 92px !important;
+    min-width: 92px !important;
+    height: var(--h) !important;
+    border-radius: 5px 5px 0 5px !important;
+    z-index: 4 !important;
+    overflow: visible !important;
+}
+
+/* Unterer, schmalerer Schenkel sitzt direkt rechts unter dem oberen Teil. */
+.rk-key.iso-enter-bottom {
+    flex: 0 0 58px !important;
+    width: 58px !important;
+    min-width: 58px !important;
+    height: var(--h) !important;
+    margin-left: auto !important;
+    border-radius: 0 0 5px 5px !important;
+    z-index: 4 !important;
+}
+
+/* Beide Teile optisch zu EINER Taste verbinden. */
+.rk-key.iso-enter-top::after {
+    content: "" !important;
+    position: absolute !important;
+    right: -1px !important;
+    bottom: calc(-1 * var(--g) - 2px) !important;
+    width: 58px !important;
+    height: calc(var(--g) + 4px) !important;
+    background: linear-gradient(180deg,rgba(39,42,40,.98),rgba(24,26,25,.98)) !important;
+    border-left: 1px solid rgba(232,226,212,.22) !important;
+    border-right: 1px solid rgba(232,226,212,.22) !important;
+    box-sizing: border-box !important;
+    z-index: 5 !important;
+}
+
+/* Der untere Teil hat keinen eigenen Text. */
+.rk-key.iso-enter-bottom b {
+    display:none !important;
+}
+
+/* Alte hohe/rechteckige Enter-Regeln deaktivieren. */
+.rk-key.enter.enter-tall,
+.rk-key.enter-tall {
+    height:var(--h) !important;
+    min-height:var(--h) !important;
+}
+.rk-enter-under {
+    display:none !important;
+}
+
+
+/* ============================================================
+   ALPHA-Z V15 - rechte Haupttasten sauber auf eine Kante
+   Backspace / ISO-Enter / rechter Shift
+   ============================================================ */
+
+/* Rechte Außenkante aller drei Reihen identisch. */
+.rk-key.backspace {
+    flex: 1 1 108px !important;
+    min-width: 108px !important;
+}
+
+.rk-key.iso-enter-top {
+    flex: 1 1 108px !important;
+    min-width: 108px !important;
+}
+
+/* Unterer ISO-Enter-Schenkel breiter, damit unten keine Lücke mehr bleibt. */
+.rk-key.iso-enter-bottom {
+    flex: 0 0 72px !important;
+    width: 72px !important;
+    min-width: 72px !important;
+    margin-left: auto !important;
+}
+
+/* Verbindungsstück exakt so breit wie der untere Enter-Schenkel. */
+.rk-key.iso-enter-top::after {
+    width: 72px !important;
+}
+
+/* Rechter Shift beginnt weiter links und endet an derselben rechten Kante. */
+.rk-key.shift2 {
+    flex: 1 1 132px !important;
+    min-width: 132px !important;
+}
+
+/* Die rechte Kante bleibt auch bei unterschiedlichen Bildschirmgrößen sauber. */
+.rk-main .rk-row {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+
+/* ============================================================
+   ALPHA-Z V16 - Referenz-Tastatur exakt wie Bild, ca. 30% größer
+   ============================================================ */
+
+html, body, #app, .screen, .main {
+    overflow: hidden !important;
+}
+.main {
+    width: calc(100vw - 360px) !important;
+    max-width: none !important;
+    height: 100vh !important;
+    padding: 20px 26px 16px 28px !important;
+    box-sizing: border-box !important;
+}
+
+.keyboard-head,
+.kbx-card,
+.kbx-binds {
+    width: min(1460px, 100%) !important;
+    max-width: 1460px !important;
+    box-sizing: border-box !important;
+}
+
+.keyboard-head { margin-bottom: 8px !important; }
+.keyboard-head h1 { font-size: 24px !important; margin-bottom: 2px !important; }
+.keyboard-head .sub { font-size: 13px !important; }
+
+.kbx-card {
+    padding: 12px !important;
+    margin-bottom: 10px !important;
+    overflow: hidden !important;
+}
+
+.kbx-shell{
+    --u: 52px;
+    --h: 48px;
+    --g: 6px;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) 184px 234px;
+    gap:18px;
+    align-items:end;
+}
+.kbx-main{display:flex;flex-direction:column;gap:var(--g);min-width:0}
+.kbx-row{display:flex;gap:var(--g);align-items:center;min-height:var(--h)}
+.kbx-row.frow{margin-bottom:6px}
+.kbx-gap{display:block;width:18px;flex:0 0 18px}
+.kbx-gap.g1{width:28px;flex-basis:28px}
+
+.kbx-key{
+    flex:0 0 var(--u);
+    width:var(--u);
+    min-width:var(--u);
+    height:var(--h);
+    border:1px solid rgba(232,226,212,.22);
+    border-radius:5px;
+    background:linear-gradient(180deg,rgba(40,43,41,.98),rgba(16,18,17,.98));
+    box-shadow:inset 0 1px rgba(255,255,255,.07),0 2px 4px rgba(0,0,0,.34);
+    display:flex;align-items:center;justify-content:center;
+    color:#ddd9cf;
+    box-sizing:border-box;
+}
+.kbx-key b{font-size:12px;font-weight:700;line-height:1;white-space:nowrap}
+
+.kbx-key.esc{flex-basis:58px;width:58px;min-width:58px}
+.kbx-key.backspace{flex:1 1 102px;min-width:102px}
+.kbx-key.tab{flex-basis:82px;width:82px;min-width:82px}
+.kbx-key.caps{flex-basis:96px;width:96px;min-width:96px}
+.kbx-key.shift-left{flex-basis:88px;width:88px;min-width:88px}
+.kbx-key.shift-right{flex:1 1 134px;min-width:134px}
+.kbx-key.ctrl{flex-basis:70px;width:70px;min-width:70px}
+.kbx-key.start{flex-basis:62px;width:62px;min-width:62px}
+.kbx-key.alt{flex-basis:70px;width:70px;min-width:70px}
+.kbx-key.altgr{flex-basis:74px;width:74px;min-width:74px}
+.kbx-key.fn{flex-basis:54px;width:54px;min-width:54px}
+.kbx-key.assist{flex-basis:72px;width:72px;min-width:72px}
+.kbx-key.space{flex:1 1 360px;min-width:360px}
+
+.kbx-key.enter-top{
+    flex:1 1 92px;
+    min-width:92px;
+    border-radius:5px 5px 0 5px;
+    position:relative;
+    z-index:2;
+}
+.kbx-key.enter-top::after{
+    content:"";
+    position:absolute;
+    right:-1px;
+    bottom:calc(-1 * var(--g) - 2px);
+    width:70px;
+    height:calc(var(--g) + 4px);
+    background:linear-gradient(180deg,rgba(40,43,41,.98),rgba(18,20,19,.98));
+    border-left:1px solid rgba(232,226,212,.22);
+    border-right:1px solid rgba(232,226,212,.22);
+    box-sizing:border-box;
+}
+.kbx-key.enter-bottom{
+    flex:0 0 70px;
+    width:70px;
+    min-width:70px;
+    margin-left:auto;
+    border-radius:0 0 5px 5px;
+}
+
+.kbx-nav{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    align-self:stretch;
+}
+.kbx-nav-top{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+}
+.kbx-nav-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+}
+.kbx-nav .kbx-key.small{
+    width:auto; min-width:0; flex-basis:auto;
+}
+.kbx-arrows{
+    display:grid;
+    grid-template-columns:repeat(3,52px);
+    grid-template-rows:repeat(2,48px);
+    gap:6px;
+    justify-content:center;
+    margin-top:auto;
+}
+.kbx-key.arrow{width:52px;min-width:52px;flex-basis:52px}
+
+.kbx-num{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(5,48px);
+    gap:6px;
+    align-self:stretch;
+}
+.kbx-num .kbx-key{width:auto;min-width:0;height:48px}
+.kbx-num .plus{grid-column:4;grid-row:2 / span 2;height:auto}
+.kbx-num .nenter{grid-column:4;grid-row:4 / span 2;height:auto}
+.kbx-num .nzero{grid-column:1 / span 2}
+
+.kbx-key.hot.menu{
+    color:#a9cf4a;border-color:rgba(139,176,48,.90);
+    background:linear-gradient(180deg,rgba(92,124,35,.62),rgba(42,58,22,.82));
+}
+.kbx-key.hot.interaction{
+    color:#70d4c2;border-color:rgba(75,167,149,.90);
+    background:linear-gradient(180deg,rgba(39,117,103,.58),rgba(24,63,57,.84));
+}
+.kbx-key.hot.vehicle{
+    color:#d4c15a;border-color:rgba(177,151,45,.90);
+    background:linear-gradient(180deg,rgba(126,103,24,.60),rgba(66,53,15,.84));
+}
+.kbx-key.hot.hotbar,.kbx-key.hot.emote{
+    color:#e2ca63;border-color:rgba(193,157,48,.92);
+    background:linear-gradient(180deg,rgba(139,106,22,.62),rgba(76,56,12,.85));
+}
+.kbx-key.hot.communication{
+    color:#78cdbb;border-color:rgba(70,145,129,.90);
+    background:linear-gradient(180deg,rgba(34,101,89,.60),rgba(20,56,50,.85));
+}
+.kbx-key.hot.combat{
+    color:#c5a7df;border-color:rgba(142,105,174,.92);
+    background:linear-gradient(180deg,rgba(91,58,118,.64),rgba(48,31,62,.86));
+}
+
+/* untere Erklärung ca. 30% größer */
+.kbx-binds{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:10px 12px !important;
+    padding:0 !important;
+    margin:0 !important;
+}
+.kbx-binds .bind-card{
+    padding:12px 14px !important;
+    margin:0 !important;
+}
+.kbx-binds .bind-card h3{
+    font-size:13px !important;
+    margin-bottom:6px !important;
+}
+.kbx-binds .bind{
+    min-height:31px !important;
+    padding:3px 0 !important;
+    gap:11px !important;
+    font-size:14px !important;
+}
+.kbx-binds .bind kbd{
+    min-width:66px !important;
+    padding:4px 8px !important;
+    font-size:12px !important;
+}
+
+/* gleiche Farben in den unteren Listen */
+.bind.bind-menu kbd{color:#a9cf4a;border-color:rgba(139,176,48,.82);background:rgba(91,124,29,.24)}
+.bind.bind-interaction kbd{color:#70d4c2;border-color:rgba(75,167,149,.85);background:rgba(39,117,103,.25)}
+.bind.bind-vehicle kbd{color:#d4c15a;border-color:rgba(177,151,45,.85);background:rgba(126,103,24,.25)}
+.bind.bind-hotbar kbd{color:#e2ca63;border-color:rgba(193,157,48,.88);background:rgba(139,106,22,.25)}
+.bind.bind-communication kbd{color:#78cdbb;border-color:rgba(70,145,129,.84);background:rgba(34,101,89,.24)}
+.bind.bind-emote kbd{color:#e2ca63;border-color:rgba(193,157,48,.92);background:rgba(139,106,22,.27)}
+.bind.bind-combat kbd{color:#c5a7df;border-color:rgba(142,105,174,.88);background:rgba(91,58,118,.28)}
+
+/* falls Höhe knapp wird: proportionale Gesamtskalierung, aber kein Scrollbalken */
+@media (max-height: 860px) {
+    .kbx-card{transform:scale(.92);transform-origin:left top;margin-bottom:-18px !important}
+    .kbx-binds{transform:scale(.95);transform-origin:left top;width:min(1537px,105%) !important;margin-bottom:-12px}
+}
+
+
+/* ============================================================
+   ALPHA-Z V17 - obere Tastatur etwas breiter
+   Ziel: F12 und rechter STRG/CTRL nicht mehr abgeschnitten
+   ============================================================ */
+
+/* Obere Tastatur etwas breiter als vorher */
+.kbx-card {
+    width: min(1525px, 100%) !important;
+    max-width: 1525px !important;
+}
+
+/* Mehr nutzbare Breite fuer den Hauptblock, etwas engere Seitenbloecke */
+.kbx-shell {
+    width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) 176px 224px !important;
+    gap: 14px !important;
+}
+
+/* Hauptblock darf die zusätzliche Breite sauber nutzen */
+.kbx-main {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+/* Letzte Reihe etwas entspannen, damit rechter STRG sichtbar bleibt */
+.kbx-key.space {
+    flex: 1 1 332px !important;
+    min-width: 332px !important;
+}
+.kbx-key.assist {
+    flex-basis: 66px !important;
+    width: 66px !important;
+    min-width: 66px !important;
+}
+.kbx-key.ctrl {
+    flex-basis: 66px !important;
+    width: 66px !important;
+    min-width: 66px !important;
+}
+
+/* Rechte Seitenblöcke leicht kompakter, damit links genug Platz bleibt */
+.kbx-arrows {
+    grid-template-columns: repeat(3, 48px) !important;
+    grid-template-rows: repeat(2, 48px) !important;
+}
+.kbx-key.arrow {
+    width: 48px !important;
+    min-width: 48px !important;
+    flex-basis: 48px !important;
+}
+
+/* Auf geringerer Höhe/kleinerem Fenster weiterhin sicher einpassen */
+@media (max-height: 860px) {
+    .kbx-card {
+        width: min(1580px, 104%) !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V18 - Navigationsblock sauber rechts neben Haupttastatur
+   Keine Überlappung mit F12 oder ENTER
+   ============================================================ */
+
+/* Gesamtes Tastatur-Raster klar trennen */
+.kbx-shell {
+    grid-template-columns: minmax(0, 1fr) 188px 224px !important;
+    gap: 18px !important;
+    align-items: end !important;
+}
+
+/* Haupttastatur darf nicht in den Navblock hineinragen */
+.kbx-main {
+    overflow: hidden !important;
+    min-width: 0 !important;
+}
+
+/* Navigationsblock explizit rechts neben Haupttastatur positionieren */
+.kbx-nav {
+    width: 188px !important;
+    min-width: 188px !important;
+    max-width: 188px !important;
+    margin-left: 0 !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* DRUCK / ROLLEN / PAUSE gleichmäßig rechts neben F12 */
+.kbx-nav-top {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+    width: 100% !important;
+}
+
+/* EINFG / POS1 / BILD↑ und ENTF / ENDE / BILD↓ sauber rechts neben ENTER */
+.kbx-nav-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+    width: 100% !important;
+}
+
+/* Alle Navigationstasten bleiben innerhalb ihres Blocks */
+.kbx-nav .kbx-key.small {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: none !important;
+    box-sizing: border-box !important;
+}
+
+/* Sicherheitsabstand rechts von F12 / ENTER */
+.kbx-main .kbx-row {
+    padding-right: 4px !important;
+    box-sizing: border-box !important;
+}
+
+/* F12 darf nicht vom nächsten Block überdeckt werden */
+.kbx-main .frow {
+    position: relative !important;
+    z-index: 3 !important;
+}
+
+/* ENTER bleibt komplett im Hauptblock */
+.kbx-key.enter-top,
+.kbx-key.enter-bottom {
+    position: relative !important;
+    z-index: 3 !important;
+}
+
+
+/* ============================================================
+   ALPHA-Z V20 - nur obere Tastatur breiter
+   Untere 4 Fenster wieder auf bisherige Breite
+   ============================================================ */
+
+/* Hauptbereich darf breit genug sein, aber die unteren Fenster bleiben kompakt. */
+.main {
+    width: calc(100vw - 360px) !important;
+    max-width: none !important;
+    padding-left: 28px !important;
+    padding-right: 28px !important;
+    box-sizing: border-box !important;
+}
+
+/* Titel und untere Erklärungsfenster wieder auf die vorherige kompakte Breite. */
+.keyboard-head,
+.kbx-binds,
+.bind-sections {
+    width: min(1180px, 100%) !important;
+    max-width: 1180px !important;
+    box-sizing: border-box !important;
+}
+
+/* NUR die obere Tastatur bekommt deutlich mehr Breite. */
+.kbx-card {
+    width: min(1480px, calc(100vw - 420px)) !important;
+    max-width: 1480px !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow: hidden !important;
+    transform: none !important;
+}
+
+/* Dadurch bekommen Hauptblock, Navblock und Numpad genügend echten Platz. */
+.kbx-shell {
+    width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) 190px 238px !important;
+    gap: 18px !important;
+}
+
+/* Untere Bereiche wieder 2x2 in alter Breite. */
+.kbx-binds,
+.bind-sections {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap: 10px 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Keine Skalierung, keine Überlagerung, kein Scrollbalken. */
+html, body, #app, .screen, .main {
+    overflow-x: hidden !important;
+}
+
+@media (max-height: 860px) {
+    .kbx-card {
+        transform: none !important;
+        width: min(1480px, calc(100vw - 420px)) !important;
+        margin-bottom: 10px !important;
+    }
+    .kbx-binds {
+        transform: none !important;
+        width: min(1180px,100%) !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V21 - obere Tastatur noch breiter
+   Ziel: komplette rechte Haupttastatur inkl. ENTER sichtbar
+   Untere Fenster bleiben unverändert
+   ============================================================ */
+
+/* Nur die Tastatur bekommt mehr Gesamtbreite. */
+.kbx-card {
+    width: min(1580px, calc(100vw - 390px)) !important;
+    max-width: 1580px !important;
+    overflow: visible !important;
+}
+
+/* Mehr Platz im Hauptblock, damit rechte SHIFT/STRG/ENTER vollständig sichtbar sind. */
+.kbx-shell {
+    width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) 190px 238px !important;
+    gap: 18px !important;
+}
+
+/* Hauptblock darf wirklich die zusätzliche Breite nutzen. */
+.kbx-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+}
+
+/* Rechte Haupttasten etwas weniger breit, damit sie vollständig in den Hauptblock passen. */
+.kbx-key.shift-right {
+    flex: 1 1 118px !important;
+    min-width: 118px !important;
+}
+.kbx-key.ctrl {
+    flex-basis: 62px !important;
+    width: 62px !important;
+    min-width: 62px !important;
+}
+.kbx-key.assist {
+    flex-basis: 62px !important;
+    width: 62px !important;
+    min-width: 62px !important;
+}
+.kbx-key.space {
+    flex: 1 1 320px !important;
+    min-width: 320px !important;
+}
+
+/* ISO-ENTER komplett sichtbar halten */
+.kbx-key.enter-top {
+    min-width: 96px !important;
+    flex: 1 1 96px !important;
+}
+.kbx-key.enter-bottom {
+    width: 72px !important;
+    min-width: 72px !important;
+    flex-basis: 72px !important;
+}
+
+/* Untere Fenster ausdrücklich NICHT verändern */
+.kbx-binds,
+.bind-sections,
+.keyboard-head {
+    width: min(1180px, 100%) !important;
+    max-width: 1180px !important;
+}
+
+
+/* ============================================================
+   ALPHA-Z V22 - obere Tastatur nochmal ca. 10% breiter
+   Untere Fenster bleiben unverändert
+   ============================================================ */
+
+/* Die obere Tastatur darf jetzt fast die komplette Bildschirmbreite nutzen. */
+.kbx-card {
+    width: min(1738px, calc(100vw - 28px)) !important;
+    max-width: 1738px !important;
+    overflow: visible !important;
+    margin-right: 0 !important;
+}
+
+/* Hauptbereich darf die breitere Tastatur sichtbar herausragen lassen. */
+.main {
+    overflow-x: visible !important;
+}
+
+/* Browser/NUI selbst bleibt ohne Scrollbalken. */
+html, body, #app, .screen {
+    overflow-x: hidden !important;
+}
+
+/* Mehr Luft zwischen Hauptblock, Navigation und Numpad. */
+.kbx-shell {
+    width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) 194px 246px !important;
+    gap: 20px !important;
+}
+
+/* Die Haupttastatur nutzt die gewonnene Breite vollständig. */
+.kbx-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+}
+
+/* Untere Fenster ausdrücklich auf bisheriger Größe lassen. */
+.kbx-binds,
+.bind-sections,
+.keyboard-head {
+    width: min(1180px, 100%) !important;
+    max-width: 1180px !important;
+}
+
+/* Keine automatische Rückskalierung der oberen Tastatur. */
+@media (max-height: 860px) {
+    .kbx-card {
+        width: min(1738px, calc(100vw - 28px)) !important;
+        max-width: 1738px !important;
+        transform: none !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V23 - Tastatur REAL +15% breiter / keine Überlappungen
+   ============================================================ */
+
+/*
+   Wichtig:
+   Nicht nur max-width erhöhen, sondern die echten Grid-Spalten.
+   So können Haupttastatur, Navblock und Numpad niemals ineinander laufen.
+*/
+
+/* Oberes Tastaturfenster nutzt nahezu die komplette Bildschirmbreite. */
+.kbx-card {
+    width: calc(100vw - 20px) !important;
+    max-width: 1516px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    transform: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/*
+   Bei 1536px Bildschirm:
+   Karte ≈1516px
+   Innen nach Padding ≈1492px
+   Haupttastatur bekommt ca. 1020px
+   Navblock 190px
+   Numpad 242px
+*/
+.kbx-shell {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 190px 242px !important;
+    column-gap: 20px !important;
+    align-items: end !important;
+    box-sizing: border-box !important;
+}
+
+/* Haupttastatur bleibt ausschließlich in ihrer eigenen Spalte. */
+.kbx-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Jede Hauptzeile darf nur innerhalb des Hauptblocks arbeiten. */
+.kbx-main .kbx-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Funktionszeile: Zwischenräume etwas kleiner, damit F12 sauber endet. */
+.kbx-main .kbx-row.frow .kbx-gap {
+    width: 12px !important;
+    flex-basis: 12px !important;
+}
+.kbx-main .kbx-row.frow .kbx-gap.g1 {
+    width: 18px !important;
+    flex-basis: 18px !important;
+}
+
+/* Haupttasten minimal kompakter verteilen, OHNE Größenverlust der normalen Keys. */
+.kbx-key.backspace {
+    flex: 1 1 92px !important;
+    min-width: 92px !important;
+}
+.kbx-key.enter-top {
+    flex: 1 1 94px !important;
+    min-width: 94px !important;
+}
+.kbx-key.enter-bottom {
+    flex: 0 0 70px !important;
+    width: 70px !important;
+    min-width: 70px !important;
+}
+.kbx-key.shift-right {
+    flex: 1 1 118px !important;
+    min-width: 118px !important;
+}
+.kbx-key.space {
+    flex: 1 1 300px !important;
+    min-width: 300px !important;
+}
+
+/* Rechter STRG bleibt vollständig im Hauptblock. */
+.kbx-key.ctrl {
+    flex: 0 0 60px !important;
+    width: 60px !important;
+    min-width: 60px !important;
+}
+.kbx-key.assist {
+    flex: 0 0 60px !important;
+    width: 60px !important;
+    min-width: 60px !important;
+}
+
+/* Navblock: komplett eigene Spalte, keinerlei negative Verschiebung. */
+.kbx-nav {
+    width: 190px !important;
+    min-width: 190px !important;
+    max-width: 190px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+    transform: none !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+}
+.kbx-nav-top,
+.kbx-nav-grid {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+}
+.kbx-nav .kbx-key {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Pfeiltasten bleiben unter dem Navblock. */
+.kbx-arrows {
+    width: 100% !important;
+    grid-template-columns: repeat(3, 52px) !important;
+    justify-content: center !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Numpad ebenfalls vollständig isoliert in eigener Spalte. */
+.kbx-num {
+    width: 242px !important;
+    min-width: 242px !important;
+    max-width: 242px !important;
+    margin: 0 !important;
+    position: static !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.kbx-num .kbx-key {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Untere Fenster bleiben exakt wie bisher. */
+.kbx-binds,
+.bind-sections,
+.keyboard-head {
+    width: min(1180px, 100%) !important;
+    max-width: 1180px !important;
+}
+
+/* Main darf die breite obere Tastatur anzeigen. */
+.main {
+    width: calc(100vw - 8px) !important;
+    max-width: none !important;
+    overflow-x: visible !important;
+}
+
+/* Nur der Browser selbst bekommt keinen Scrollbalken. */
+html, body, #app, .screen {
+    overflow-x: hidden !important;
+}
+
+/* Keine alte Low-Height-Skalierung mehr auf der Tastatur. */
+@media (max-height: 860px) {
+    .kbx-card {
+        width: calc(100vw - 20px) !important;
+        max-width: 1516px !important;
+        transform: none !important;
+        margin-bottom: 10px !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V24 - ALLE TASTEN IMMER SICHTBAR
+   Untere Fenster unverändert
+   ============================================================ */
+
+/*
+   Statt die Tastatur weiter über den sichtbaren Bereich hinaus zu verbreitern,
+   wird die komplette Tastatur jetzt in den tatsächlich verfügbaren Bereich
+   rechts neben dem Pause-Menü eingepasst.
+*/
+
+/* Verfügbarer Bereich rechts neben der linken Pause-Menüleiste */
+.main {
+    width: calc(100vw - 250px) !important;
+    max-width: none !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+}
+
+/* Nur obere Tastatur nutzt die volle verfügbare Breite */
+.kbx-card {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    transform: none !important;
+}
+
+/* Drei feste, klar getrennte Bereiche */
+.kbx-shell {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 176px 224px !important;
+    gap: 16px !important;
+    box-sizing: border-box !important;
+}
+
+/* Haupttastatur muss in ihrer Spalte bleiben */
+.kbx-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* Standardtasten minimal kompakter, damit wirklich jede Taste hineinpasst */
+.kbx-shell {
+    --u: 46px !important;
+    --h: 44px !important;
+    --g: 5px !important;
+}
+
+.kbx-key {
+    flex-basis: 46px !important;
+    width: 46px !important;
+    min-width: 46px !important;
+    height: 44px !important;
+}
+
+.kbx-key b {
+    font-size: 11px !important;
+}
+
+/* Funktionszeile */
+.kbx-gap {
+    width: 12px !important;
+    flex-basis: 12px !important;
+}
+.kbx-gap.g1 {
+    width: 18px !important;
+    flex-basis: 18px !important;
+}
+
+/* Sondertasten passend skaliert */
+.kbx-key.esc { width:52px !important; min-width:52px !important; flex-basis:52px !important; }
+.kbx-key.backspace { min-width:82px !important; flex:1 1 82px !important; }
+.kbx-key.tab { width:72px !important; min-width:72px !important; flex-basis:72px !important; }
+.kbx-key.caps { width:84px !important; min-width:84px !important; flex-basis:84px !important; }
+
+.kbx-key.enter-top {
+    min-width:84px !important;
+    flex:1 1 84px !important;
+}
+.kbx-key.enter-bottom {
+    width:64px !important;
+    min-width:64px !important;
+    flex-basis:64px !important;
+}
+.kbx-key.enter-top::after {
+    width:64px !important;
+}
+
+.kbx-key.shift-left { width:82px !important; min-width:82px !important; flex-basis:82px !important; }
+.kbx-key.shift-right { min-width:104px !important; flex:1 1 104px !important; }
+
+.kbx-key.ctrl { width:56px !important; min-width:56px !important; flex-basis:56px !important; }
+.kbx-key.start { width:54px !important; min-width:54px !important; flex-basis:54px !important; }
+.kbx-key.alt { width:58px !important; min-width:58px !important; flex-basis:58px !important; }
+.kbx-key.altgr { width:60px !important; min-width:60px !important; flex-basis:60px !important; }
+.kbx-key.fn { width:48px !important; min-width:48px !important; flex-basis:48px !important; }
+.kbx-key.assist { width:58px !important; min-width:58px !important; flex-basis:58px !important; }
+.kbx-key.space { min-width:270px !important; flex:1 1 270px !important; }
+
+/* Navigationsblock vollständig sichtbar */
+.kbx-nav {
+    width:176px !important;
+    min-width:176px !important;
+    max-width:176px !important;
+}
+.kbx-nav-top,
+.kbx-nav-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:5px !important;
+}
+.kbx-nav .kbx-key {
+    width:100% !important;
+    min-width:0 !important;
+}
+
+/* Pfeile vollständig sichtbar */
+.kbx-arrows {
+    grid-template-columns:repeat(3,46px) !important;
+    grid-template-rows:repeat(2,44px) !important;
+    gap:5px !important;
+}
+.kbx-key.arrow {
+    width:46px !important;
+    min-width:46px !important;
+    flex-basis:46px !important;
+}
+
+/* Numpad komplett sichtbar */
+.kbx-num {
+    width:224px !important;
+    min-width:224px !important;
+    max-width:224px !important;
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+    grid-template-rows:repeat(5,44px) !important;
+    gap:5px !important;
+}
+.kbx-num .kbx-key {
+    width:auto !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    height:44px !important;
+}
+
+/* Untere Fenster bleiben wie zuvor */
+.kbx-binds,
+.bind-sections,
+.keyboard-head {
+    width:min(1180px,100%) !important;
+    max-width:1180px !important;
+}
+
+/* Niemals horizontal scrollen */
+html,body,#app,.screen {
+    overflow-x:hidden !important;
+}
+
+/* Für 1080p / kleinere Breiten noch einmal leicht kompakter */
+@media (max-width: 1500px) {
+    .kbx-shell {
+        --u: 43px !important;
+        --h: 41px !important;
+        --g: 4px !important;
+        grid-template-columns:minmax(0,1fr) 164px 210px !important;
+        gap:12px !important;
+    }
+
+    .kbx-key {
+        width:43px !important;
+        min-width:43px !important;
+        flex-basis:43px !important;
+        height:41px !important;
+    }
+
+    .kbx-key.space { min-width:245px !important; flex-basis:245px !important; }
+
+    .kbx-nav {
+        width:164px !important;
+        min-width:164px !important;
+        max-width:164px !important;
+    }
+
+    .kbx-num {
+        width:210px !important;
+        min-width:210px !important;
+        max-width:210px !important;
+        grid-template-rows:repeat(5,41px) !important;
+    }
+
+    .kbx-num .kbx-key { height:41px !important; }
+
+    .kbx-arrows {
+        grid-template-columns:repeat(3,43px) !important;
+        grid-template-rows:repeat(2,41px) !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V25
+   - obere Tastatur nur 10% HOEHER
+   - Breite/Anordnung oben unveraendert
+   - untere Fenster exakt so breit wie Tastatur
+   - Schrift unten etwas groesser
+   ============================================================ */
+
+/* Obere Tastatur: NUR vertikal +10%, horizontal nichts ändern */
+.kbx-shell {
+    --h: 48.4px !important; /* 44px -> +10% */
+}
+.kbx-row {
+    min-height: 48.4px !important;
+}
+.kbx-key {
+    height: 48.4px !important;
+}
+.kbx-key b {
+    font-size: 12px !important;
+}
+
+/* Pfeilblock vertikal passend +10%, Breite bleibt unverändert */
+.kbx-arrows {
+    grid-template-rows: repeat(2, 48.4px) !important;
+}
+.kbx-key.arrow {
+    height: 48.4px !important;
+}
+
+/* Numpad vertikal +10%, Spalten/Breite unverändert */
+.kbx-num {
+    grid-template-rows: repeat(5, 48.4px) !important;
+}
+.kbx-num .kbx-key {
+    height: 48.4px !important;
+}
+
+/* Untere Fenster exakt auf die gleiche Gesamtbreite wie die obere Tastatur */
+.kbx-binds,
+.bind-sections {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+}
+
+/* Unten Schrift und Keycaps etwas größer */
+.kbx-binds .bind-card h3,
+.bind-sections .bind-card h3 {
+    font-size: 14px !important;
+}
+.kbx-binds .bind,
+.bind-sections .bind {
+    font-size: 15px !important;
+    min-height: 33px !important;
+}
+.kbx-binds .bind kbd,
+.bind-sections .bind kbd {
+    font-size: 13px !important;
+    min-width: 68px !important;
+    padding: 4px 9px !important;
+}
+
+/* Auf kleineren Breiten die obere Breite NICHT anfassen,
+   nur die 10% mehr Höhe beibehalten */
+@media (max-width: 1500px) {
+    .kbx-shell {
+        --h: 45.1px !important; /* 41px -> +10% */
+    }
+    .kbx-row {
+        min-height: 45.1px !important;
+    }
+    .kbx-key {
+        height: 45.1px !important;
+    }
+    .kbx-arrows {
+        grid-template-rows: repeat(2,45.1px) !important;
+    }
+    .kbx-key.arrow {
+        height:45.1px !important;
+    }
+    .kbx-num {
+        grid-template-rows:repeat(5,45.1px) !important;
+    }
+    .kbx-num .kbx-key {
+        height:45.1px !important;
+    }
+}
+
+
+/* ============================================================
+   ALPHA-Z V26
+   NUR untere Fensterbreite an Tastatur anpassen.
+   Tastatur oben und Schriftgroesse bleiben exakt unveraendert.
+   ============================================================ */
+
+/* Untere Erklaerungsfenster auf exakt dieselbe Gesamtbreite
+   wie das obere Tastaturfenster begrenzen. */
+.kbx-binds,
+.bind-sections {
+    width: min(1280px, 100%) !important;
+    max-width: 1280px !important;
+    box-sizing: border-box !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Keine Änderungen an Tastatur oder Schrift */

@@ -1,15 +1,15 @@
 -- bs_crafting client: skinning, foraging, wreck salvage, traps and crop props.
 
 local S = Crafting.Settings
-local function notify(kind, msg) TriggerEvent('bs:ui:notify', { type = kind, message = msg }) end
+local function notify(kind, msg, itemImage) TriggerEvent('bs:ui:notify', { type = kind, message = msg, itemImage = itemImage }) end
 local busy = false
 
 local function showItems(items)
     if #(items or {}) == 0 then return notify('info', L('nothing_useful')) end
-    for _, it in ipairs(items) do notify('success', ('+%d %s'):format(it.amount, it.label)); Wait(120) end
+    for _, it in ipairs(items) do notify('success', ('+%d %s'):format(it.amount, it.label), it.item); Wait(120) end
 end
 
--- start to kneel/work for the server's time to finish
+-- start -> kneel/work for the server's time -> finish
 local function timed(startCb, finishCb, label, opts, ...)
     if busy then return end
     busy = true
@@ -23,7 +23,9 @@ local function timed(startCb, finishCb, label, opts, ...)
     showItems(f.items)
 end
 
+--------------------------------------------------------------------------------
 -- Skinning
+--------------------------------------------------------------------------------
 
 -- Zombie corpses: bs_zombies adds this option next to "Search body" with args.zid.
 AddEventHandler('bs:crafting:skinZombie', function(payload)
@@ -54,13 +56,31 @@ AddEventHandler('bs:crafting:skinAnimal', function(payload)
     end)
 end)
 
+--------------------------------------------------------------------------------
 -- Foraging and salvage
+--------------------------------------------------------------------------------
+
+-- CodeWalker test: static GTA map bush (no usable FiveM entity handle).
+local TEST_BUSH = vector3(2512.44, 739.3343, 98.45906)
+local TEST_BUSH_ZONE = 'bs_crafting:codewalker_bush_med_03'
 
 AddEventHandler('bs:crafting:forage', function(payload)
-    local ent = payload and payload.entity
-    if not ent or not DoesEntityExist(ent) then return end
-    local c = GetEntityCoords(ent)
-    CreateThread(function() timed('crafting:forageStart', 'crafting:forageFinish', L('foraging'), { pose = 'kneel' }, c.x, c.y) end)
+    local c
+    local args = payload and payload.args
+    if args and args.codewalkerBush == true then
+        local ped = PlayerPedId()
+        if IsPedInAnyVehicle(ped, false) then return end
+        if #(GetEntityCoords(ped) - TEST_BUSH) > 3.5 then return end
+        c = TEST_BUSH
+    else
+        local ent = payload and payload.entity
+        if not ent or not DoesEntityExist(ent) then return end
+        c = GetEntityCoords(ent)
+    end
+    CreateThread(function()
+        timed('crafting:forageStart', 'crafting:forageFinish', L('foraging'),
+            { pose = 'kneel' }, c.x, c.y)
+    end)
 end)
 
 AddEventHandler('bs:crafting:salvage', function(payload)
@@ -76,6 +96,13 @@ CreateThread(function()
     exports.bs_interactions:AddModel(animalModels, {
         { label = L('skin_animal'), icon = 'hand', distance = 2.0, event = 'bs:crafting:skinAnimal', filters = { dead = true, onFoot = true } },
     })
+    -- Temporary coordinate-based test for ONE vanilla map bush from CodeWalker.
+    -- ResolveZones displays this even when the bush has no entity handle.
+    exports.bs_interactions:AddZone(TEST_BUSH_ZONE, TEST_BUSH, 2.5, {
+        { label = L('forage'), icon = 'hand', distance = 2.5,
+          event = 'bs:crafting:forage', args = { codewalkerBush = true },
+          filters = { onFoot = true } },
+    })
     exports.bs_interactions:AddModel(Crafting.ForageModels, {
         { label = L('forage'), icon = 'hand', distance = 2.5, event = 'bs:crafting:forage', filters = { onFoot = true } },
     })
@@ -84,7 +111,9 @@ CreateThread(function()
     })
 end)
 
+--------------------------------------------------------------------------------
 -- Traps
+--------------------------------------------------------------------------------
 
 local traps, props = {}, {}
 local myChar = nil
@@ -216,7 +245,9 @@ RegisterNetEvent('bs:crafting:alarm', function(x, y, z)
     PlaySoundFromCoord(-1, 'Beep_Red', x, y, z, 'DLC_HEIST_HACKING_SNAKE_SOUNDS', false, 60, false)
 end)
 
+--------------------------------------------------------------------------------
 -- Crops on farm plots
+--------------------------------------------------------------------------------
 
 local crops = {}   -- [id] = { obj, stage }
 
@@ -272,6 +303,9 @@ end)
 
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
+    if GetResourceState('bs_interactions') == 'started' then
+        exports.bs_interactions:RemoveZone(TEST_BUSH_ZONE)
+    end
     for _, obj in pairs(props) do if DoesEntityExist(obj) then DeleteEntity(obj) end end
     for _, c in pairs(crops) do if DoesEntityExist(c.obj) then DeleteEntity(c.obj) end end
 end)

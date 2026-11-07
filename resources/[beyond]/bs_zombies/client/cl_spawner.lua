@@ -60,11 +60,6 @@ local function aboveRoad(c, road)
     return c.z > road.z + 4.0 + d * 0.15
 end
 
-local function aboveLowerSurface(c)
-    local found, lower = GetGroundZFor_3dCoord(c.x, c.y, c.z - 3.0, false)
-    return found and lower and c.z - lower > 3.0
-end
-
 -- Somewhere a ped can stand near x,y: navmesh, then ground, then the road itself. Never a roof.
 -- Returns coords or nil plus the reason
 local function safeCoord(x, y, z)
@@ -75,14 +70,14 @@ local function safeCoord(x, y, z)
     for _, flags in ipairs({ 16, 0 }) do
         local found, c = GetSafeCoordForPed(x, y, baseZ, true, flags)
         if found and c and ((c.x - x) ^ 2 + (c.y - y) ^ 2) <= 30.0 * 30.0 then
-            if not aboveRoad(c, road) and not aboveLowerSurface(c) then return c end
+            if not aboveRoad(c, road) then return c end
             roofHit = true
         end
     end
     local found, gz = GetGroundZFor_3dCoord(x, y, baseZ + 50.0, false)
     if found and gz and gz > -100.0 then
         local c = vector3(x, y, gz + 0.15)
-        if not aboveRoad(c, road) and not aboveLowerSurface(c) then return c end
+        if not aboveRoad(c, road) then return c end
         roofHit = true
     end
     if road then return vector3(road.x, road.y, road.z + 0.15) end
@@ -470,8 +465,6 @@ CreateThread(function()
         -- Counts the whole ped pool, not just walkers: a client near 190 peds is in trouble whoever spawned them
         local ok, list = pcall(GetGamePool, 'CPed')
         local peds = (ok and type(list) == 'table') and #list or 0
-        -- Filler walkers (cl_filler.lua) give way to networked ones on their own, so they do not lower this budget
-        if Zed and Zed.FillerCount then peds = math.max(0, peds - Zed.FillerCount()) end
 
         TriggerServerEvent('bs:zs:tele', {
             fps = 1.0 / math.max(GetFrameTime(), 0.001),

@@ -1,4 +1,5 @@
--- bs_tutorial server: owns progress (bs_tutorial_progress), the private routing bucket while it plays
+-- bs_tutorial server. Owns progress (bs_tutorial_progress), the private routing bucket while it plays,
+-- the faction pick, the starter kit and the first mission reward. The client only asks.
 
 local S = Tutorial.Settings
 local Rows = {}          -- [charId] = progress row
@@ -195,20 +196,13 @@ BSB.RegisterCallback('tutorial:spawnState', function(src)
     local inFaction = GetResourceState('bs_factions') == 'started' and exports.bs_factions:GetFaction(src) or nil
     -- Faction chosen in the character creator: it is joined right after the first spawn, so no picker.
     local pl = exports.bs_core:GetPlayer(src)
-    -- Characters with more than 10 minutes played never get the picker, the offer or a tutorial bucket.
-    local row = q('SELECT `playtime` FROM `bs_characters` WHERE `id` = ? LIMIT 1', { cid })[1]
-    local played = (row and tonumber(row.playtime) or 0) + (pl and math.max(0, os.time() - (tonumber(pl.lastSavedAt or pl.loadedAt) or os.time())) or 0)
-    if played >= (S.veteranSeconds or 600) then
-        if r.needsPick or not r.offered then r.needsPick = false; r.offered = true; save(r) end
-        leaveBucket(src)
-        return { ok = true }
-    end
     local chosenAtCreation = pl and pl.metadata and type(pl.metadata.pendingFaction) == 'string'
     if r.needsPick and (inFaction or chosenAtCreation or not S.factionPicker or GetResourceState('bs_factions') ~= 'started') then
         r.needsPick = false; save(r)
     end
     if not r.needsPick and Active[src] and Active[src].kind == 'pick' then leaveBucket(src) end
-    -- Offered once per character, ever: the flag is stored before the client shows it, so a crash
+    -- Offered once per character, ever: the flag is stored before the client shows it, so a crash, relog or
+    -- closed NUI never brings it back.
     local offer = S.enabled and S.firstSpawnPrompt and not r.offered and not r.skipped and not r.completed and not r.mission and not r.missionClaimed and not r.needsPick
     if offer then r.offered = true; save(r); x('UPDATE `bs_tutorial_progress` SET `offered` = 1 WHERE `character_id` = ?', { r.cid }) end
     local out = { ok = true, offer = offer,
@@ -246,7 +240,7 @@ BSB.RegisterCallback('tutorial:pick', function(src, factionId)
     end
     TutorialLog(src, ('picked faction %s%s'):format(factionId, bonus and ' (smallest-faction bonus)' or ''))
 
-    -- Spawn goes to that faction's safezone.
+    -- First spawn goes to that faction's safezone.
     local sp = card.spawn
     local ped = GetPlayerPed(src)
     if ped and ped ~= 0 then SetEntityCoords(ped, sp.x, sp.y, sp.z, false, false, false, false) end
@@ -265,7 +259,7 @@ local function GetFactionSafe(src)
 end
 
 
--- Factions the creator may offer, with the safezone spawn of each.
+-- Factions the creator may offer, with the safezone spawn of each. Empty when the picker is off or bs_factions is down, so the creator hides its step and the in-game picker stays the fallback.
 exports('CreatorFactions', function()
     if not S.factionPicker or GetResourceState('bs_factions') ~= 'started' then return { factions = {} } end
     local data = pickData()
@@ -286,7 +280,7 @@ exports('CreatorFactionChosen', function(charId)
     return true
 end)
 
--- Spawn of a character that chose its faction at creation: join it
+-- First spawn of a character that chose its faction at creation: join it (the roster loads a moment after the spawn, so retry), grant the smallest-faction bonus once, then clear the marker.
 AddEventHandler('bs:hook:player:spawned', function(player)
     local src = type(player) == 'table' and tonumber(player.source)
     local id = type(player) == 'table' and type(player.metadata) == 'table' and player.metadata.pendingFaction
@@ -396,7 +390,7 @@ BSB.RegisterCallback('tutorial:chapterDone', function(src, id)
     return { ok = true, done = r.chapters, completed = r.completed, reward = reward }
 end)
 
--- Mission
+-- First mission
 
 local function pushMission(src, r)
     TriggerClientEvent('bs:tutorial:mission', src, r.mission, r.missionDone, r.missionClaimed)
@@ -488,7 +482,8 @@ CreateThread(function()
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci]])
     -- Columns from 039_tutorial_flags.sql, added here too for servers that skipped the migration.
     for col, def in pairs({ skipped = 'TINYINT(1) NOT NULL DEFAULT 0', mission_claimed = 'TINYINT(1) NOT NULL DEFAULT 0' }) do
-        -- SHOW COLUMNS, not information_schema: some MySQL users cannot read information_schema
+        -- SHOW COLUMNS, not information_schema: some MySQL users cannot read information_schema, which made this
+        -- think the column existed. Without mission_claimed every claim UPDATE failed and nothing was ever saved.
         local has = q(('SHOW COLUMNS FROM `bs_tutorial_progress` LIKE \'%s\''):format(col))[1]
         if not has then
             x(('ALTER TABLE `bs_tutorial_progress` ADD COLUMN `%s` %s'):format(col, def))
@@ -501,7 +496,7 @@ CreateThread(function()
     SchemaReady = true
 end)
 
--- Mission Log (bs_inventory). Generic provider contract: MissionLogList(src) to entries, MissionLogClaim(src, id) to { ok }.
+-- Mission Log (bs_inventory). Generic provider contract: MissionLogList(src) -> entries, MissionLogClaim(src, id) -> { ok }.
 exports('MissionLogList', function(src)
     local cid = charOf(src)
     local r = cid and fresh(cid)
@@ -538,7 +533,9 @@ exports('MissionLogClaim', function(src, id)
         if not r or not r.mission then return { ok = false } end
         if r.missionClaimed then return { ok = false, error = Lp(src, 'mis.already') } end
         if not r.missionDone then return { ok = false, error = Lp(src, 'mis.not_done') } end
-        -- Claimed flag is written on its own first and read back
+        -- Claimed flag is written on its own first and read back; the affected-rows count is not trusted
+        -- (it is not a plain number on every oxmysql build, which made a good write look like "already claimed").
+        -- The flag was read as 0 just above and Claiming[cid] blocks a second claim in flight, so no AND-guard here.
         local res = x('UPDATE `bs_tutorial_progress` SET `mission_claimed` = 1, `mission_done` = 1 WHERE `character_id` = ?', { cid })
         local chk = q('SELECT * FROM `bs_tutorial_progress` WHERE `character_id` = ? LIMIT 1', { cid })[1]
         if not chk or not flag(chk.mission_claimed) then
@@ -557,7 +554,8 @@ exports('MissionLogClaim', function(src, id)
     end)
     Claiming[cid] = nil
     if not okRun then print('^1[bs_tutorial]^7 claim error: ' .. tostring(out)) out = { ok = false } end
-    -- Safety net: a second failed press within a minute force-finishes the mission (same as /finishtutorial)
+    -- Safety net: a second failed press within a minute force-finishes the mission (same as /finishtutorial),
+    -- so a player can never be stuck with a tracker that will not go away.
     if not (out and out.ok) then
         local now = os.time()
         if StuckPress[cid] and now - StuckPress[cid] <= 60 then
@@ -614,7 +612,8 @@ RegisterCommand('tutorialstate', function(src)
 end, false)
 
 
--- Staff tools. finishtutorial [serverId]: marks the first mission done and claimed, no reward
+-- Staff tools. finishtutorial [serverId]: marks the first mission done and claimed, no reward, tracker gone.
+-- tutorialwipeall confirm: copies the table to bs_tutorial_progress_bak_<time>, then clears every row so all characters start fresh.
 local function staffOnly(src)
     if src == 0 then return true end
     if GetResourceState('bs_admin') ~= 'started' then return false end

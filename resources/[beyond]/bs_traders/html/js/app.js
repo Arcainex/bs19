@@ -49,7 +49,8 @@
         crate:   '<path d="M3 7h18v13H3zM3 7l2-4h14l2 4M12 7v13M8 11h1M15 11h1"/>'
     };
 
-    /* Longest/most specific matches first: 'ammo_rifle' must not be caught by a looser 'rifle' weapon rule */
+    /* Longest/most specific matches first: 'ammo_rifle' must not be caught by
+       a looser 'rifle' weapon rule, and 'repair_kit' must not read as 'kit'. */
     var CATEGORY_RULES = [
         [/^att_/,                                   'attach'],
         [/^ammo_/,                                  'ammo'],
@@ -75,6 +76,7 @@
     }
 
     // Use the shared bs_ui icon set (nui://bs_ui/html/js/icons.js) so items look the same as in the inventory.
+    // The local category icons below are the fallback when bs_ui is not running.
     function iconSvg(itemId) {
         if (typeof BSIcons !== 'undefined' && BSIcons && BSIcons.get) {
             try { return BSIcons.get(itemId); } catch (err) { /* fall through */ }
@@ -108,7 +110,8 @@
         var missionTab = document.querySelector('.tab[data-tab="missions"]');
         tradeTab.style.display = hasTrade ? '' : 'none';
         missionTab.style.display = hasMissions ? '' : 'none';
-        // A single-purpose NPC gets no tab strip at all - a row of one tab is furniture, not navigation.
+        // A single-purpose NPC gets no tab strip at all - a row of one tab is
+        // furniture, not navigation.
         document.getElementById('tabs').classList.toggle('hidden', !(hasTrade && hasMissions));
 
         if (hasMissions) {
@@ -390,40 +393,6 @@
             });
         });
         sync();
-        configureWeapon(e);
-    }
-
-
-    function configureWeapon(entry) {
-        var old=document.getElementById('dConfiguration');if(old)old.remove();
-        if(mode!=='buy'||!entry.configurable)return;
-        var panel=document.createElement('div');panel.id='dConfiguration';panel.style.cssText='padding:12px 0;border-top:1px solid var(--line);margin-top:12px';
-        var open=document.createElement('button');open.className='d-action';open.textContent='Configure this weapon';panel.appendChild(open);
-        var action=document.getElementById('dAction');action.parentNode.insertBefore(panel,action);
-        open.onclick=function(){
-            open.disabled=true;
-            post('weaponQuote',{item:entry.item,attachments:[]},function(quote){
-                if(!panel.isConnected)return;
-                if(!quote||!quote.ok){open.disabled=false;flash(quote&&quote.reason||'Configuration unavailable',true);return;}
-                panel.textContent='';var title=document.createElement('h4');title.textContent='New weapon & fitted parts';panel.appendChild(title);
-                var hint=document.createElement('p');hint.className='muted';hint.textContent='One new weapon. Parts come from this trader, with their own serials.';panel.appendChild(hint);
-                var groups={},selects=[],revision=0,total=quote.price;
-                quote.options.forEach(function(option){(groups[option.slot]||(groups[option.slot]=[])).push(option);});
-                Object.keys(groups).forEach(function(slot){
-                    var label=document.createElement('label');label.textContent=slot.replace(/_/g,' ');label.style.cssText='display:block;margin:10px 0 4px';panel.appendChild(label);
-                    var select=document.createElement('select');select.style.cssText='width:100%;padding:8px';var none=document.createElement('option');none.value='';none.textContent='Standard / no extra part';select.appendChild(none);
-                    groups[slot].forEach(function(part){var option=document.createElement('option');option.value=part.id;option.textContent=part.label+' + '+money(part.price)+(part.stock===undefined?'':' Â· '+part.stock+' left');option.disabled=part.stock===0;select.appendChild(option);});
-                    panel.appendChild(select);selects.push(select);
-                });
-                var price=document.createElement('p');price.style.cssText='margin:12px 0';panel.appendChild(price);
-                var buy=document.createElement('button');buy.className='d-action';buy.textContent='Purchase configured weapon';panel.appendChild(buy);
-                function ids(){return selects.map(function(s){return s.value;}).filter(Boolean);}
-                function showTotal(){price.textContent='Total: '+money(total);}
-                function quoteAgain(){var request=++revision;buy.disabled=true;post('weaponQuote',{item:entry.item,attachments:ids()},function(next){if(!panel.isConnected||request!==revision)return;if(!next||!next.ok){price.textContent=next&&next.reason||'Configuration unavailable';return;}total=next.price;showTotal();buy.disabled=false;});}
-                selects.forEach(function(select){select.onchange=quoteAgain;});showTotal();
-                buy.onclick=function(){buy.disabled=true;post('weaponBuy',{item:entry.item,attachments:ids(),price:total},function(result){if(result&&result.ok){flash('Configured weapon purchased');refresh();}else{flash(result&&result.reason||'Purchase failed',true);quoteAgain();}});};
-            });
-        };
     }
 
     function renderMissions(data) {
@@ -460,7 +429,8 @@
             node.querySelector('.mfill').style.width = pct + '%';
             node.querySelector('.mtext').textContent = m.progress + ' / ' + m.target;
 
-            // A mission not yet taken has no progress worth drawing - an empty bar reading 0/50 looks like a mission you
+            // A mission not yet taken has no progress worth drawing - an empty
+            // bar reading 0/50 looks like a mission you have started and failed.
             node.querySelector('.mprogress').classList.toggle(
                 'hidden', m.status === 'available' || m.status === 'cooldown');
 
@@ -522,7 +492,9 @@
         });
     }
 
-    // js/debug.js sets this while /traderdebug is open.
+    // js/debug.js sets this while /traderdebug is open. The two menus share one
+    // NUI page and both listen document-wide, so without this a debug-form
+    // Escape or click would also fire this menu's own close/tab handlers.
     function debugIsOpen() { return !!window.__bsNpcsDebugOpen; }
 
     document.addEventListener('click', function (e) {
@@ -562,12 +534,12 @@
         if (current) { renderTrade(current); }
     });
 
-    // Objective tracker: driven by pushTracker() in cl_main.lua, which sends the full list on every change.
+    // Objective tracker. Driven by pushTracker() in cl_main.lua, which sends the full list on every change. No state is kept here so it cannot disagree with the server.
 
     var tracker = document.getElementById('tracker');
     var tkList = document.getElementById('tkList');
 
-    // Rows are keyed by mission id and updated in place instead of rebuilt, so running animations survive.
+    // Rows are keyed by mission id and updated in place instead of rebuilt, so running animations survive. Animations fire on the change in count.
     var tkRows = {};   // [missionId] = { el, name, what, count, fill, done, prev, wasReady }
 
     function buildRow(m) {
@@ -595,7 +567,8 @@
         done.className = 'tkdone';
         done.textContent = t('ui.return_hand_in');
 
-        // The floating "+N": lives in the row so it can be positioned against it
+        // The floating "+N". Lives in the row so it can be positioned against
+        // it, and is only ever made visible for the length of one animation.
         var pop = document.createElement('div');
         pop.className = 'tkpop';
 
@@ -607,7 +580,8 @@
 
         tkList.appendChild(row);
 
-        // Let the enter animation run once, then take the class back off so a later re-order does not replay it.
+        // Let the enter animation run once, then take the class back off so a
+        // later re-order does not replay it.
         setTimeout(function () { row.classList.remove('tkenter'); }, 450);
 
         return { el: row, name: name, what: what, count: count,
@@ -657,7 +631,8 @@
             r.el.classList.toggle('ready', ready);
 
             if (gained) {
-                // The three beats of the same event: the row registers the hit, the number punches, and the amount floats off it.
+                // The three beats of the same event: the row registers the
+                // hit, the number punches, and the amount floats off it.
                 replay(r.el, 'tkhit');
                 replay(r.count, 'tkbump');
 
@@ -665,7 +640,8 @@
                 replay(r.pop, 'tkfloat');
             }
 
-            // Completion is its own, louder beat - and only on the frame it actually completes, never every push thereafter.
+            // Completion is its own, louder beat - and only on the frame it
+            // actually completes, never every push thereafter.
             if (ready && !r.wasReady && !first) { replay(r.el, 'tkcomplete'); }
 
             r.prev = progress;
@@ -702,7 +678,8 @@
         } else if (msg.action === 'close') {
             root.classList.add('hidden');
         } else if (msg.action === 'progress' && current) {
-            // A kill ticked a mission forward while the menu is open - refresh from the server rather than guessing the new state locally.
+            // A kill ticked a mission forward while the menu is open - refresh
+            // from the server rather than guessing the new state locally.
             refresh();
         }
     });

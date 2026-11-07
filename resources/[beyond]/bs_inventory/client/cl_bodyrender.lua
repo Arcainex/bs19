@@ -1,13 +1,9 @@
 -- bs_inventory - body status snapshots plus injury/drug/booster tracking for Field Medical.
+-- Snapshots: four frozen local clones (front, right, back, left) in the sky, lit, in front of a flat magenta wall, filmed by a scripted camera. The page grabs the game frame via the NUI game-view texture, keys out the magenta and shows the figures as images. Captured unarmed, once per session (REFRESH redoes it).
 
 local CFG = Inventory.BodyRender or {}
 
 local Body = { sig = nil, busy = false, stale = true }
-function Body.SetSource(ped)
-    if Body.source==ped then return end
-    Body.source=ped;Body.sig=nil;Body.stale=true
-    SendNUIMessage({action='bodyReset'})
-end
 local ANGLES = { 180.0, 270.0, 0.0, 90.0 }   -- front, right side, back, left side
 local POSE_DICT, POSE_ANIM = 'mp_character_creation@customise@male_a', 'loop'
 
@@ -24,9 +20,9 @@ local function available()
 end
 
 -- page answers 'bodyGrab' once it has read the frame
-local grabReply, captureId = nil, 0
+local grabReply = nil
 RegisterNUICallback('bodyGrabbed', function(data, cb)
-    if type(data)=='table' and data.id==captureId then grabReply=data end
+    grabReply = data or {}
     cb({ ok = true })
 end)
 
@@ -81,18 +77,15 @@ end
 
 -- Takes the four snapshots. Yields; call from a thread. Returns true when a screenshot was sent to the page.
 function Body.Capture()
-    if Body.cancelled or Body.busy or not available() then return false end
-    local ped = Body.source or PlayerPedId()
+    if Body.busy or not available() then return false end
+    local ped = PlayerPedId()
     if not DoesEntityExist(ped) or IsPedDeadOrDying(ped, true) then return false end
     Body.busy = true
-    captureId=captureId+1
-    local id=captureId
 
     RequestAnimDict(POSE_DICT)
     local t = GetGameTimer() + 500
     while not HasAnimDictLoaded(POSE_DICT) and GetGameTimer() < t do Wait(0) end
 
-    if Body.cancelled then Body.busy=false;return false end
     local at = GetEntityCoords(ped)
     local bx, by, bz = at.x, at.y, at.z + (CFG.height or 400.0)
     local D, fov = CFG.distance or 8.0, CFG.fov or 22.0
@@ -101,28 +94,14 @@ function Body.Capture()
     local spacing = CFG.spacing or (W / 4.0)
 
     local clones = {}
-    local cleaned=false
-    local cam,pedCam,drawing
-    local function cleanup()
-        if cleaned then return end
-        cleaned=true;drawing=false
-        if cam then
-            if pedCam and DoesCamExist(pedCam) then SetCamActive(pedCam,true)
-            else RenderScriptCams(false,false,0,true,true)end
-            DestroyCam(cam,false)
-        end
-        killAll(clones);RemoveAnimDict(POSE_DICT);Body.busy=false
-        Body.cleanup=nil
-    end
-    Body.cleanup=cleanup
     for i, h in ipairs(ANGLES) do
         local c = makeClone(ped, bx + (i - 2.5) * spacing, by, bz, h)
         if c then clones[#clones + 1] = c end
     end
     if #clones < 4 then killAll(clones); Body.busy = false; return false end
 
-    cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', bx, by - D, bz - 0.05, 0.0, 0.0, 0.0, fov, false, 0)
-    pedCam = BSInvPedCam and BSInvPedCam.active and BSInvPedCam.handle or nil
+    local cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', bx, by - D, bz - 0.05, 0.0, 0.0, 0.0, fov, false, 0)
+    local pedCam = BSInvPedCam and BSInvPedCam.active and BSInvPedCam.handle or nil
     SetCamActive(cam, true)
     if not pedCam then RenderScriptCams(true, false, 0, true, true) end
 
@@ -131,7 +110,7 @@ function Body.Capture()
     local A, B = vector3(bx - 20.0, back, bz - 12.0), vector3(bx + 20.0, back, bz - 12.0)
     local C, Dd = vector3(bx + 20.0, back, bz + 12.0), vector3(bx - 20.0, back, bz + 12.0)
 
-    drawing = true
+    local drawing = true
     CreateThread(function()
         while drawing do
             HideHudAndRadarThisFrame()
@@ -142,8 +121,7 @@ function Body.Capture()
         end
     end)
 
-    Wait(CFG.settleMs or 350)
-    if Body.cancelled or id~=captureId then cleanup();return false end
+    Wait(CFG.settleMs or 500)
 
     -- where each clone landed on screen (0..1)
     local marks = {}
@@ -157,28 +135,31 @@ function Body.Capture()
 
     local got, done, internal = nil, false, CFG.captureMode ~= 'screenshot-basic'
     local ok
-    grabReply=nil
     if internal then
         grabReply = nil
-        SendNUIMessage({ action = 'bodyGrab', marks = marks, id = id })
+        SendNUIMessage({ action = 'bodyGrab', marks = marks })
         ok = true
     else
         ok = pcall(function()
             exports['screenshot-basic']:requestScreenshot({ encoding = CFG.encoding or 'jpg', quality = CFG.quality or 0.95 }, function(data)
-                got=data
-                SendNUIMessage({action='bodyShots',image=data,marks=marks,id=id})
+                got, done = data, true
             end)
         end)
     end
-    local deadline = GetGameTimer() + math.max(5000,CFG.timeoutMs or 3000)
-    while ok and id==captureId and GetGameTimer() < deadline do
-        if grabReply then done = true end
+    local deadline = GetGameTimer() + (CFG.timeoutMs or 5000)
+    while ok and GetGameTimer() < deadline do
+        if internal and grabReply then done = true end
         if done then break end
         Wait(0)
     end
 
-    cleanup()
-    if id~=captureId then return false end
+    drawing = false
+    if pedCam and DoesCamExist(pedCam) then SetCamActive(pedCam, true)
+    else RenderScriptCams(false, false, 0, true, true) end
+    DestroyCam(cam, false)
+    killAll(clones)
+    RemoveAnimDict(POSE_DICT)
+    Body.busy = false
 
     if internal then
         if not (grabReply and grabReply.ok) then dbg('game view grab failed'); return false end
@@ -187,9 +168,10 @@ function Body.Capture()
         dbg('captured (internal)')
         return true
     end
-    if not (grabReply and grabReply.ok) or type(got) ~= 'string' or #got < 1000 then dbg('screenshot failed'); return false end
+    if type(got) ~= 'string' or #got < 1000 then dbg('screenshot failed'); return false end
     Body.sig = signature(ped)
     Body.stale = false
+    SendNUIMessage({ action = 'bodyShots', image = got, marks = marks })
     dbg('captured ' .. #got .. ' bytes')
     return true
 end
@@ -197,24 +179,17 @@ end
 function Body.NeedsCapture()
     if not available() then return false end
     -- once per session; the REFRESH button forces a new one
-    return Body.stale or Body.sig ~= signature(Body.source or PlayerPedId())
+    return Body.stale
 end
 
--- Called by cl_main when the page painted.
+-- Called by cl_main when the page painted. Covers the screen, shoots if needed, then hands over to the portrait camera. cb runs either way.
 function Body.Prepare(cb)
-    Body.cancelled=false
     SendNUIMessage({ action = 'bodyMode', available = available() })
     if not Body.NeedsCapture() then cb(); return end
     SendNUIMessage({ action = 'captureCover', on = true })
     Wait(60)   -- two painted frames of the cover before the camera moves
-    for attempt=1,2 do
-        if Body.cancelled then break end
-        local okc,captured=pcall(Body.Capture)
-        if okc and captured then break end
-        if Body.cleanup then Body.cleanup()end
-        Body.busy=false
-        if attempt<2 then Wait(250)end
-    end
+    local okc = pcall(Body.Capture)
+    if not okc then Body.busy = false end
     cb()
     SendNUIMessage({ action = 'captureCover', on = false })
 end
@@ -228,19 +203,15 @@ RegisterNUICallback('bodyRefresh', function(_, cb)
     end
     lastRefresh = GetGameTimer()
     cb({ ok = true, cooldown = cd })
-    Body.cancelled=false
     CreateThread(function()
         SendNUIMessage({ action = 'captureCover', on = true })
         Wait(60)
         pcall(Body.Capture)
-        if Body.cleanup then Body.cleanup()end
         Body.busy = false
         SendNUIMessage({ action = 'captureCover', on = false })
         SendNUIMessage({ action = 'bodyRefreshDone' })
     end)
 end)
-
-AddEventHandler('bs:hook:player:unloaded',function()Body.Stop();Body.sig=nil;Body.stale=true;SendNUIMessage({action='bodyReset'})end)
 
 -- Injuries per body zone (from the last damaged bone), cleared on heal
 
@@ -255,7 +226,7 @@ local injuries = {}
 local lastHp = nil
 
 local function pushInjuries()
-    SendNUIMessage({ action = 'injuries', zones = Body.source and {}or injuries })
+    SendNUIMessage({ action = 'injuries', zones = injuries })
 end
 
 local function clearInjuries()
@@ -290,7 +261,6 @@ AddEventHandler('bs:hook:player:died', clearInjuries)
 -- Active drugs and boosters, as chips
 
 local active = { drugs = {}, boosters = {} }
-AddEventHandler('bs:hook:player:unloaded',function()active.drugs,active.boosters={},{}end)
 
 local function pretty(id)
     return (tostring(id):gsub('_', ' '):upper())
@@ -308,7 +278,7 @@ local function pushActive()
             end
         end
     end
-    SendNUIMessage({ action = 'activeEffects', list = Body.source and {}or list })
+    SendNUIMessage({ action = 'activeEffects', list = list })
 end
 
 RegisterNetEvent('bs:drugs:apply', function(drug, _, duration)
@@ -346,18 +316,13 @@ end
 AddEventHandler('onResourceStop', function(resource)
     -- only if we died mid-capture; the portrait camera cleans up after itself
     if resource == GetCurrentResourceName() and Body.busy then
-        if Body.cleanup then Body.cleanup()end
+        RenderScriptCams(false, false, 0, true, true)
     end
 end)
 
 -- kept for compatibility with anything still calling them
 function Body.Start() end
-function Body.Stop()
-    Body.cancelled=true
-    captureId=captureId+1
-    grabReply=nil
-    if Body.cleanup then Body.cleanup()end
-end
+function Body.Stop() end
 function Body.Turn() end
 exports('BodyRenderActive', function() return false end)
 

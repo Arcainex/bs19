@@ -26,4 +26,4 @@ files {
     'locales/*.lua',
 }
 
-dependencies { 'bs_core' }
+dependencies { 'bs_core', 'bs_ui', 'bs_inventory' }

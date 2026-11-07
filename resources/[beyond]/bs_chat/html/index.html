@@ -9,12 +9,13 @@
 :root{
     --soot:#0a0a09; --ash:#14140f;
     --bone:#f0ebdd; --dust:#a8a293;
-    --amber:#e08c46; --good:#7fd4a2; --warn:#d9a441; --danger:#b4574a;
-    --mono:'Courier New','Consolas',monospace;
+    --amber:#4f8a51; --good:#7fd4a2; --warn:#d9a441; --danger:#b4574a;
+    --font:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --mono:var(--font);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:transparent;
-    font-family:var(--mono);color:var(--bone);user-select:none;
+    font-family:var(--font);color:var(--bone);user-select:none;
     -webkit-font-smoothing:antialiased}
 
 /* The whole thing sits bottom-left, above the HUD's own corner. */
@@ -38,7 +39,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;
     /* Blur and accent border only while the box is visible (0% = no box at all). */
     /* No backdrop-filter: NUI has no game pixels behind it, so CEF fills the blur with solid black. That was the black box. */
     padding:.35rem .55rem;
-    border-left:2px solid var(--chat-edge,rgba(224,140,70,.45));
+    border-left:2px solid var(--chat-edge,rgba(79,138,81,.45));
 }
 /* An empty log must not draw an empty box. */
 #log:empty{background:none!important;backdrop-filter:none!important;
@@ -49,7 +50,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;
 #log::-webkit-scrollbar-track{background:transparent}
 
 .line{
-    font-size:.86rem;line-height:1.35;letter-spacing:.01em;
+    font-size:1.1rem;line-height:1.35;letter-spacing:.01em;
     word-wrap:break-word;overflow-wrap:anywhere;
     /* No panel behind the text: a translucent panel takes up screen space, so a hard text shadow is used for contrast instead (same as the HUD). */
     text-shadow:0 1px 1px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.6);
@@ -66,7 +67,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;
 
 /* The eight colour codes the stock chat honours; existing code writes ^5[BS] and expects it to work. */
 .c1{color:#b4574a}.c2{color:#7fd4a2}.c3{color:#d9a441}.c4{color:#6fa8d0}
-.c5{color:#e08c46}.c6{color:#b07fd4}.c7{color:#f0ebdd}.c8{color:#8a4b3f}
+.c5{color:#4f8a51}.c6{color:#b07fd4}.c7{color:#f0ebdd}.c8{color:#8a4b3f}
 .c9{color:#a8a293}
 
 #bar{display:none;align-items:center;gap:.5rem;
@@ -79,7 +80,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;
 
 #bar .caret{color:var(--amber);font-weight:700}
 #entry{flex:1;background:transparent;border:0;outline:0;
-    font-family:var(--mono);font-size:.9rem;color:var(--bone);
+    font-family:var(--mono);font-size:1.15rem;color:var(--bone);
     caret-color:var(--amber);user-select:text}
 #entry::placeholder{color:var(--dust);opacity:.6}
 #hint{font-size:.68rem;color:var(--dust);letter-spacing:.08em;
@@ -90,8 +91,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:transparent;
     background:rgba(10,10,9,.94);border:1px solid rgba(240,235,221,.12);
     border-radius:2px;padding:.3rem 0;max-height:26vh;overflow-y:auto}
 #wrap.suggesting #sug{display:flex}
-.sug{padding:.2rem .6rem;font-size:.78rem;display:flex;gap:.5rem}
-.sug.on{background:rgba(224,140,70,.16)}
+.sug{padding:.3rem .6rem;font-size:1.0rem;display:flex;gap:.5rem}
+.sug.on{background:rgba(79,138,81,.16)}
 .sug .cmd{color:var(--amber)}
 .sug .desc{color:var(--dust);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
@@ -123,24 +124,12 @@ let suggestions = [];      /* { name, help, params } from chat:addSuggestion */
 let shown = [];            /* the filtered subset currently on screen */
 let sel = 0;
 
-// Resolves true when Lua answered, false when the call failed.
 const post = (name, data) =>
     fetch(`https://${GetParentResourceName()}/${name}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify(data || {})
-    }).then(r => r.ok).catch(() => false);
-
-// Script errors go to F8 through Lua, at most one every 3 s.
-let lastErrAt = 0;
-function reportError(msg) {
-    const now = Date.now();
-    if (now - lastErrAt < 3000) return;
-    lastErrAt = now;
-    post('error', { msg: String(msg).slice(0, 300) });
-}
-window.addEventListener('error', (e) => reportError(`${e.message} (${e.filename || ''}:${e.lineno || 0})`));
-window.addEventListener('unhandledrejection', (e) => reportError('promise: ' + (e.reason && e.reason.message || e.reason)));
+    }).catch(() => {});
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g,
     c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -175,12 +164,10 @@ function syncBackdrop(){
 
 function addLine(msg) {
     const el = document.createElement('div');
-    // channel becomes a class name: letters only, so odd input cannot break the markup
-    const channel = /^[a-z]{1,12}$/i.test(msg.channel || '') ? msg.channel : '';
-    el.className = 'line' + (channel ? ' ' + channel : '');
+    el.className = 'line' + (msg.channel ? ' ' + msg.channel : '');
 
-    if (Array.isArray(msg.colour) && msg.colour.length >= 3 && msg.colour.slice(0, 3).every(n => Number.isFinite(Number(n)))) {
-        el.style.color = `rgb(${msg.colour.slice(0, 3).map(n => Math.max(0, Math.min(255, Number(n)))).join(',')})`;
+    if (msg.colour) {
+        el.style.color = `rgb(${msg.colour[0]},${msg.colour[1]},${msg.colour[2]})`;
     }
 
     // `args` is the stock shape: first element is a tag, the rest is the body. A single element is a bare line with no tag.
@@ -190,7 +177,7 @@ function addLine(msg) {
     const vip = msg.vip && typeof msg.vip === 'object' ? msg.vip : null;
     const hexOk = (v) => /^#[0-9a-f]{6}$/i.test(v || '');
     if (vip && vip.badge) {
-        const c = hexOk(vip.badgeHex) ? vip.badgeHex : '#e08c46';
+        const c = hexOk(vip.badgeHex) ? vip.badgeHex : '#4f8a51';
         html += `<span class="vipb" style="color:${c};border-color:${c}">${colourise(String(vip.badge).replace(/\^/g, ''))}</span>`;
     }
     if (args.length > 1) {
@@ -200,11 +187,6 @@ function addLine(msg) {
     html += colourise(args.join(' '));
 
     el.innerHTML = html;
-    appendLine(el);
-}
-
-// Adds the line, trims the scrollback and starts its fade.
-function appendLine(el) {
     log.appendChild(el);
 
     while (log.children.length > 120) log.removeChild(log.firstChild);
@@ -234,21 +216,6 @@ function scheduleFade(el) {
 function applyMode() {
     for (const el of log.children) scheduleFade(el);
     syncBackdrop();
-}
-
-// A message that cannot be rendered still shows up, as plain text, instead of being lost or breaking the handler.
-function addLineSafe(msg) {
-    try {
-        addLine(msg);
-    } catch (err) {
-        reportError('message render failed: ' + (err && err.message));
-        try {
-            const el = document.createElement('div');
-            el.className = 'line';
-            el.textContent = (Array.isArray(msg.args) ? msg.args.join(' ') : String(msg.args ?? '')).slice(0, 600);
-            appendLine(el);
-        } catch (_) { /* nothing more to do for this line */ }
-    }
 }
 
 function setOpen(state) {
@@ -311,17 +278,6 @@ function renderSuggestions() {
 
 // input
 
-// Asks Lua to close and drop NUI focus. If Lua does not answer or the box is still open a moment later, close locally and ask again, so the player is never stuck behind an open box.
-function closeBox() {
-    post('close', {}).then(ok => { if (!ok) setTimeout(() => post('close', {}), 500); });
-    setTimeout(() => { if (open) { setOpen(false); post('close', {}); } }, 800);
-}
-
-// Escape works even when the click landed on the log and not on the input.
-document.addEventListener('keydown', (e) => {
-    if (open && e.key === 'Escape' && e.target !== entry) { e.preventDefault(); closeBox(); }
-});
-
 entry.addEventListener('input', () => { sel = 0; renderSuggestions(); });
 
 entry.addEventListener('keydown', (e) => {
@@ -333,13 +289,13 @@ entry.addEventListener('keydown', (e) => {
             if (history.length > 40) history.shift();
             post('send', { text });
         }
-        closeBox();
+        post('close', {});
         return;
     }
 
     if (e.key === 'Escape') {
         e.preventDefault();
-        closeBox();
+        post('close', {});
         return;
     }
 
@@ -377,20 +333,14 @@ entry.addEventListener('keydown', (e) => {
 // from Lua
 
 window.addEventListener('message', (event) => {
-    try {
-        handleMessage(event.data || {});
-    } catch (err) {
-        reportError('handler ' + (event.data && event.data.action) + ': ' + (err && err.message));
-    }
-});
+    const d = event.data || {};
 
-function handleMessage(d) {
-    if (d.action === 'reload')   { location.reload(); return; }
     if (d.action === 'visible')  { wrap.classList.toggle('suppressed', !d.visible); return; }
-    if (d.action === 'message')  return addLineSafe(d);
+    if (d.action === 'message')  return addLine(d);
     if (d.action === 'open')     return setOpen(true);
     if (d.action === 'close')    return setOpen(false);
     if (d.action === 'clear')    { log.innerHTML = ''; syncBackdrop(); return; }
+    if (d.action === 'reload')   { window.location.reload(); return; }
     if (d.action === 'config')   { fadeAfter = d.fadeAfter || fadeAfter; return; }
 
     // Two independent settings: `mode` decides whether lines linger, `backdrop` decides whether there is a panel behind them.
@@ -401,7 +351,7 @@ function handleMessage(d) {
             const op = Math.max(0, Math.min(100, Number(d.opacity))) / 100;
             wrap.style.setProperty('--chat-bg', `rgba(10,10,9,${op})`);
             wrap.style.setProperty('--chat-blur', op > 0 ? '3px' : '0px');
-            wrap.style.setProperty('--chat-edge', op > 0 ? 'rgba(224,140,70,.45)' : 'transparent');
+            wrap.style.setProperty('--chat-edge', op > 0 ? 'rgba(79,138,81,.45)' : 'transparent');
         }
         applyMode();
         syncBackdrop();
@@ -409,22 +359,38 @@ function handleMessage(d) {
     }
 
     if (d.action === 'suggestions') {
-        suggestions = Array.isArray(d.list) ? d.list.filter(s => s && typeof s.name === 'string') : [];
+        suggestions = Array.isArray(d.list) ? d.list : [];
         renderSuggestions();
     }
-}
+});
+
+// Keep the Lua watchdog informed that the NUI page is alive.
+// Without this heartbeat Lua assumes the page has stalled after 12 seconds and reloads it forever.
+setInterval(() => {
+    fetch(`https://${GetParentResourceName()}/alive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: '{}'
+    }).catch(() => {});
+}, 3000);
 
 // Tell Lua the listener is up (handshake), so config/style messages are not sent before it exists and dropped.
-// Retries every 500 ms until Lua answers, however long the client takes to load. After that the same loop is a heartbeat every 3 s: Lua reloads the page if it goes quiet.
+// The post swallows failures, so retry until Lua answers (six tries over about three seconds).
 (function announce() {
-    let ready = false;
-    const tick = async () => {
-        let ok = false;
-        try { ok = await post(ready ? 'alive' : 'ready', {}); } catch (_) { ok = false; }
-        if (ok) ready = true;
-        setTimeout(tick, ready ? 3000 : 500);
+    let tries = 0;
+    const ping = () => {
+        if (window.__bsChatReady || tries >= 6) return;
+        tries++;
+        fetch(`https://${GetParentResourceName()}/ready`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+            body: '{}'
+        })
+            .then(r => { if (r.ok) window.__bsChatReady = true; })
+            .catch(() => {})
+            .finally(() => { if (!window.__bsChatReady) setTimeout(ping, 500); });
     };
-    tick();
+    ping();
 })();
 </script>
 </body>

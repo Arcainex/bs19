@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="hidden">
+  <div class="shade"></div>
+  <main class="panel">
+    <header class="header">
+      <div>
+        <div class="brand"><span class="brandMark">AZ</span><span>ALPHA-Z</span></div>
+        <h1 id="title">UMKLEIDE</h1>
+        <p id="subtitle">Kleidung auswählen und anpassen</p>
+      </div>
+      <div id="modePill" class="modePill">SPIELER</div>
+    </header>
+
+    <section class="section categorySection">
+      <div class="sectionHead"><span>KATEGORIE</span><span id="categoryName" class="muted">Oberteil</span></div>
+      <div id="cats" class="cats"></div>
+    </section>
+
+    <section class="section controlsSection">
+      <div id="meta" class="meta hidden"></div>
+
+      <div class="controlBlock">
+        <div class="controlHead"><span>MODELL</span><span id="modelStatus" class="statusTag">AKTIV</span></div>
+        <div class="step">
+          <button class="arrow" data-k="d" data-v="-1">‹</button>
+          <div class="numberBox"><input id="drawable" type="number" min="0" step="1" value="0"><span id="drawableMax">/ 0</span></div>
+          <button class="arrow" data-k="d" data-v="1">›</button>
+        </div>
+      </div>
+
+      <div class="controlBlock">
+        <div class="controlHead"><span>TEXTUR / FARBE</span><span id="textureStatus" class="statusTag">AKTIV</span></div>
+        <div class="step">
+          <button class="arrow" data-k="t" data-v="-1">‹</button>
+          <div class="numberBox"><input id="texture" type="number" min="0" step="1" value="0"><span id="textureMax">/ 0</span></div>
+          <button class="arrow" data-k="t" data-v="1">›</button>
+        </div>
+      </div>
+
+      <div id="adminTools" class="admin hidden">
+        <button id="disable" class="danger">✕ MODELL DEAKTIVIEREN</button>
+        <button id="disableTexture" class="dangerSoft">✕ TEXTUR DEAKTIVIEREN</button>
+        <button id="favorite" class="favorite">☆ FAVORIT</button>
+      </div>
+
+      <div id="torsoPanel" class="torsoPanel hidden">
+        <div class="torsoTitleRow"><div><span class="miniTitle">FESTER TORSO / ARME</span><small>Component 3 automatisch an dieses Oberteil binden</small></div><span id="torsoStatus" class="torsoStatus">NICHT GESETZT</span></div>
+        <div class="torsoGrid">
+          <div>
+            <label>ARME / TORSO MODELL</label>
+            <div class="torsoStep"><button class="arrow torsoArrow" data-k="d" data-v="-1">‹</button><div class="numberBox"><input id="torsoDrawable" type="number" min="0" step="1" value="0"><span id="torsoDrawableMax">/ 0</span></div><button class="arrow torsoArrow" data-k="d" data-v="1">›</button></div>
+          </div>
+          <div>
+            <label>TEXTUR</label>
+            <div class="torsoStep"><button class="arrow torsoArrow" data-k="t" data-v="-1">‹</button><div class="numberBox"><input id="torsoTexture" type="number" min="0" step="1" value="0"><span id="torsoTextureMax">/ 0</span></div><button class="arrow torsoArrow" data-k="t" data-v="1">›</button></div>
+          </div>
+        </div>
+        <div class="torsoActions"><button id="saveTorso" class="torsoSave">TORSO FÜR DIESES OBERTEIL SPEICHERN</button><button id="clearTorso" class="torsoClear">ZUORDNUNG LÖSCHEN</button></div>
+      </div>
+
+      <div class="hint">ID direkt eingeben und mit Enter bestätigen.</div>
+      <div id="freeMoveHint" class="freeMoveHint"><b>ALT HALTEN</b><span>Charakter frei steuern</span><span>Kamera + Editor bleiben aktiv</span><span>H · Hände hoch</span><span>X · Animation abbrechen</span></div>
+    </section>
+
+    <section class="rotate">
+      <button id="left">↶ <span>LINKS DREHEN</span></button>
+      <button id="right"><span>RECHTS DREHEN</span> ↷</button>
+    </section>
+
+    <footer class="actions">
+      <button id="cancel" class="secondary">ABBRECHEN</button>
+      <button id="save" class="primary">SPEICHERN</button>
+    </footer>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

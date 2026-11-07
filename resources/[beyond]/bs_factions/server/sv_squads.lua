@@ -1,8 +1,9 @@
 -- bs_factions - server side squads: factions work like SCUM squads.
+-- Nobody joins a faction they did not create; you get in by creating one or by being invited by a member. The four config factions get an owner assigned by an admin.
 
 local RANKS = { owner = 3, officer = 2, member = 1 }
 
--- Forward declaration: `dissolve` is defined further down but FactionsDisband needs it earlier
+-- Forward declaration: `dissolve` is defined further down but FactionsDisband needs it earlier (a local used before its declaration is a nil global lookup).
 local dissolve
 
 --- [factionId] = { id, label, short, owner, createdBy, isConfig }
@@ -10,7 +11,7 @@ local registry = {}
 -- True only after the database-backed registry has loaded.
 local registryReady = false
 
--- [targetSrc] = { factionId, by, at } - pending invitation. Kept in memory so invites do not survive a restart.
+-- [targetSrc] = { factionId, by, at } - pending invitation. Kept in memory on purpose so invites do not survive a restart.
 local invites = {}
 local INVITE_SECONDS = 120
 
@@ -25,7 +26,7 @@ local function charIdOf(src)
     return player and player.charId or nil
 end
 
--- Resource restarts do not replay a player-loaded hook for every survivor.
+-- Resource restarts do not replay a player-loaded hook for every survivor. Every faction action calls this before reading membership, so the first click after a restart works instead of showing a false "not loaded" error.
 local function ensurePlayerState(src)
     local current = FactionStateOf and FactionStateOf(src)
     if current then return current end
@@ -46,9 +47,11 @@ local function nameOf(src)
     return GetPlayerName(src) or ('player ' .. tostring(src))
 end
 
+--------------------------------------------------------------------------------
 -- The register
+--------------------------------------------------------------------------------
 
--- Player factions are put into Factions.List at runtime with the same shape as config ones (empty unlock ladder)
+-- Player factions are put into Factions.List at runtime with the same shape as config ones (empty unlock ladder), so joining, reputation, status and client sync work on them unchanged.
 local function publish(row)
     registry[row.faction_id] = {
         id = row.faction_id,
@@ -77,7 +80,8 @@ CreateThread(function()
     while GetResourceState('oxmysql') ~= 'started' do Wait(500) end
     Wait(500)      -- let bs_core finish its migration pass
 
-    -- Repair a legacy database whose migration history was recorded before the registry table was introduced.
+    -- Repair a legacy database whose migration history was recorded before
+    -- the registry table was introduced. Safe on every later startup.
     exports.oxmysql:execute_async([[
         CREATE TABLE IF NOT EXISTS `bs_faction_registry` (
             `faction_id` VARCHAR(32) NOT NULL,
@@ -92,13 +96,16 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]], {})
 
-    -- A server whose core migration history predates faction ranks must still start cleanly.
+    -- A server whose core migration history predates faction ranks must still
+    -- start cleanly. Every role query depends on this column existing.
     exports.oxmysql:execute_async([[
         ALTER TABLE `bs_faction_members`
             ADD COLUMN IF NOT EXISTS `rank` VARCHAR(16) NOT NULL DEFAULT 'member' AFTER `faction_id`
     ]], {})
 
-    -- The config factions exist in the register too
+    -- The config factions exist in the register too, so "who owns this one"
+    -- has an answer for every faction rather than only for the new kind.
+    -- Move members/progress of renamed vanilla factions, drop removed ones. Safe to run every boot.
     local cols = exports.oxmysql:query_async([[
         SELECT TABLE_NAME FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'faction_id' AND TABLE_NAME LIKE 'bs\_faction\_%'
@@ -131,7 +138,7 @@ CreateThread(function()
         end
     end
 
-    -- Database startup is asynchronous, so retry the read instead of giving up if the table is not ready yet.
+    -- Database startup is asynchronous, so retry the read instead of giving up if the table is not ready yet. The menu reports "starting" during a brief boot.
     local rows, lastError
     for attempt = 1, 15 do
         local loaded, result = pcall(function()
@@ -164,7 +171,9 @@ CreateThread(function()
     print(('^2[BeyondSurvival]^7 (factions) %d faction(s) registered'):format(#rows))
 end)
 
+--------------------------------------------------------------------------------
 -- Rank
+--------------------------------------------------------------------------------
 
 local function rankOf(charId, factionId)
     if not charId or not factionId then return nil end
@@ -193,7 +202,7 @@ local function atLeast(rank, needed)
     return (RANKS[rank or ''] or 0) >= (RANKS[needed] or 99)
 end
 
--- The guard. sv_main.lua calls it before every join (callback, chat command, anything added later)
+-- The guard. sv_main.lua calls it before every join (callback, chat command, anything added later), so "nobody joins a faction they did not create" is enforced in one place.
 
 function FactionJoinGuard(src, factionId)
     local charId = charIdOf(src)
@@ -214,7 +223,9 @@ function FactionJoinGuard(src, factionId)
     return false, Lp(src, 'fac.must_be_invited')
 end
 
+--------------------------------------------------------------------------------
 -- Creating one
+--------------------------------------------------------------------------------
 
 local function slug(text)
     return (tostring(text or ''):lower():gsub('[^%a%d]', '')):sub(1, 24)
@@ -357,6 +368,7 @@ function FactionsKick(src, targetSrc)
         return { ok = false, error = Lp(src, 'fac.they_are_not_in_your_faction') }
     end
 
+    -- Nobody removes the owner, and an officer cannot remove another officer.
     local targetRank = rankOf(targetChar, state.factionId)
     if targetRank == 'owner' then return { ok = false, error = Lp(src, 'fac.that_is_the_owner') } end
     if targetRank == 'officer' and rankOf(charId, state.factionId) ~= 'owner' then
@@ -430,7 +442,7 @@ function FactionsRoster(src)
              members = out }
 end
 
--- Disbanding: owner only, player-made factions only (config factions are not deletable).
+-- Disbanding: owner only, player-made factions only (config factions are not deletable). Members are removed through the normal leave path so their reputation is banked.
 function FactionsDisband(src)
     local charId = charIdOf(src)
     local state = ensurePlayerState(src)
@@ -443,18 +455,19 @@ function FactionsDisband(src)
     if entry.isConfig then return { ok = false, error = Lp(src, 'fac.that_faction_is_not_yours_to_disband') } end
     if entry.owner ~= charId then return { ok = false, error = Lp(src, 'fac.only_the_owner_can_disband_it') } end
 
-    -- Shared by /fdisband and the abandonment sweep. Reputation rows are kept so rejoining a rebuilt faction resumes progress.
+    -- Shared by /fdisband and the abandonment sweep. Reputation rows are kept on purpose so rejoining a rebuilt faction resumes progress.
     local done, label = dissolve(state.factionId, 'the owner disbanded it')
     if not done then return { ok = false, error = Lp(src, 'fac.it_would_not_disband') } end
 
     return { ok = true, label = label }
 end
 
--- Abandoned owners: lore (config) factions stay fixed and an admin reassigns them.
+-- Abandoned owners: lore (config) factions stay fixed and an admin reassigns them. Player-made factions are disbanded when the owner's character is deleted or the owner has not played for a long time.
 
 local ABANDON_DAYS = 14
 
--- Turns members out and removes the faction.
+-- Turns members out and removes the faction. Shared by /fdisband and the sweep so there is one way a faction ends.
+-- English disband reasons (kept for logs) mapped to locale keys for the members' notice.
 local DISBAND_REASON = {
     ['the owner disbanded it'] = 'fac.why_owner',
     ['its founder is gone'] = 'fac.why_founder',
@@ -497,7 +510,7 @@ dissolve = function(factionId, reason)
     return true, label
 end
 
--- The sweep runs hourly with one cheap query for player-made factions whose owner is deleted or inactive for two weeks.
+-- The sweep runs hourly with one cheap query for player-made factions whose owner is deleted or inactive for two weeks. A missing owner row also counts as abandoned.
 CreateThread(function()
     while true do
         Wait(3600000)     -- an hour
@@ -554,7 +567,7 @@ function FactionsSetOwner(src, factionId, targetSrc)
     return { ok = true, label = entry.label, name = nameOf(tonumber(targetSrc)) }
 end
 
--- Callbacks are thin wrappers so menus and commands share one implementation.
+-- Callbacks are thin wrappers so menus and commands share one implementation. Staff management lives next to the registry; the admin UI is never trusted and every request is checked against the caller's ACE here.
 local function staff(src)
     return IsPlayerAceAllowed(src, 'bs.admin') or IsPlayerAceAllowed(src, 'bs.superadmin')
 end
@@ -621,7 +634,8 @@ end)
 
 AddEventHandler('playerDropped', function() invites[source] = nil end)
 
--- Commands: same operations as the menu, with a keyboard. The menu calls these too.
+-- Commands
+-- Same operations as the menu, with a keyboard. The menu calls these too.
 
 local function answer(src, result, good)
     notify(src, (result and result.ok) and 'success' or 'warn',
@@ -703,6 +717,7 @@ BSB.RegisterCommand('factionowner', 'bs.admin', 'Put a player in charge of a fac
     end)
 
 -- Everything the faction panel needs, in one call so the panel opens complete.
+-- The nearby list is computed here from real positions, so recruiting works by standing next to someone.
 
 local RECRUIT_RADIUS = 25.0
 
@@ -797,10 +812,8 @@ function FactionsPanel(src)
     return out
 end
 
-BSB.RegisterCallback('factions:panel', function(src) return FactionsPanel(src) end)
+-- factions:panel is owned by sv_service.lua (supports Civilians + secondary Mechaniker Werkstatt).
 
 -- Leaving from the menu. Uses the ordinary leave path.
-BSB.RegisterCallback('factions:leave2', function(src)
-    return FactionDoLeave(src)
-end)
+-- factions:leave2 is owned by sv_service.lua so Civilians stays permanent and workshop can be left.
 

@@ -4,14 +4,16 @@
 
 local state    = {}   -- [src] = { src, identifier, charId }
 local byIdent  = {}   -- [identifier] = state entry
-local members  = {}   -- [identifier] = { tier = id, exp = unix|nil } (all members, online or not)
+local members  = {}   -- [identifier] = { tier = id, exp = unix|nil }   (all members, online or not)
 local unlocked = {}   -- [identifier] = { [unlockId] = true }
 local prefs    = {}   -- [identifier] = table
-local looks    = {}
+local looks    = {}   -- [identifier] = { month = 'YYYY-MM'|nil, tickets = n }
 
 local db = exports.oxmysql
 
+--------------------------------------------------------------------------------
 -- Tables (also in bs_core/sql/025_vip_perks.sql)
+--------------------------------------------------------------------------------
 
 local ready = false
 
@@ -46,7 +48,9 @@ CreateThread(function()
     print(('^2[BeyondSurvival]^7 (vip) %d active member(s)'):format(#rows))
 end)
 
+--------------------------------------------------------------------------------
 -- Helpers
+--------------------------------------------------------------------------------
 
 local function notify(src, kind, message)
     TriggerClientEvent('bs:ui:notify', src, { type = kind, message = message, duration = 3600 })
@@ -55,6 +59,7 @@ end
 local function thisMonth() return os.date('%Y-%m') end
 
 local function tierOf(identifier)
+    -- VIP switched off by the owner: everybody gets the top tier
     if Vip.Disabled() then return Vip.Get(Vip.Order[#Vip.Order]) end
     local m = identifier and members[identifier]
     if not m then return nil end
@@ -84,7 +89,9 @@ local function prefsOf(identifier)
     return p
 end
 
+--------------------------------------------------------------------------------
 -- Preferences: what each key accepts and which perk unlocks it
+--------------------------------------------------------------------------------
 
 local function colourOk(level, v)
     if v == '' then return '' end
@@ -127,7 +134,9 @@ local function effectivePrefs(identifier)
     return out
 end
 
+--------------------------------------------------------------------------------
 -- Replication
+--------------------------------------------------------------------------------
 
 --- Public statebag read by bs_factions (tags, blips) and bs_ui (party HUD).
 local function pushBag(src)
@@ -181,7 +190,9 @@ local function refreshIdentifier(identifier)
     if entry then pushSync(entry.src) end
 end
 
+--------------------------------------------------------------------------------
 -- Loading / unloading
+--------------------------------------------------------------------------------
 
 local function loadAccount(identifier)
     local set = {}
@@ -253,7 +264,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Grant / revoke (server only)
+--------------------------------------------------------------------------------
 
 local function grantTierUnlocks(identifier, tierId)
     local tier = Vip.Get(tierId)
@@ -328,7 +341,9 @@ local function grantTicket(target, count)
 end
 exports('GrantAppearanceTicket', grantTicket)
 
+--------------------------------------------------------------------------------
 -- Reads (all non-yielding)
+--------------------------------------------------------------------------------
 
 exports('IsVIP', function(src) return tierOf(identOf(src)) ~= nil end)
 exports('GetTier', function(src) local t = tierOf(identOf(src)); return t and t.id or nil end)
@@ -462,7 +477,9 @@ exports('ListUnlocks', function(src)
     return out
 end)
 
+--------------------------------------------------------------------------------
 -- Client callbacks
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('vip:status', function(src)
     local s = state[src]
@@ -515,7 +532,9 @@ end)
 
 AddEventHandler('playerDropped', function() prefRate[source] = nil end)
 
+--------------------------------------------------------------------------------
 -- Commands
+--------------------------------------------------------------------------------
 
 local function isStaff(src) return src == 0 or IsPlayerAceAllowed(src, 'bs.superadmin') end
 
@@ -563,6 +582,7 @@ RegisterCommand('grantappearance', function(src, args)
     end
 end, false)
 
+-- F1 toggle: re-sync everyone when the owner flips VIP on/off
 local lastOff = Vip.Disabled()
 AddEventHandler('bs_config:changed:bs_vip', function()
     if Vip.Disabled() == lastOff then return end

@@ -1,4 +1,5 @@
 -- Optional camera comfort settings. Everything is off by default and saved per player (KVP).
+-- Smooth look: mouse look is read raw, low-passed, then applied to the gameplay camera.
 
 local KVP = 'bs_camera_v1'
 
@@ -23,7 +24,6 @@ local function load()
     end
 end
 load()
-if BSFieldViewModel then BSFieldViewModel.SetLookSmoothing(cfg.smooth,cfg.amount) end
 
 local function save() SetResourceKvp(KVP, json.encode(cfg)) end
 
@@ -55,9 +55,6 @@ local function firstPerson(ped)
     return GetFollowPedCamViewMode() == 4
 end
 
--- bs_bodycam owns the view while its mode is on.
-local function bodycam() return LocalPlayer.state.bsBodycam == true end
-
 local function releaseCam()
     if cam then
         RenderScriptCams(false, false, 0, true, false)
@@ -85,7 +82,8 @@ local function lookStep(ped, dt)
     -- Controller input is already analogue; leave it alone.
     if not IsInputDisabled(2) then vx, vy = 0.0, 0.0 return end
 
-    -- Yaw only: writing the gameplay pitch back fights the game's own pitch recentering (running, slopes, cars)
+    -- Yaw only. Writing the gameplay pitch back fights the game's own pitch recentering
+    -- (running, slopes, cars), which is what pulled the camera down. Pitch stays native.
     DisableControlAction(0, 1, true)
     local ix = GetDisabledControlNormal(0, 1)
     local iy = 0.0
@@ -170,13 +168,14 @@ CreateThread(function()
             -- NUI focus (inventory, chat) only pauses look smoothing; the FOV camera stays, so no zoom jump.
             local uiOpen = IsNuiFocused()
             local busy = IsPauseMenuActive() or IsPedDeadOrDying(ped, true)
-                or IsCinematicCamRendering() or firstPerson(ped) or bodycam()
+                or IsCinematicCamRendering() or firstPerson(ped)
             -- Another script owns the view (cutscene, inspect cam): step aside.
             local rc = GetRenderingCam()
             local foreign = rc ~= -1 and rc ~= cam and rc ~= VehCamHandle()
 
             if foreign and cam then
-                -- Another camera (inventory ped view) took over: drop ours without RenderScriptCams(false)
+                -- Another camera (inventory ped view) took over: drop ours without RenderScriptCams(false),
+                -- which would switch that camera off too.
                 SetCamActive(cam, false); DestroyCam(cam, false); cam, camRot, camPos = nil, nil, nil
             end
             if busy or foreign then
@@ -220,7 +219,6 @@ exports('SetCameraSetting', function(key, v)
     elseif key == 'camChase' then cfg.chase = v == true
     else return false end
     save()
-    if BSFieldViewModel then BSFieldViewModel.SetLookSmoothing(cfg.smooth,cfg.amount) end
     return true
 end)
 
@@ -278,7 +276,7 @@ do
             local lookBack = IsControlPressed(0, 79) or IsControlPressed(0, 26) or IsDisabledControlPressed(0, 26)
             local want = (cfg.smooth or cfg.chase) and veh ~= 0 and not IsNuiFocused() and not IsPauseMenuActive()
                 and GetFollowVehicleCamViewMode() ~= 4 and not IsPlayerFreeAiming(PlayerId())
-                and not lookBack and not IsPedDeadOrDying(ped, true) and not IsCinematicCamRendering() and not bodycam()
+                and not lookBack and not IsPedDeadOrDying(ped, true) and not IsCinematicCamRendering()
             local rc = GetRenderingCam()
             local foreign = rc ~= -1 and rc ~= vcam
             if foreign then want = false end
@@ -294,6 +292,7 @@ do
                 if dt <= 0.0 then dt = 0.001 end
 
                 -- Look input only drives our cam; steering controls are never touched.
+                -- Mouse-steer override held (106): leave the mouse to steering.
                 DisableControlAction(0, 1, true); DisableControlAction(0, 2, true)
                 local ix, iy = 0.0, 0.0
                 if not IsControlPressed(0, 106) then

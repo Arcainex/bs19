@@ -1,10 +1,10 @@
-// BeyondSurvival - resolution-adaptive NUI scaling shared by every [beyond] page.
+// BeyondSurvival - resolution-adaptive NUI scaling shared by every [beyond] page. Pages are laid out for 1920x1080; the whole <body> is scaled with a transform (not CSS zoom, so client coordinates stay in one pixel space).
 (function () {
     'use strict';
     if (window.BSScale) return;
-    var BASE_W = 1920, BASE_H = 1080, AUTO_MIN = 0.6, AUTO_MAX = 3, OV_MIN = 0.6, OV_MAX = 2.5;
+    var BASE_W = 1920, BASE_H = 1080, AUTO_MIN = 0.6, AUTO_MAX = 1.25, OV_MIN = 0.6, OV_MAX = 1.4;
     var root = document.documentElement;
-    var override = 0, scale = 0, safe = 0, listeners = [];
+    var override = 0, scale = 0, listeners = [];
 
     var css = 'html.bs-scaled{overflow:hidden!important}' +
         'html.bs-scaled body{position:fixed!important;left:0!important;top:0!important;margin:0!important;' +
@@ -26,8 +26,6 @@
         var n = override > 0 ? clamp(override, OV_MIN, OV_MAX) : auto();
         n = Math.round(n * 1000) / 1000;
         root.classList.add('bs-scaled');
-        root.style.setProperty('--ui-safe-x', ((window.innerWidth || BASE_W) * safe / 100 / n) + 'px');
-        root.style.setProperty('--ui-safe-y', ((window.innerHeight || BASE_H) * safe / 100 / n) + 'px');
         if (n === scale) return;
         scale = n;
         root.style.setProperty('--ui-scale', String(n));
@@ -39,8 +37,7 @@
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     var v = Number(d && d.scale) || 0;
-                    safe = clamp(Number(d && d.safe) || 0, 0, 8);
-                    override = v; apply();
+                    if (v !== override) { override = v; apply(); }
                 })
                 .catch(function () { /* bs_ui not running: stay on auto */ });
         } catch (e) { /* no fetch */ }
@@ -70,7 +67,7 @@
     window.addEventListener('resize', apply);
     window.addEventListener('message', function (e) {
         var d = e && e.data;
-        if (d && d.action === 'bsUiScale') { override = Number(d.scale) || 0; safe = clamp(Number(d.safe) || 0, 0, 8); apply(); }
+        if (d && d.action === 'bsUiScale') { override = Number(d.scale) || 0; apply(); }
     });
     poll();
     setInterval(poll, 4000);

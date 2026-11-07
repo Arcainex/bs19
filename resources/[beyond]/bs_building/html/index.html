@@ -1,68 +1,74 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <script src="nui://bs_ui/html/shared/window.js?v=20261015"></script>
 <script src="nui://bs_ui/html/js/i18n.js"></script>
-<link rel="stylesheet" href="nui://bs_ui/html/css/fonts.css">
-<link rel="stylesheet" href="style.css?v=20261027">
-<title>Building</title>
+<link rel="stylesheet" href="style.css?v=20261105v17">
+<title>ALPHA-Z – Bauen</title>
 </head>
 <body>
-<!-- Build wheel -->
+<div id="survivalOverlay" class="hidden" aria-live="polite">
+  <div class="survival-top"><span class="survival-dot"></span><span>ALPHA-Z</span><strong>BAUMODUS</strong></div>
+  <div class="survival-name" id="survivalName">Fundament</div>
+  <div class="survival-status" id="survivalStatus">Position wählen</div>
+  <div class="survival-mode" id="survivalMode">BAUMODUS AKTIV</div>
+  <div class="survival-divider"></div>
+  <div class="survival-controls">
+    <div class="survival-control"><kbd>E</kbd><span>Platzieren</span></div>
+    <div class="survival-control"><kbd>R</kbd><span>90° drehen</span></div>
+    <div class="survival-control"><kbd>Mausrad</kbd><span>5° drehen</span></div>
+    <div class="survival-control"><kbd>Shift + Mausrad</kbd><span>1° drehen</span></div>
+    <div id="survivalHeight" class="survival-control"><kbd>+ / −</kbd><span>Höhe <small id="survivalHeightRange">−1,00 bis +2,00 m</small></span><output id="survivalHeightValue">+0,00 m</output></div>
+    <div class="survival-control survival-toggle" id="survivalSnapRow"><kbd>X</kbd><span>Snapping</span><strong id="survivalSnapValue">EIN</strong></div>
+    <div class="survival-control survival-toggle" id="survivalWalkRow"><kbd>ALT</kbd><span>Walk-Modus</span><strong id="survivalWalkValue">AUS</strong></div>
+    <div class="survival-control"><kbd>ENTF</kbd><span>Vorschau zurücksetzen</span></div>
+    <div class="survival-control"><kbd>Rechtsklick / ESC</kbd><span>Zurück zum F2-Menü</span></div>
+  </div>
+</div>
+<div id="survivalCollision" class="hidden" role="dialog" aria-modal="true" aria-label="Kollision bestätigen">
+  <div class="collision-card"><div class="collision-eyebrow">BEYONDSURVIVAL · BAUMODUS</div>
+  <h2>Willst du das wirklich hier platzieren?</h2><p id="survivalCollisionText">Hier steht möglicherweise bereits etwas. Trotzdem platzieren?</p>
+  <div class="collision-actions"><button id="survivalCollisionCancel" type="button">Abbrechen</button><button id="survivalCollisionAccept" type="button">Ja, hier platzieren</button></div></div>
+</div>
 <div id="wheel" class="hidden">
     <div class="wheel-wrap">
         <svg id="ring" viewBox="-200 -200 400 400"></svg>
+        <button id="wheelPrev" class="wheel-page wheel-prev hidden" type="button" aria-label="Vorherige Seite">‹</button>
+        <button id="wheelNext" class="wheel-page wheel-next hidden" type="button" aria-label="Nächste Seite">›</button>
+        <div id="wheelPage" class="wheel-page-info hidden"></div>
         <div class="hub">
-            <div class="eyebrow" data-i18n="ui.eyebrow">FACTION BASE</div>
+            <div class="eyebrow">ALPHA-Z · BAUMENÜ</div>
             <div id="hubTitle" class="hub-title"></div>
-            <div id="hubTier" class="tier-chip hidden"></div>
             <div id="hubBlurb" class="hub-blurb"></div>
             <ul id="hubCost" class="cost"></ul>
             <div id="hubFoot" class="hub-foot"></div>
         </div>
     </div>
-    <div class="wheel-help"><span data-i18n="ui.wheel_help">Click a category, then a piece. Right click goes back, ESC closes.</span></div>
+    <aside id="wheelBrowser" class="wheel-browser hidden" aria-label="Bauteile suchen">
+        <div class="wheel-browser-head"><strong id="wheelBrowserTitle">BAUTEILE</strong><span id="wheelBrowserCount"></span></div>
+        <input id="wheelSearch" type="search" maxlength="80" spellcheck="false" placeholder="Bauteil suchen …" aria-label="Bauteil suchen">
+        <div id="wheelList" class="wheel-browser-list"></div>
+        <div class="wheel-browser-footer">Mausrad scrollen · Klick auswählen</div>
+    </aside>
+    <aside id="wheelPreview" class="wheel-preview" aria-label="Rotierende 3D-Vorschau">
+        <div class="wheel-preview-head"><span class="preview-dot"></span><strong>BAUTEILVORSCHAU</strong><span class="preview-badge">3D</span></div>
+        <div class="wheel-preview-stage"><div class="wheel-preview-grid"></div><img id="wheelPreviewImage" alt="Langsam rotierende 3D-Modellvorschau" decoding="async" draggable="false" hidden></div>
+        <div class="wheel-preview-info"><strong id="wheelPreviewTitle">3D-Vorschau</strong><span id="wheelPreviewDims"></span><small id="wheelPreviewState">Bauteil auswählen, um es anzusehen</small></div>
+    </aside>
+    <div class="wheel-help"><span>Links Suche & Liste · Mitte Radialmenü · Rechts 3D-Vorschau · Rechtsklick zurück · ESC schließen</span></div>
 </div>
 
-<!-- Bottom bar -->
-<div id="bar" class="hidden">
-    <div id="barCats" class="bar-cats"></div>
-    <div id="barItems" class="bar-items"></div>
-    <div class="bar-help"><span>HOME: inspect selected model · /buildbarscale 0.75–1.35</span><br><b>&larr; &rarr;</b> <span data-i18n="ui.bar_items">piece</span> <b>&uarr; &darr;</b> <span data-i18n="ui.bar_cats">category</span> <b>RMB</b> <span data-i18n="ui.bar_close">close</span></div>
-</div>
-
-<!-- Catalogue -->
-<div id="cat" class="hidden">
-    <div class="cat-panel">
-        <header>
-            <div><div class="eyebrow" data-i18n="ui.eyebrow">FACTION BASE</div><h1 data-i18n="ui.catalogue">Catalogue</h1></div>
-            <div id="catCount" class="pill"></div>
-            <button id="previewReturn" class="go" title="Return to placement bar">WORKSHOP</button>
-            <button id="catClose" class="x">&times;</button>
-        </header>
-        <div class="cat-search"><input id="catSearch" type="text" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder:ui.search"></div>
-        <div id="catTabs" class="cat-tabs"></div>
-        <div id="catList" class="cat-list"></div>
-    </div>
-    <div id="catInfo" class="cat-info hidden">
-        <div class="eyebrow" id="ciCat"></div>
-        <h2 id="ciName"></h2>
-        <div id="ciTier" class="tier-row"></div>
-        <p id="ciBlurb" class="muted"></p>
-        <div class="ci-hp"><span data-i18n="ui.health">Health</span> <b id="ciHp"></b></div>
-        <ul id="ciCost" class="cost"></ul>
-        <div id="ciNote" class="ci-note"></div>
-        <button id="ciPlace" class="go" data-i18n="ui.place">PLACE</button>
-    </div>
-</div>
-
-<!-- Placement hint -->
 <div id="hint" class="hidden">
-    <div class="hint-title"><span id="hintTitle"></span> <span id="hintTier" class="tier-chip"></span></div>
+    <div class="hint-title" id="hintTitle"></div>
     <div class="hint-state" id="hintState"></div>
     <ul class="cost hint-cost" id="hintCost"></ul>
-    <div class="keys" id="hintKeys"></div>
+    <div class="keys">
+        <span><b>LMB</b> <i data-i18n="ui.k_place">place</i></span>
+        <span><b>WHEEL</b> <i data-i18n="ui.k_rotate">rotate</i></span>
+        <span><b>SHIFT</b> <i data-i18n="ui.k_snap">snap</i> <em id="hintSnap"></em></span>
+        <span><b>RMB</b> <i data-i18n="ui.k_cancel">cancel</i></span>
+    </div>
 </div>
 
 <div id="keypad" class="hidden">
@@ -80,47 +86,8 @@
 <div id="inspect" class="hidden">
     <div class="eyebrow" data-i18n="ui.inspect">INSPECT</div>
     <div id="inTitle" class="hub-title"></div>
-    <div id="inTier" class="tier-chip hidden"></div>
-    <div class="bar-hp"><div id="inBar"></div></div>
+    <div class="bar"><div id="inBar"></div></div>
     <div id="inBody" class="in-body"></div>
-</div>
-
-<!-- Generator -->
-<div id="gen" class="hidden">
-    <header>
-        <div><div class="eyebrow" data-i18n="ui.generator">GENERATOR</div><h1 id="gnTitle"></h1></div>
-        <div id="gnState" class="pill"></div>
-        <button id="gnClose" class="x">&times;</button>
-    </header>
-    <div class="gn-body">
-        <div class="gn-gauge">
-            <div class="gn-label"><span data-i18n="ui.fuel">Fuel</span><b id="gnFuelTxt"></b></div>
-            <div class="gn-tank"><div id="gnFuel"></div></div>
-            <div class="gn-sub muted" id="gnBurn"></div>
-        </div>
-        <div class="gn-load">
-            <div class="gn-label"><span data-i18n="ui.load">Load</span><b id="gnLoadTxt"></b></div>
-            <div class="gn-tank load"><div id="gnLoad"></div></div>
-            <div class="gn-sub muted" id="gnMode"></div>
-        </div>
-        <div class="gn-slots">
-            <div class="gn-slot-title" data-i18n="ui.gen_slots">SLOTS</div>
-            <div id="gnSlots" class="gn-slot-row"></div>
-        </div>
-        <div class="gn-btns">
-            <button id="gnToggle" class="go"></button>
-            <button id="gnRefuel" data-i18n="ui.gen_refuel">REFUEL</button>
-        </div>
-        <div id="gnMsg" class="vd-msg"></div>
-    </div>
-</div>
-
-<!-- Pour game -->
-<div id="pour" class="hidden">
-    <div class="eyebrow" data-i18n="ui.pour">POURING</div>
-    <div class="pour-track"><div id="pourZone" class="pour-zone"></div><div id="pourNeedle" class="pour-needle"></div></div>
-    <div class="pour-help"><b>SPACE</b> <span data-i18n="ui.pour_help">pour when the needle is in the green</span></div>
-    <div id="pourDots" class="pour-dots"></div>
 </div>
 
 <div id="vend" class="hidden">
@@ -152,6 +119,9 @@
     </div>
 </div>
 
-<script src="app.js?v=20261025a"></script>
+<div id="studioPointer" style="display:none;position:fixed;inset:0;z-index:999999;cursor:default;background:transparent;user-select:none"></div>
+<script src="studio_pointer.js"></script>
+<script src="preview.js?v=20261105v17"></script>
+<script src="app.js?v=20261105v17"></script>
 </body>
 </html>

@@ -1,11 +1,14 @@
 -- bs_inventory - your character in the bag screen.
+-- The NUI cannot draw a ped, so the ped stays in the world, a scripted camera points at it and the page leaves a hole (`.pedstage` in style.css). The camera is offset so the ped lands on the left third where the layout has room; the CSS and camera must agree.
+-- bs_multichar/client/cl_scene.lua does the same for the creator, but with a separate preview ped; this one shows the ped you actually play.
+-- Must not move or freeze the player, and every exit path destroys the camera (a stuck scripted camera needs a relog); the resource stop handler destroys it again.
 
 local Cam = {
     handle = nil,
     active = false,
 }
 
--- Where the character stands on screen. `side` shifts the camera along its right vector
+-- Where the character stands on screen. `side` shifts the camera along its right vector, sliding the ped across the frame without turning it. Positive composes the ped in the right-side portrait column. Tuned for 16:9; on wider screens the ped drifts slightly further from center.
 local VIEW = {
     -- A head-to-feet portrait needs distance, not a larger FOV: a wide lens distorts the clothes.
     distance = 3.55,
@@ -36,10 +39,10 @@ end
 
 Cam.Destroy = destroy
 
-function Cam.Start(subject)
+function Cam.Start()
     if Cam.active then return end
 
-    local ped = subject or PlayerPedId()
+    local ped = PlayerPedId()
     if not ped or ped == 0 or not DoesEntityExist(ped) then return end
     if IsPedDeadOrDying(ped, true) then return end
 
@@ -93,12 +96,11 @@ function Cam.Start(subject)
     SetCamFarDof(Cam.handle, math.max(3.20, view.distance + (view.far or 0) * 0.5))
     SetCamDofStrength(Cam.handle, 0.85)
 
-    -- Add a light on the ped; at night a portrait without its own light is a silhouette.
+    -- Add a light on the ped; at night a portrait without its own light is a silhouette. The modifier is cleared on every exit path (see destroy()).
 
     -- Shallow camera DOF keeps the survivor sharp. A global timecycle blur would soften both, so it is omitted.
 
 
-    Cam.subject=ped
     Cam.active = true
 
     -- HiDof is a this-frame flag, so re-assert it every frame while the camera lives. The loop ends itself when the camera goes.
@@ -110,11 +112,11 @@ function Cam.Start(subject)
     end)
 end
 
--- Turning on the spot to see the back of the outfit.
+-- Turning on the spot to see the back of the outfit. Dragging the portrait sends an angle; the ped turns, not the camera, so the background does not spin.
 function Cam.Turn(delta)
     if not Cam.active then return end
 
-    local ped = Cam.subject or PlayerPedId()
+    local ped = PlayerPedId()
     if not ped or ped == 0 then return end
     -- seated peds can not turn; leave the car alone
     if GetVehiclePedIsIn(ped, false) ~= 0 then return end

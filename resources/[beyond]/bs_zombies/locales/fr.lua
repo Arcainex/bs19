@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Zone sûre',
     ['zed.search_body'] = 'Fouiller le corps',
     ['zed.skin'] = 'Dépecer le corps',
-    ['zed.takedown_opt'] = 'Éliminer',
+    ['zed.take_down'] = '[E]  L\'ABATTRE',
     ['zed.they_here'] = 'Ils sont là.',
     ['zed.unknown_opt'] = 'Option inconnue.',
     ['zed.vip_colours'] = 'Les couleurs perso sont un avantage VIP.',

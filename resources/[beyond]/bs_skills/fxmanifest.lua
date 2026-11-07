@@ -14,6 +14,7 @@ shared_scripts {
     -- After config_skills.lua, which owns the `Skills` table (`Skills = {}`). Loading config_abilities.lua first would lose its values and fall back to defaults silently.
     'config/config_abilities.lua',
     'config/config_recoil.lua',
+    'config/config_player_damage.lua',
     'shared/sh_skills.lua',
 }
 
@@ -23,7 +24,7 @@ client_scripts {
     'client/cl_dodge.lua',
     'client/cl_sway.lua',
     'client/cl_recoil.lua',
-    -- Last: cl_skilldebug.lua registers /skilltest, which reports on BS_SkillsDebug published by the files above.
+    -- Last: cl_skilldebug.lua registers /skilltest, which reports on BS_SkillsDebug published by the files above. Safe to delete first if trimming.
     'client/cl_skilldebug.lua',
 }
 

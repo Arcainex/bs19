@@ -145,3 +145,24 @@ command('tpc', function(src, _, raw)
     local r = A.run(src, 'tpCoords', { x = n[1], y = n[2], z = n[3] })
     result(src, r, T(src, 'admin.c.tpc_done', { c = r.note or '' }))
 end)
+
+-- /fullheal [me|id] - clear all medical conditions and restore full health.
+-- Uses the existing admin permission check in command().
+command('fullheal', function(src, args)
+    local target = who(src, args[1])
+    if not target then
+        return reply(src, false, 'Usage: /fullheal [me|server ID]')
+    end
+    if GetResourceState('bs_medical') ~= 'started' then
+        return reply(src, false, 'bs_medical is not running')
+    end
+
+    local r = A.run(src, 'heal', { target = target })
+    if not r or not r.ok then
+        return reply(src, false, (r and r.error) or 'Full heal failed')
+    end
+    reply(src, true, ('Full heal (health, conditions, hunger, thirst, infection) applied to %s'):format(GetPlayerName(target) or tostring(target)))
+    if target ~= src then
+        reply(target, true, 'An admin has fully healed you')
+    end
+end)

@@ -1,4 +1,4 @@
-/* BeyondSurvival - bs_ui personal screen filter. One full-screen layer under the other UI. */
+/* BeyondSurvival - bs_ui personal screen filter. One full-screen layer under the other UI. It can darken, tint and texture but not desaturate (the timecycle does that, see UI.Filters in config_ui.lua). */
 
 #filter {
     position: fixed; inset: 0;
@@ -24,7 +24,7 @@
     opacity: 0;
 }
 
-/* Film grain: an inline SVG feTurbulence tile */
+/* Film grain: an inline SVG feTurbulence tile, drawn larger than the viewport and moved by a stepped animation (static noise looks like a dirty screen). */
 #filter .filter__grain {
     inset: -150%;
     width: 400%; height: 400%;

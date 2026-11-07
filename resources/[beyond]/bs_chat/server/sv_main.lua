@@ -1,11 +1,11 @@
--- BeyondSurvival - bs_chat server: sends player speech to the right players.
+-- BeyondSurvival - bs_chat server: sends player speech to the right players. Commands never reach this file (the client splits them off), so the server only handles what a client must not be trusted with.
 
 local S = (Chat and Chat.Settings) or {}
 
 --- [src] = { window = os.time(), n = 0 }
 local rate = {}
 
--- The name comes from the character, not the client.
+-- The name comes from the character, not the client. Falls back to the connection name when no character is loaded, so messages stay readable.
 local function speakerName(src)
     if GetResourceState('bs_core') == 'started' then
         local ok, player = pcall(function() return exports.bs_core:GetPlayer(src) end)
@@ -27,7 +27,7 @@ local function allowed(src)
     return bucket.n <= (S.rateLimit or 12)
 end
 
--- Chat is global by default. Proximity is implemented but off (see config_chat.lua).
+-- Chat is global by default. Proximity is implemented but off (see config_chat.lua). It measures ped to ped and always includes the speaker.
 local function audienceFor(src)
     local prox = S.proximity
     if not prox or not prox.enabled then return -1 end
@@ -62,7 +62,7 @@ RegisterNetEvent('bs:chat:say', function(text)
     text = text:gsub('^%s+', ''):gsub('%s+$', '')
     if text == '' then return end
 
-    -- Strip ^1..^9 colour codes from player speech so players cannot paint text or imitate system and staff lines.
+    -- Strip ^1..^9 colour codes from player speech so players cannot paint text or imitate system and staff lines. Server messages keep their codes.
     text = text:gsub('%^[0-9r]', '')
     text = text:sub(1, S.maxLength or 220)
     if text == '' then return end

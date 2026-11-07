@@ -1,10 +1,12 @@
--- bs_extraction - server side.
+-- bs_extraction - server side. Client reports are claims, not facts: zone membership (speed checked), player kills (checked against server-tracked zones) and extraction (re-measured against the player's position at call time).
 
 local state         = {}   -- [src] = { inZone, lastPos, lastUpdate, rogueUntil, bounty }
 local pairKills     = {}   -- ['lowSrc:highSrc'] = os.time of last accepted kill either way
 local killCooldown  = {}   -- ['attacker>victim'] = os.time of last paid kill
 
+--------------------------------------------------------------------------------
 -- Helpers
+--------------------------------------------------------------------------------
 
 local function notify(src, kind, message)
     TriggerClientEvent('bs:ui:notify', src, { type = kind, message = message, duration = 3800 })
@@ -19,7 +21,9 @@ local function setInRaid(src, zoneId)
     Player(src).state:set('bsInRaid', zoneId or false, true)
 end
 
+--------------------------------------------------------------------------------
 -- Loading / unloading
+--------------------------------------------------------------------------------
 
 AddEventHandler('bs:hook:player:loaded', function(player)
     if type(player) ~= 'table' or not player.source then return end
@@ -71,7 +75,7 @@ RegisterNetEvent('bs:extraction:zoneUpdate', function(zoneId, x, y, z)
     end
 end)
 
--- Player kills inside a zone (rogue flagging and bounty payout).
+-- Player kills inside a zone (rogue flagging and bounty payout). Reported by the victim's client, naming the attacker. Zones come from server-tracked `state[].inZone`, never from the client.
 
 RegisterNetEvent('bs:extraction:playerKilled', function(attackerSrc)
     local victimSrc = source
@@ -79,7 +83,7 @@ RegisterNetEvent('bs:extraction:playerKilled', function(attackerSrc)
     if not attackerSrc or attackerSrc == victimSrc then return end
     if not GetPlayerName(attackerSrc) then return end
 
-    -- The reported victim's ped must really be dead, otherwise two players could trade fake death claims for bounties.
+    -- The reported victim's ped must really be dead, otherwise two players could trade fake death claims for bounties. IsEntityDead is client-only, so this uses GetEntityHealth: the dead floor is 100, not 0. The dead flag is used first when a guarded call finds it.
     local victimPed = GetPlayerPed(victimSrc)
     if not victimPed or victimPed == 0 then return end
 
@@ -100,7 +104,7 @@ RegisterNetEvent('bs:extraction:playerKilled', function(attackerSrc)
     if not victim or not attacker then return end
     if not victim.inZone or victim.inZone ~= attacker.inZone then return end
 
-    -- The victim names the killer, so check the killer is alive and close enough
+    -- The victim names the killer, so check the killer is alive and close enough, to stop colluders passing bounties back and forth off one real death.
     local attackerPed = GetPlayerPed(attackerSrc)
     if not attackerPed or attackerPed == 0 then return end
     if GetEntityHealth(attackerPed) <= 100 then return end
@@ -173,7 +177,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Extraction
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('extraction:complete', function(src, zoneId, pointId)
     local s = state[src]
@@ -210,7 +216,9 @@ BSB.RegisterCallback('extraction:complete', function(src, zoneId, pointId)
     return { ok = true, money = zone.rewardMoney or 0, xp = zone.rewardXp or 0, label = point.label }
 end)
 
+--------------------------------------------------------------------------------
 -- Plain-data reads
+--------------------------------------------------------------------------------
 
 exports('IsInZone', function(src)
     local s = state[tonumber(src)]
@@ -227,7 +235,9 @@ exports('GetBounty', function(src)
     return s and s.bounty or 0
 end)
 
+--------------------------------------------------------------------------------
 -- Staff
+--------------------------------------------------------------------------------
 
 RegisterCommand('zonestatus', function(src)
     if src ~= 0 and not IsPlayerAceAllowed(src, 'bs.admin') then return end

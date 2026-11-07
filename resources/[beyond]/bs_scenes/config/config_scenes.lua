@@ -26,7 +26,7 @@ Scenes.Settings = {
     streamRadius    = 300.0,
 }
 
--- Kinds. Colour and shape carry the meaning; `prefix` is drawn before the text.
+-- Note kinds. Colour and shape carry the meaning; `prefix` is drawn before the text.
 Scenes.Kinds = {
     note = {
         label = 'Note', icon = 'dot',

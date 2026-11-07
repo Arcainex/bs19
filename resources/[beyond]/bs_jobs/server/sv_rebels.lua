@@ -1,4 +1,5 @@
 -- bs_jobs rebels: hands up, kidnapping with ransom, robbery at gunpoint and smuggler pings.
+-- Anti-grief: never in a safezone, the same victim once per victimCooldownMin per kind, ransom cap, auto release.
 
 local S = Jobs.Settings
 local INV = exports.bs_inventory
@@ -45,7 +46,9 @@ local function targetCheck(src, target, kind)
     return target, nil, cid
 end
 
+--------------------------------------------------------------------------------
 -- Kidnapping
+--------------------------------------------------------------------------------
 
 local Captives = {}   -- [victimSrc] = { by, byCid, cid, fid, at, hooded, carried, ransom }
 J.Captives = Captives
@@ -224,7 +227,9 @@ RegisterNetEvent('bs:jobs:checkCuffs', function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Robbery at gunpoint (Raider): takes a share of the victim's bag.
+--------------------------------------------------------------------------------
 
 local SKIP = { weapon = true, clothing = true, currency = true, trophy = true, gear = true }
 local UNARMED = joaat('WEAPON_UNARMED')
@@ -267,7 +272,9 @@ BSB.RegisterCallback('jobs:rob', function(src, target)
     return { ok = true, n = units }
 end)
 
+--------------------------------------------------------------------------------
 -- Smugglers: while carrying contraband the courier's position leaks to the other factions.
+--------------------------------------------------------------------------------
 
 CreateThread(function()
     while true do

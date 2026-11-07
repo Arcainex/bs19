@@ -15,7 +15,6 @@ return {
     ['ui.bar_stamina'] = 'Ausdauer',
     ['ui.bar_hunger'] = 'Hunger',
     ['ui.bar_thirst'] = 'Durst',
-    ['ui.bar_noise'] = 'Lärm',
     ['ui.bar_infection'] = 'Infektion',
     ['ui.xp'] = 'EP',
     ['ui.dash_fuel'] = 'TANK',

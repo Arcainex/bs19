@@ -1,0 +1,5 @@
+ID CARD V14
+- CITIZEN ID now uses the permanent RP Citizen ID from bs_core when available.
+- Citizen IDs are normalized to the required SA-420... prefix.
+- Legacy fallback is stable and derived from charId (example charId 13 -> SA-420013).
+- NAME, DOB, ISSUE DATE and the closer portrait from V13 remain unchanged.

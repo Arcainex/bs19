@@ -25,7 +25,9 @@ end
 
 local function v(t) return vector3(t.x + 0.0, t.y + 0.0, t.z + 0.0) end
 
--- Camera point kept between 5 m above the ground under it and 45 m above its target (more when walls block)
+-- Camera point kept between 5 m above the ground under it and 45 m above its target (more when walls block), then
+-- checked with line-of-sight probes to the target (feet and head) and, when `other` is given, along the flight path.
+-- Blocked: lift 6 m (up to 8 times), then back off 12 m away from the target and lift again (up to 4 times).
 local function clearAt(x, y, z, look, mid)
     local ped = PlayerPedId()
     local aims = { look, look + vector3(0.0, 0.0, 1.7) }
@@ -70,15 +72,15 @@ end
 
 -- Voice follows the private bucket: others cannot hear us while the state bag 'bs_tutorial' is set by the server.
 local voiceOn = false
-local function nativeVoice() return GetResourceState('bs_voice') == 'started' end
+local function pma() return GetResourceState('pma-voice') == 'started' end
 function TutUtil.voice(on)
     if on == voiceOn then return end
     voiceOn = on
     if on then
-        if nativeVoice() then exports.bs_voice:SetMuted(true)
+        if pma() then pcall(function() exports['pma-voice']:overrideProximityRange(0.01, true) end)
         else MumbleSetVoiceChannel(1000000 + GetPlayerServerId(PlayerId())) end
     else
-        if nativeVoice() then exports.bs_voice:SetMuted(false)
+        if pma() then pcall(function() exports['pma-voice']:clearProximityOverride() end)
         else MumbleClearVoiceChannel() end
     end
 end

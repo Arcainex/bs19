@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'bs_bodily'
 author 'BeyondSurvival'
-description 'Bodily needs, digestion and relief'
+description 'Infrequent bodily needs and the N-key needs wheel'
 version '1.0.0'
 
 shared_scripts {

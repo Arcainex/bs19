@@ -1,4 +1,5 @@
 -- bs_inventory - dropped stacks you can see and pick up.
+-- Props are spawned locally from a server-owned list, so a drop costs no networked entity. Each registers with the dot target system.
 
 local drops = {}      -- [dropId] = { data, object }
 
@@ -25,14 +26,14 @@ local function spawnDrop(data)
     PlaceObjectOnGroundProperly(object)
     FreezeEntityPosition(object, true)
 
-    -- Collision stays on: the interaction dot uses a shape test, which passes through entities with collision disabled.
+    -- Collision stays on: the interaction dot uses a shape test, which passes through entities with collision disabled. The prop is frozen so it cannot be kicked.
     SetEntityCollision(object, true, true)
     SetEntityCompletelyDisableCollision(object, false, true)
     SetModelAsNoLongerNeeded(hash)
 
     drops[data.id] = { data = data, object = object }
 
-    -- Pass an event name, not a closure: a function handed to bs_interactions does not survive the export boundary
+    -- Pass an event name, not a closure: a function handed to bs_interactions does not survive the export boundary and cannot be called. The drop id travels in `args`.
     if GetResourceState('bs_interactions') == 'started' then
         local option = {
             label = L('drop.pickup', { n = data.amount, item = data.item and ItemLabel(data.item) or data.label }),
@@ -63,7 +64,7 @@ local function removeDrop(id)
     local entry = drops[id]
     if not entry then return end
 
-    -- Two registrations, two removals: spawnDrop adds an entity option and a zone sphere keyed 'bs_drop_'..id
+    -- Two registrations, two removals: spawnDrop adds an entity option and a zone sphere keyed 'bs_drop_'..id (the ResolveZones fallback). Both must be removed, or the zone option stays in the ALT menu after pickup.
     if GetResourceState('bs_interactions') == 'started' then
         exports.bs_interactions:RemoveZone('bs_drop_' .. id)
         if DoesEntityExist(entry.object) then
@@ -114,7 +115,7 @@ AddEventHandler('onResourceStop', function(resource)
     for id in pairs(drops) do removeDrop(id) end
 end)
 
--- Pick up: one handler for every drop. bs_interactions passes back the registered `args`
+-- Pick up: one handler for every drop. bs_interactions passes back the registered `args`, so the drop is identified by data, not an upvalue.
 
 AddEventHandler('bs:inventory:dot:pickup', function(payload)
     local id = payload and payload.args and payload.args.id
@@ -128,6 +129,7 @@ AddEventHandler('bs:inventory:dot:pickup', function(payload)
             message = (result and result.ok)
                 and ('+%d %s'):format(result.amount, result.label)
                 or ((result and result.error) or 'gone'),
+            itemImage = (result and result.ok) and result.item or nil,
         })
     end)
 end)

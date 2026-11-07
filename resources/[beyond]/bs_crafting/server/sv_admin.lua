@@ -1,4 +1,5 @@
--- bs_crafting: F1 recipe editor backend and building registration. bs_config checks admin rights before it
+-- bs_crafting: F1 recipe editor backend and building registration.
+-- bs_config checks admin rights before it forwards anything here (see ConfigExt in bs_config).
 
 local INV = exports.bs_inventory
 
@@ -63,19 +64,42 @@ exports('ConfigExt', function(src, action, a)
         if id == '' or #id > 48 then return { ok = false, error = 'Bad recipe id.' } end
         local r, err = clean(a.recipe)
         if not r then return { ok = false, error = err } end
+        local previous = ov[id]
         ov[id] = r
-        Craft.SaveOverrides(ov)
+        if not Craft.SaveOverrides(ov) then ov[id] = previous; return { ok = false, error = 'Rezept konnte nicht gespeichert werden.' } end
         if src > 0 then Craft.Log(src, 'craft_admin', 'recipe saved ' .. id) end
         print(('[bs_crafting] %s saved recipe %s'):format(who(src), id))
         return listState()
     elseif action == 'disableRecipe' then
-        ov[tostring(a)] = false
-        Craft.SaveOverrides(ov)
+        local id = tostring(a or '')
+        if not Crafting.Recipes[id] and ov[id] == nil then return { ok = false, error = 'Unbekanntes Rezept.' } end
+        local previous = ov[id]
+        ov[id] = false
+        if not Craft.SaveOverrides(ov) then ov[id] = previous; return { ok = false, error = 'Rezept konnte nicht deaktiviert werden.' } end
         if src > 0 then Craft.Log(src, 'craft_admin', 'recipe disabled ' .. tostring(a)) end
         return listState()
+    elseif action == 'deleteRecipe' then
+        -- Only admin-created recipes can be removed; built-ins belong to the source config.
+        local id = type(a) == 'string' and a or ''
+        if id == '' or Crafting.Recipes[id] ~= nil then
+            return { ok = false, error = 'Originalrezepte können nicht gelöscht werden. Deaktivieren oder zurücksetzen.' }
+        end
+        if ov[id] == nil then return { ok = false, error = 'Eigenes Rezept nicht gefunden.' } end
+        local previous = ov[id]
+        ov[id] = nil
+        if not Craft.SaveOverrides(ov) then
+            ov[id] = previous
+            return { ok = false, error = 'Rezept konnte nicht gelöscht werden.' }
+        end
+        if src > 0 then Craft.Log(src, 'craft_admin', 'recipe deleted ' .. id) end
+        print(('[bs_crafting] %s deleted custom recipe %s'):format(who(src), id))
+        return listState()
     elseif action == 'resetRecipe' then
-        ov[tostring(a)] = nil
-        Craft.SaveOverrides(ov)
+        local id = tostring(a or '')
+        local previous = ov[id]
+        if previous == nil then return { ok = false, error = 'Keine Anpassung vorhanden.' } end
+        ov[id] = nil
+        if not Craft.SaveOverrides(ov) then ov[id] = previous; return { ok = false, error = 'Rezept konnte nicht zurückgesetzt werden.' } end
         if src > 0 then Craft.Log(src, 'craft_admin', 'recipe reset ' .. tostring(a)) end
         return listState()
     end
@@ -94,4 +118,23 @@ end
 CreateThread(function() Wait(5000) registerPlaceables() end)
 AddEventHandler('onResourceStart', function(res)
     if res == 'bs_building' then SetTimeout(5000, registerPlaceables) end
+end)
+
+-- Cross-resource safety check for F10 item deletion. Inspects effective recipes,
+-- including the live F1/F10 overrides, so removing an ingredient cannot break crafting.
+exports('ItemInRecipes', function(item)
+    if type(item) ~= 'string' then return nil end
+    for id, recipe in pairs(Craft.Recipes()) do
+        if type(recipe) == 'table' then
+            if recipe.result and recipe.result.item == item then return id end
+            if recipe.burn == item then return id end
+            for _, cost in ipairs(recipe.cost or {}) do
+                if cost.item == item then return id end
+            end
+            for _, tool in ipairs(recipe.tool or {}) do
+                if tool == item then return id end
+            end
+        end
+    end
+    return nil
 end)

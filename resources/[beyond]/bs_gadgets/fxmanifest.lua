@@ -16,6 +16,7 @@ client_scripts {
     -- Loot container models, so the drone marks the same props you can search.
     '@bs_interactions/config/config_containers.lua',
     'client/cl_main.lua',
+    'client/cl_parachute.lua',
     'client/cl_drone.lua',
     'client/cl_deploy.lua',
     'client/cl_shield.lua',

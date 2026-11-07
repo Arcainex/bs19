@@ -4,7 +4,9 @@ local S = Jobs.Settings
 local q, x = J.q, J.x
 local INV = exports.bs_inventory
 
+--------------------------------------------------------------------------------
 -- Stations: vanilla ones from config (F1 editable), player factions place one at their safezone flag.
+--------------------------------------------------------------------------------
 
 local Placed = {}   -- [fid] = { id, x, y, z, h }
 
@@ -57,7 +59,9 @@ BSB.RegisterCallback('jobs:placeStation', function(src)
     return { ok = true }
 end)
 
+--------------------------------------------------------------------------------
 -- Timed actions: start hands out a token, finish checks the time passed and the player stayed put.
+--------------------------------------------------------------------------------
 
 local tokens = {}
 function J.Begin(src, kind, ms, data)
@@ -75,9 +79,43 @@ function J.Finish(src, kind)
 end
 AddEventHandler('playerDropped', function() tokens[source] = nil end)
 
+--------------------------------------------------------------------------------
 -- Fishing (anyone with a rod; Fishers and Hunter & Fishers get contracts for it)
+--------------------------------------------------------------------------------
 
+local function fishSpot(at)
+    for _, s in ipairs(Jobs.Fishing.spots) do
+        if #(vector2(at.x, at.y) - vector2(s.x, s.y)) <= (s.r or 25.0) then return s end
+    end
+end
+
+BSB.RegisterCallback('jobs:fish:start', function(src)
+    local at = J.PedPos(src)
+    if not at or not fishSpot(at) then return { ok = false, error = Lp(src, 'err.no_fish_here') } end
+    if INV:CountItem(src, 'fishing_rod') < 1 then return { ok = false, error = Lp(src, 'err.need_item', { item = INV:ItemLabel('fishing_rod', src) }) } end
+    return J.Begin(src, 'fish', Jobs.Fishing.ms or 14000)
+end)
+
+BSB.RegisterCallback('jobs:fish:finish', function(src)
+    if not J.Finish(src, 'fish') then return { ok = false, error = Lp(src, 'err.interrupted') } end
+    local bait = INV:CountItem(src, 'fish_bait') > 0 and INV:RemoveItem(src, 'fish_bait', 1)
+    local roll, got = math.random(), nil
+    local acc = 0.0
+    for i = #Jobs.Fishing.catch, 1, -1 do
+        local c = Jobs.Fishing.catch[i]
+        acc = acc + ((bait and c.baitChance) or c.chance or 0)
+        if roll <= acc then got = c.item; break end
+    end
+    if not got then return { ok = true, item = nil } end
+    if not INV:GiveItem(src, got, 1) then return { ok = false, error = Lp(src, 'err.bag_full') } end
+    pcall(function() exports.bs_skills:AddSkillXP(src, 'survival', 3) end)
+    J.Progress(src, 'fish_catch', 1)
+    return { ok = true, item = got, label = INV:ItemLabel(got, src) }
+end)
+
+--------------------------------------------------------------------------------
 -- Water purifier (Water Engineer, at their faction's water station)
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('jobs:water:start', function(src)
     local W = Jobs.Water
@@ -96,7 +134,9 @@ BSB.RegisterCallback('jobs:water:finish', function(src)
     return { ok = true }
 end)
 
+--------------------------------------------------------------------------------
 -- Siphon (Fuel Runner): parked cars nobody owns, never in a safezone
+--------------------------------------------------------------------------------
 
 local function vehicleNear(src, netId, dist)
     local ent = NetworkGetEntityFromNetworkId(tonumber(netId) or 0)
@@ -150,7 +190,9 @@ BSB.RegisterCallback('jobs:siphon:finish', function(src)
     return { ok = true }
 end)
 
+--------------------------------------------------------------------------------
 -- Chop shop (Car Thief)
+--------------------------------------------------------------------------------
 
 local Picked = {}   -- [plate] = { cid, owner, at }
 AddEventHandler('bs:jobs:carPicked', function(src, plate, owner)
@@ -184,7 +226,9 @@ BSB.RegisterCallback('jobs:chop', function(src, netId)
     return { ok = true, parts = #(took or {}) }
 end)
 
+--------------------------------------------------------------------------------
 -- Gunsmith bench (military Gunsmith)
+--------------------------------------------------------------------------------
 
 local function recipe(id) for _, r in ipairs(Jobs.Gunsmith) do if r.id == id then return r end end end
 
@@ -231,7 +275,9 @@ BSB.RegisterCallback('jobs:gs:finish', function(src)
     return { ok = true, label = INV:ItemLabel(r.item, src), amount = r.amount }
 end)
 
+--------------------------------------------------------------------------------
 -- Animal spawner: keeps a few animals around players in hunting areas, never inside safezones.
+--------------------------------------------------------------------------------
 
 local Animals = {}   -- [entity] = { born, model, deadAt }
 
@@ -302,7 +348,8 @@ CreateThread(function()
             end
             if keep then count = count + 1 else Animals[ent] = nil end
         end
-        -- spawn: wildlife runs on its own toggle, not on the faction jobs switch.
+        -- spawn
+        -- Wildlife runs on its own toggle, not on the faction jobs switch.
         if S.huntingEnabled then
             for _, p in ipairs(players) do
                 if count >= (tonumber(S.huntMax) or 24) then break end

@@ -1,7 +1,7 @@
 :root {
-    --accent: #e08c46; --good: #7fd4a2; --danger: #b4574a; --warn: #d9a441;
+    --accent: #728c42; --good: #7fd4a2; --danger: #b4574a; --warn: #728c42;
     --bg: #0a0a09; --plate: #151412; --text: #f0ebdd; --muted: #a8a293;
-    --font: 'Courier New', Consolas, monospace;
+    --font:'Segoe UI Variable','Segoe UI',Arial,sans-serif;
 }
 html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; font-family: var(--font); color: var(--text); }
 .hidden { display: none !important; }

@@ -75,33 +75,3 @@ end)
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() and Noclip.active then Noclip.Toggle(false) end
 end)
-
--- Optional key toggle ("Noclip with \\" in F10 > Self). Off by default, saved per player.
--- The default key is OEM_5 (the \\ key on QWERTY). Any key can be set in Settings > Key Bindings > FiveM > "Staff: noclip".
-Noclip.keyEnabled = GetResourceKvpInt('bs_admin:noclipkey') == 1
-
-function Noclip.SetKeyEnabled(on)
-    Noclip.keyEnabled = on == true
-    SetResourceKvpInt('bs_admin:noclipkey', Noclip.keyEnabled and 1 or 0)
-    return Noclip.keyEnabled
-end
-
-local function noclipKey()
-    if not Noclip.keyEnabled then
-        print('[BS NOCLIP] key pressed, but "Noclip with \\" is off in F10 > Self')
-        return
-    end
-    if not Noclip.isAdmin then
-        local info = BSB.Await('admin:whoami', 5000)
-        Noclip.isAdmin = info and info.admin or false
-    end
-    if not Noclip.isAdmin then print('[BS NOCLIP] key pressed, but this account is not staff'); return end
-    Noclip.Toggle()
-end
-
--- Two bindings for the same action: on PT-PT / ES / IT layouts the \\ key sits left of 1, and Windows can report it
--- as either the backslash key (OEM_5) or the grave key (OEM_3) depending on the layout. Both do the same thing.
-RegisterCommand('bs_staff_noclip', function() print('[BS NOCLIP] key pressed (OEM_5)'); noclipKey() end, false)
-RegisterKeyMapping('bs_staff_noclip', 'Staff: noclip (\\ key)', 'keyboard', 'OEM_5')
-RegisterCommand('bs_staff_noclip_alt', function() print('[BS NOCLIP] key pressed (OEM_3)'); noclipKey() end, false)
-RegisterKeyMapping('bs_staff_noclip_alt', 'Staff: noclip (alternative key)', 'keyboard', 'OEM_3')

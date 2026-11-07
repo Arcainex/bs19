@@ -266,7 +266,7 @@ Vehicles.ScrapGame = {
         { item = 'crowbar', chance = 0.08, zone = 0.03, mult = 1.05 },
     },
     -- Skill tree level (bs_skills, if running) adds per level.
-    skill = { chancePerLevel = 0.01, zonePerLevel = 0.004 },
+    skill = { chancePerLevel = 0.004, zonePerLevel = 0.0016 },
     parts = {
         { id = 'doors',   mode = 'timing', period = 1500, zone = 0.20, chance = 0.90,
           yield = { { item = 'scrap_metal', min = 3, max = 6 } } },
@@ -380,5 +380,5 @@ Vehicles.Lockpick = {
     -- Chance the pick snaps on a failed attempt.
     breakChance = 0.5,
     -- Skill level treated as max for the curves above.
-    maxLevel = 20,
+    maxLevel = 50,
 }

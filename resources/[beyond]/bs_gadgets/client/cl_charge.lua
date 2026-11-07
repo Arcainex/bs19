@@ -1,4 +1,5 @@
--- Drone battery charging: automatic in a running vehicle, or press E next to a running vehicle / generator.
+-- Drone battery charging: automatic in a running vehicle, or press E next to a
+-- running vehicle / generator. Server adds the % and says when all drones are full.
 
 local G = GadgetCl
 local C = Gadgets.Charge

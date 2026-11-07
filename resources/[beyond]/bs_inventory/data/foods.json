@@ -1,0 +1,11 @@
+{
+    "test_food_alpha": {
+        "value": 10,
+        "stack": 10,
+        "icon": "cooked_meat",
+        "thirst": 5,
+        "weight": 0.25,
+        "label": "ALPHA Testessen",
+        "hunger": 35
+    }
+}

@@ -254,11 +254,4 @@ return {
     ['fac.cmd.rep_usage'] = 'Uso: /setfactionrep <serverId> <cantidad>',
     ['fac.cmd.rep_nofaction'] = 'Ese jugador no está en una facción.',
     ['fac.cmd.rep_set'] = 'Reputación establecida en {n}.',
-    -- faction emblems and identity
-    ['fac.emblem_no_perm'] = 'Solo el líder o los rangos con el permiso Emblema pueden cambiar el emblema.',
-    ['fac.emblem_wait'] = 'Espera unos segundos antes de guardar otra vez.',
-    ['fac.banner_added'] = 'Estandarte colocado para {faction}.',
-    ['fac.banner_none_near'] = 'No hay estandartes colocados a menos de 6 m.',
-    ['fac.banner_removed'] = 'Estandarte retirado.',
-    ['fac.banner_list'] = 'Estandartes: {list}',
 }

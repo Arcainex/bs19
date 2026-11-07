@@ -66,10 +66,4 @@ return {
     ['fb.sentence_lifted'] = 'Deine Strafe wurde aufgehoben.',
     ['fb.released_early'] = 'Du wurdest vorzeitig entlassen.',
     ['fb.sentence_served'] = 'Strafe verbüßt. Du bist frei.',
-    ['fb.i_remove_decay'] = 'Flagge entfernen (Basis verfällt)',
-    ['fb.i_remove_all'] = 'Flagge und Basis entfernen',
-    ['fb.remove_decay_ask'] = 'Nochmal drücken, um die Flagge zu entfernen. {n} Teile zerfallen in {h} Std., {pct}% ihrer Materialien kommen in eine Bergungskiste hier.',
-    ['fb.remove_all_ask'] = 'Nochmal drücken, um die Flagge zu entfernen UND {n} Teile sofort abzubauen. {pct}% der Materialien und alles Gelagerte kommen in eine Bergungskiste hier.',
-    ['fb.removed_decay'] = 'Flagge entfernt. Die Basis ist verlassen und zerfällt.',
-    ['fb.removed_all'] = 'Flagge entfernt. {n} Teile abgebaut, schau in die Bergungskiste.',
 }

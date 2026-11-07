@@ -1,4 +1,5 @@
 -- bs_ui - move HUD elements: with the setting on, CTRL toggles a cursor so HUD pieces can be dragged.
+-- Positions live in the NUI (localStorage) with a KVP copy here as fallback.
 
 local KVP_ON, KVP_POS = 'bs_hudmove_on', 'bs_hudpos'
 local enabled = GetResourceKvpInt(KVP_ON) == 1 -- default OFF

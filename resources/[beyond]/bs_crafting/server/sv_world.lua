@@ -41,7 +41,9 @@ local function complete(src, kind)
     return t.data
 end
 
+--------------------------------------------------------------------------------
 -- Skinning
+--------------------------------------------------------------------------------
 
 local skinned = {}       -- [key] = os.time
 -- Animal yield: F1 multiplier plus up to +30% from the hunting skill tree.
@@ -93,7 +95,9 @@ BSB.RegisterCallback('crafting:skinFinish', function(src)
     return { ok = true, items = got }
 end)
 
+--------------------------------------------------------------------------------
 -- Foraging
+--------------------------------------------------------------------------------
 
 local picked = {}   -- [cellKey] = os.time
 
@@ -119,7 +123,9 @@ BSB.RegisterCallback('crafting:forageFinish', function(src)
     return { ok = true, items = got }
 end)
 
+--------------------------------------------------------------------------------
 -- Wreck salvage
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('crafting:salvageStart', function(src, plate)
     if INV:CountItem(src, 'wrench') < 1 then return { ok = false, error = Lp(src, 'need_wrench') } end
@@ -134,7 +140,7 @@ BSB.RegisterCallback('crafting:salvageFinish', function(src)
     if not d then return { ok = false, error = Lp(src, 'interrupted') } end
     local ok, done = pcall(function() return exports.bs_vehicles:SalvageWreck(src, d.plate) end)
     if not (ok and done) then return { ok = false, error = Lp(src, 'not_a_wreck') } end
-    local bonus = 1.0 + math.min(0.15, Craft.SkillLevel(src) * 0.01)
+    local bonus = 1.0 + math.min(0.15, Craft.SkillLevel(src) * 0.003)
     local got = giveRolled(src, Craft.Roll(Crafting.Salvage, bonus))
     Craft.AddXP(src, 12)
     Craft.Log(src, 'salvage', 'wreck ' .. d.plate)
@@ -146,7 +152,9 @@ BSB.RegisterCallback('crafting:salvageFinish', function(src)
     return { ok = true, items = got }
 end)
 
+--------------------------------------------------------------------------------
 -- Hand dismantling (25% of the recycler, needs the right tool)
+--------------------------------------------------------------------------------
 
 local function recycler() return GetResourceState('bs_recycler') == 'started' end
 
@@ -178,7 +186,9 @@ BSB.RegisterCallback('crafting:dismantleFinish', function(src)
     return { ok = true, items = got }
 end)
 
+--------------------------------------------------------------------------------
 -- Items used from the bag
+--------------------------------------------------------------------------------
 
 local sickChance = { raw_meat = 0.6, dirty_water = 0.5, raw_fish = 0.4 }
 
@@ -198,7 +208,9 @@ AddEventHandler('bs:crafting:useItem', function(src, item, slot)
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Traps
+--------------------------------------------------------------------------------
 
 local Traps = {}    -- [id] = { id, kind, owner, x, y, z, h, until }
 local trapSeq = 0
@@ -311,7 +323,9 @@ CreateThread(function()
     pushTraps()
 end)
 
+--------------------------------------------------------------------------------
 -- Farming (a farm_plot station). Growth runs in real time once the plot is both watered and fertilized.
+--------------------------------------------------------------------------------
 
 local function growSeconds() return math.max(60, (S.farmGrowMinutes or 90) * 60) end
 
@@ -361,7 +375,7 @@ BSB.RegisterCallback('crafting:farm', function(src, stationId, action, arg)
         if s.crop.water and s.crop.fert then s.crop.growFrom = os.time() end
     elseif action == 'harvest' then
         if not s.crop or progress(s.crop) < 1.0 then return { ok = false, error = Lp(src, 'not_ripe') } end
-        local got = giveRolled(src, Craft.Roll(Crafting.Crops[s.crop.seed].yield, 1.0 + math.min(0.3, Craft.SkillLevel(src) * 0.015)))
+        local got = giveRolled(src, Craft.Roll(Crafting.Crops[s.crop.seed].yield, 1.0 + math.min(0.3, Craft.SkillLevel(src) * 0.0035)))
         s.crop = nil
         Craft.AddXP(src, 10)
         TriggerEvent('bs:jobs:event', src, 'harvest', 1)

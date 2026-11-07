@@ -1,8 +1,12 @@
--- bs_skills - skill XP, levels and perks, persisted per character. The server owns every number.
+-- bs_skills - skill XP, levels and perks, persisted per character.
+-- The server owns every number. Clients can ask for their state and to spend a point, never to set values. Perk effects that need local natives (weapon damage, drain rates, walker detection) are mirrored to the owning client after every change and re-sent on load.
+-- Tables: bs_character_skills (one row per skill), bs_character_perks (one row per unlocked perk).
 
 local State = {}        -- [src] = { charId, skills = {}, perks = {}, dirty }
 
+--------------------------------------------------------------------------------
 -- Load / save
+--------------------------------------------------------------------------------
 
 local function blankSkills()
     local out = {}
@@ -49,7 +53,9 @@ local function persistPerk(charId, perkId, rank)
     ]], { charId, perkId, rank })
 end
 
+--------------------------------------------------------------------------------
 -- Mirroring to the owning client
+--------------------------------------------------------------------------------
 
 --- Everything the client needs to apply perk effects locally.
 local function effectsFor(entry)
@@ -87,7 +93,7 @@ end
 local function sync(src)
     local entry = State[src]
     if not entry then return end
-    -- `points` is sent with the sync so the character sheet draws unspent points and trees from one payload
+    -- `points` is sent with the sync so the character sheet draws unspent points and trees from one payload, with no second request that could arrive stale.
     local points = 0
     pcall(function() points = exports.bs_core:GetSkillPoints(src) or 0 end)
 
@@ -99,7 +105,9 @@ local function sync(src)
     })
 end
 
+--------------------------------------------------------------------------------
 -- Lifecycle
+--------------------------------------------------------------------------------
 
 AddEventHandler('bs:hook:player:loaded', function(player)
     if not player or not player.source then return end
@@ -119,7 +127,7 @@ AddEventHandler('playerDropped', function()
     State[source] = nil
 end)
 
--- A resource restart does not replay the player-loaded hook, so rehydrate every connected survivor.
+-- A resource restart does not replay the player-loaded hook, so rehydrate every connected survivor. Keeps F5 -> Skills working after a restart.
 CreateThread(function()
     Wait(750)
     for _, idText in ipairs(GetPlayers()) do
@@ -134,7 +142,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- XP
+--------------------------------------------------------------------------------
 
 --- @param src number
 --- @param treeId string
@@ -161,20 +171,8 @@ local function addSkillXP(src, treeId, amount)
 
     persistSkill(entry.charId, treeId, data)
 
-    TriggerClientEvent('bs:skills:xp', src, treeId, data.xp,
-        Skills.Math.ToNext(treeId, data.level), data.level, amount)
-
+    -- Alpha-Z: XP runs silently. No XP popup and no level-up sound/card.
     if gained > 0 then
-        -- A skill level is a real event: it may have just unlocked a perk.
-        TriggerClientEvent('bs:ui:notify', src, {
-            type = 'success',
-            message = Lp(src, 'skill.level_up', { tree = skillText(src, 'tree.' .. treeId, tree.label), level = data.level }),
-            duration = 3200,
-        })
-
-        -- Played from the server, since only the server knows a level was gained. A toast alone is too weak for a level up.
-        TriggerClientEvent('bs:skills:levelUp', src, treeId, data.level, tree.label)
-
         sync(src)
     end
 
@@ -183,7 +181,9 @@ end
 
 exports('AddSkillXP', addSkillXP)
 
+--------------------------------------------------------------------------------
 -- Reads, for other resources
+--------------------------------------------------------------------------------
 
 exports('GetSkillLevel', function(src, treeId)
     local entry = State[src]
@@ -220,7 +220,9 @@ exports('LootBonus', function(src)
     return bonus
 end)
 
--- Never send infinity to the client: Skills.Math.ToNext returns math.huge for a maxed tree
+-- Never send infinity to the client: Skills.Math.ToNext returns math.huge for a maxed tree, and JSON cannot represent it, so SEND_NUI_MESSAGE fails for the whole payload (rapidjson error 3).
+-- So xpToNext is nil (key absent) at max level. app.js already guards with isFinite(s.xpToNext) and draws a full bar. Do not use false as a sentinel: isFinite(false) is true in JS.
+-- Same for NaN from divisions.
 local function jsonSafeNumber(n)
     if type(n) ~= 'number' then return n end
     -- n ~= n is true only for NaN; the comparisons catch both infinities.
@@ -283,9 +285,11 @@ exports('RewardMultiplier', function(src, actionId)
     return multiplier
 end)
 
+--------------------------------------------------------------------------------
 -- Spending points
+--------------------------------------------------------------------------------
 
--- Reserve the unlock synchronously with a per-entry pendingUnlock marker before the yielding SpendSkillPoints
+-- Reserve the unlock synchronously with a per-entry pendingUnlock marker before the yielding SpendSkillPoints call, so a double-click or back-to-back request cannot pay twice. Cleared on every exit path so a real retry is never blocked.
 BSB.RegisterCallback('skills:unlock', function(src, treeId, perkId)
     local entry = State[src]
     if not entry then return { ok = false, error = 'not loaded' } end
@@ -295,8 +299,6 @@ BSB.RegisterCallback('skills:unlock', function(src, treeId, perkId)
     if not perk then return { ok = false, error = 'no such perk' } end
 
     if entry.perks[perkId] then return { ok = false, error = 'already unlocked' } end
-    -- Trainer perks are taught by NPCs (bs_parkour and friends), never bought with points
-    if perk.trainer then return { ok = false, error = Lp(src, 'skill.trainer_only') } end
 
     entry.pendingUnlock = entry.pendingUnlock or {}
     if entry.pendingUnlock[perkId] then return { ok = false, error = 'already unlocked' } end
@@ -372,12 +374,10 @@ BSB.RegisterCallback('skills:list', function(src)
         ok = true,
         points = exports.bs_core:GetSkillPoints(src),
         skills = getSkills(src),
-        training = { enabled = Skills.Training.enabled, cost = Skills.Training.cost or 1 },
-        respec = { enabled = Skills.Settings.allowRespec, cost = Skills.Settings.respecXpCost or 0 },
     }
 end)
 
--- Respec: wipes perks and refunds points.
+-- Respec: wipes perks and refunds points. Costs Skills.Settings.respecXpCost via bs_core's SpendXP first; if the player cannot afford it, nothing is wiped or refunded.
 BSB.RegisterCallback('skills:respec', function(src)
     if not Skills.Settings.allowRespec then return { ok = false, error = 'disabled' } end
 
@@ -409,7 +409,7 @@ BSB.RegisterCallback('skills:respec', function(src)
     return { ok = true, refunded = refund, xpSpent = cost }
 end)
 
--- Staff surface, driven by the admin menu. Bypasses level requirements and point costs so staff can test perks.
+-- Staff surface, driven by the admin menu. Bypasses level requirements and point costs so staff can test perks. Only reachable through bs_admin's ACE check.
 
 exports('SetSkillLevel', function(src, treeId, level)
     local entry = State[src]
@@ -500,7 +500,9 @@ exports('PerkCatalogue', function()
     return out
 end)
 
+--------------------------------------------------------------------------------
 -- Staff
+--------------------------------------------------------------------------------
 
 RegisterCommand('skillxp', function(src, args)
     if src ~= 0 and not IsPlayerAceAllowed(src, 'bs.admin') then return end
@@ -516,15 +518,35 @@ end, false)
 
 exports.bs_core:RegisterModule('skills', { side = 'server', version = '1.0.0', ready = true })
 
--- Display-only sheet for a saved linked character; it never replaces a player's loaded skill state.
-exports('LinkedCharacterSheet',function(charId)
-    if GetInvokingResource()~='bs_survivor_link'then return end
-    local entry={skills=blankSkills(),perks={}}
-    for _,row in ipairs(exports.oxmysql:query_async('SELECT skill, level, xp FROM bs_character_skills WHERE character_id = ?',{charId})or{})do
-        if entry.skills[row.skill]then entry.skills[row.skill]={level=row.level or 0,xp=row.xp or 0}end
-    end
-    for _,row in ipairs(exports.oxmysql:query_async('SELECT perk, rank FROM bs_character_perks WHERE character_id = ?',{charId})or{})do entry.perks[row.perk]=row.rank or 1 end
-    local levels,trees={},{}
-    for id,tree in pairs(Skills.Trees)do levels[id]=entry.skills[id].level;trees[id]={label=tree.label,maxLevel=tree.maxLevel or 20}end
-    return {levels=levels,trees=trees,effects=effectsFor(entry)}
+
+--------------------------------------------------------------------------------
+-- Alpha-Z exact PvP weapon damage from balance workbook
+--------------------------------------------------------------------------------
+-- weaponDamageEvent supports authoritative overrideDefaultDamage/weaponDamage.
+-- We only touch player targets; zombie damage remains owned by bs_zombies.
+local PlayerDamageByHash = {}
+for weaponName, entry in pairs(Skills.PlayerWeaponDamage or {}) do
+    PlayerDamageByHash[GetHashKey(weaponName)] = entry
+end
+
+AddEventHandler('weaponDamageEvent', function(sender, data)
+    -- Alpha-Z: GTA standard weapon damage enabled; custom PvP override disabled.
+    -- Keep the legacy override code below intact, but exit through a block so Lua parses it correctly.
+    if true then return end
+    if type(data) ~= 'table' then return end
+    local entry = PlayerDamageByHash[data.weaponType]
+    if not entry then return end
+
+    local netId = tonumber(data.hitGlobalId) or 0
+    if netId == 0 then return end
+
+    local target = NetworkGetEntityFromNetworkId(netId)
+    if not target or target == 0 or GetEntityType(target) ~= 1 then return end
+
+    local owner = NetworkGetEntityOwner(target)
+    if not owner or owner <= 0 or GetPlayerPed(owner) ~= target then return end
+    if owner == sender then return end
+
+    data.overrideDefaultDamage = true
+    data.weaponDamage = math.max(0, math.floor((tonumber(entry.damage) or 0) + 0.5))
 end)

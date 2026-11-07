@@ -128,12 +128,11 @@ html, body {
 .hollow { color: var(--ash); font-style: italic; padding: .5em .4em; font-size: .9em; }
 .foot { text-align: center; color: var(--ash); font-size: .72em; letter-spacing: .2em; }
 
-/* 720p and narrower: the class column goes first. */
+/*
+   720p and narrower: the class column goes first.
+   Thresholds x0.6: body is ui-scaled (bs_ui/html/shared/scale.js), so local width is at least 1920 until the 0.6 floor.
+*/
 @media (max-width: 840px) {
     .prow { grid-template-columns: 2.2em minmax(0, 1fr) 2.6em 4.4em; }
     .prow > :nth-child(3) { display: none; }
 }
-
-/* Faction emblem in front of the tag */
-.mark { display: inline-block; flex: 0 0 auto; width: 22px; height: 22px; margin-right: 6px; vertical-align: middle; font-style: normal; line-height: 0; }
-.mark svg { width: 100%; height: 100%; display: block; }

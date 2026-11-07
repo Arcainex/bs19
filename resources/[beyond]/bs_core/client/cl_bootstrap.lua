@@ -1,4 +1,4 @@
--- BeyondSurvival - session state machine: loading to select to playing. bs_ui draws the screens via
+-- BeyondSurvival - session state machine: loading -> select -> playing. bs_ui draws the screens via 'session:state'; the core owns state, camera and freeze.
 
 BS.Session = { state = 'loading', payload = nil }
 
@@ -77,12 +77,14 @@ BS.On('player:loaded', function()
     BS.SetSessionState('playing')
 end)
 
+--------------------------------------------------------------------------------
 -- Handshake
+--------------------------------------------------------------------------------
 
 CreateThread(function()
     BS.Log.info('core', ('%s v%s starting (client)'):format(BS.Name, BS.Version))
 
-    -- Disable vanilla auto-spawn. spawnmanager is optional and may not be started yet, so this is in a pcall
+    -- Disable vanilla auto-spawn. spawnmanager is optional and may not be started yet, so this is in a pcall; the framework spawns players itself either way.
     CreateThread(function()
         if GetResourceState('spawnmanager') ~= 'started' then return end
         for _ = 1, 20 do
@@ -110,7 +112,7 @@ CreateThread(function()
             HideHudComponentThisFrame(13) -- cash change
             HideHudComponentThisFrame(19) -- weapon wheel stats
 
-            -- Not calling SetPedCanPlayAmbientAnims: disabling it every frame interferes with engine states such as the
+            -- Not calling SetPedCanPlayAmbientAnims: disabling it every frame interferes with engine states such as the dry-fire reaction and can leave a ped stuck.
         end
     end)
 
@@ -120,7 +122,7 @@ CreateThread(function()
     BS.Emit('core:ready')
 end)
 
--- Current session state, for resources that start after the state event was already sent
+-- Current session state, for resources that start after the state event was already sent (e.g. restarting bs_multichar on the character screen).
 exports('GetSessionState', function() return S.state end)
 
 AddEventHandler('onResourceStop', function(resource)

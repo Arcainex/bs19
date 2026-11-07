@@ -2,17 +2,17 @@
 
 :root {
     /* Overwritten at runtime from bs_ui/config/config_ui.lua */
-    --bs-accent: #e08c46;
+    --bs-accent: #728c42;
     --bs-good:   #7fd4a2;
     --bs-danger: #b4574a;
-    --bs-warn:   #d9a441;
+    --bs-warn:   #93ab63;
     --bs-blood:  #6e2b21;
     --bs-bg:     #0a0a09;
     --bs-text:   #f0ebdd;
     --bs-text-muted: #a8a293;
     --bs-radius: 2px;
-    --bs-font:   'Courier New', 'Consolas', monospace;
-    --bs-serif:  'Times New Roman', Georgia, serif;
+    --bs-font:   'Segoe UI Semibold', 'Segoe UI', Arial, sans-serif;
+    --bs-serif:  'Segoe UI Semibold', 'Segoe UI', Arial, sans-serif;
     --bs-scale:  1;
 
     /* Player settings */
@@ -31,7 +31,7 @@ html, body {
     height: 100%;
     overflow: hidden;
     background: transparent;
-    font-family: var(--t-hud-font, var(--bs-font));
+    font-family: var(--bs-font);
     color: var(--bs-text);
     user-select: none;
     -webkit-font-smoothing: antialiased;
@@ -54,7 +54,7 @@ html, body {
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Readability in bright light without a background: text carries its own dark halo (tight opaque + wide soft) */
+/* Readability in bright light without a background: text carries its own dark halo (tight opaque + wide soft) and SVG icons get a drop-shadow. Inherited from the document, so new elements are readable by default. */
 :root {
     --bs-halo:
         0 0 1px rgba(0, 0, 0, 1),

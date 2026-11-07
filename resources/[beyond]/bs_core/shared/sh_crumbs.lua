@@ -1,4 +1,5 @@
--- Crumb(tag, fmt, ...) to bs_core breadcrumb log (client only, no-op on server).
+-- Crumb(tag, fmt, ...) -> bs_core breadcrumb log (client only, no-op on server).
+-- The string is only formatted when crumbs are on.
 local isServer = IsDuplicityVersion()
 local enabled, checkedAt = false, -1
 

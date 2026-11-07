@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:"Arial Narrow","Roboto Condensed",Arial,Helvetica,sans-serif;pointer-events:none}
+/* Alpha-Z: warning overlay only. No full-screen filters, rectangles or scanlines. */
+#warning{
+    position:fixed;left:50%;top:22%;transform:translate(-50%,-50%);
+    display:none;width:min(72vw,760px);box-sizing:border-box;
+    padding:14px 24px 15px;text-align:center;isolation:isolate;overflow:hidden;
+    background:linear-gradient(180deg,rgba(7,24,17,.78),rgba(5,17,13,.70));
+    border:1px solid rgba(73,139,91,.66);
+    border-left:3px solid rgba(79,169,101,.82);border-right:3px solid rgba(79,169,101,.82);
+    box-shadow:inset 0 0 14px rgba(47,112,67,.10),0 4px 20px rgba(0,0,0,.35);
+    color:#f4f4f1;font-size:clamp(17px,1.45vw,25px);font-weight:600;
+    letter-spacing:.7px;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.85);
+    opacity:.94;
+}
+#warning::before{
+    content:"ALPHA-Z  //  WARNUNG";display:block;position:relative;z-index:1;
+    margin-bottom:7px;color:#8cc69a;font-size:clamp(10px,.72vw,13px);
+    font-weight:700;letter-spacing:3px;
+}
+#warning .hot{color:#ff6060;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.9)}
+#warning .warning-copy{position:relative;display:block;z-index:1}
+/* Faint static and a jittering receiver scan — contained inside warning box. */
+#warning::after{
+    content:"";pointer-events:none;position:absolute;inset:0;z-index:2;
+    background:repeating-linear-gradient(180deg,
+      transparent 0px,transparent 4px,rgba(180,236,181,.12) 5px,transparent 6px),
+      linear-gradient(90deg,transparent,rgba(185,241,190,.10),transparent);
+    mix-blend-mode:screen;opacity:0;
+}
+/* Very brief ghost-text offsets simulate imperfect emergency broadcast reception. */
+#warning .warning-copy::after{
+    content:attr(data-glitch);position:absolute;inset:0;pointer-events:none;
+    white-space:nowrap;color:#d5f2d8;opacity:0;
+    text-shadow:-2px 0 rgba(78,209,118,.65),2px 0 rgba(255,74,74,.50);
+}
+#warning.show{
+    display:block;
+    animation:alphaWarnPulse 2s ease-in-out infinite,
+              alphaWarnFlicker 6.7s steps(1,end) infinite;
+}
+#warning.show::after{animation:alphaWarnStatic 4.9s steps(1,end) infinite}
+#warning.show .warning-copy::after{animation:alphaWarnGhost 3.9s steps(1,end) infinite}
+#warning.show .warning-copy{animation:alphaWarnJitter 5.7s steps(1,end) infinite}
+@keyframes alphaWarnJitter{
+    0%,12%,13%,40%,41%,74%,75%,100%{transform:translateX(0)}
+    12.2%,74.2%{transform:translateX(2px)}
+    12.7%,40.4%,74.6%{transform:translateX(-2px)}
+}
+@keyframes alphaWarnPulse{
+    0%,100%{border-color:rgba(73,139,91,.57)}
+    50%{border-color:rgba(102,183,119,.85)}
+}
+@keyframes alphaWarnFlicker{
+    0%,10%,11%,11.5%,12%,58%,59%,59.5%,60%,100%{opacity:.91}
+    10.5%,58.5%{opacity:.60}
+}
+@keyframes alphaWarnStatic{
+    0%,16%,17%,40%,41%,72%,73%,100%{opacity:0;transform:translateY(0)}
+    16.25%,40.25%,72.25%{opacity:.52;transform:translateY(-3px)}
+    16.75%,40.75%,72.75%{opacity:.30;transform:translateY(2px)}
+}
+@keyframes alphaWarnGhost{
+    0%,22%,23%,61%,62%,100%{opacity:0;clip-path:inset(0 0 100% 0);transform:translateX(0)}
+    22.25%,61.25%{opacity:.66;clip-path:inset(13% 0 57% 0);transform:translateX(2px)}
+    22.75%,61.75%{opacity:.48;clip-path:inset(57% 0 15% 0);transform:translateX(-2px)}
+}
+@media(prefers-reduced-motion:reduce){
+    #warning.show,#warning.show::after,#warning.show .warning-copy::after,#warning.show .warning-copy{animation:none}
+}
+</style>
+</head>
+<body>
+<div id="warning"><span class="warning-copy" data-glitch="Ihr habt 15 MINUTEN Zeit SCHUTZ zu suchen">Ihr habt <span class="hot">15 MINUTEN</span> Zeit <span class="hot">SCHUTZ</span> zu suchen</span></div>
+<audio id="alphaSiren" preload="auto" loop src="sounds/sirene.mp3"></audio>
+<script>
+const WARNING_DISPLAY_MS = 16000; // 6 seconds original + 10 seconds requested
+const siren = document.getElementById('alphaSiren');
+const warning = document.getElementById('warning');
+siren.loop = true;
+siren.preload = 'auto';
+let activeToken = null;
+let deadline = 0;
+let sirenTimer = null;
+let warningTimer = null;
+let watchdog = null;
+let playInFlight = false;
+let lastPlayAttempt = 0;
+
+function hideWarning(){
+    if (warningTimer) clearTimeout(warningTimer);
+    warningTimer = null;
+    warning.classList.remove('show');
+}
+function stopSiren(){
+    if (sirenTimer) clearTimeout(sirenTimer);
+    if (watchdog) clearInterval(watchdog);
+    sirenTimer = null;
+    watchdog = null;
+    activeToken = null;
+    deadline = 0;
+    playInFlight = false;
+    lastPlayAttempt = 0;
+    try { siren.pause(); siren.currentTime = 0; } catch (_) {}
+}
+function requestPlay(){
+    if (activeToken === null || performance.now() >= deadline) return;
+    if (playInFlight && performance.now() - lastPlayAttempt < 1200) return;
+    // Some CEF builds pause media during first decode; retry until deadline.
+    if (siren.paused || siren.ended || siren.readyState < 2) {
+        if (siren.ended) try { siren.currentTime = 0; } catch (_) {}
+        playInFlight = true;
+        lastPlayAttempt = performance.now();
+        Promise.resolve(siren.play()).catch(() => {}).finally(() => { playInFlight = false; });
+    }
+}
+function startSiren(d){
+    const token = Number(d.token);
+    if (!Number.isFinite(token)) return;
+    // Duplicate request on first login must not restart audio or shorten the timer.
+    if (activeToken === token) return;
+    stopSiren();
+    hideWarning();
+    const duration = Math.max(0, Number(d.duration) || 56000);
+    activeToken = token;
+    deadline = performance.now() + duration;
+    siren.volume = Math.max(0, Math.min(1, Number(d.volume ?? 0.20)));
+    try { siren.currentTime = 0; } catch (_) {}
+    siren.load();
+    requestPlay();
+    watchdog = setInterval(() => {
+        if (activeToken === null) return;
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) { stopSiren(); return; }
+        requestPlay();
+    }, 250);
+    sirenTimer = setTimeout(stopSiren, duration + 100);
+    warning.classList.add('show');
+    warningTimer = setTimeout(hideWarning, Math.min(WARNING_DISPLAY_MS, duration));
+}
+window.addEventListener('message', (event) => {
+    const d = event.data || {};
+    if (d.action === 'alphaWeatherSirenStart') {
+        startSiren(d);
+    } else if (d.action === 'alphaWeatherSirenStop') {
+        // Reject delayed stop commands from a previous event.
+        if (activeToken !== null && Number(d.token) === activeToken) {
+            hideWarning();
+            stopSiren();
+        }
+    }
+});
+siren.addEventListener('ended', requestPlay);
+siren.addEventListener('stalled', requestPlay);
+siren.addEventListener('canplay', requestPlay);
+// Browser restart/initial stream: ask Lua to replay any still-running warning.
+window.addEventListener('load', () => {
+    fetch(`https://${GetParentResourceName()}/alphaWeatherReady`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+    }).catch(() => {});
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+Permanent character passport photo added.
+- First photo per charId is stored in MySQL table bs_identity_photos.
+- Automatic capture after spawn if the character has no stored photo.
+- Existing characters get their photo after the update on first spawn/open.
+- Photo is made from a local ped clone: hat/helmet, glasses and mask are removed.
+- Player's real visible ped is not changed when clone capture works.
+- Stored photo is reused forever and is sent when showing the ID to another player.
+- To deliberately retake a photo, delete that char_id row from bs_identity_photos.

@@ -1,0 +1,6 @@
+ID Card V13
+- NAME = character first + last name from bs_core.
+- DOB = character date of birth.
+- CITIZEN ID = raw character ID (charId), no SA- prefix/padding.
+- ISSUE DATE = bs_characters.created_at formatted DD.MM.YYYY.
+- Passport photo frame position unchanged; photo crop zoomed to 125% inside a clipped frame.

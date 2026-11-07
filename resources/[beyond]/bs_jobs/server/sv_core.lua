@@ -1,4 +1,5 @@
 -- bs_jobs server core: who holds which job, applications, approvals, rewards and logging.
+-- Everything is decided here. Clients only ask.
 
 J = J or {}
 local S = Jobs.Settings
@@ -157,7 +158,15 @@ function J.Reward(src, cid, fid, tpl, job)
     return { rep = rep, xp = xp, sxp = sxp }
 end
 
+--------------------------------------------------------------------------------
+
+local function workshopMember(src)
+    if GetResourceState('bs_factions') ~= 'started' then return false end
+    local ok,v=pcall(function() return exports.bs_factions:HasSecondaryFaction(src,'mechanic_workshop') end)
+    return ok and v==true
+end
 -- Membership
+--------------------------------------------------------------------------------
 
 local function cooldownLeft(cid)
     local r = q('SELECT until_ts FROM bs_job_cooldowns WHERE character_id = ? LIMIT 1', { cid })[1]
@@ -171,6 +180,70 @@ local function setMember(m)
     x('INSERT INTO bs_job_members (character_id, faction_id, job_id, status, applied_at, joined_at, approved_by) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE faction_id = VALUES(faction_id), job_id = VALUES(job_id), status = VALUES(status), applied_at = VALUES(applied_at), joined_at = VALUES(joined_at), approved_by = VALUES(approved_by)',
         { m.cid, m.fid, m.job, m.status, m.applied or 0, m.joined or 0, m.approvedBy })
 end
+
+-- Admin helper: assign an active faction job to an online player.
+-- Usage: /setjob <serverId> <job>  (e.g. /setjob 12 mechanic)
+-- The target must already belong to a faction because bs_jobs jobs are faction jobs.
+RegisterCommand('setjob', function(src, args)
+    if src ~= 0 and not J.IsAdmin(src) then
+        J.Notify(src, 'error', 'err.no_perm')
+        return
+    end
+
+    local target = tonumber(args[1])
+    local job = tostring(args[2] or ''):lower()
+    if not target or not GetPlayerName(target) or not Jobs.Defs[job] then
+        if src == 0 then print('[bs_jobs] Usage: setjob <serverId> <job>')
+        else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = 'Benutzung: /setjob [ID] [Job], z.B. /setjob 1 mechanic', duration = 6000 }) end
+        return
+    end
+
+    local cid, fid = J.CharId(target), J.Faction(target)
+    if job == 'mechanic' and not workshopMember(target) then
+        local msg='Spieler muss zuerst Mitglied der Mechaniker Werkstatt sein.'
+        if src==0 then print('[bs_jobs] '..msg) else TriggerClientEvent('bs:ui:notify',src,{type='error',message=msg,duration=6000}) end
+        return
+    end
+    if job == 'mechanic' then fid = 'mechanic_workshop' end
+    if not cid or not fid then
+        local msg = 'Spieler muss zuerst Mitglied einer Fraktion sein.'
+        if src == 0 then print('[bs_jobs] ' .. msg) else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = msg, duration = 6000 }) end
+        return
+    end
+
+    -- Player-created factions must offer the job or the normal validation loop would remove it.
+    -- Mechanic is in the normal player job pool, so an admin assignment may enable it automatically.
+    if not J.Offers(fid, job) then
+        local allowed = false
+        for _, id in ipairs(Jobs.PlayerPool or {}) do if id == job then allowed = true break end end
+        if not J.IsVanilla(fid) and allowed and not (Jobs.Defs[job] or {}).special then
+            J.Picks[fid] = J.Picks[fid] or {}
+            J.Picks[fid][job] = true
+            x('INSERT IGNORE INTO bs_job_faction_picks (faction_id, job_id, picked_at) VALUES (?,?,?)', { fid, job, J.Now() })
+        else
+            local msg = ('Job %s wird von dieser Fraktion nicht angeboten.'):format(job)
+            if src == 0 then print('[bs_jobs] ' .. msg) else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = msg, duration = 6000 }) end
+            return
+        end
+    end
+
+    local old = J.Members[cid]
+    local m = { cid = cid, fid = fid, job = job, status = 'active', applied = J.Now(), joined = J.Now(), approvedBy = src ~= 0 and J.CharId(src) or nil }
+    setMember(m)
+    x('DELETE FROM bs_job_cooldowns WHERE character_id = ?', { cid })
+    J.SyncState(target)
+    J.Notify(target, 'success', 'n.approved', { job = J.JobLabel(target, job) })
+    J.Log(src ~= 0 and src or target, 'admin_setjob', ('%s -> %s/%s (old=%s)'):format(cid, fid, job, old and old.job or 'none'))
+
+    if src == 0 then print(('[bs_jobs] %s (%d) is now %s in faction %s'):format(GetPlayerName(target), target, job, fid))
+    elseif src ~= target then TriggerClientEvent('bs:ui:notify', src, { type = 'success', message = ('%s ist jetzt %s.'):format(GetPlayerName(target), J.JobLabel(target, job)), duration = 5000 }) end
+end, false)
+
+RegisterCommand('myjob', function(src)
+    if src == 0 then return end
+    local job = J.JobOf(src)
+    TriggerClientEvent('bs:ui:notify', src, { type = 'info', message = job and ('Aktueller Job: ' .. J.JobLabel(src, job)) or 'Du hast aktuell keinen Job.', duration = 5000 })
+end, false)
 
 -- Drops a job (leaving, kicked, or no longer in that faction). cooldown = start the wait.
 function J.DropMember(cid, cooldown, reason)
@@ -196,7 +269,8 @@ local function apply(src, a)
     local cid, fid, job = J.CharId(src), J.Faction(src), tostring(a.job or '')
     if not cid then return { ok = false, error = Lp(src, 'err.loading') } end
     if not fid then return { ok = false, error = Lp(src, 'err.no_faction') } end
-    if not J.Offers(fid, job) then return { ok = false, error = Lp(src, 'err.not_offered') } end
+    if job == 'mechanic' and not workshopMember(src) then return {ok=false,error='Nur Mitglieder der Mechaniker Werkstatt koennen Mechaniker werden.'} end
+        if not J.Offers(fid, job) then return { ok = false, error = Lp(src, 'err.not_offered') } end
     local cur = J.Members[cid]
     if cur and cur.status == 'active' and cur.fid == fid then return { ok = false, error = Lp(src, 'err.have_job') } end
     local left = cooldownLeft(cid)
@@ -310,6 +384,7 @@ local function overview(src)
     local names = J.Names(ids)
     local jobs = {}
     for _, job in ipairs(J.JobsOf(fid)) do
+        if job ~= 'mechanic' or workshopMember(src) then
         local def = Jobs.Defs[job] or {}
         local members = {}
         for c, m in pairs(J.Members) do
@@ -319,6 +394,7 @@ local function overview(src)
         end
         jobs[#jobs + 1] = { id = job, label = J.JobLabel(src, job), blurb = Lp(src, 'jobd.' .. job), special = def.special == true,
                             cap = J.Cap(job), members = members, garage = def.garage }
+        end
     end
     local apps = {}
     if manage then
@@ -402,4 +478,13 @@ CreateThread(function()
     J.Ready = true
     TriggerEvent('bs:jobs:ready')
     for _, v in ipairs(GetPlayers()) do J.SyncState(tonumber(v)) end
+end)
+
+
+AddEventHandler('bs:hook:faction:changed', function(data)
+    if type(data) ~= 'table' or data.factionId ~= 'mechanic_workshop' or data.left ~= true then return end
+    local src=tonumber(data.source); local cid=tonumber(data.charId) or (src and J.CharId(src))
+    local m=cid and J.Members[cid]
+    if m and m.job=='mechanic' then J.DropMember(cid,false,'left mechanic workshop') end
+    if src then J.SyncState(src) end
 end)

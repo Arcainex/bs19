@@ -323,7 +323,7 @@ function drawNoise(snap) {
             c.globalAlpha = fade;
             c.font = '9px Consolas, monospace';
             c.textAlign = 'center';
-            c.fillText(`${nz.kind ? AT('atlas.stim.' + nz.kind, nz.kind) : AT('atlas.cv.noise', 'noise')} ${Math.round(nz.age || 0)}s`, sx, sy - r - 4);
+            c.fillText(`${nz.kind || AT('atlas.cv.noise', 'noise')} ${Math.round(nz.age || 0)}s`, sx, sy - r - 4);
         }
         c.globalAlpha = 1;
     }
@@ -401,70 +401,28 @@ function drawAgents(snap, t) {
     }
 }
 
-// Vehicle glyphs: one top-down car shape (nose up, 24x24 box), drawn as an SVG path so it stays crisp at any zoom
-// Colour carries the state; the legend draws the same path
-const CAR_COLOURS = {
-    free:     '#f5c542',   // world car, unowned
-    locked:   '#c79a2e',   // world car, locked
-    owned:    '#3ddc84',   // claimed by a character
-    occupied: '#4fd0ff',   // someone is driving it right now
-    wrecked:  '#ff5f56',   // wrecked
-};
-const CAR_BODY  = 'M12 1.8c2.9 0 4.4 1.8 4.4 4.8v10.8c0 3-1.5 4.8-4.4 4.8s-4.4-1.8-4.4-4.8V6.6c0-3 1.5-4.8 4.4-4.8z';
-const CAR_GLASS = 'M9.1 7.6c1.9-1 3.9-1 5.8 0l.7 3.3H8.4zM8.9 16.2h6.2l.5 2.6c-2.2.8-4.9.8-7.2 0z';
-const CAR_PATH  = typeof Path2D === 'function' ? { body: new Path2D(CAR_BODY), glass: new Path2D(CAR_GLASS) } : null;
-
-// Pick the glyph colour from the car's state; a player driving within a few metres of it marks it occupied
-function carKey(car, drivers) {
-    if (car.state === 'wrecked') return 'wrecked';
-    for (let i = 0; i < drivers.length; i++) {
-        if (Math.abs(drivers[i].x - car.x) < 6 && Math.abs(drivers[i].y - car.y) < 6) return 'occupied';
-    }
-    if (car.state === 'claimed' || car.owner) return 'owned';
-    return car.state === 'locked' ? 'locked' : 'free';
-}
-
-function drawCarGlyph(c, sx, sy, headingDeg, key, size) {
-    if (!CAR_PATH) { c.fillStyle = CAR_COLOURS[key]; c.fillRect(sx - 4, sy - 7, 8, 14); return; }
-    const k = size / 24;
-    c.save();
-    c.translate(sx, sy);
-    // GTA heading runs counter-clockwise from north; the canvas rotates clockwise
-    c.rotate(-(headingDeg || 0) * Math.PI / 180);
-    c.scale(k, k);
-    c.translate(-12, -12);
-    c.lineJoin = 'round';
-    c.fillStyle = CAR_COLOURS[key] || CAR_COLOURS.free;
-    c.strokeStyle = 'rgba(10,16,24,0.9)';
-    c.lineWidth = 1.6;
-    c.fill(CAR_PATH.body);
-    c.stroke(CAR_PATH.body);
-    c.fillStyle = 'rgba(10,16,24,0.78)';
-    c.fill(CAR_PATH.glass);
-    if (key === 'wrecked') {
-        c.strokeStyle = '#101820'; c.lineWidth = 2;
-        c.beginPath(); c.moveTo(7, 7); c.lineTo(17, 17); c.moveTo(17, 7); c.lineTo(7, 17); c.stroke();
-    }
-    c.restore();
-}
-
+const CAR_COLOURS = { system: '#f5c542', admin: '#3ddc84' };
 function drawCars() {
     const c = S.ctx, list = S.cars || [];
     const labels = S.view.ppm > 0.12;
-    // Glyph grows a little with zoom but stays readable when zoomed out
-    const size = Math.max(14, Math.min(26, 12 + S.view.ppm * 40));
-    const drivers = ((S.cur && S.cur.players) || []).filter(p => p.vehicle);
     for (let i = 0; i < list.length; i++) {
         const car = list[i];
         const sx = w2sx(car.x), sy = w2sy(car.y);
         if (sx < -20 || sy < -20 || sx > S.w + 20 || sy > S.h + 20) continue;
-        const key = carKey(car, drivers);
-        drawCarGlyph(c, sx, sy, car.h, key, size);
+        c.fillStyle = CAR_COLOURS[car.origin] || CAR_COLOURS.system;
+        c.fillRect(sx - 11, sy - 4, 22, 8);
+        c.fillRect(sx - 5, sy - 8, 11, 5);
+        c.fillStyle = '#101820';
+        c.beginPath(); c.arc(sx - 6, sy + 5, 3, 0, Math.PI * 2); c.arc(sx + 6, sy + 5, 3, 0, Math.PI * 2); c.fill();
+        c.fillStyle = CAR_COLOURS[car.origin] || CAR_COLOURS.system;
+        if (car.state === 'wrecked') {
+            c.strokeStyle = '#ff5f56'; c.lineWidth = 1.5;
+            c.strokeRect(sx - 4.5, sy - 4.5, 9, 9);
+        }
         if (labels) {
-            c.fillStyle = CAR_COLOURS[key];
             c.font = '10px Rajdhani, sans-serif';
             c.textAlign = 'left';
-            c.fillText(car.model + ' ' + AT('atlas.cars.' + car.state, car.state) + (car.owner ? ' — ' + (car.ownerName || '#' + car.owner) : ''), sx + size * 0.5 + 4, sy + 3);
+            c.fillText(car.model + ' ' + (car.state === 'claimed' ? 'Claimed' : AT('atlas.cars.' + car.state, car.state)) + (car.owner ? ' — ' + (car.ownerName || '#' + car.owner) : ''), sx + 16, sy + 3);
         }
     }
 }
@@ -517,7 +475,7 @@ function drawHeat(snap) {
         c.beginPath(); c.arc(sx, sy, r, 0, 6.2832); c.stroke();
         c.globalAlpha = 0.95; c.fillStyle = '#ffb4a3'; c.textAlign = 'center';
         c.font = '10px Consolas, monospace';
-        c.fillText(AT('atlas.cv.heat', '{id}  HEAT {h}/{m}', { id: AT('atlas.zone.' + z.id, String(z.id).toUpperCase()), h: Math.round(z.heat || 0), m: Math.round(z.heatMax || 100) }), sx, sy + r + 12);
+        c.fillText(AT('atlas.cv.heat', '{id}  HEAT {h}/{m}', { id: String(z.id).toUpperCase(), h: Math.round(z.heat || 0), m: Math.round(z.heatMax || 100) }), sx, sy + r + 12);
         c.globalAlpha = 1;
     }
 }
@@ -912,7 +870,7 @@ const API = {
     setRect(r)       { S.rect = r; },
     armRect(v)       { S.rectArmed = !!v; },
     pick(v, kind)    { S.pickMode = !!v; S.pickKind = v ? (kind || 'observe') : null; S.cv.classList.toggle('is-picking', !!v); },
-    CAR_COLOURS, CAR_BODY, CAR_GLASS,
+    CAR_COLOURS,
 
     layers: S.layers,
     view:   S.view,

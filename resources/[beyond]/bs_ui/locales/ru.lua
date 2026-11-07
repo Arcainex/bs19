@@ -15,7 +15,6 @@ return {
     ['ui.bar_stamina'] = 'Выносливость',
     ['ui.bar_hunger'] = 'Голод',
     ['ui.bar_thirst'] = 'Жажда',
-    ['ui.bar_noise'] = 'Шум',
     ['ui.bar_infection'] = 'Инфекция',
     ['ui.xp'] = 'ОП',
     ['ui.dash_fuel'] = 'ТОПЛИВО',

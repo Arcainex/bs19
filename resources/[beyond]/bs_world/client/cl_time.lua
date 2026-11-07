@@ -9,23 +9,22 @@ local State = {
     transitioningTo = nil,
     transitionId = 0,
     haveSync = false,
+    alphaLocked = false,
 }
 
+-- The multichar scene uses a separate local sky and clock.
+-- This guard only suppresses client rendering; the server simulation continues.
+local function creatorWeatherActive()
+    return LocalPlayer and LocalPlayer.state and LocalPlayer.state.azCharacterEditor == true
+end
+
 local lastLocal = GetGameTimer()
-local selectionWeather,latestSync
-AddEventHandler('bs:world:selectionWeather',function(on,settings)
-    selectionWeather=on and settings or nil
-    State.transitionId=State.transitionId+1;State.transitioningTo=nil
-    if not on and latestSync then
-        State.weather=nil
-        TriggerEvent('bs:world:sync',latestSync)
-    end
-end)
 
 -- What the server says
 
 -- A transition is a single operation, never a recurring sync action
 local function transitionTo(weather, seconds)
+    if creatorWeatherActive() then return end
     seconds = math.max(1.0, tonumber(seconds) or 90.0)
     State.weather = weather
     State.weatherNext = weather
@@ -38,18 +37,29 @@ local function transitionTo(weather, seconds)
 
     CreateThread(function()
         Wait((seconds + 2.0) * 1000)
-        if not selectionWeather and State.transitionId == ticket and State.transitioningTo == weather then
+        if State.transitionId == ticket and State.transitioningTo == weather then
             State.weather = weather
             State.weatherNext = nil
             State.transitioningTo = nil
-            SetOverrideWeather(weather)
+            if not creatorWeatherActive() then SetOverrideWeather(weather) end
         end
     end)
 end
 
+RegisterNetEvent('bs:world:alphaLock', function(on)
+    State.alphaLocked = on == true
+    if State.alphaLocked then
+        -- Alpha-Z owns all weather natives until the server explicitly releases the lock.
+        State.transitionId = State.transitionId + 1
+        State.transitioningTo = nil
+    else
+        -- Ask the world authority for a fresh state after Alpha-Z ends.
+        TriggerServerEvent('bs:world:request')
+    end
+end)
+
 RegisterNetEvent('bs:world:sync', function(s)
     if type(s) ~= 'table' then return end
-    latestSync=s
 
     State.minutes  = (tonumber(s.hour) or 0) * 60 + (tonumber(s.minute) or 0)
     State.rate     = tonumber(s.rate) or 12.0
@@ -57,7 +67,9 @@ RegisterNetEvent('bs:world:sync', function(s)
     State.haveSync = true
     lastLocal      = GetGameTimer()
 
-    if selectionWeather then return end
+    -- While Alpha-Z is active, bs_world continues syncing the clock but must not touch weather.
+    if State.alphaLocked or creatorWeatherActive() then return end
+
     -- Natural weather changes are announced in sync as weatherNext
     if s.weatherNext then
         -- A joining player needs the server's transition origin to blend the remaining time, otherwise GTA's random local weather is used
@@ -82,8 +94,8 @@ end)
 
 -- Staff-set weather has its own event because it carries the full transition duration
 RegisterNetEvent('bs:world:weather', function(weather, seconds)
+    if State.alphaLocked or creatorWeatherActive() then return end
     if not weather then return end
-    if selectionWeather then latestSync=latestSync or {};latestSync.weather=weather;latestSync.weatherNext=nil;return end
     seconds = tonumber(seconds) or 0
 
     if seconds <= 0 then
@@ -98,6 +110,17 @@ RegisterNetEvent('bs:world:weather', function(weather, seconds)
     end
 
     transitionTo(weather, seconds)
+end)
+
+-- When leaving the character screen, fetch the *current* world state.
+-- Refresh instead of replaying a stale weather stage saved before selection.
+AddEventHandler('bs:world:creatorWeatherReleased', function()
+    if creatorWeatherActive() then return end
+    State.transitionId = State.transitionId + 1
+    State.transitioningTo = nil
+    State.weather = nil
+    State.weatherNext = nil
+    TriggerServerEvent('bs:world:request')
 end)
 
 -- Holding the clock
@@ -139,9 +162,7 @@ CreateThread(function()
                 end
             end
 
-            if selectionWeather then
-                NetworkOverrideClockTime(selectionWeather.hour or 14,selectionWeather.minute or 0,0)
-            elseif not onCharScreen then
+            if not onCharScreen and not creatorWeatherActive() then
                 local total = State.minutes % 1440
                 local h = math.floor(total / 60)
                 local m = math.floor(total % 60)
@@ -159,7 +180,6 @@ CreateThread(function()
         Wait(5000)
 
         -- The engine's weather system keeps running underneath and will drift off what we set
-        if selectionWeather then SetOverrideWeather(selectionWeather.weather or 'OVERCAST')
-        elseif State.weather and not State.transitioningTo then SetOverrideWeather(State.weather) end
+        if not State.alphaLocked and not creatorWeatherActive() and State.weather and not State.transitioningTo then SetOverrideWeather(State.weather) end
     end
 end)

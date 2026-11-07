@@ -1,7 +1,7 @@
--- bs_ui - per-player NUI scale for html/shared/scale.js. 0 = auto (fit 1920x1080), 0.6-2.5 = fixed. Stored in client KVP; pages poll the `uiScaleGet` callback (https://bs_ui/uiScaleGet).
+-- bs_ui - per-player NUI scale for html/shared/scale.js. 0 = auto (fit 1920x1080), 0.6-1.4 = fixed. Stored in client KVP; pages poll the `uiScaleGet` callback (https://bs_ui/uiScaleGet).
 
 local KVP = 'bs_ui_scale'
-local MIN, MAX = 0.6, 2.5
+local MIN, MAX = 0.8, 1.6
 
 local function sanitize(v)
     v = tonumber(v) or 0
@@ -11,18 +11,17 @@ local function sanitize(v)
 end
 
 local current = sanitize(GetResourceKvpFloat(KVP))
-local safe = math.max(0, math.min(8, GetResourceKvpFloat('bs_ui_safe_margin') or 0))
 
 local function set(v)
     current = sanitize(v)
     SetResourceKvpFloat(KVP, current)
-    SendNUIMessage({ action = 'bsUiScale', scale = current, safe = safe })
+    SendNUIMessage({ action = 'bsUiScale', scale = current })
     TriggerEvent('bs:ui:scaleChanged', current)
     return current
 end
 
 RegisterNUICallback('uiScaleGet', function(_, cb)
-    cb({ ok = true, scale = current, safe = safe })
+    cb({ ok = true, scale = current })
 end)
 
 -- Menu palette for html/shared/palette.js. vars = false means each menu keeps its own colours.
@@ -51,13 +50,3 @@ RegisterCommand('uiscale', function(_, args)
     end
 end, false)
 TriggerEvent('chat:addSuggestion', '/uiscale', L('ui.sugg_uiscale'), { { name = 'scale', help = L('ui.sugg_uiscale_arg') } })
-
-exports('GetUiSafeMargin', function() return safe end)
-exports('SetUiSafeMargin', function(value)
-    value = tonumber(value)
-    if not value or value ~= value then return safe end
-    safe = math.max(0, math.min(8, value))
-    SetResourceKvpFloat('bs_ui_safe_margin', safe)
-    SendNUIMessage({ action = 'bsUiScale', scale = current, safe = safe })
-    return safe
-end)

@@ -1,0 +1,6 @@
+ID Card v10
+- Replaced old ID artwork with new Republic of San Andreas card.
+- Existing portrait and live character-data positions kept unchanged.
+- Character data changed to light beige for readability on the dark-blue card area.
+- Signature also changed to matching beige.
+- Inventory ID-card thumbnail updated from the same new artwork.

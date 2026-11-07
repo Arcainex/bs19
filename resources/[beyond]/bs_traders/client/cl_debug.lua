@@ -1,4 +1,9 @@
--- bs_traders - /traderdebug, a staff menu separate from the player shop menu in cl_main.lua.
+-- bs_traders - /traderdebug, a staff menu separate from the player shop menu in
+-- cl_main.lua. Shares the NUI page but has its own container in html/index.html
+-- and script html/js/debug.js.
+-- Nothing shown here is trusted: every save is re-checked server-side with
+-- isStaff() (sv_traders.lua). The mayuse check below only decides whether to
+-- open the menu.
 
 local open = false
 
@@ -8,7 +13,11 @@ local function say(text)
     TriggerEvent('chat:addMessage', { args = { '^3[traderdebug]', text } })
 end
 
--- Model preview: there is no supported way to get a live game texture into the NUI browser
+-- Model preview
+-- There is no supported way to get a live game texture into the NUI browser, so
+-- the preview is a real frozen, invincible ped standing beside the staff member
+-- (same approach as bs_multichar's cl_scene.lua). The #dbgRoot panel is fixed
+-- width, so there is screen on both sides to see it.
 
 local previewPed = nil
 local previewModel = nil
@@ -130,7 +139,8 @@ RegisterNUICallback('debugHere', function(_, cb)
     end)
 end)
 
--- Teleport to NPC: the server decides if this player is allowed (isAdmin() in sv_traders.lua) and returns the
+-- Teleport to NPC. The server decides if this player is allowed (isAdmin() in
+-- sv_traders.lua) and returns the coordinate, since the cached copy may be stale.
 RegisterNUICallback('debugTeleport', function(data, cb)
     CreateThread(function()
         local r = BSB.Await('traders:debug:teleport', 5000, data.npcId)
@@ -139,8 +149,14 @@ RegisterNUICallback('debugTeleport', function(data, cb)
             return
         end
 
-        -- Shared helper fades, loads collision and finds the ground
-        exports.bs_core:SafeTeleport(r.x, r.y, r.z, { heading = r.heading or 0.0 })
+        local ped = PlayerPedId()
+        -- Fade so the destination has time to load collision.
+        DoScreenFadeOut(250)
+        Wait(250)
+        SetEntityCoords(ped, r.x, r.y, r.z, false, false, false, true)
+        SetEntityHeading(ped, r.heading or 0.0)
+        Wait(100)
+        DoScreenFadeIn(300)
 
         cb({ ok = true })
     end)
@@ -196,7 +212,8 @@ end)
 
 -- Safety
 
--- The shop menu closes itself when anything else opens (cl_main.lua); this does the same back
+-- The shop menu closes itself when anything else opens (cl_main.lua); this does
+-- the same back, so the two never fight for NUI focus.
 AddEventHandler('bs:ui:opened', function(what)
     if what ~= 'traderdebug' and open then closeMenu() end
 end)

@@ -1,4 +1,5 @@
 -- bs_cinecam - scripted camera, not a moved ped.
+-- The gameplay camera has its own spring and collision push-out that cannot be turned off, so everything here drives a scripted camera directly.
 
 CineCam = {
     active  = false,
@@ -79,7 +80,7 @@ local function pushToEngine()
         SetCamUseShallowDofMode(cam, false)
     end
 
-    -- Streaming: without this the world only loads around the player, so a distant camera sees missing map.
+    -- Streaming: without this the world only loads around the player, so a distant camera sees missing map. SetFocusPosAndVel moves the streaming centre. Must be cleared on exit.
     SetFocusPosAndVel(CineCam.x, CineCam.y, CineCam.z, 0.0, 0.0, 0.0)
 end
 
@@ -136,7 +137,7 @@ function CineCam.Enter()
     if s.hideHud then CineLock.SetHud(true) end
     SetTimecycleModifier('default')
 
-    -- Applied after the 'default' modifier above, which strips the world's grade.
+    -- Applied after the 'default' modifier above, which strips the world's grade. See cl_grade.lua for the hand-off with the player's own filter.
     if CineGrade then CineGrade.Set(s) end
 
     if s.timescale ~= 1.0 then SetTimeScale(s.timescale) end
@@ -180,7 +181,7 @@ function CineCam.Toggle()
 end
 
 
--- Collision, when enabled: uses the synchronous LOS probe because the capsule test is asynchronous and would
+-- Collision, when enabled. Uses the synchronous LOS probe because the capsule test is asynchronous and would report a wall a couple of frames late.
 local function collideStep(fromX, fromY, fromZ, toX, toY, toZ)
     local handle = StartExpensiveSynchronousShapeTestLosProbe(
         fromX, fromY, fromZ, toX, toY, toZ,
@@ -210,7 +211,8 @@ CreateThread(function()
         if dt <= 0.0 then dt = 0.016 end
 
         if not CineCam.scripted then
-            -- Look: read with the DISABLED accessor, since under lockout IsControlPressed / GetControlNormal report
+            -- Look: read with the DISABLED accessor, since under lockout IsControlPressed / GetControlNormal report disabled controls as neutral.
+            -- Look and the wheel (FOV) are suspended while the menu is open. The menu uses SetNuiFocusKeepInput so you can keep flying with the keyboard, but that also passes the mouse through, so reaching for a slider would pan the shot. The camera keeps its target angles and resumes when the panel closes.
             local menu = CineMenu and CineMenu.open
 
             local mx = menu and 0.0 or GetDisabledControlNormal(0, 1)
@@ -235,14 +237,14 @@ CreateThread(function()
                 end
             end
 
-            -- roll
+            ------------------------------------------------------------ roll
             if IsDisabledControlPressed(0, 44) then               -- Q
                 CineCam.tRoll = math.max(-45.0, CineCam.tRoll - 30.0 * dt)
             elseif IsDisabledControlPressed(0, 38) then           -- E
                 CineCam.tRoll = math.min(45.0, CineCam.tRoll + 30.0 * dt)
             end
 
-            -- movement
+            -------------------------------------------------------- movement
             local fx, fy, fz, rx, ry = basis(CineCam.pitch, CineCam.yaw)
 
             local dx, dy, dz = 0.0, 0.0, 0.0
@@ -265,13 +267,13 @@ CreateThread(function()
                 speed = speed * s.slowMult
             end
 
-            -- smoothing
+            ------------------------------------------------------- smoothing
             local aMove = alphaFor(s.moveSmooth, dt)
             local aLook = alphaFor(s.lookSmooth, dt)
             local aFov  = alphaFor(s.fovSmooth,  dt)
             local aRoll = alphaFor(s.rollSmooth, dt)
 
-            -- Velocity is smoothed, not position.
+            -- Velocity is smoothed, not position. Smoothing position alone lags and stops dead on release; smoothing velocity gives momentum and a coast to a stop.
             CineCam.vx = lerp(CineCam.vx, dx * speed, aMove)
             CineCam.vy = lerp(CineCam.vy, dy * speed, aMove)
             CineCam.vz = lerp(CineCam.vz, dz * speed, aMove)
@@ -302,7 +304,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Safety
+--------------------------------------------------------------------------------
 
 -- A camera that outlives its resource leaves the player stuck looking at the sky, so this cleanup is required.
 AddEventHandler('onResourceStop', function(resource)

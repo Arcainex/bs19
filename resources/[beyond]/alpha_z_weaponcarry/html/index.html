@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Alpha-Z · Weapon Carry Editor</title>
+  <link rel="stylesheet" href="style.css?v=1.7.0">
+</head>
+<body>
+<div id="app" class="hidden">
+  <div class="shade" aria-hidden="true"></div>
+  <main class="panel" role="dialog" aria-modal="true" aria-labelledby="title">
+    <header class="header">
+      <div>
+        <div class="brand"><span class="brandMark">AZ</span><span>ALPHA-Z</span><span class="brandSeparator"></span><span class="brandSecondary">ADMIN TOOL</span></div>
+        <h1 id="title">WAFFEN-EDITOR</h1>
+        <p class="subtitle">Tragepositionen in Echtzeit anpassen</p>
+      </div>
+      <button id="closeTop" class="closeTop" title="Editor schließen" aria-label="Editor schließen">×</button>
+    </header>
+
+    <div class="statusStrip">
+      <span class="liveDot"></span><span>LIVE-VORSCHAU</span>
+      <span class="statusStripRight">4 TRAGEPLÄTZE <span class="miniBar"></span> SERVER-SYNC</span>
+    </div>
+
+    <nav class="tabs" aria-label="Bearbeitungsmodus">
+      <button id="modeSlots" class="tab active" data-mode="slots" type="button">TRAGEPLÄTZE</button>
+      <button id="modeItems" class="tab" data-mode="items" type="button">EINZELWAFFEN</button>
+    </nav>
+
+    <section class="section" id="slotSection">
+      <div class="sectionHead"><span>TRAGEPLATZ AUSWÄHLEN</span><span class="sectionHint">MAX. 1 JE PLATZ</span></div>
+      <div class="slotGrid">
+        <button class="slotCard active" type="button" data-slot="rifle"><span class="slotNumber">01</span><span class="slotText"><b>FERNKAMPF</b><small>RÜCKEN</small></span><span class="slotArrow">↗</span></button>
+        <button class="slotCard" type="button" data-slot="melee"><span class="slotNumber">02</span><span class="slotText"><b>NAHKAMPF</b><small>RÜCKEN</small></span><span class="slotArrow">↗</span></button>
+        <button class="slotCard" type="button" data-slot="left"><span class="slotNumber">03</span><span class="slotText"><b>LINKS</b><small>GÜRTEL</small></span><span class="slotArrow">↗</span></button>
+        <button class="slotCard" type="button" data-slot="right"><span class="slotNumber">04</span><span class="slotText"><b>RECHTS</b><small>GÜRTEL</small></span><span class="slotArrow">↗</span></button>
+      </div>
+    </section>
+
+    <section class="section hidden" id="itemSection">
+      <div class="sectionHead"><span>WAFFE AUSWÄHLEN</span><span class="sectionHint" id="itemCount"></span></div>
+      <div class="searchWrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10.8" cy="10.8" r="7.1"></circle><path d="m16 16 5 5"></path></svg>
+        <input id="itemSearch" type="search" placeholder="Waffe suchen ..." autocomplete="off" spellcheck="false" aria-label="Waffe suchen">
+      </div>
+      <select id="itemSelect" aria-label="Waffe für Einzelanpassung wählen"></select>
+      <div class="itemNote">Einzelne Waffen überschreiben nur ihre eigene Trageposition, nicht den gesamten Platz.</div>
+    </section>
+
+    <section class="section adjustSection">
+      <div class="sectionHead"><span>POSITION &amp; AUSRICHTUNG</span><span id="selectionBadge" class="statusTag">RÜCKEN · FERNKAMPF</span></div>
+      <div class="boneBar"><label for="bone"><span>KNOCHEN / ANKERPUNKT</span><small>Nur vorhandene Knochen am Charakter</small></label><select id="bone" aria-label="Knochen am Charakter wählen"></select></div>
+      <div class="gizmoLauncher">
+        <div><strong>3D-GIZMO</strong><small>Waffe direkt am Charakter mit der Maus verschieben und drehen</small></div>
+        <button id="gizmoStart" type="button">GIZMO ÖFFNEN <span>↗</span></button>
+      </div>
+      <div class="groupHeader"><span><i class="accentMark"></i>POSITION</span><small>METER</small></div>
+      <div class="axisRows" id="position"></div>
+      <div class="groupHeader rotationHeader"><span><i class="accentMark"></i>ROTATION</span><span class="rotationActions"><button type="button" class="rotationTest" id="rotationTest" title="Z-Rotation zur sichtbaren Prüfung um 90 Grad erhöhen; noch nicht speichern">TEST +90° Z</button><button type="button" class="rotationTest rotationDebug" id="rotationDebug" title="Winkel und Anheftungsstatus in die F8-Konsole schreiben">F8 DEBUG</button></span></div>
+      <div class="axisRows" id="rotation"></div>
+      <div class="precisionRow">
+        <span>ANPASSUNG</span>
+        <div class="precisionSwitch" role="group" aria-label="Schrittweite">
+          <button type="button" data-precision="fine" class="active">FEIN</button>
+          <button type="button" data-precision="coarse">GROB</button>
+        </div>
+        <span class="precisionValue" id="stepText">± 0,001 m / 0,5°</span>
+      </div>
+    </section>
+
+    <div class="noticeLine"><span class="noticeIcon">i</span><span>Die Vorschau ist sichtbar, wenn die ausgewählte Waffe am Körper getragen wird. <span id="saveScopeNotice">Die Speicherung gilt für alle Spieler.</span></span></div>
+    <div class="actionRow"><button id="save" class="primaryButton" type="button"><span class="buttonIcon">✓</span><span id="saveText">SERVERSEITIG SPEICHERN</span></button><button id="reset" class="resetButton" type="button" title="Ausgewählte Position auf Standard zurücksetzen">↺ <span>ZURÜCKSETZEN</span></button></div>
+    <footer class="footer"><span id="feedback" class="feedback" role="status" aria-live="polite"><span class="feedbackDot"></span> Bereit zur Bearbeitung</span><button id="close" class="footerClose" type="button">ESC · SCHLIESSEN</button></footer>
+  </main>
+  <div class="cameraHint" aria-hidden="true"><kbd>ALT</kbd> halten <span>·</span> Maus: Waffe umkreisen <span>·</span> Rad: Zoom</div>
+  <div id="cameraDragLayer" class="cameraDragLayer" aria-label="Kamera um die ausgewählte Waffe drehen und zoomen">
+    <div class="cameraModeLabel"><strong>ALT · KAMERA-MODUS</strong><span>Maus bewegen: drehen &nbsp;·&nbsp; Mausrad: rein / raus</span></div>
+  </div>
+  <section id="gizmoOverlay" class="gizmoOverlay hidden" aria-label="3D-Waffen-Gizmo">
+    <canvas id="gizmoCanvas" aria-label="3D-Achsen und Rotationsringe"></canvas>
+    <div class="gizmoTop">
+      <div class="gizmoTitle"><span class="brandMark">AZ</span><div><strong>3D-WAFFEN-GIZMO</strong><small id="gizmoSelection">RÜCKEN · FERNKAMPF</small></div></div>
+      <div class="gizmoTools">
+        <button type="button" class="active" data-gizmo-tool="move">↔ VERSCHIEBEN <kbd>G</kbd></button>
+        <button type="button" data-gizmo-tool="rotate">⟳ DREHEN <kbd>R</kbd></button>
+      </div>
+      <div class="gizmoControls"><button id="gizmoSave" type="button" class="gizmoSave">✓ SPEICHERN</button><button id="gizmoBack" type="button">← MENÜ</button></div>
+    </div>
+    <div id="gizmoNoView" class="gizmoNoView hidden">Gizmo nicht im Sichtfeld – ALT halten und mit der Maus drehen.</div>
+    <div class="gizmoBottom">
+      <div class="gizmoLegend"><span><i class="x"></i>X</span><span><i class="y"></i>Y</span><span><i class="z"></i>Z</span></div>
+      <strong id="gizmoValues">X 0.000m · Y 0.000m · Z 0.000m</strong>
+      <small id="gizmoStatus">Achse greifen und verschieben</small>
+      <p><b>LINKSKLICK + ZIEHEN</b> Achse / Ring bewegen <span>·</span> <b>ALT + MAUS</b> Kamera drehen <span>·</span> <b>ALT + RAD</b> Zoomen <span>·</span> <b>SHIFT</b> Fein <span>·</span> <b>ESC</b> Zurück</p>
+    </div>
+  </section>
+</div>
+<script src="app.js?v=1.10.0"></script>
+</body>
+</html>

@@ -11,7 +11,7 @@ Crafting.Settings = {
     stationQueueMax  = 8,      -- (F1)
     setupMs          = 2500,   -- station work you stand still for before the job runs on its own
     skill            = 'crafting',
-    speedPerLevel    = 0.025,  -- (F1) craft time cut per crafting level
+    speedPerLevel    = 0.01,  -- (F1) craft time cut per crafting level
     maxSpeedCut      = 0.5,    -- (F1)
     xpPerSecond      = 0.4,    -- crafting XP per second of base craft time
     storageSize      = { w = 6, h = 4, maxWeight = 250.0 },
@@ -27,7 +27,8 @@ Crafting.Settings = {
     salvageMs        = 20000,  -- (F1) wrench time on a vehicle wreck
 }
 
--- Stations: placed through bs_building (RegisterPlaceable reads StationDefs). `id` is the building piece id.
+-- Stations. Placed through bs_building (RegisterPlaceable reads StationDefs). `id` is the building piece id.
+-- anim: tried in order, the first dict that loads is used. prop: attached to the right hand while working.
 Crafting.Stations = {
     workbench = {
         label = 'Workbench', models = { 'prop_tool_bench02', 'prop_tool_bench02_ld' }, health = 600, size = { 2.0, 1.0, 1.0 },

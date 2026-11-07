@@ -88,19 +88,28 @@ end)
 
 local actions = {}
 
--- Heal on a downed or dead player goes through bs_medical's Revive export first
+-- Full admin heal: revive if necessary, clear medical injuries, restore needs and HP.
 function actions.heal(src, args)
     local target = tonumber(args.target) or src
     if not GetPlayerName(target) then return { ok = false, error = 'no such player' } end
-
-    if GetResourceState('bs_medical') == 'started' then
-        -- pcall: bs_medical may be restarting; a failed top-up is better than the action erroring.
-        local ok, downed = pcall(function() return exports.bs_medical:IsDowned(target) end)
-        if ok and downed then
-            pcall(function() return exports.bs_medical:Revive(target) end)
-        end
+    if GetResourceState('bs_medical') ~= 'started' then
+        return { ok = false, error = 'bs_medical is not running' }
     end
 
+    local ok, revived = pcall(function() return exports.bs_medical:Revive(target) end)
+    if not ok or revived ~= true then
+        return { ok = false, error = 'could not revive player for full heal' }
+    end
+    local clearedOk, cleared = pcall(function() return exports.bs_medical:ClearConditions(target) end)
+    if not clearedOk or cleared ~= true then
+        return { ok = false, error = 'could not clear medical conditions' }
+    end
+    local needsOk, needs = pcall(function()
+        return exports.bs_core:SetNeedsFor(target, 100, 100, 0)
+    end)
+    if not needsOk or needs ~= true then
+        return { ok = false, error = 'injuries cleared, but needs could not be restored' }
+    end
     TriggerClientEvent('bs:admin:heal', target)
     return { ok = true }
 end
@@ -819,22 +828,6 @@ function actions.giveitem(src, args)
     return { ok = true, label = label, amount = amount }
 end
 
-function actions.givecustomattachments(src,args)
-    if GetResourceState('bs_inventory')~='started'then return {ok=false,error='Inventory is unavailable.'}end
-    local target=tonumber(args.target)or src
-    local list={}
-    for item,def in pairs(exports.bs_inventory:GetItems()or {})do if def.data and def.data.customWeaponAttachment then list[#list+1]=item end end
-    table.sort(list)
-    local given={}
-    for _,item in ipairs(list)do
-        local ok,why=exports.bs_inventory:GiveItem(target,item,1)
-        if not ok then return {ok=false,error=('Gave %d/%d attachments. %s Make room before spawning the remaining items individually.'):format(#given,#list,tostring(why or 'Inventory full.')),given=given}end
-        given[#given+1]=item
-    end
-    guardLog(src,('custom attachment test pack: %d items to %d'):format(#given,target))
-    return {ok=true,note=('Gave one of each custom attachment (%d items).'):format(#given),given=given}
-end
-
 -- Undo a clothing-bench session without a relog
 function actions.clothRestore(src)
     if GetResourceState('bs_inventory') ~= 'started' then
@@ -852,9 +845,8 @@ function actions.items(src)
     for name, def in pairs(exports.bs_inventory:GetItems() or {}) do
         -- equipSlot lets the CLOTHING panel group garments by body slot.
         out[#out + 1] = { item = name, label = def.label or name,
-            category = def.data and def.data.customWeaponAttachment and 'custom_weapon_attachments'or def.category, equipSlot = def.equipSlot }
+            category = def.category, equipSlot = def.equipSlot }
     end
-    out[#out+1]={item='__custom_attachment_pack',label='Complete custom attachment test pack',category='custom_weapon_attachments'}
     table.sort(out, function(a, b) return a.label < b.label end)
     return { ok = true, items = out }
 end
@@ -1158,6 +1150,13 @@ function actions.buildData(src)
         end
         out.raidAlways = exports.bs_building:RaidAlways()
         out.freeBuild = exports.bs_building:FreeBuildOn(src)
+        out.freeBuildAll = exports.bs_building:FreeBuildAllOn()
+        out.freeBuildGrants = exports.bs_building:FreeBuildGrants()
+        out.onlinePlayers = {}
+        for _, id in ipairs(GetPlayers()) do
+            local playerId = tonumber(id)
+            out.onlinePlayers[#out.onlinePlayers + 1] = { source = playerId, name = GetPlayerName(playerId) }
+        end
     end
     if GetResourceState('bs_crafting') == 'started' then
         local ok, map = pcall(function() return exports.bs_crafting:Recipes() end)
@@ -1208,11 +1207,42 @@ function actions.raidAlways(src)
     return { ok = true, on = on, note = Lp(src, on and 'admin.raid_on' or 'admin.raid_off') }
 end
 
+function actions.freeBuildStatus(src)
+    if not buildingUp() then return { ok = false, error = 'bs_building is not running' } end
+    return { ok = true, on = exports.bs_building:FreeBuildOn(src) == true }
+end
+
 function actions.freeBuild(src)
     if not buildingUp() then return { ok = false, error = 'bs_building is not running' } end
     local on = exports.bs_building:SetFreeBuild(src, not exports.bs_building:FreeBuildOn(src))
     guardLog(src, 'free build ' .. (on and 'on' or 'off'))
+    TriggerClientEvent('bs:ui:notify', src, { type = on and 'success' or 'info', message = on and 'GRATIS BAUEN AKTIVIERT' or 'GRATIS BAUEN DEAKTIVIERT', duration = 4000 })
     return { ok = true, on = on, note = Lp(src, on and 'admin.free_on' or 'admin.free_off') }
+end
+
+function actions.freeBuildPlayer(src, args)
+    if not buildingUp() then return { ok = false, error = 'bs_building is not running' } end
+    local target = tonumber(args and args.target)
+    if not target or not GetPlayerName(target) then return { ok = false, error = 'Spieler nicht online' } end
+    if not exports.bs_building:SetFreeBuildPlayer(target, true) then return { ok = false, error = 'Berechtigung konnte nicht gesetzt werden' } end
+    guardLog(src, ('free build granted to %s (%d)'):format(GetPlayerName(target), target))
+    return { ok = true, note = 'Gratis bauen aktiviert' }
+end
+
+function actions.removeFreeBuildPlayer(src, args)
+    if not buildingUp() then return { ok = false, error = 'bs_building is not running' } end
+    local identifier = args and args.identifier
+    if not exports.bs_building:RemoveFreeBuildGrant(identifier) then return { ok = false, error = 'Berechtigung konnte nicht entfernt werden' } end
+    guardLog(src, 'free build grant removed')
+    return { ok = true, note = 'Gratisbaurecht entzogen' }
+end
+
+function actions.freeBuildAll(src)
+    if not buildingUp() then return { ok = false, error = 'bs_building is not running' } end
+    local on = not exports.bs_building:FreeBuildAllOn()
+    if not exports.bs_building:SetFreeBuildAll(on) then return { ok = false, error = 'Konnte Berechtigung nicht setzen' } end
+    guardLog(src, 'free build ALL: ' .. (on and 'on' or 'off'))
+    return { ok = true, on = on, note = 'Gratis bauen für ALLE: ' .. (on and 'AN' or 'AUS') }
 end
 
 function actions.resetDecayAll(src)
@@ -1242,14 +1272,83 @@ CreateThread(function()
     end
 end)
 
+-- Alpha-Z hazardous weather (bs_alpha_weather)
+local function alphaWeatherUp() return GetResourceState('bs_alpha_weather') == 'started' end
+function actions.alphaWeatherState(src)
+    if not alphaWeatherUp() then return { ok=false, error='bs_alpha_weather is not running' } end
+    local ok, state = pcall(function() return exports.bs_alpha_weather:State() end)
+    return ok and { ok=true, weather=state or 'none' } or { ok=false, error='could not read Alpha-Z weather' }
+end
+function actions.alphaWeatherStart(src, args)
+    if not alphaWeatherUp() then return { ok=false, error='bs_alpha_weather is not running' } end
+    local kind=tostring(args.kind or '')
+    local ok, started, state = pcall(function() return exports.bs_alpha_weather:Start(kind) end)
+    if not ok or not started then return { ok=false, error=state or 'could not start Alpha-Z weather' } end
+    return { ok=true, note='Alpha-Z weather started: '..tostring(state) }
+end
+function actions.alphaWeatherStop(src)
+    if not alphaWeatherUp() then return { ok=false, error='bs_alpha_weather is not running' } end
+    local ok = pcall(function() exports.bs_alpha_weather:Stop() end)
+    return ok and { ok=true, note='Alpha-Z weather stopped' } or { ok=false, error='could not stop Alpha-Z weather' }
+end
+
+-- F10 Crafting & Lebensmittel editor. Same live recipes as F1; no second recipe store.
+local function craftEditorCall(src, action, payload)
+    if GetResourceState('bs_crafting') ~= 'started' then
+        return { ok = false, error = 'bs_crafting ist nicht gestartet.' }
+    end
+    local ok, result = pcall(function()
+        return exports.bs_crafting:ConfigExt(src, action, payload)
+    end)
+    if not ok then
+        print('[bs_admin] crafting editor: ' .. tostring(result))
+        return { ok = false, error = 'Crafting-Verbindung fehlgeschlagen.' }
+    end
+    return result or { ok = false, error = 'Keine Antwort von bs_crafting.' }
+end
+
+function actions.craftState(src)
+    return craftEditorCall(src, 'recipes')
+end
+function actions.craftSave(src, args)
+    return craftEditorCall(src, 'saveRecipe', args)
+end
+function actions.craftDisable(src, args)
+    return craftEditorCall(src, 'disableRecipe', args.id)
+end
+function actions.craftReset(src, args)
+    return craftEditorCall(src, 'resetRecipe', args.id)
+end
+function actions.craftDelete(src, args)
+    return craftEditorCall(src, 'deleteRecipe', args.id)
+end
+
+local function foodEditorCall(src, action, payload)
+    if GetResourceState('bs_inventory') ~= 'started' then
+        return { ok = false, error = 'bs_inventory ist nicht gestartet.' }
+    end
+    local ok, result = pcall(function()
+        return exports.bs_inventory:FoodEditor(src, action, payload)
+    end)
+    if not ok then
+        print('[bs_admin] food editor: ' .. tostring(result))
+        return { ok = false, error = 'Lebensmittel-Verbindung fehlgeschlagen.' }
+    end
+    return result or { ok = false, error = 'Keine Antwort von bs_inventory.' }
+end
+function actions.foodState(src) return foodEditorCall(src, 'list') end
+function actions.foodSave(src, args) return foodEditorCall(src, 'save', args) end
+function actions.foodReset(src, args) return foodEditorCall(src, 'reset', args) end
+function actions.foodDelete(src, args) return foodEditorCall(src, 'delete', args) end
+
 -- Lookups that change nothing, so they are not written to bs_guard_log.
 local READ_ONLY = {
-    items = true, perks = true, skills = true, classes = true, buildData = true, diagnostics = true,
+    items = true, perks = true, skills = true, classes = true, buildData = true, diagnostics = true, craftState = true, foodState = true,
     playerInfo = true, testServerState = true, playerLogs = true, serverStats = true, worldState = true, invView = true,
-    eventList = true, bans = true, factionList = true, storedCars = true, zspawnmode = true, powerList = true, pumpList = true,
+    eventList = true, alphaWeatherState = true, bans = true, factionList = true, storedCars = true, zspawnmode = true, powerList = true, pumpList = true,
 }
 -- These write their own, more detailed line.
-local SELF_LOGGED = { giveitem = true, giveFor = true, raidAlways = true, freeBuild = true, resetDecayAll = true, finishFrames = true, worldCarsReset = true }
+local SELF_LOGGED = { giveitem = true, giveFor = true, raidAlways = true, freeBuild = true, freeBuildPlayer = true, removeFreeBuildPlayer = true, freeBuildAll = true, resetDecayAll = true, finishFrames = true, worldCarsReset = true }
 
 -- One line per staff action
 local function describe(action, args)

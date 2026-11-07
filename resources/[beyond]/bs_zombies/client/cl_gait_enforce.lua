@@ -34,7 +34,7 @@ local function enforce(ped, id, st)
     if entry and (entry.crippled or entry.dying or (entry.def and entry.def.noClipset)) then return end
 
     local set = st and st.zGait
-    if not (Zombies.Mode == 'networked_plus' and st and st.zArchetype and type(set) == 'string' and #set < 100) and not isDrunk(set) then set = (entry and isDrunk(entry.gait) and entry.gait) or pickFor(ped, id or ped) end
+    if not isDrunk(set) then set = (entry and isDrunk(entry.gait) and entry.gait) or pickFor(ped, id or ped) end
 
     if not HasAnimSetLoaded(set) then RequestAnimSet(set); return end
 

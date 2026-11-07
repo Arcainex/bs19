@@ -1,0 +1,10 @@
+ALPHA-Z TESTERMENÜ – INFO-SEITE V5
+
+Neu: Beim Öffnen per F4 erscheint zuerst der Reiter INFO.
+Enthält die gewünschten Hinweise zu Shift-Zielen, Fahrzeugtests, WeaponCarry-Gizmo und kostenlosem Bauen (F2).
+Fahrzeuge / Gegenstände / Testwerkzeuge und Serverrechte bleiben unverändert.
+NUI-Transparenzfix bleibt enthalten.
+
+Installation: Server stoppen, vorherige alpha_z_tester sichern und Ordner aus ZIP ersetzen. Server starten.
+
+Diese Änderung fügt nur Informationstext hinzu; sie aktiviert keine neuen Spielmechaniken.

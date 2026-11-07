@@ -47,7 +47,9 @@ JC.Anim = {
     fish     = { { scenario = 'WORLD_HUMAN_STAND_FISHING' } },
 }
 
+--------------------------------------------------------------------------------
 -- Stations
+--------------------------------------------------------------------------------
 
 local blips, zones = {}, {}
 local BLIP = { yard = { 446, 'blip.yard' }, gunsmith = { 110, 'blip.gunsmith' }, chop = { 380, 'blip.chop' }, water = { 361, 'blip.water' } }
@@ -111,7 +113,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Active contract
+--------------------------------------------------------------------------------
 
 local cblips = {}
 local function clearContractBlips()
@@ -218,11 +222,15 @@ AddEventHandler('bs:jobs:turnin', function()
     end)
 end)
 
+--------------------------------------------------------------------------------
 -- Hands up goes to the server (robbery and zip ties check it)
+--------------------------------------------------------------------------------
 
 AddEventHandler('bs:emotes:handsUp', function(on) TriggerServerEvent('bs:jobs:handsUp', on == true) end)
 
+--------------------------------------------------------------------------------
 -- Y / N prompts (mechanic bills)
+--------------------------------------------------------------------------------
 
 local prompt = nil
 RegisterNetEvent('bs:jobs:prompt', function(p)
@@ -237,8 +245,8 @@ local function answer(yes)
 end
 RegisterCommand('bsjobs_yes', function() answer(true) end, false)
 RegisterCommand('bsjobs_no', function() answer(false) end, false)
-RegisterKeyMapping('bsjobs_yes', L('jobs.key_yes'), 'keyboard', 'Y')
-RegisterKeyMapping('bsjobs_no', L('jobs.key_no'), 'keyboard', 'N')
+RegisterKeyMapping('bsjobs_yes', L('jobs.key_yes'), 'keyboard', '')
+RegisterKeyMapping('bsjobs_no', L('jobs.key_no'), 'keyboard', '')
 
 -- Smuggler spotted: a short-lived area blip.
 RegisterNetEvent('bs:jobs:smugglePing', function(p)
@@ -249,7 +257,7 @@ RegisterNetEvent('bs:jobs:smugglePing', function(p)
     SetTimeout(30000, function() if DoesBlipExist(b) then RemoveBlip(b) end end)
 end)
 
--- Sync once the character is in.
+-- First sync once the character is in.
 CreateThread(function()
     while GetResourceState('bs_core') ~= 'started' or not exports.bs_core:IsLoaded() do Wait(1000) end
     Wait(2000)

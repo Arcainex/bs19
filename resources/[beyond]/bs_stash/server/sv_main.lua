@@ -1,4 +1,5 @@
--- bs_stash - server side: contents are a normal inventory container owned by 'stash:<id>', so weight
+-- bs_stash - server side.
+-- Only the owner knows where a stash is: a player is only sent their own stashes (the list never leaves the server otherwise), and a stranger can only ask "is anything buried where I stand", with a shovel, at most once a second. Contents are a normal inventory container owned by 'stash:<id>', so weight, moves and persistence use the same code as any other container.
 
 local S = Stash.Settings
 
@@ -32,7 +33,9 @@ local function sizeFor(stash, src)
     return stash.size
 end
 
+--------------------------------------------------------------------------------
 -- Loading
+--------------------------------------------------------------------------------
 
 CreateThread(function()
     if not S.enabled then return end
@@ -51,7 +54,9 @@ CreateThread(function()
     print(('^2[BeyondSurvival]^7 (stash) %d buried stash(es) loaded'):format(n))
 end)
 
+--------------------------------------------------------------------------------
 -- Helpers
+--------------------------------------------------------------------------------
 
 local function distance(a, x, y, z)
     local dx, dy, dz = a.x - x, a.y - y, a.z - z
@@ -98,7 +103,9 @@ local function pedCoords(src)
     return GetEntityCoords(ped)
 end
 
+--------------------------------------------------------------------------------
 -- Burying
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('stash:bury', function(src, label)
     if not S.enabled then return { ok = false, error = Lp(src, 'st.off') } end
@@ -146,7 +153,9 @@ BSB.RegisterCallback('stash:bury', function(src, label)
              coords = { x = at.x, y = at.y, z = at.z } }
 end)
 
+--------------------------------------------------------------------------------
 -- Finding
+--------------------------------------------------------------------------------
 
 -- Everything this character buried. The only list that leaves the server, and only to its owner.
 BSB.RegisterCallback('stash:mine', function(src)
@@ -182,7 +191,7 @@ BSB.RegisterCallback('stash:rename', function(src, id, label)
     return { ok = true, label = label }
 end)
 
--- "Is anything buried where I stand?" Uses the caller's own server-side position, within about a metre
+-- "Is anything buried where I stand?" Uses the caller's own server-side position, within about a metre, rate limited per player, so it cannot be used to sweep an area.
 local lastProbe = {}
 
 BSB.RegisterCallback('stash:probe', function(src)
@@ -202,12 +211,14 @@ BSB.RegisterCallback('stash:probe', function(src)
     local stash = nearest(at.x, at.y, at.z, S.strangerSight or 1.4)
     if not stash then return { ok = true, found = false } end
 
-    -- not the label or owner: a stranger sees disturbed earth until it is dug up.
+    -- Deliberately not the label or owner: a stranger sees disturbed earth until it is dug up.
     return { ok = true, found = true, id = stash.id,
              coords = { x = stash.x, y = stash.y, z = stash.z } }
 end)
 
+--------------------------------------------------------------------------------
 -- Opening
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('stash:open', function(src, id)
     if not S.enabled then return { ok = false } end
@@ -224,7 +235,7 @@ BSB.RegisterCallback('stash:open', function(src, id)
 
     local containerId = containerFor(stash.id)
 
-    -- Registered at the moment of use with the real capacity
+    -- Registered at the moment of use with the real capacity, so a client cannot name its own container size (see bs_inventory's container registry).
     exports.bs_inventory:RegisterContainer(containerId, {
         size = sizeFor(stash, src), maxWeight = S.maxWeight, label = stash.label,
     }, src)  -- src grants this player the open; without it bs_inventory refuses
@@ -235,7 +246,7 @@ BSB.RegisterCallback('stash:open', function(src, id)
     return { ok = true, label = stash.label }
 end)
 
--- Emptiness is checked against the inventory itself so a stash with items in it is never deleted.
+-- Filling the hole in: only when empty and only by the owner. Emptiness is checked against the inventory itself so a stash with items in it is never deleted.
 BSB.RegisterCallback('stash:fill', function(src, id)
     local stash = stashes[tonumber(id) or -1]
     if not stash then return { ok = false } end
@@ -262,7 +273,9 @@ end)
 
 AddEventHandler('playerDropped', function() lastProbe[source] = nil end)
 
+--------------------------------------------------------------------------------
 -- Staff
+--------------------------------------------------------------------------------
 
 BSB.RegisterCommand('stashes', 'bs.admin', 'How many stashes are buried', {},
     function(src)

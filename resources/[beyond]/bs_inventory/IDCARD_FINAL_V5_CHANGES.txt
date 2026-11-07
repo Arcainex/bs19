@@ -1,0 +1,6 @@
+ID card changes:
+- large ID card exactly 20% smaller (576px -> 461px, 82vw -> 65.6vw)
+- personal values shifted right to 65.4%
+- values enlarged and styled as warm printed ink
+- signature shifted lower to 83.8% and slightly right
+- stylesheet cache key bumped to idcard-final-v5
