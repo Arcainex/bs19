@@ -198,8 +198,11 @@ local function spawnEnt(record)
     local model = record.model or (Zombies.Models or {})[1] or 'u_m_y_zombie_01'
     local hash = type(model) == 'number' and model or GetHashKey(model)
     local z = tonumber(record.z) or 0.0
-    local needsGround = record.needsGround == true or z < 1.0 or z > 2000.0
-    if needsGround then z = 0.0 end
+    local hasLevel = z >= 1.0 and z <= 2000.0
+    -- A promoted filler stood on that exact spot (the promoting client had it on the ground). Everything else is
+    -- created frozen and only moves once its owner found ground at that level (cl_net groundIt), so nothing falls.
+    local needsGround = record.needsGround == true or not hasLevel or not record.filler
+    if needsGround and not hasLevel then z = 0.0 end
 
     local ent = CreatePed(4, hash, record.x + 0.0, record.y + 0.0, z + 0.0, (record.h or 0.0) + 0.0, true, true)
     if (not ent or ent == 0) and variant then
@@ -229,6 +232,7 @@ local function spawnEnt(record)
     local cull = num(N().cullingRadius, 0.0)
     if cull > 0 then SetEntityDistanceCullingRadius(ent, cull + 0.0) end
     if needsGround then FreezeEntityPosition(ent, true) end
+    record.groundSince = needsGround and GetGameTimer() or nil
 
     record.ent = ent
     record.entCreated = (record.entCreated or 0) + 1
@@ -393,6 +397,11 @@ local function pass()
                 if Registry.AssignHost then pcall(Registry.AssignHost, record) end
             end
             mirrorBags(record, ent, false)
+            -- Never grounded by its owner: take the ped back rather than leave a frozen walker
+            if record.groundSince and now - record.groundSince > num(n.groundTimeoutMs, 20000) then
+                record.groundSince = nil
+                lost[#lost + 1] = -record.id
+            end
             local d, who = nearest(list, record.x, record.y)
             if d > keepR and not record.event then
                 record.farSince = record.farSince or now
@@ -410,8 +419,13 @@ local function pass()
     end
 
     for _, id in ipairs(lost) do
-        local record = Registry.zombies[id]
-        if record then clearRecordEnt(record); Registry.Remove(id, 'entity-lost') end
+        if id < 0 then
+            local record = Registry.zombies[-id]
+            if record and record.ent then demote(record, 'noGround') end
+        else
+            local record = Registry.zombies[id]
+            if record then clearRecordEnt(record); Registry.Remove(id, 'entity-lost') end
+        end
     end
 
     -- 2. SHED over the cap / entity hard limit, farthest first.
@@ -763,12 +777,21 @@ RegisterNetEvent('bs:z:net:grounded', function(id, z)
     if not record or not record.ent or record.netOwner ~= src then return end
     z = tonumber(z)
     if z and z > -100.0 and z < 2000.0 then record.z = z; record.needsGround = false end
+    record.groundSince = nil
     bag(record.ent, 'zGround', false)
 end)
 
-RegisterNetEvent('bs:z:net:groundFailed', function(id)
+RegisterNetEvent('bs:z:net:groundFailed', function(id, why)
     local record = Registry.zombies[tonumber(id) or -1]
     if not record or not record.ent or record.netOwner ~= source then return end
+    -- Water is not a place a walker can ever stand: the walker goes, it is not retried there
+    if why == 'water' then
+        local ent = record.ent
+        clearRecordEnt(record)
+        deleteEnt(ent, 'water')
+        Registry.Remove(record.id, 'water')
+        return
+    end
     demote(record, 'noGround')
 end)
 

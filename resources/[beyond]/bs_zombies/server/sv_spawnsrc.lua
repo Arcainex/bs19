@@ -95,7 +95,8 @@ local function makeSyntheticRing(cluster, radius, count)
             id = nextId,
             x = cx + math.cos(a) * r,
             y = cy + math.sin(a) * r,
-            z = cluster.z or 0.0,
+            -- No height: the cluster's z is a player's (a bridge, a walkway). The client takes the road level there.
+            z = nil,
             radius = 20.0,
             -- Enough that one plan does not exhaust a point, low enough that a single point cannot become a crowd
             population = 3,

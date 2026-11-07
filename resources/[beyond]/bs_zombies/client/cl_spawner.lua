@@ -65,28 +65,47 @@ local function aboveLowerSurface(c)
     return found and lower and c.z - lower > 3.0
 end
 
--- Somewhere a ped can stand near x,y: navmesh, then ground, then the road itself. Never a roof.
--- Returns coords or nil plus the reason
+-- Water at a standing point (sea, lakes, canals)
+local function inWater(x, y, z)
+    local okW, has, wz = pcall(GetWaterHeight, x, y, z + 2.0)
+    if okW and has and tonumber(wz) and wz > z - 0.4 then return true end
+    local okP, hit, hz = pcall(TestVerticalProbeAgainstAllWater, x, y, z + 2.0, 0)
+    if okP and (hit == true or hit == 1) and tonumber(hz) and hz > z - 0.4 then return true end
+    return false
+end
+
+-- The walkable level must match the road level next to the candidate (slopes allowed for).
+-- That is what tells a bridge deck from the street below it, a tunnel floor from the road on top, and a roof from both.
+local function onRoadLevel(c, road)
+    local d = math.sqrt((c.x - road.x) ^ 2 + (c.y - road.y) ^ 2)
+    return math.abs(c.z - road.z) <= 2.5 + d * 0.12
+end
+
+-- Somewhere a ped can stand near x,y on a real walkable level: navmesh, then ground probed from just above
+-- the road level, then the road node itself. Never the player's height, a roof, mid-air or water.
+-- Returns coords, or nil plus the reason
 local function safeCoord(x, y, z)
     local road = roadNear(x, y, z)
-    local baseZ = road and road.z or z
+    if not road then return nil, 'noRoad' end
+    local baseZ = road.z
     RequestCollisionAtCoord(x, y, baseZ)
     local roofHit = false
     for _, flags in ipairs({ 16, 0 }) do
         local found, c = GetSafeCoordForPed(x, y, baseZ, true, flags)
         if found and c and ((c.x - x) ^ 2 + (c.y - y) ^ 2) <= 30.0 * 30.0 then
-            if not aboveRoad(c, road) and not aboveLowerSurface(c) then return c end
+            if onRoadLevel(c, road) and not inWater(c.x, c.y, c.z) then return c end
             roofHit = true
         end
     end
-    local found, gz = GetGroundZFor_3dCoord(x, y, baseZ + 50.0, false)
+    local found, gz = GetGroundZFor_3dCoord(x, y, baseZ + 3.0, false)
     if found and gz and gz > -100.0 then
         local c = vector3(x, y, gz + 0.15)
-        if not aboveRoad(c, road) and not aboveLowerSurface(c) then return c end
+        if onRoadLevel(c, road) and not inWater(c.x, c.y, c.z) then return c end
         roofHit = true
     end
-    if road then return vector3(road.x, road.y, road.z + 0.15) end
-    return nil, roofHit and 'roof' or 'noSafeCoord'
+    -- The road node is a driveable surface; the owner still confirms the ground before the walker can move
+    if not inWater(road.x, road.y, road.z) then return vector3(road.x, road.y, road.z + 0.15) end
+    return nil, roofHit and 'roof' or 'water'
 end
 
 -- Same safe-zone rule as the server, reading Zones.Safe from config_zones.lua (a shared_script, so it exists on both sides)
@@ -239,7 +258,8 @@ local function candidateFor(node, attempt)
     local x,y
     local offset = math.min(12.0, tonumber(node.radius) or 12.0) * ((seed % 977) / 977)
     x,y = node.x + math.cos(angle)*offset, node.y + math.sin(angle)*offset
-    local coords, bad = safeCoord(x,y,node.z or origin.z)
+    -- The node's own level when it has one; otherwise the player's height only picks which road level is nearest
+    local coords, bad = safeCoord(x,y,(tonumber(node.z) and node.z > 1.0) and node.z or origin.z)
     if not coords then return nil, bad or 'noSafeCoord' end
     if node.mode == 'simulation' and (coords.x-node.x)^2+(coords.y-node.y)^2 > 60^2 then
         return nil,'tooFar'

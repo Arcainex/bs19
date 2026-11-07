@@ -229,6 +229,17 @@ end
 
 local grounding = {}
 
+local function inWater(x, y, z)
+    local okW, has, wz = pcall(GetWaterHeight, x, y, z + 2.0)
+    if okW and has and tonumber(wz) and wz > z - 0.4 then return true end
+    local okP, hit, hz = pcall(TestVerticalProbeAgainstAllWater, x, y, z + 2.0, 0)
+    if okP and (hit == true or hit == 1) and tonumber(hz) and hz > z - 0.4 then return true end
+    return false
+end
+
+-- The ped was created frozen at its spawn level (a road node, navmesh or the filler's feet), or at z 0 with no level.
+-- Ground is only accepted at that level: a bridge deck stays a deck, a tunnel floor stays a tunnel floor, and a
+-- roof or the sea is refused. Nothing is unfrozen until this succeeds, so no walker ever drops from the sky.
 local function groundIt(entry)
     local ped, id = entry.ped, entry.id
     if grounding[ped] then return end
@@ -236,27 +247,38 @@ local function groundIt(entry)
     CreateThread(function()
         local untilT = GetGameTimer() + 8000
         local at = GetEntityCoords(ped)
-        local gz
-        -- Avoid rooftop spawns: a top-down probe from 1000 m finds the highest surface, which in a town is a roof
-        local gx, gy = at.x, at.y
+        local level = at.z > 1.0 and at.z or nil
+        local gx, gy, gz
+        local why = 'noGround'
         while GetGameTimer() < untilT and DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) do
-            RequestCollisionAtCoord(at.x, at.y, at.z)
-            local okS, c = GetSafeCoordForPed(at.x, at.y, at.z, true, 16)
-            if okS and c and #(vector2(c.x, c.y) - vector2(at.x, at.y)) < 25.0 then
-                gx, gy, gz = c.x, c.y, c.z
-                break
+            if not level then
+                -- No level from the server: the nearest road node gives it (never the player's height)
+                local me = GetEntityCoords(PlayerPedId())
+                local okR, road = GetClosestVehicleNode(at.x, at.y, me.z, 1, 3.0, 0)
+                if okR and road and road.x and (road.x - at.x) ^ 2 + (road.y - at.y) ^ 2 <= 70.0 * 70.0 then level = road.z end
             end
-            local found, z = GetGroundZFor_3dCoord(at.x, at.y, at.z + 3.0, false)
-            if found and z and z > -100.0 then gz = z break end
+            if level then
+                RequestCollisionAtCoord(at.x, at.y, level)
+                local okS, c = GetSafeCoordForPed(at.x, at.y, level, true, 16)
+                if okS and c then
+                    local d = #(vector2(c.x, c.y) - vector2(at.x, at.y))
+                    if d < 25.0 and math.abs(c.z - level) <= 2.5 + d * 0.12 then
+                        if inWater(c.x, c.y, c.z) then why = 'water' else gx, gy, gz = c.x, c.y, c.z break end
+                    end
+                end
+                local found, z = GetGroundZFor_3dCoord(at.x, at.y, level + 3.0, false)
+                if found and z and z > -100.0 and math.abs(z - level) <= 3.0 then
+                    if inWater(at.x, at.y, z) then why = 'water' else gx, gy, gz = at.x, at.y, z break end
+                end
+            end
             Wait(250)
         end
         if gz and DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) then
-            at = vector3(gx, gy, at.z)
-            SetEntityCoordsNoOffset(ped, at.x, at.y, gz + 0.05, false, false, false)
+            SetEntityCoordsNoOffset(ped, gx, gy, gz + 0.05, false, false, false)
             FreezeEntityPosition(ped, false)
             TriggerServerEvent('bs:z:net:grounded', id, gz + 0.05)
         elseif DoesEntityExist(ped) and NetworkHasControlOfEntity(ped) then
-            TriggerServerEvent('bs:z:net:groundFailed', id)
+            TriggerServerEvent('bs:z:net:groundFailed', id, why)
         end
         grounding[ped] = nil
     end)
@@ -409,6 +431,8 @@ CreateThread(function()
                             end
                         end
                     end
+                    -- Still waiting for ground (a first try may have run before control arrived)
+                    if mine and st and st.zGround and not grounding[ped] then groundIt(entry) end
                     if st then
                         entry.pace = Zombies.Mode == 'networked_plus' and st.zPace or nil
                         local g = st.zGait

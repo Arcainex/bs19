@@ -391,6 +391,8 @@ local function setChase(entry, on)
 end
 
 -- Drifting, not wandering
+local GO_STRAIGHT = GetHashKey('SCRIPT_TASK_GO_STRAIGHT_TO_COORD')
+local FOLLOW_NAV = GetHashKey('SCRIPT_TASK_FOLLOW_NAV_MESH_TO_COORD')
 
 -- Walk there, but go around obstacles
 local function blockedBetween(ped, a, x, y, z)
@@ -1218,7 +1220,11 @@ CreateThread(function()
                 do end
             elseif not IsPedActiveInScenario(entry.ped) then
                 -- The drift, one leg at a time
+                -- The drift leg is a script go-to task. Engine task 224 alone missed the navmesh legs, so every leg was
+                -- cleared a think tick after it started and idle walkers stood in place.
                 local walking = GetIsTaskActive(entry.ped, 224)
+                    or GetScriptTaskStatus(entry.ped, GO_STRAIGHT) ~= 7
+                    or GetScriptTaskStatus(entry.ped, FOLLOW_NAV) ~= 7
                 local expired = entry.driftUntil and now > entry.driftUntil
 
                 if not walking or expired then
