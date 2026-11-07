@@ -110,6 +110,17 @@ local function apply(player,ped,data)
     end
     for key,part in pairs(record.parts)do if not present[key]then discardPart(part);record.parts[key]=nil end end
 end
+-- The outer grip model attached to a ped's weapon (custom functional grips), for the left-hand pose.
+function Weapons.GripPropFor(ped)
+    for _,record in pairs(objects)do
+        if record.ped==ped then
+            for key,part in pairs(record.parts or {})do
+                local k=part.transform and part.transform.key or key
+                if type(k)=='string'and k:find('native:grip',1,true)and part.object and DoesEntityExist(part.object)then return part.object end
+            end
+        end
+    end
+end
 function Weapons.PreviewCosmetic(data)
     if data==nil then preview=nil;remove(PlayerId());return true end
     if not Weapons.Cosmetics.enabled or not normalise(data)then return false end

@@ -1,7 +1,7 @@
 -- bs_bodycam strings (it)
 return {
     ['set.bcEnabled'] = 'Telecamera bodycam',
-    ['st.d_bcEnabled'] = 'Visuale in prima persona montata sul petto con effetti di lente e pellicola. Gli altri giocatori ti vedono normalmente.',
+    ['st.d_bcEnabled'] = 'Telecamera corporea in prima persona con tremolio, colore pellicola e effetto lente. Braccia e arma restano quelle originali. Per un obiettivo più ampio alza Impostazioni GTA > Telecamera > Campo visivo in prima persona. V passa alla terza persona.',
     ['set.bcFov'] = 'Campo visivo bodycam',
     ['st.d_bcFov'] = 'Obiettivo grandangolare. 95 è il valore predefinito.',
     ['set.bcMotion'] = 'Movimento del corpo bodycam',
@@ -16,8 +16,8 @@ return {
     ['st.d_bcChroma'] = 'Leggera tinta rossa e blu sul bordo della lente.',
     ['set.bcStamp'] = 'Timbro REC bodycam',
     ['st.d_bcStamp'] = 'Punto REC, data, ora e nome della telecamera.',
-    ['set.bcRealisticAim'] = 'Mira realistica bodycam',
-    ['st.d_bcRealisticAim'] = 'La telecamera resta sul petto mentre miri; i colpi seguono la canna.',
+    ['set.bcRealisticAim'] = 'Bodycam senza mirino',
+    ['st.d_bcRealisticAim'] = 'Nessun mirino dall\'anca; mira con i mirini per colpire con precisione.',
     ['set.bcVehicle'] = 'Bodycam nei veicoli',
     ['st.d_bcVehicle'] = 'Mantieni la bodycam alla guida o come passeggero.',
     ['bc.on'] = 'Bodycam attiva',

@@ -59,7 +59,10 @@ function BodycamAllowed() return Bodycam.allowed ~= false end
 exports('GetSettings', function()
     if not BodycamAllowed() then return {} end
     local out = {}
-    for k, v in pairs(BodycamPrefs) do out[k] = v end
+    for k, v in pairs(BodycamPrefs) do
+        -- The lens width comes from GTA's own first-person FOV setting now.
+        if k ~= 'bcFov' then out[k] = v end
+    end
     return out
 end)
 

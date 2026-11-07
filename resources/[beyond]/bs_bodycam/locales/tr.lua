@@ -1,7 +1,7 @@
 -- bs_bodycam strings (tr)
 return {
     ['set.bcEnabled'] = 'Bodycam kamerası',
-    ['st.d_bcEnabled'] = 'Göğse takılı birinci şahıs görünüm, lens ve film efektleriyle. Diğer oyuncular seni normal görür.',
+    ['st.d_bcEnabled'] = 'Sarsıntı, film rengi ve lens efektli birinci şahıs vücut kamerası. Kollar ve silah orijinal kalır. Daha geniş lens için GTA Ayarları > Kamera > Birinci Şahıs Görüş Alanı\'nı artır. V üçüncü şahsa geçirir.',
     ['set.bcFov'] = 'Bodycam görüş alanı',
     ['st.d_bcFov'] = 'Geniş açı lens. Varsayılan 95.',
     ['set.bcMotion'] = 'Bodycam vücut hareketi',
@@ -16,8 +16,8 @@ return {
     ['st.d_bcChroma'] = 'Lens kenarında hafif kırmızı ve mavi ton.',
     ['set.bcStamp'] = 'Bodycam REC damgası',
     ['st.d_bcStamp'] = 'REC noktası, tarih, saat ve kamera adı.',
-    ['set.bcRealisticAim'] = 'Bodycam gerçekçi nişan',
-    ['st.d_bcRealisticAim'] = 'Nişan alırken kamera göğüste kalır; atışlar namluyu takip eder.',
+    ['set.bcRealisticAim'] = 'Bodycam nişangâhsız',
+    ['st.d_bcRealisticAim'] = 'Kalçadan atışta nişangâh yok; isabet için nişan al.',
     ['set.bcVehicle'] = 'Araçlarda bodycam',
     ['st.d_bcVehicle'] = 'Sürerken veya yolcuyken bodycam açık kalsın.',
     ['bc.on'] = 'Bodycam açık',

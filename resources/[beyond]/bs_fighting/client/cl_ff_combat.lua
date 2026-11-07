@@ -237,8 +237,9 @@ local function finisher(t)
             else
                 local list = behindOf(t.ped, me) and clips.rear or clips.front
                 local vped = FFA.Victim(t, 3000)
+                -- never fall back to unarmed clips with a weapon in hand
                 local c = (vped and FFA.Pick(list, true)) or FFA.Pick(list, false)
-                    or FFA.Pick(Freeflow.Clips.unarmed.front, false)
+                    or (class == 'unarmed' and FFA.Pick(Freeflow.Clips.unarmed.front, false) or nil)
                 if not c then start(); kill() return end
                 local gap = FFA.PairGap(c) or S.lungeStopGap
                 if t.dist > gap + 0.25 then FFA.Lunge(me, t.ped, gap) end
@@ -286,7 +287,8 @@ local function counter()
             local side = (f.x * d.y - f.y * d.x) > 0 and 'l' or 'r'
             local set = clips.counter or Freeflow.Clips.unarmed.counter
             local c = set[side] or set.r
-            if not c or FFA.Ms(c.dict, c.plyr) <= 0 then c = Freeflow.Clips.unarmed.counter[side] end
+            if (not c or FFA.Ms(c.dict, c.plyr) <= 0) and class == 'unarmed' then c = Freeflow.Clips.unarmed.counter[side] end
+            if not c then return end
             local vped = FFA.Victim(t, 2500)
             SetEntityHeading(me, GetHeadingFromVector_2d(d.x, d.y))
             FFHud.Flash('counter')
@@ -310,6 +312,7 @@ local function dodge()
     nextDodge = now() + S.dodgeCooldownMs
     local class = FF.WeaponClass(me)
     local d = FF.Clips(class).dodge or Freeflow.Clips.unarmed.dodge
+    if FF.Clips(class).dodge == nil and class ~= 'unarmed' then return end
     local x = GetDisabledControlNormal(0, 30)
     local clip = (x < -0.3 and d.l) or (x > 0.3 and d.r) or d.c
     run(function()
@@ -456,6 +459,11 @@ CreateThread(function()
             -- Q (cover) and R (reload) are ours while fists or a melee weapon are out
             DisableControlAction(0, 44, true);  DisableControlAction(0, 45, true)
             if FF.busy or FF.InCombat() then DisableControlAction(0, 22, true) end
+            -- while a move runs the run input stays off, so locomotion never fights the clip
+            if FF.busy then
+                DisableControlAction(0, 21, true)
+                DisableControlAction(0, 30, true); DisableControlAction(0, 31, true)
+            end
             Wait(0)
         else
             if heavy.down and not FF.CanFight(me) then heavy.down = false end

@@ -112,6 +112,18 @@ CreateThread(function()
     end
 end)
 
+-- World textured triangle. native 'basic' = DRAW_TEXTURED_POLY (0x29280002282F1928): 9 coords, r,g,b,a (0-255),
+-- dict, name, then u,v,w per corner. 'uv' = DRAW_TEXTURED_POLY_UV (0x736D7AA1B750856B): same, but r,g,b,a per corner.
+function Weapons.StickerPoly(a,b,c,r,g,bl,al,dict,name,ua,va,ub,vb,uc,vc,native)
+    native=native or (Weapons.Stickers.draw and Weapons.Stickers.draw.native)or 'basic'
+    if native=='uv'then
+        Citizen.InvokeNative(0x736D7AA1B750856B,a.x+0.0,a.y+0.0,a.z+0.0,b.x+0.0,b.y+0.0,b.z+0.0,c.x+0.0,c.y+0.0,c.z+0.0,
+            r,g,bl,al,r,g,bl,al,r,g,bl,al,dict,name,ua+0.0,va+0.0,1.0,ub+0.0,vb+0.0,1.0,uc+0.0,vc+0.0,1.0)
+    else
+        Citizen.InvokeNative(0x29280002282F1928,a.x+0.0,a.y+0.0,a.z+0.0,b.x+0.0,b.y+0.0,b.z+0.0,c.x+0.0,c.y+0.0,c.z+0.0,
+            r,g,bl,al,dict,name,ua+0.0,va+0.0,1.0,ub+0.0,vb+0.0,1.0,uc+0.0,vc+0.0,1.0)
+    end
+end
 local function triangle(a, b, c, design, ua, va, ub, vb, uc, vc, colour, opacity)
     local texture = textureFor(design)
     if not texture then return end
@@ -129,11 +141,8 @@ local function triangle(a, b, c, design, ua, va, ub, vb, uc, vc, colour, opacity
     end
     local red,green,blue = tonumber(colour:sub(2, 3), 16) or 255, tonumber(colour:sub(4, 5), 16) or 255, tonumber(colour:sub(6, 7), 16) or 255
     local alpha = math.floor(math.max(.1, math.min(1, opacity or 1))*255 + .5)
-    -- DRAW_TEXTURED_POLY, formerly _DRAW_SPRITE_POLY. Coordinates are in world space, uvw per corner.
-    Citizen.InvokeNative(0x29280002282F1928, a.x + 0.0, a.y + 0.0, a.z + 0.0,
-        b.x + 0.0, b.y + 0.0, b.z + 0.0, c.x + 0.0, c.y + 0.0, c.z + 0.0,
-        red, green, blue, alpha, texture.dictionary, texture.name, ua + 0.0, va + 0.0, 1.0,
-        ub + 0.0, vb + 0.0, 1.0, uc + 0.0, vc + 0.0, 1.0)
+    if Weapons.Stickers.debug then Weapons.Stickers.debugDesign,Weapons.Stickers.debugRGB=design,{red,green,blue,alpha}end
+    Weapons.StickerPoly(a,b,c,math.floor(red),math.floor(green),math.floor(blue),alpha,texture.dictionary,texture.name,ua,va,ub,vb,uc,vc)
 end
 
 function Weapons.DrawStickerTargets(list)
@@ -146,8 +155,24 @@ function Weapons.DrawStickerTargets(list)
                 for _, quad in ipairs(target.quads) do
                     local p = {}
                     for i, corner in ipairs(quad.corners) do p[i] = GetOffsetFromEntityInWorldCoords(object, corner.x, corner.y, corner.z) end
-                    triangle(p[1], p[2], p[3], quad.design, 0, 1, 1, 1, 1, 0, quad.colour, quad.opacity)
-                    triangle(p[1], p[3], p[4], quad.design, 0, 1, 1, 0, 0, 0, quad.colour, quad.opacity)
+                    local flip=(Weapons.Stickers.draw and Weapons.Stickers.draw.flip)or 'both'
+                    if flip~='only'then
+                        triangle(p[1], p[2], p[3], quad.design, 0, 1, 1, 1, 1, 0, quad.colour, quad.opacity)
+                        triangle(p[1], p[3], p[4], quad.design, 0, 1, 1, 0, 0, 0, quad.colour, quad.opacity)
+                    end
+                    if flip~='off'then
+                        -- Same quad wound the other way and 0.15 mm further out. A world poly is lit from the side its
+                        -- winding faces; if the first copy faces into the gun it renders black, this one is lit.
+                        local ax,ay,az=p[2].x-p[1].x,p[2].y-p[1].y,p[2].z-p[1].z
+                        local bx,by,bz=p[3].x-p[1].x,p[3].y-p[1].y,p[3].z-p[1].z
+                        local nx,ny,nz=ay*bz-az*by,az*bx-ax*bz,ax*by-ay*bx
+                        local len=math.sqrt(nx*nx+ny*ny+nz*nz);if len<1e-9 then len=1 end
+                        local k=.00015/len
+                        local q={}
+                        for i=1,4 do q[i]=vector3(p[i].x+nx*k,p[i].y+ny*k,p[i].z+nz*k)end
+                        triangle(q[1], q[3], q[2], quad.design, 0, 1, 1, 0, 1, 1, quad.colour, quad.opacity)
+                        triangle(q[1], q[4], q[3], quad.design, 0, 1, 0, 0, 1, 0, quad.colour, quad.opacity)
+                    end
                 end
             end
         end
@@ -184,6 +209,13 @@ RegisterCommand('stickerdebug',function(_,args)
         end)
         return
     end
+    if args[1]=='mode'then
+        Weapons.Stickers.draw=Weapons.Stickers.draw or {}
+        if args[2]=='basic'or args[2]=='uv'then Weapons.Stickers.draw.native=args[2]end
+        if args[3]=='off'or args[3]=='both'or args[3]=='only'then Weapons.Stickers.draw.flip=args[3]end
+        print(('[bs_weapons] sticker draw: native=%s flip=%s'):format(Weapons.Stickers.draw.native or 'basic',Weapons.Stickers.draw.flip or 'both'))
+        return
+    end
     Weapons.Stickers.debug=not Weapons.Stickers.debug;Weapons.Stickers.debugSeen=nil
     local shipped=0
     for id in pairs(textures)do if id then shipped=shipped+1 end end
@@ -191,3 +223,56 @@ RegisterCommand('stickerdebug',function(_,args)
         Weapons.Stickers.debug and 'on'or'off',shipped,
         Weapons.StickerAtlas and Weapons.StickerAtlas.TextureName()or'not ready'))
 end,false)
+
+-- Self-test while /stickerdebug is on. Top left, left to right:
+--   1 raw texture (DrawSprite)   2 same, tinted green (DrawSprite)
+--   3-6 world quads in front of the camera, tinted green: basic front, basic flipped, uv front, uv flipped.
+-- Whichever square shows the art in green is the path that works; F8 gets the texture size and colour.
+local function label(text,x,y)
+    SetTextFont(4);SetTextScale(.28,.28);SetTextColour(255,255,255,230);SetTextOutline()
+    BeginTextCommandDisplayText('STRING');AddTextComponentSubstringPlayerName(text);EndTextCommandDisplayText(x,y)
+end
+CreateThread(function()
+    local printed
+    while true do
+        if not Weapons.Stickers.debug then Wait(500)
+        else
+            Wait(0)
+            local design=Weapons.Stickers.debugDesign or 'biohazard'
+            local tex=textureFor(design)
+            if tex then
+                local dict,name=tex.dictionary,tex.name
+                DrawRect(.17,.13,.32,.2,0,0,0,170)
+                DrawSprite(dict,name,.05,.1,.05,.09,0.0,255,255,255,255);label('1 raw',.03,.16)
+                DrawSprite(dict,name,.11,.1,.05,.09,0.0,40,200,40,255);label('2 green',.09,.16)
+                local cam=GetFinalRenderedCamCoord();local rot=GetFinalRenderedCamRot(2)
+                local yaw,pitch=math.rad(rot.z),math.rad(rot.x)
+                local f=vector3(-math.sin(yaw)*math.cos(pitch),math.cos(yaw)*math.cos(pitch),math.sin(pitch))
+                local r=vector3(math.cos(yaw),math.sin(yaw),0.0)
+                local u=vector3(r.y*f.z-r.z*f.y,r.z*f.x-r.x*f.z,r.x*f.y-r.y*f.x)
+                local fov=math.rad(GetFinalRenderedCamFov());local d=.5;local h=math.tan(fov*.5)*d
+                local w=h*GetAspectRatio(false)
+                for i,mode in ipairs({{'basic',false},{'basic',true},{'uv',false},{'uv',true}})do
+                    -- squares under the sprites, across the top-left of the screen
+                    local cx=(-.80+(i-1)*.12)*w;local cy=.55*h;local s=.045*h
+                    local c=cam+f*d+r*cx+u*cy
+                    local p1,p2,p3,p4=c-r*s-u*s,c+r*s-u*s,c+r*s+u*s,c-r*s+u*s
+                    if mode[2]then
+                        Weapons.StickerPoly(p1,p3,p2,40,200,40,255,dict,name,0,1,1,0,1,1,mode[1]);Weapons.StickerPoly(p1,p4,p3,40,200,40,255,dict,name,0,1,0,0,1,0,mode[1])
+                    else
+                        Weapons.StickerPoly(p1,p2,p3,40,200,40,255,dict,name,0,1,1,1,1,0,mode[1]);Weapons.StickerPoly(p1,p3,p4,40,200,40,255,dict,name,0,1,1,0,0,0,mode[1])
+                    end
+                end
+                label('3 basic  4 basic flip  5 uv  6 uv flip',.15,.16)
+                if printed~=design then
+                    printed=design
+                    local res=GetTextureResolution(dict,name)
+                    local rgb=Weapons.Stickers.debugRGB or {}
+                    print(('[bs_weapons] sticker self-test %s: texture %s/%s %dx%d (4x4 = missing), last draw rgba %s,%s,%s,%s, mode %s flip %s')
+                        :format(design,dict,name,math.floor(res.x),math.floor(res.y),tostring(rgb[1]),tostring(rgb[2]),tostring(rgb[3]),tostring(rgb[4]),
+                        (Weapons.Stickers.draw and Weapons.Stickers.draw.native)or 'basic',(Weapons.Stickers.draw and Weapons.Stickers.draw.flip)or 'both'))
+                end
+            end
+        end
+    end
+end)

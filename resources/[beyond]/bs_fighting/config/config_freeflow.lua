@@ -166,7 +166,8 @@ Freeflow.Clips = {
         dodge = { dict = UC, l = 'dodge_generic_l', r = 'dodge_generic_r', c = 'dodge_generic_centre' },
     },
     large_wpn = {
-        light = { { dict = LW, plyr = 'plyr_walking_attack', hitAt = 0.45 } },
+        -- standing attacks only: the walking attacks are layers made for GTA's melee task and T-posed while running
+        light = { { dict = LW, plyr = 'short_0_attack', hitAt = 0.50 } },
         heavy = { { dict = LW, plyr = 'long_0_attack', hitAt = 0.50 }, { dict = LW, plyr = 'kick_close_a', hitAt = 0.45 } },
         counter = {
             l = { dict = LW, plyr = 'counter_attack_l', victim = 'hit_counter_attack_l', hitAt = 0.45 },
@@ -174,11 +175,12 @@ Freeflow.Clips = {
         },
         front = { { dict = LW, plyr = 'plyr_front_takedown_bat_headhit', victim = 'victim_front_takedown_bat_headhit', hitAt = 0.55 } },
         rear  = { { dict = LW, plyr = 'plyr_rear_takedown_bat_r_facehit', victim = 'victim_rear_takedown_bat_r_facehit', hitAt = 0.55 } },
+        dodge = { dict = LW, l = 'dodge_generic_l', r = 'dodge_generic_r', c = 'dodge_generic_centre' },
         ground = { dict = LW, front = 'ground_attack_0', left = 'ground_attack_90', back = 'ground_attack_180',
                    right = 'ground_attack_-90', spot = 'ground_attack_on_spot', hitAt = 0.55 },
     },
     small_wpn = {
-        light = { { dict = SW, plyr = 'plyr_walking_attack_a', hitAt = 0.45 } },
+        light = { { dict = SW, plyr = 'small_melee_wpn_short_range_0', hitAt = 0.45 } },
         heavy = { { dict = SW, plyr = 'small_melee_wpn_long_range_0', hitAt = 0.50 }, { dict = SW, plyr = 'kick_close_a', hitAt = 0.45 } },
         counter = {
             l = { dict = SW, plyr = 'counter_attack_l', hitAt = 0.45 },
@@ -186,11 +188,12 @@ Freeflow.Clips = {
         },
         front = { { dict = SW, plyr = 'plyr_front_takedown', victim = 'victim_front_takedown', hitAt = 0.55 } },
         rear  = { { dict = SW, plyr = 'plyr_rear_takedown',  victim = 'victim_rear_takedown',  hitAt = 0.55 } },
+        dodge = { dict = SW, l = 'dodge_generic_centre', r = 'dodge_generic_centre', c = 'dodge_generic_centre' },
         ground = { dict = SW, front = 'ground_attack_0', left = 'ground_attack_90', back = 'ground_attack_180',
                    right = 'ground_attack_-90', spot = 'ground_attack_on_spot', hitAt = 0.55 },
     },
     knife = {
-        light = { { dict = KN, plyr = 'plyr_walking_attack_a', hitAt = 0.45 }, { dict = KN, plyr = 'plyr_walking_attack_b', hitAt = 0.45 } },
+        light = { { dict = KN, plyr = 'knife_short_range_0', hitAt = 0.40 } },
         heavy = { { dict = KN, plyr = 'knife_long_range_0', hitAt = 0.50 }, { dict = KN, plyr = 'kick_close_a', hitAt = 0.45 } },
         counter = {
             l = { dict = KN, plyr = 'counter_attack_l', victim = 'hit_counter_attack_l', hitAt = 0.45 },
@@ -198,6 +201,7 @@ Freeflow.Clips = {
         },
         front = { { dict = KN, plyr = 'plyr_knife_front_takedown', victim = 'victim_knife_front_takedown', hitAt = 0.55 } },
         rear  = { { dict = KN, plyr = 'plyr_knife_rear_takedown',  victim = 'victim_knife_rear_takedown',  hitAt = 0.55 } },
+        dodge = { dict = KN, l = 'dodge_generic_centre', r = 'dodge_generic_centre', c = 'dodge_generic_centre' },
         ground = { dict = KN, front = 'ground_attack_0', left = 'ground_attack_90', back = 'ground_attack_180',
                    right = 'ground_attack_-90', spot = 'ground_attack_on_spot', hitAt = 0.55 },
     },

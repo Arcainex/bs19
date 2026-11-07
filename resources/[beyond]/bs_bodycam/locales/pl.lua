@@ -1,7 +1,7 @@
 -- bs_bodycam strings (pl)
 return {
     ['set.bcEnabled'] = 'Kamera bodycam',
-    ['st.d_bcEnabled'] = 'Widok z pierwszej osoby z kamery na piersi, z efektami obiektywu i taśmy. Inni gracze widzą cię normalnie.',
+    ['st.d_bcEnabled'] = 'Kamera nasobna w widoku z pierwszej osoby z drganiami, filmowym kolorem i efektem obiektywu. Ręce i broń pozostają oryginalne. Szerszy obiektyw: Ustawienia GTA > Kamera > Pole widzenia z pierwszej osoby. V przełącza na trzecią osobę.',
     ['set.bcFov'] = 'Pole widzenia bodycam',
     ['st.d_bcFov'] = 'Obiektyw szerokokątny. Domyślnie 95.',
     ['set.bcMotion'] = 'Ruch ciała bodycam',
@@ -16,8 +16,8 @@ return {
     ['st.d_bcChroma'] = 'Lekki czerwony i niebieski odcień na krawędzi obiektywu.',
     ['set.bcStamp'] = 'Znacznik REC bodycam',
     ['st.d_bcStamp'] = 'Kropka REC, data, godzina i nazwa kamery.',
-    ['set.bcRealisticAim'] = 'Realistyczne celowanie bodycam',
-    ['st.d_bcRealisticAim'] = 'Kamera zostaje na piersi podczas celowania; strzały podążają za lufą.',
+    ['set.bcRealisticAim'] = 'Bodycam bez celownika',
+    ['st.d_bcRealisticAim'] = 'Brak celownika przy strzelaniu z biodra; celuj przez przyrządy, aby trafiać.',
     ['set.bcVehicle'] = 'Bodycam w pojazdach',
     ['st.d_bcVehicle'] = 'Zachowaj bodycam podczas jazdy lub jako pasażer.',
     ['bc.on'] = 'Bodycam włączona',

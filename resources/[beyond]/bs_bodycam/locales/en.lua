@@ -1,7 +1,7 @@
 -- bs_bodycam strings (en)
 return {
     ['set.bcEnabled'] = 'Bodycam camera',
-    ['st.d_bcEnabled'] = 'Chest-mounted first-person view with lens and film effects. Other players see you normally.',
+    ['st.d_bcEnabled'] = 'First-person body camera with shake, film grade and lens overlay. Arms and weapon stay native. For a wider lens raise GTA Settings > Camera > First Person Field of View. V switches to third person.',
     ['set.bcFov'] = 'Bodycam field of view',
     ['st.d_bcFov'] = 'Wide lens. 95 is the default.',
     ['set.bcMotion'] = 'Bodycam body motion',
@@ -16,8 +16,8 @@ return {
     ['st.d_bcChroma'] = 'Faint red and blue tint at the lens edge.',
     ['set.bcStamp'] = 'Bodycam REC stamp',
     ['st.d_bcStamp'] = 'REC dot, date, time and camera label.',
-    ['set.bcRealisticAim'] = 'Bodycam realistic aim',
-    ['st.d_bcRealisticAim'] = 'Camera stays on the chest when aiming; shots follow the barrel.',
+    ['set.bcRealisticAim'] = 'Bodycam no crosshair',
+    ['st.d_bcRealisticAim'] = 'No hip-fire crosshair; aim down the sights to shoot accurately.',
     ['set.bcVehicle'] = 'Bodycam in vehicles',
     ['st.d_bcVehicle'] = 'Keep the bodycam while driving or riding.',
     ['bc.on'] = 'Bodycam on',

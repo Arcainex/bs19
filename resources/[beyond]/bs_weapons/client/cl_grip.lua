@@ -48,21 +48,52 @@ CreateThread(function()
         end
     end
 end)
+-- Where the left hand goes, in world space: the weapon's grip bone, else the attached grip model, else a point
+-- under the front of the weapon from its bounds. Offset is in the weapon's own axes.
+local fractions={.64,.25}
+local function gripPoint(ped,weapon)
+    local source,local_
+    local bone=GetEntityBoneIndexByName(weapon,'WAPGrip')
+    if bone<0 then bone=GetEntityBoneIndexByName(weapon,'WAPGrip_2')end
+    if bone>=0 then
+        local w=GetWorldPositionOfEntityBone(weapon,bone)
+        local_=GetOffsetFromEntityGivenWorldCoords(weapon,w.x,w.y,w.z);source='bone'
+    else
+        local prop=Weapons.GripPropFor and Weapons.GripPropFor(ped)
+        if prop then
+            local w=GetEntityCoords(prop)
+            local_=GetOffsetFromEntityGivenWorldCoords(weapon,w.x,w.y,w.z);source='prop'
+        else
+            local low,high=GetModelDimensions(GetEntityModel(weapon))
+            local longX=(high.x-low.x)>=(high.y-low.y)
+            local along=longX and low.x+(high.x-low.x)*fractions[1]or low.y+(high.y-low.y)*fractions[1]
+            local z=low.z+(high.z-low.z)*fractions[2]
+            local_=longX and vector3(along,(low.y+high.y)*.5,z)or vector3((low.x+high.x)*.5,along,z);source='bounds'
+        end
+    end
+    local o=G.offset or {}
+    return GetOffsetFromEntityInWorldCoords(weapon,local_.x+(o.x or 0.0),local_.y+(o.y or 0.0),local_.z+(o.z or -0.035)),source
+end
+local debugGrip=false
+RegisterCommand('gripdebug',function()debugGrip=not debugGrip;print('[bs_weapons] grip pose debug '..(debugGrip and 'on'or 'off'))end,false)
 CreateThread(function()
+    local lastPrint=0
     while true do
-        if #targets==0 or not (Weapons.GripPose and Weapons.GripPose.enabled)then Wait(250)
+        G=Weapons.GripPose or G
+        if #targets==0 or not (G and G.enabled)then Wait(250)
         else
             Wait(0)
-            local o=G.offset or {}
             for _,t in ipairs(targets)do
                 local ped=t.ped
                 if DoesEntityExist(ped)and canPose(ped,t.local_)then
                     local weapon=GetCurrentPedWeaponEntityIndex(ped,0)
                     if weapon and weapon~=0 and DoesEntityExist(weapon)then
-                        local bone=GetEntityBoneIndexByName(weapon,'WAPGrip')
-                        if bone<0 then bone=GetEntityBoneIndexByName(weapon,'WAPGrip_2')end
-                        if bone>=0 then
-                            SetIkTarget(ped,G.ikPart or 3,weapon,bone,(o.x or 0.0)+0.0,(o.y or 0.0)+0.0,(o.z or -0.035)+0.0,0,G.blendIn or 180,G.blendOut or 180)
+                        local at,source=gripPoint(ped,weapon)
+                        -- No entity: the offset is the world position. Called every frame; IK_PART_ARM_LEFT = 3.
+                        SetIkTarget(ped,G.ikPart or 3,0,-1,at.x+0.0,at.y+0.0,at.z+0.0,0,G.blendIn or 0,G.blendOut or 150)
+                        if debugGrip and t.local_ then
+                            DrawMarker(28,at.x,at.y,at.z,0.0,0.0,0.0,0.0,0.0,0.0,.02,.02,.02,80,220,90,200,false,false,2,false,nil,nil,false)
+                            if GetGameTimer()>lastPrint then lastPrint=GetGameTimer()+2000;print(('[bs_weapons] grip target from %s at %.2f %.2f %.2f'):format(source,at.x,at.y,at.z))end
                         end
                     end
                 end

@@ -309,7 +309,7 @@ Weapons.GripPose = {
     enabled = true,
     ikPart = 3,
     offset = { x = 0.0, y = 0.0, z = -0.035 },
-    blendIn = 180, blendOut = 180,
+    blendIn = 0, blendOut = 150,
     distance = 40.0,
     skipSprint = true,
 }

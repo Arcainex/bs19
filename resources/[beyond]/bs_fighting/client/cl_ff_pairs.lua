@@ -119,6 +119,12 @@ end
 
 -- Lunge our own ped toward the target until `gap` metres remain. The end point follows the target every frame.
 function FFA.Lunge(me, target, gap)
+    -- kill the run first: momentum plus our position drive plus a clip is what twisted the body
+    local v = GetEntityVelocity(me)
+    if #(vector2(v.x, v.y)) > 2.0 then
+        SetEntityVelocity(me, v.x * 0.15, v.y * 0.15, v.z)
+        Wait(0)
+    end
     local start = GetEntityCoords(me)
     local to = GetEntityCoords(target)
     local dist = #(vector2(to.x - start.x, to.y - start.y))
@@ -187,9 +193,12 @@ function FFA.Hands(ped)
     local r = GetPedBoneCoords(ped, R_HAND, 0.0, 0.0, 0.0)
     return GetOffsetFromEntityGivenWorldCoords(ped, l.x, l.y, l.z), GetOffsetFromEntityGivenWorldCoords(ped, r.x, r.y, r.z)
 end
+-- Both arms out, or one arm held dead straight out sideways (a weapon clip animates the weapon arm only)
+local function armOut(h) return math.abs(h.x) > 0.62 and math.abs(h.y) < 0.25 and h.z > 0.25 and h.z < 0.65 end
 function FFA.IsTPose(ped)
     local l, r = FFA.Hands(ped)
-    return math.abs(l.x) > 0.55 and math.abs(r.x) > 0.55 and l.z > 0.2 and r.z > 0.2 and (l.x * r.x) < 0
+    if math.abs(l.x) > 0.55 and math.abs(r.x) > 0.55 and l.z > 0.2 and r.z > 0.2 and (l.x * r.x) < 0 then return true end
+    return armOut(l) or armOut(r)
 end
 
 -- How a clip may be played: a flag (0 = full body, 48 = upper body over movement, 'adv'), 'test' = not known
@@ -207,7 +216,9 @@ CreateThread(function()
     for k, f in pairs(loadKvp('ff_verified')) do if f == 0 or f == 48 then FFA.verified[k] = f end end
 end)
 
-local function isSafe(clip)
+-- The safe set is for fists only: weapon dicts are always tested first
+local function isSafe(dict, clip)
+    if dict:find('@unarmed@', 1, true) == nil then return false end
     for _, pat in ipairs(Freeflow.SafePatterns or {}) do if clip:find(pat) then return true end end
     return false
 end
@@ -219,7 +230,7 @@ function FFA.FlagFor(dict, clip)
     if f == nil then f = (Freeflow.SafeClips or {})[key] end
     if f == false then return nil end
     if f ~= nil then return f end
-    return isSafe(clip) and 0 or 'test'
+    return isSafe(dict, clip) and 0 or 'test'
 end
 function FFA.Usable(dict, clip) return FFA.Ms(dict, clip) > 0 and FFA.FlagFor(dict, clip) ~= nil end
 

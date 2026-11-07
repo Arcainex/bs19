@@ -69,6 +69,10 @@ Weapons.Stickers.surfaces={
 -- measured against the real mesh. halfWidth/halfHeight are only the coordinate scale (metres per 1.0 of u/v) and
 -- the outer limit the server accepts; the client keeps stickers inside the actual model.
 -- The ids are the four sticker surfaces the inventory save accepts, so top uses stock_left and bottom magazine_left.
+-- How stickers are drawn in the world. native: 'basic' (DRAW_TEXTURED_POLY) or 'uv' (DRAW_TEXTURED_POLY_UV).
+-- flip: 'both' also draws the quad wound the other way just outside it (lit from the outside), 'off' / 'only'.
+-- /stickerdebug mode <basic|uv> <both|off|only> tries a combination live.
+Weapons.Stickers.draw={native='basic',flip='both'}
 Weapons.Stickers.autoSurfaces=true
 local function wholeWeapon()
     local base={origin={x=0,y=0,z=0},halfWidth=.45,halfHeight=.2,depthOffset=0}

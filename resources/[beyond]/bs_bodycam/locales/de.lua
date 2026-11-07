@@ -1,7 +1,7 @@
 -- bs_bodycam strings (de)
 return {
     ['set.bcEnabled'] = 'Bodycam-Kamera',
-    ['st.d_bcEnabled'] = 'Ego-Ansicht an der Brust mit Linsen- und Filmeffekten. Andere Spieler sehen dich normal.',
+    ['st.d_bcEnabled'] = 'Körperkamera in der Ego-Ansicht mit Wackeln, Filmlook und Linsen-Overlay. Arme und Waffe bleiben original. Für ein weiteres Objektiv GTA-Einstellungen > Kamera > Sichtfeld Ego-Perspektive erhöhen. V wechselt in die Third-Person-Ansicht.',
     ['set.bcFov'] = 'Bodycam-Sichtfeld',
     ['st.d_bcFov'] = 'Weitwinkelobjektiv. Standard ist 95.',
     ['set.bcMotion'] = 'Bodycam-Körperbewegung',
@@ -16,8 +16,8 @@ return {
     ['st.d_bcChroma'] = 'Leichter roter und blauer Farbstich am Linsenrand.',
     ['set.bcStamp'] = 'Bodycam-REC-Anzeige',
     ['st.d_bcStamp'] = 'REC-Punkt, Datum, Uhrzeit und Kamerabezeichnung.',
-    ['set.bcRealisticAim'] = 'Bodycam realistisches Zielen',
-    ['st.d_bcRealisticAim'] = 'Die Kamera bleibt beim Zielen an der Brust; Schüsse folgen dem Lauf.',
+    ['set.bcRealisticAim'] = 'Bodycam ohne Fadenkreuz',
+    ['st.d_bcRealisticAim'] = 'Kein Hüftfeuer-Fadenkreuz; über Kimme und Korn zielen, um genau zu treffen.',
     ['set.bcVehicle'] = 'Bodycam in Fahrzeugen',
     ['st.d_bcVehicle'] = 'Bodycam beim Fahren oder Mitfahren behalten.',
     ['bc.on'] = 'Bodycam an',

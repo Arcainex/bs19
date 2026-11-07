@@ -1,36 +1,25 @@
 -- Bodycam view. Players opt in under ESC > Settings > Camera; staff can forbid it in F1.
+-- Built on GTA's own first-person camera: it already draws the first-person arms and weapon,
+-- hides the head and body from the inside, and keeps sights and recoil exact.
+-- A scripted camera can't do that: the moment one renders, GTA draws the full third-person
+-- body around the lens. The bodycam look is added on top: shake, jolts, colour grade and the lens overlay.
 
 Bodycam = {
     allowed = true,                -- F1: players may turn the bodycam on
 
-    -- Camera mount, metres from the chest bone in body space (x right, y forward, z up)
-    bone = 24818,                  -- SKEL_Spine3 (24817 = SKEL_Spine2)
-    offset = { x = 0.0, y = 0.36, z = 0.14 },   -- in front of the vest, not inside it
-    pitch = -8.0,                                -- look slightly down so the held weapon shows at the bottom
-    lag = 14.0,                    -- how fast the mount catches up with the body (higher = stiffer)
-    maxLag = 0.08,                 -- metres the mount may trail behind
-    nearClip = 0.18,   -- clips straps and collars that sit right in front of the lens
+    -- Hand shake (scaled by the player's shake setting), multiplied while a walker holds you
+    handShake = 0.35,
+    grabbedMult = 3.0,
+    aimShakeMult = 0.4,            -- steadier on the sights
 
-    -- Looking around: past this many degrees from the chest the body turns with you
-    yawClamp = 70.0,
+    -- Body motion (scaled by the player's motion setting), added to the hand shake by gait
+    moveShake = { walk = 0.35, run = 0.75, sprint = 1.25 },
 
-    -- Aiming: the view rises to the sights unless the player picked realistic aim
-    aimFov = 62.0,
-    aimSpeed = 9.0,
-    aimOffset = { side = 0.05, forward = 0.10, up = 0.0 },   -- from the head bone, along the look direction
-    nativeScopes = true,           -- snipers use the normal scope while aiming
-
-    -- Motion (scaled by the player's motion setting)
-    bob = { walk = 0.010, run = 0.022, sprint = 0.034 },
-    strafeRoll = 4.0,              -- degrees at full strafe speed
-    landing = 0.08,                -- metres of dip on a hard landing
-
-    -- Shake (scaled by the player's shake setting)
-    handShake = 0.30,
-    hitShake = 0.10,               -- your melee hits
-    damageShake = 0.35,            -- at 40+ damage in one go
-    grabShake = 0.45,              -- a walker grabs you
-    shotShake = 0.04,
+    -- One-off jolts (scaled by the shake setting)
+    landShake = 0.35,              -- hard landing, at one second of fall or more
+    hitShake = 0.12,               -- your melee hits
+    damageShake = 0.40,            -- at 40+ damage in one go
+    grabShake = 0.25,              -- a walker grabs you (medium explosion shake)
 
     -- Colour grade. Skipped while another script has its own filter running.
     timecycle = 'CAMERA_secuirity',
@@ -38,6 +27,6 @@ Bodycam = {
     -- Overlay stamp
     stampLabel = 'BS19 CAM',
 
-    -- Turn off while a parkour move runs, even if it leaves the camera alone
-    pauseOnParkour = false,
+    -- Keep the view while driving when the player picked "Bodycam in vehicles"
+    vehicleFirstPerson = true,
 }
