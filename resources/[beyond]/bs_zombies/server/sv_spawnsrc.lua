@@ -45,13 +45,6 @@ function ZSpawnSrc.DensityFor(cluster)
     local amb = tonumber((Zombies.Ambient or {}).density) or 1.0
     want = math.floor(want * math.max(0.0, amb) + 0.5)
 
-    -- Hybrid population: night and server-size scaling on the networked target (config_filler.lua)
-    if ZFiller and ZFiller.Enabled() then
-        local k = ZFiller.PlayerScale(#GetPlayers())
-            * ZFiller.NightFactor(ZFiller.ServerHour and ZFiller.ServerHour() or nil)
-        want = math.floor(want * k + 0.5)
-    end
-
     local cap = d.clusterCap or 90
     if want > cap then want = cap end
 

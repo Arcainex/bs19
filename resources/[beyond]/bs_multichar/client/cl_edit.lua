@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_multichar appearance edit mode: the creator's LOOK tab on your live character.
+-- BeyondSurvival - bs_multichar appearance edit mode: the creator's LOOK tab on your live character. Opened by bs_vip (monthly VIP change or staff ticket); the server checks entitlement on open and on save. Only face/hair change, clothes are restored after each preview.
 
 AppearanceEdit = { active = false }
 local E = AppearanceEdit
@@ -37,6 +37,8 @@ end
 local function finish(restore)
     if not E.active then return end
     E.active = false
+    if LocalPlayer and LocalPlayer.state then LocalPlayer.state:set('azCharacterEditor', false, false) end
+    TriggerEvent('bs:alphaweather:creatorQuiet', false)
     if restore and E.original then applyLive(E.original) end
     if E.cam then
         RenderScriptCams(false, true, 400, true, true)
@@ -58,6 +60,8 @@ local function begin()
     if not r or not r.ok then return notify('warn', (r and r.error) or L('mc.no_change')) end
 
     E.active = true
+    if LocalPlayer and LocalPlayer.state then LocalPlayer.state:set('azCharacterEditor', true, false) end
+    TriggerEvent('bs:alphaweather:creatorQuiet', true)
     E.original = r.appearance or {}
     E.dist = 0.9
     TriggerEvent('bs:ui:opened', 'appearance')

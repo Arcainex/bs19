@@ -1,6 +1,8 @@
--- client/cl_spawn.lua - applies appearance, model and position once a character is selected
+-- client/cl_spawn.lua - applies appearance, model and position once a character is selected, and runs the position heartbeat.
+-- bs_ui provides the selection screen; /characters and /play <slot> work from chat as a fallback.
 
--- Position sanity check, used both when saving (heartbeat) and when spawning
+-- Position sanity check, used both when saving (heartbeat) and when spawning, so a bad stored position cannot poison later sessions.
+-- Only two things are refused: coordinates that are not numbers or not in the world, and the character-selection stage. Tunnels, ocean etc. are fine.
 -- @return boolean ok
 -- @return string|nil why
 function BS.PositionIsSane(x, y, z)
@@ -8,7 +10,8 @@ function BS.PositionIsSane(x, y, z)
         return false, 'not numbers'
     end
 
-    -- NaN fails every comparison including with itself, which is the only reliable way to catch it.
+    -- NaN fails every comparison including with itself, which is the only
+    -- reliable way to catch it.
     if x ~= x or y ~= y or z ~= z then return false, 'NaN' end
 
     local b = Config.Session.worldBounds or { xy = 8500.0, zMin = -800.0, zMax = 2500.0 }
@@ -26,11 +29,11 @@ function BS.PositionIsSane(x, y, z)
     return true, nil
 end
 
--- The heartbeat must not run during a spawn.
+-- The heartbeat must not run during a spawn. BS.IsLoaded() turns true before the ped is moved, so a heartbeat in that window would save the character-selection stage (or mid-air coordinates) as the character's position.
 local spawnReady = false
 
 -- One-shot rescue, set by the SAFE SPAWN box on the character screen (bs_multichar), read once by the spawn and cleared right after.
--- For a stored position that crashes the client every time it streams. One-shot so normal logout positions are not discarded.
+-- For a stored position that crashes the client every time it streams. One-shot on purpose so normal logout positions are not discarded.
 local safeSpawnOnce = false
 local PENDING_SPAWN_KVP = 'bs_core:pendingCharacterSpawn'
 local autoSafeSpawn = false
@@ -63,14 +66,16 @@ function BS.ApplyAppearanceTo(ped, appearance)
         appearance.motherIndex or 0, appearance.fatherIndex or 0, 0,
         appearance.shapeMix or 0.5, appearance.skinMix or 0.5, 0.0, false)
 
-    -- Hair is a component like any other, and asking for hairstyle 76 on a model that has 40 is the same
+    -- Hair is a component like any other, and asking for hairstyle 76 on a
+    -- model that has 40 is the same invalid-variation error as anything else.
     local hairCount = GetNumberOfPedDrawableVariations(ped, 2)
     local hair = math.max(0, math.min(math.floor(appearance.hairStyle or 0),
         math.max(0, hairCount - 1)))
     SetPedComponentVariation(ped, 2, hair, 0, 0)
     SetPedHairColor(ped, appearance.hairColor or 0, appearance.hairHighlight or 0)
 
-    -- Overlay ids: 1 beard, 2 eyebrows, 0 blemishes, 3 ageing, 6 complexion, 7 sun damage, 9 freckles, 11 body blemishes.
+    -- Overlay ids: 1 beard, 2 eyebrows, 0 blemishes, 3 ageing, 6 complexion,
+    -- 7 sun damage, 9 freckles, 11 body blemishes.
     local overlays = {
         { id = 0,  style = appearance.blemishStyle, opacity = 1.0 },
         { id = 1,  style = appearance.beardStyle,   opacity = appearance.beardOpacity or 1.0, colorType = 1, color = appearance.beardColor },
@@ -89,7 +94,8 @@ function BS.ApplyAppearanceTo(ped, appearance)
     for _, o in ipairs(overlays) do
         local style = o.style
 
-        -- 255 is "none": anything else is clamped to what this head actually offers
+        -- 255 is "none". Anything else is clamped to what this head actually
+        -- offers, because an out-of-range overlay is refused outright.
         if style == nil or style < 0 then
             SetPedHeadOverlay(ped, o.id, 255, 0.0)
         else
@@ -135,7 +141,9 @@ exports('ApplyAppearanceTo', function(ped, appearance)
 end)
 
 BS.On('player:loaded', function(data)
-    -- A client crash during this character's previous load leaves this marker behind.
+    -- A client crash during this character's previous load leaves this
+    -- marker behind. Only that character gets one safe-spawn recovery;
+    -- another character/account on the same client keeps its own position.
     local charKey = data.charId and tostring(data.charId) or nil
     autoSafeSpawn = charKey ~= nil
         and GetResourceKvpString(PENDING_SPAWN_KVP) == charKey
@@ -147,8 +155,8 @@ BS.On('player:loaded', function(data)
     if charKey then SetResourceKvp(PENDING_SPAWN_KVP, charKey) end
 
     CreateThread(function()
-        DoScreenFadeOut(data.survivorLinkSwitch and 100 or 250)
-        Wait(data.survivorLinkSwitch and 120 or 300)
+        DoScreenFadeOut(250)
+        Wait(300)
 
         -- Failsafe: 25 seconds after the fade-out the screen comes back no matter what, so a stuck load never leaves a black screen.
         CreateThread(function()
@@ -178,27 +186,18 @@ BS.On('player:loaded', function(data)
         local isNewChar = type(meta.firstSpawn) == 'table'
         local upperFix = BS.Outfit.EnsureUpper(ped, meta.outfit, isNewChar)
         if upperFix then BS.Log.warn('spawn', ('upper body fixed on spawn (%s)'):format(upperFix)) end
-        if meta.lastWeapon and not data.survivorLinkSwitch then
-            -- Re-arming here bypasses bs_weapons' normal draw flow
-            local rounds = 0
-            if GetResourceState('bs_weapons') == 'started' then
-                local waited = 0
-                while waited < 1500 do
-                    local ok, saved = pcall(function()
-                        return exports.bs_weapons:SyncedAmmoByHash(meta.lastWeapon)
-                    end)
-                    if ok and type(saved) == 'number' then rounds = saved break end
-                    Wait(100); waited = waited + 100
-                end
-            end
-
-            GiveWeaponToPed(ped, meta.lastWeapon, 0, false, true)
-            SetPedAmmo(ped, meta.lastWeapon, rounds)
-        end
+        -- Always start a fresh/respawned ped unarmed.
+        -- Previously meta.lastWeapon was restored here. That created a ghost weapon when
+        -- the player used the downed-screen "give up" respawn: the inventory had already
+        -- been wiped, but the stale character metadata could still re-arm the new ped.
+        -- Weapons are inventory-owned and must be drawn again from the hotbar after spawn.
+        SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
+        RemoveAllPedWeapons(ped, true)
+        SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
 
         -- See Config.Session.spawnForceDefault. Off by default: it discards the player's real position.
         local pos = data.position or Config.Session.defaultSpawn
-        -- Spawn of a new character: the chosen start point wins over safe spawn and the saved position.
+        -- First spawn of a new character: the chosen start point wins over safe spawn and the saved position.
         local fs = type(data.metadata) == 'table' and data.metadata.firstSpawn or nil
         local firstSpawn = type(fs) == 'table' and BS.PositionIsSane(fs.x, fs.y, fs.z) and fs or nil
         if firstSpawn then safeSpawnOnce = false; autoSafeSpawn = false; pos = firstSpawn end
@@ -234,14 +233,16 @@ BS.On('player:loaded', function(data)
             end
         end
 
-        -- One compact breadcrumb survives in the client log if the game crashes during world streaming before the
+        -- One compact breadcrumb survives in the client log if the game
+        -- crashes during world streaming before the spawned hook can fire.
         local poolOk, pedPool = pcall(GetGamePool, 'CPed')
         BS.Log.info('spawn', ('character %s destination %.1f %.1f %.1f; safe=%s; local peds=%s')
             :format(tostring(data.charId), pos.x, pos.y, pos.z,
                 tostring(pos == Config.Session.defaultSpawn),
                 poolOk and type(pedPool) == 'table' and tostring(#pedPool) or '?'))
 
-        -- Do not release the ped until: 1. collision is loaded around the point
+        -- Do not release the ped until: 1. collision is loaded around the point, 2. the ground is found there (GetGroundZFor_3dCoord returns false over unloaded terrain, and a stored Z can be under the surface), 3. the ped stands on that ground.
+        -- Streaming focus is pinned to the destination during the wait and released once the ped is standing.
 
         FreezeEntityPosition(ped, true)
         SetEntityCollision(ped, false, false)
@@ -254,12 +255,13 @@ BS.On('player:loaded', function(data)
         SetFocusPosAndVel(pos.x, pos.y, pos.z, 0.0, 0.0, 0.0)
         RequestCollisionAtCoord(pos.x, pos.y, pos.z)
 
-        -- Load scene is off: NewLoadSceneStart forces a load of everything in range
+        -- Load scene is off on purpose: NewLoadSceneStart forces a load of everything in range, and with ~63k static map entities with large ymap bounds that burst crashed clients right after spawn.
+        -- The loop below still waits for collision and ground, so nobody falls through the map. Kept as a switch in case the map extents get fixed.
         if Config.Session.spawnLoadScene then
             NewLoadSceneStart(pos.x, pos.y, pos.z, 0.0, 0.0, 0.0, 50.0, 0)
         end
 
-        -- Do not call RequestCollisionAtCoord every pass: each request takes a slot in a 256-entry script resource pool
+        -- Do not call RequestCollisionAtCoord every pass: each request takes a slot in a 256-entry script resource pool and the game crashes when it is full. One request pins the coordinate; it is re-issued every 2 s in case the engine drops it, which caps usage at about 8 slots.
         local waited, groundZ = 0, nil
         local nextAsk = 2000
 
@@ -272,11 +274,14 @@ BS.On('player:loaded', function(data)
             local collided = HasCollisionLoadedAroundEntity(ped)
             local found, z = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 3.0, false)
             -- Probe from higher up too, a stored Z can sit under a roof or below the surface.
-            if not found then found, z = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 60.0, false) end
-            if found then groundZ = z end
+            if firstSpawn and not found then found, z = GetGroundZFor_3dCoord(pos.x, pos.y, pos.z + 60.0, false) end
+            if firstSpawn and found then groundZ = z end
 
-            -- Both, not either: collision can report ready while the terrain mesh under this exact point still has not arrived.
-            if collided and groundZ and not IsNewLoadSceneActive() then break end
+            -- Both, not either. Collision can report ready while the terrain
+            -- mesh under this exact point still has not arrived.
+            -- IsNewLoadSceneActive is false when no scene was started, so
+            -- this reads correctly either way round.
+            if collided and (not firstSpawn or groundZ) and not IsNewLoadSceneActive() then break end
 
             Wait(50); waited = waited + 50
         end
@@ -284,7 +289,10 @@ BS.On('player:loaded', function(data)
         if Config.Session.spawnLoadScene then NewLoadSceneStop() end
         ClearFocus()
 
-        if groundZ then
+        if not firstSpawn then
+            -- Existing characters retain their exact saved Z, including indoor floors.
+            SetEntityCoordsNoOffset(ped, pos.x, pos.y, pos.z, false, false, false)
+        elseif groundZ then
             SetEntityCoordsNoOffset(ped, pos.x, pos.y, groundZ + 0.1, false, false, false)
         elseif firstSpawn then
             -- Ground never answered: stay at the chosen start (frozen until the catch net below).
@@ -292,7 +300,8 @@ BS.On('player:loaded', function(data)
             SetEntityCoordsNoOffset(ped, pos.x, pos.y, pos.z + 0.5, false, false, false)
             Wait(500)
         else
-            -- The ground never answered.
+            -- The ground never answered. Rather than dropping the player into
+            -- the void, put them at the configured default spawn and say so.
             local fallback = Config.Session.defaultSpawn
             BS.Log.warn('spawn', ('no ground at %.1f %.1f - using the default spawn')
                 :format(pos.x, pos.y))
@@ -304,9 +313,7 @@ BS.On('player:loaded', function(data)
 
         local stats = (data.class and data.class.stats) or {}
         SetEntityMaxHealth(ped, stats.maxHealth or 200)
-        local linked=meta.survivorLink
-        SetEntityHealth(ped,linked and linked.status=='alive'and math.max(101,math.min(stats.maxHealth or 200,linked.health or 200))or (stats.maxHealth or 200))
-        if linked then SetPedArmour(ped,linked.armour or 0)end
+        SetEntityHealth(ped, stats.maxHealth or 200)
         SetPlayerMaxArmour(PlayerId(), stats.armorCap or 100)
 
         FreezeEntityPosition(ped, false)
@@ -315,12 +322,19 @@ BS.On('player:loaded', function(data)
         SetPlayerControl(PlayerId(), true, 0)
         ClearPedTasksImmediately(ped)
 
+        -- Respawn failsafe: some downed/give-up flows finish their cleanup a frame after
+        -- the core spawn. Never let a stale weapon survive that transition.
+        SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
+        RemoveAllPedWeapons(ped, true)
+        SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
+        TriggerEvent('bs:weapons:forgetAll')
+
         -- Re-check the clothes once after the spawn settles: a late model load or another script can drop or overwrite them.
         CreateThread(function()
             local snap = BS.Outfit.UpperSnapshot(ped)
             Wait(3000)
             local p = PlayerPedId()
-            if not DoesEntityExist(p) or BS.GetData('charId')~=data.charId then return end
+            if not DoesEntityExist(p) then return end
             local changed = p ~= ped
             for id, v in pairs(snap) do
                 if GetPedDrawableVariation(p, id) ~= v[1] then changed = true end
@@ -348,7 +362,7 @@ BS.On('player:loaded', function(data)
                 local found, z = GetGroundZFor_3dCoord(at.x, at.y, at.z + 5.0, false)
 
                 -- Below the ground, or falling with nothing under us at all.
-                if (found and at.z < z - 3.0) or (not found and at.z < -50.0) then
+                if (firstSpawn and found and at.z < z - 3.0) or (not found and at.z < -50.0) then
                     BS.Log.warn('spawn', 'caught the player falling through the map')
                     local target = found and z or (Config.Session.defaultSpawn.z)
                     local tx = found and at.x or Config.Session.defaultSpawn.x
@@ -363,16 +377,8 @@ BS.On('player:loaded', function(data)
             end
         end)
 
-        -- Fade back in before the hooks run: BS.Emit calls handlers inline
-        TriggerEvent('bs:multichar:spawnRelease',data)
-        RenderScriptCams(false,false,0,true,true)
-        ClearFocus()
-        SetFocusEntity(ped)
-        FreezeEntityPosition(ped,false)
-        SetEntityCollision(ped,true,true)
-        SetEntityVisible(ped,true,false)
-        SetPlayerControl(PlayerId(),true,0)
-        DoScreenFadeIn(data.survivorLinkSwitch and 180 or 750)
+        -- Fade back in before the hooks run: BS.Emit calls handlers inline, and one yielding handler would hold this thread and leave a black screen.
+        DoScreenFadeIn(750)
 
         -- Only now is the ped somewhere worth remembering.
         spawnReady = true
@@ -409,7 +415,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Fallback character selection (chat-based) until bs_ui ships the NUI screen.
+--------------------------------------------------------------------------------
 
 local cachedList
 
@@ -474,21 +482,10 @@ RegisterCommand('delchar', function(_, args)
     end
 end, false)
 
--- The chat commands stay available as a fallback, but stay quiet when bs_multichar is providing a real screen.
+-- The chat commands stay available as a fallback, but stay quiet when
+-- bs_multichar is providing a real screen.
 BS.On('session:state', function(state)
     if state ~= 'select' then return end
     if GetResourceState('bs_multichar') == 'started' then return end
     printChat('Type ^2/characters^7 to pick or create a character.')
 end)
-
--- Recover a loaded player stranded by a stale selection camera without changing the character.
-RegisterCommand('spawnrecover',function()
-    if not BS.IsLoaded()then return end
-    TriggerEvent('bs:multichar:spawnRelease')
-    local ped=PlayerPedId()
-    RenderScriptCams(false,false,0,true,true);ClearFocus();SetFocusEntity(ped)
-    FreezeEntityPosition(ped,false);SetEntityCollision(ped,true,true)
-    SetEntityVisible(ped,true,false);SetPlayerControl(PlayerId(),true,0)
-    SetNuiFocus(false,false);SetNuiFocusKeepInput(false)
-    DoScreenFadeIn(250)
-end,false)

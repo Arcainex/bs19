@@ -1,18 +1,15 @@
-// UI scale (bs_ui/html/shared/scale.js): body is transform-scaled
+// UI scale (bs_ui/html/shared/scale.js): body is transform-scaled, so screen px (clientX, getBoundingClientRect) must be divided by uiK() before being written to style.left/top. Hit-testing (elementFromPoint) stays in screen px.
 const uiK = () => (window.BSScale ? window.BSScale.get() : 1);
 const uiW = () => window.innerWidth / uiK();
 
-// bs_inventory - NUI: drag and drop between two grids.
+// bs_inventory - NUI. Drag and drop between two grids. The client decides nothing: a drop posts a move and waits for the server's new state, so a rejected move never appears.
 
 const RES = (typeof GetParentResourceName === 'function')
     ? GetParentResourceName() : 'bs_inventory';
 
 const $ = (id) => document.getElementById(id);
 
-let companionView = false;
-const companionActions = new Set(['close','inventoryReady','move','bodyRefresh','bodyGrabbed']);
 async function post(endpoint, data = {}) {
-    if (companionView && !companionActions.has(endpoint)) return {ok:false,error:'Use trade to exchange items with your companion.'};
     try {
         const r = await fetch(`https://${RES}/${endpoint}`, {
             method: 'POST',
@@ -23,7 +20,10 @@ async function post(endpoint, data = {}) {
     } catch (e) { return { ok: false, error: 'bridge failed' }; }
 }
 
-const S = { grid: { w: 8, h: 5 }, player: null, container: null, settings: {}, hotbar: {}, boosters: {}, gadgets: {}, filters: null, trade: null };
+let pendingCashGive = null;
+let cashTargetMode = false;
+let idTargetMode = false;
+const S = { grid: { w: 8, h: 5 }, cash: 0, player: null, container: null, settings: {}, hotbar: {}, boosters: {}, gadgets: {}, filters: null, trade: null };
 let pendingSplit = null;
 
 // Items vs weapons are displayed separately, but the bag is still one pool of slots server-side and moves address slots by number.
@@ -47,6 +47,12 @@ function esc(s) {
 }
 
 function slotCount() { return S.grid.w * S.grid.h; }
+
+function renderCash() {
+    const amount = Math.max(0, Math.floor(Number(S.cash) || 0));
+    const el = $('cashAmount');
+    if (el) el.textContent = '$' + amount.toLocaleString('en-US');
+}
 
 // Server flags each entry with `ongrid` (bag ids 1-40 and 101+). Older payloads fall back to the slot-number test.
 function onGrid(entry, slot, limit) {
@@ -79,7 +85,18 @@ function renderGrid(el, inv, which) {
     el.innerHTML = '';
 
     // Layer 1: the cells.
-    BSInventorySlots.cells(el, W, H, which);
+    for (let y = 1; y <= H; y++) {
+        for (let x = 1; x <= W; x++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.style.gridColumn = x;
+            cell.style.gridRow = y;
+            cell.dataset.inv = which;
+            cell.dataset.x = x;
+            cell.dataset.y = y;
+            el.appendChild(cell);
+        }
+    }
 
     if (!inv || !inv.slots) return;
 
@@ -100,25 +117,32 @@ function renderGrid(el, inv, which) {
         const w = entry.rot ? (entry.h || 1) : (entry.w || 1);
         const h = entry.rot ? (entry.w || 1) : (entry.h || 1);
 
-        const node = BSInventorySlots.create(entry);
+        const node = document.createElement('div');
         node.className = 'slot has-item'
             + (which === 'player' && !matchesFilter(entry) ? ' is-filtered' : '')
-            + (entry.rot ? ' is-rot' : '');
+            + (entry.rot ? ' is-rot' : '')
+            + (w === 4 && h === 4 ? ' is-4x4' : '');
         node.dataset.slot = slot;
         node.dataset.inv = which;
         node.dataset.cat = entry.category || 'misc';
         if (entry.rarity) node.dataset.rarity = entry.rarity;
-        node.style.setProperty('--art-base-w', `calc(${entry.w||1} * (var(--cell) + var(--gap)) - var(--gap) - 10px)`);
-        node.style.setProperty('--art-base-h', `calc(${entry.h||1} * (var(--cell) + var(--gap)) - var(--gap) - 10px)`);
         node.style.gridColumn = `${entry.x} / span ${w}`;
         node.style.gridRow = `${entry.y} / span ${h}`;
+
+        const icon = (typeof BSIcons !== 'undefined')
+            ? BSIcons.get(entry.icon || entry.item, entry.category) : '';
+
+        node.innerHTML = `
+            <span class="slot__icon">${icon}</span>
+            <span class="slot__name">${esc(entry.label)}</span>
+            <span class="slot__foot">${slotBadge(entry)}</span>${fillBar(entry)}`;
 
         wireSlot(node, entry, which, slot);
         el.appendChild(node);
     });
 }
 
-// Anything the grid could not seat. Rare, and visible so the player does not think it is lost.
+// Anything the grid could not seat. Rare, and visible on purpose so the player does not think it is lost.
 function renderOverflow(gridEl, entry, which, slot) {
     let strip = gridEl.parentElement.querySelector('.overflow');
     if (!strip) {
@@ -129,7 +153,7 @@ function renderOverflow(gridEl, entry, which, slot) {
     }
 
     const icon = (typeof BSIcons !== 'undefined')
-        ? BSIcons.get(entry.item, entry.category) : '';
+        ? BSIcons.get(entry.icon || entry.item, entry.category) : '';
     const node = document.createElement('div');
     node.className = 'slot has-item slot--loose';
     node.dataset.slot = slot;
@@ -142,21 +166,35 @@ function renderOverflow(gridEl, entry, which, slot) {
 
 // Corner badge. A count gets the `x` prefix that `.slot__amount` paints; a fill level must not ("x87%" is meaningless).
 function slotBadge(entry) {
-    return BSInventorySlots.badge(entry);
+    if (entry.capacity || entry.battery != null) return `<span>${slotCountLabel(entry)}</span>`;
+    return `<span class="slot__amount">${slotCountLabel(entry)}</span>`;
 }
 
-// A measured container (jerrycan) shows its level, not its count.
+// A measured container (jerrycan) shows its level, not its count. The server sends `fill` and `capacity`, turned into a percentage here.
 function slotCountLabel(entry) {
-    return BSInventorySlots.count(entry);
+    if (entry.battery != null) return `${Math.round(entry.battery)}%`;
+    if (!entry.capacity) return entry.amount;
+    return `${Math.round(((entry.fill || 0) / entry.capacity) * 100)}%`;
 }
 
 // Plus a bar across the bottom, easier to read than a number.
 function fillBar(entry) {
-    return BSInventorySlots.fill(entry);
+    let pct = null;
+    let kind = '';
+    if (entry.capacity) {
+        pct = Math.round(((entry.fill || 0) / entry.capacity) * 100);
+    } else if (entry.maxDurability) {
+        const left = entry.durability == null ? entry.maxDurability : entry.durability;
+        pct = Math.round((left / entry.maxDurability) * 100);
+        kind = ' slot__fill--durability';
+    }
+    if (pct == null) return '';
+    pct = Math.max(0, Math.min(100, pct));
+    return `<span class="slot__fill${kind}"><i style="width:${pct}%"></i></span>`;
 }
 
 function wireSlot(node, entry, which, index) {
-    // All dragging goes through the pointer-driven carry system below.
+    // All dragging goes through the pointer-driven carry system below. Native HTML5 drag-and-drop is not used: in FiveM's embedded browser dragend/drop often never arrives for elements inside a re-rendering grid.
     if (entry) {
         // Right-click opens Use / Give / Drop.
         node.addEventListener('contextmenu', (e) => {
@@ -167,7 +205,61 @@ function wireSlot(node, entry, which, index) {
         node.addEventListener('mouseenter', (e) => { node.dataset.hover = '1'; showTip(entry, e); });
         node.addEventListener('mousemove', moveTip);
         node.addEventListener('mouseleave', () => { delete node.dataset.hover; hideTip(); });
-        node.addEventListener('click', () => {
+        node.addEventListener('click', async (e) => {
+            if (e.ctrlKey && ['player', 'container', 'pack', 'vest'].includes(which)) {
+                e.preventDefault();
+                e.stopPropagation();
+                lastClick = { key: '', t: 0 };
+                // Worn backpack/vest grids are real inventory destinations, not
+                // containers. Prefer the opened container when present; otherwise
+                // move between personal pockets and worn backpack/vest.
+                const targetName = which === 'player'
+                    ? (S.container ? 'container' : (S.player?.pack ? 'pack' : (S.player?.vest ? 'vest' : null)))
+                    : (which === 'container' ? 'player' : 'player');
+                const target = targetName === 'player' ? S.player
+                    : targetName === 'container' ? S.container
+                    : S.player?.[targetName];
+                if (!targetName || !target) { flashBar(node, 'Kein Zielinventar geöffnet'); return; }
+                const W = Number(target.grid?.w || S.grid.w);
+                const H = Number(target.grid?.h || S.grid.h);
+                const limit = Number(target.gridSlots || target.size || W * H);
+                if (!W || !H || !limit) { flashBar(node, 'Zielinventar nicht bereit'); return; }
+                const occupied = target.slots || {};
+                const used = new Set();
+                for (const [key, item] of Object.entries(occupied)) {
+                    if (!item || !onGrid(item, Number(key), limit)) continue;
+                    const iw = Number(item.rot ? item.h : item.w) || 1;
+                    const ih = Number(item.rot ? item.w : item.h) || 1;
+                    if (!Number(item.x) || !Number(item.y)) continue;
+                    for (let y = Number(item.y); y < Number(item.y) + ih; y++)
+                        for (let x = Number(item.x); x < Number(item.x) + iw; x++) used.add(`${x},${y}`);
+                }
+                const w = Number(entry.rot ? entry.h : entry.w) || 1;
+                const h = Number(entry.rot ? entry.w : entry.h) || 1;
+                let spot = null;
+                for (let y = 1; y <= H - h + 1 && !spot; y++) {
+                    for (let x = 1; x <= W - w + 1; x++) {
+                        let fits = true;
+                        for (let yy = y; yy < y + h && fits; yy++)
+                            for (let xx = x; xx < x + w; xx++)
+                                if (used.has(`${xx},${yy}`)) { fits = false; break; }
+                        if (fits) { spot = {x, y}; break; }
+                    }
+                }
+                if (!spot) { flashBar(node, t('inv.no_room')); return; }
+                let free = null;
+                for (let i = 1; i <= limit; i++) {
+                    if (!occupied[String(i)]) { free = i; break; }
+                }
+                if (free === null) { flashBar(node, t('inv.no_room')); return; }
+                const result = await post('move', {
+                    from: { inv: which, slot: index },
+                    to: { inv: targetName, slot: free, x: spot.x, y: spot.y, rot: !!entry.rot },
+                    amount: entry.amount
+                });
+                if (!result || result.ok === false) flashBar(node, result?.error || 'Transfer fehlgeschlagen');
+                return;
+            }
             if (Date.now() - lastDragEnd < 250) return;
             // Own 400 ms double-click: the grid re-renders on select, which eats the browser's dblclick.
             const key = `${which}:${index}`, now = Date.now();
@@ -205,6 +297,53 @@ function equipLoadout(entry, node) {
 }
 function isLoadoutItem(entry) { return !!entry && (entry.category === 'gadget' || entry.category === 'booster'); }
 
+// Auto-equip from "Benutzen": weapons -> matching hotbar, bag/vest -> gear,
+// gadgets -> gadget slots. Never silently replace an already equipped item.
+// The normal server-validated inventory:move callback remains authoritative.
+async function alphaZUseOrEquip(slot, entry, node) {
+    if (!entry) return { ok: false };
+    const targetNode = node || document.querySelector(`[data-inv="player"][data-slot="${Number(slot)}"]`);
+    const reject = (message) => {
+        if (targetNode) flashBar(targetNode, message);
+        else if (typeof tradeNotice === 'function') tradeNotice(message);
+        return { ok: false, error: message };
+    };
+    const moveInto = async (dest) => {
+        if (S.player && S.player.slots && S.player.slots[String(dest)]) return reject('Ausrüstungsplatz belegt');
+        const res = await post('move', {
+            from: { inv: 'player', slot: Number(slot) },
+            to: { inv: 'player', slot: dest },
+            amount: entry.amount || 1
+        });
+        if (res && res.ok === false) return reject(res.error || 'Ausrüsten fehlgeschlagen');
+        return res;
+    };
+    if (entry.category === 'weapon') {
+        const type = entry.weaponSlotType;
+        const choices = type === 'melee' ? [1] : type === 'ranged' ? [2] : type === 'belt' ? [3, 4] : [];
+        if (!choices.length) return reject('Unbekannter Waffenplatz');
+        const grid = (S.player && S.player.gridSlots) || slotCount();
+        const current = Number(slot) - grid;
+        if (choices.includes(current)) return post('use', { slot });
+        const free = choices.find(i => !S.player.slots[String(barSlotOf(i))]);
+        if (!free) return reject('Waffenplatz belegt');
+        return moveInto(barSlotOf(free));
+    }
+    const gear = gearSlotFor(entry);
+    if (gear && Number(slot) !== gear) return moveInto(gear);
+    if (isLoadoutItem(entry)) {
+        const gad = entry.category === 'gadget';
+        const slots = gad ? 2 : 3, active = gad ? S.gadgets : S.boosters;
+        const free = Array.from({length: slots}, (_, i) => i+1).find(i => !active || !active[String(i)]);
+        if (!free) return reject('Ausrüstungsplatz belegt');
+        const res = await post(gad ? 'gadgetSet' : 'boosterSet', { index: free, item: entry.item });
+        if (res && res.ok === false) return reject(res.error || 'Ausrüsten fehlgeschlagen');
+        return res;
+    }
+    return post('use', { slot });
+}
+
+
 // Double-click a booster in the bag: put it in the first free booster slot.
 async function quickToggle(which, index, entry, node) {
     // Double-click in the pack or vest: into the pockets.
@@ -241,16 +380,42 @@ function renderAll() {
     refreshQuick();
 
     const hasContainer = !!S.container;
-    $('containerBoard').hidden = !hasContainer;
     $('containerHollow').classList.toggle('hidden', hasContainer);
     $('containerGrid').classList.toggle('hidden', !hasContainer);
+    const containerColumn = $('containerGrid').closest('.col--bags');
+    if (containerColumn) {
+        containerColumn.classList.toggle('is-open', hasContainer);
+        // Hard-hide the lower loot panel while no container is open.
+        // Inline display avoids stylesheet/cache/order issues in FiveM NUI.
+        containerColumn.style.display = hasContainer ? 'block' : 'none';
+    }
 
     if (hasContainer) {
         renderGrid($('containerGrid'), S.container, 'container');
         renderWeight(S.container, $('containerWeight'), $('containerFill'));
+
+        // Anchor the opened storage to the right edge of the player inventory.
+        // Fixed viewport coordinates make the 10x14 personal storage visible even
+        // though the inventory column itself is deliberately compact.
+        if (containerColumn) {
+            const playerBoard = $('playerGrid').closest('.board');
+            if (playerBoard) {
+                const r = playerBoard.getBoundingClientRect();
+                const gap = Math.max(10, window.innerWidth * 0.014 / (Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1));
+                const k = uiK();
+                // Lift the storage a few screen pixels so its top border lines up exactly
+                // with the carried-inventory board.
+                containerColumn.style.setProperty('--container-top', `${(r.top - 6) / k}px`);
+                containerColumn.style.setProperty('--container-left', `${r.right / k + gap}px`);
+            }
+        }
     } else {
         $('containerWeight').textContent = '';
         $('containerFill').style.width = '0%';
+        if (containerColumn) {
+            containerColumn.style.removeProperty('--container-top');
+            containerColumn.style.removeProperty('--container-left');
+        }
     }
 
     renderHotbar();
@@ -260,18 +425,14 @@ function renderAll() {
 }
 
 // Worn vest pockets and backpack, each its own grid under the pockets. The server sends them as player.vest / player.pack.
-let packWindowOpen = false;
 function renderBags() {
     const p = S.player || {};
     const wrap = $('bagBoxes');
     if (!wrap) return;   // older cached page
     wrap.classList.toggle('hidden', !p.pack && !p.vest);
-    if (!p.pack) packWindowOpen = false;
-    $('packOpen').classList.toggle('hidden', !p.pack);
-    $('packBox').classList.toggle('hidden', !p.pack || !packWindowOpen);
     [['vest', 'vestBox', 'vestGrid', 'vestWeight', 'vestTitle'], ['pack', 'packBox', 'packGrid', 'packWeight', 'packTitle']].forEach(([k, box, grid, w, title]) => {
         const b = p[k];
-        $(box).classList.toggle('hidden', !b || (k === 'pack' && !packWindowOpen));
+        $(box).classList.toggle('hidden', !b);
         if (!b) { $(grid).innerHTML = ''; return; }
         renderGrid($(grid), b, k);
         $(w).textContent = `${(b.weight || 0).toFixed(1)} / ${(b.maxWeight || 0).toFixed(1)} KG`;
@@ -279,8 +440,6 @@ function renderBags() {
     });
     const pack = p.pack;
     if (!pack) return;
-    $('packOpenTitle').textContent = String(pack.label || 'BACKPACK').toUpperCase();
-    $('packOpenWeight').textContent = `${(pack.weight || 0).toFixed(1)} / ${(pack.maxWeight || 0).toFixed(1)} KG`;
     const sel = $('packLook');
     const want = (pack.looks || []).map((l) => `${l.i}`).join(',');
     if (sel.dataset.opts !== want) {
@@ -294,29 +453,6 @@ function renderBags() {
 
 (function wirePackControls() {
     const sel = $('packLook'), hide = $('packHide');
-    // Keep the movable pack outside the scrollable bags strip, which clips fixed children.
-    const packBox = $('packBox');
-    if (packBox) document.body.appendChild(packBox);
-    $('packOpen')?.addEventListener('click', () => { packWindowOpen = true; renderBags(); });
-    $('packClose')?.addEventListener('click', () => { packWindowOpen = false; renderBags(); });
-    const head = $('packBox')?.querySelector('.bagbox__head');
-    let drag = null;
-    head?.addEventListener('pointerdown', e => {
-        if (e.target.closest('button,select')) return;
-        const box = $('packBox'), rect = box.getBoundingClientRect();
-        box.style.left = `${rect.left / uiK()}px`; box.style.top = `${rect.top / uiK()}px`; box.style.transform = 'none';
-        drag = { x:e.clientX, y:e.clientY, left:rect.left / uiK(), top:rect.top / uiK() };
-        head.setPointerCapture(e.pointerId);
-    });
-    head?.addEventListener('pointermove', e => {
-        if (!drag) return;
-        const box = $('packBox');
-        const left = Math.max(0, Math.min(uiW() - box.offsetWidth, drag.left + (e.clientX - drag.x) / uiK()));
-        const top = Math.max(0, Math.min(window.innerHeight / uiK() - 90, drag.top + (e.clientY - drag.y) / uiK()));
-        box.style.left = `${left}px`; box.style.top = `${top}px`;
-    });
-    head?.addEventListener('pointerup', () => { drag = null; });
-    head?.addEventListener('lostpointercapture', () => { drag = null; });
     if (sel) sel.addEventListener('change', () => post('packLook', { look: Number(sel.value) }));
     if (hide) hide.addEventListener('click', () => {
         const pack = S.player && S.player.pack;
@@ -333,9 +469,13 @@ function loadoutPlate(item, category, label, key, count) {
         <span class="lslot__name">${esc(label || item)}</span>`;
 }
 
-// Gear: armour + backpack: they are real inventory slots (the server's equip frames)
+// Gear: armour + backpack. They are real inventory slots (the server's equip frames), so dragging in/out is an ordinary move and the server decides.
 const GEAR_IDS = ['armour', 'backpack'];
-const radioSlotId = () => Number(S.player?.radioSlot || 921);
+// Preserve the actual gadget DOM elements across gear re-renders. renderGear()
+// empties #gearSlots on every inventory open; querying moved nodes after that
+// would otherwise return nothing, permanently hiding both gadget slots.
+// Reusing the original elements also preserves their event handlers.
+const GADGET_GEAR_NODES = Array.from(document.querySelectorAll('.booster[data-gidx]'));
 
 function renderGear() {
     const box = $('gearSlots');
@@ -367,15 +507,15 @@ function renderGear() {
         });
         box.appendChild(node);
     });
-    const radioSlot=radioSlotId(), radio=S.player?.slots?.[String(radioSlot)];
-    const radioNode=document.createElement('div');
-    radioNode.className='slot gear__slot gear__radio'+(radio?' has-item':'');
-    radioNode.dataset.inv='player';radioNode.dataset.slot=radioSlot;radioNode.dataset.gear='radio';
-    radioNode.innerHTML=radio?loadoutPlate(radio.item,radio.category,radio.label,'',''):`<span class="lslot__empty">${esc(t('inv.radio_slot',{fallback:'RADIO'}))}</span>`;
-    radioNode.title=radio?t('inv.radio_options',{fallback:'Right-click for radio options'}):t('inv.radio_equip_hint',{fallback:'Drag a radio here to equip it'});
-    radioNode.addEventListener('contextmenu',e=>{e.preventDefault();e.stopImmediatePropagation();if(radio)openContext(e.clientX,e.clientY,'player',radioSlot,radio);});
-    if(radio){radioNode.addEventListener('mouseenter',e=>showTip(radio,e));radioNode.addEventListener('mousemove',moveTip);radioNode.addEventListener('mouseleave',hideTip);radioNode.addEventListener('dblclick',()=>post('use',{slot:radioSlot}));}
-    box.appendChild(radioNode);
+
+    // Alpha-Z: use the framework's existing bs_gadgets loadout as the two
+    // additional equipment-bar slots. No duplicate inventory/equipment system.
+    // Moving the original DOM nodes preserves their existing drag/drop,
+    // right-click clear, cooldown, count, battery and bs_gadgets callbacks.
+    for (const g of GADGET_GEAR_NODES) {
+        g.classList.add('gear__gadget');
+        box.appendChild(g);
+    }
 }
 
 // The gear frame an item belongs in, or null.
@@ -387,13 +527,30 @@ function gearSlotFor(entry) {
     return def ? Number(def.slot) : null;
 }
 
-// The bar: five quick slots, drawn inside the bag as well as on the HUD, so you can drag items onto them.
+// The bar: five quick slots, drawn inside the bag as well as on the HUD, so you can drag items onto them. A binding is by item name, not grid position.
 
-// The bar is five more slots of the bag.
+// The bar is five more slots of the bag. A bar slot is a real inventory slot (41-45) with data-inv="player" and its absolute slot number, so drags in, out and between bar slots are ordinary moves.
 
 function barSlotOf(index) {
     const grid = (S.player && S.player.gridSlots) || slotCount();
     return grid + index;
+}
+
+function renderAlphaZCarriedWeapons() {
+    const panel = $('alphaZCarriedWeapons');
+    if (!panel) return;
+    const slots = S.player && S.player.slots || {};
+    const weapons = [];
+    for (let i = 1; i <= 5; i++) {
+        const entry = slots[String(barSlotOf(i))];
+        if (entry && entry.category === 'weapon') weapons.push(entry);
+    }
+    panel.innerHTML = '<span class="alpha-z-carried-weapons__title">GETRAGENE WAFFEN</span>'
+        + (weapons.length ? weapons.map(entry =>
+            '<span class="alpha-z-carried-weapons__item">'
+            + (typeof BSIcons !== 'undefined' ? BSIcons.get(entry.icon || entry.item, entry.category) : '')
+            + '<span>' + esc(entry.label || entry.item) + '</span></span>'
+        ).join('') : '<span class="alpha-z-carried-weapons__empty">Keine Waffe ausgerüstet</span>');
 }
 
 function renderHotbar() {
@@ -414,15 +571,18 @@ function renderHotbar() {
         if (entry) node.dataset.cat = entry.category || 'misc';
 
         const icon = (entry && typeof BSIcons !== 'undefined')
-            ? BSIcons.get(entry.item, entry.category) : '';
+            ? BSIcons.get(entry.icon || entry.item, entry.category) : '';
 
-        // The bar draws the same parts as a bag plate, with the same class names
+        // The bar draws the same parts as a bag plate, with the same class names, so the stylesheet rules apply (otherwise the 512px icons render at full size).
+        const slotLabel = ['Nahkampf', 'Fernkampf', 'Gürtel Links', 'Gürtel Rechts', 'Item'][i-1];
+        node.title = slotLabel;
         node.innerHTML = `
             <span class="bar__key">${i}</span>
             ${entry ? `<span class="slot__icon">${icon}</span>` : ''}
             ${entry ? `<span class="slot__name">${esc(entry.label || entry.item)}</span>` : ''}
             ${entry ? `<span class="slot__foot">${slotBadge(entry)}</span>` : ''}
-            ${entry ? fillBar(entry) : ''}`;
+            ${entry ? fillBar(entry) : ''}
+            <span class="az-bar-caption">${slotLabel}</span>`;
 
         // Right-click takes it off the bar and back to the first free grid square.
         node.addEventListener('contextmenu', async (e) => {
@@ -431,15 +591,13 @@ function renderHotbar() {
 
             // Attached before wireSlot's handler and stops it, because right-click on the bar means take off, not the Use/Give/Drop menu.
             e.stopImmediatePropagation();
-            if(entry.category==='weapon')openContext(e.clientX,e.clientY,'player',abs,entry);
-            else await unbind(abs, entry);
+            await unbind(abs, entry);
         });
 
         node.addEventListener('click', () => {
             if (carry) return;                          // finishing a drag
             if (Date.now() - barDragged < 250) return;  // just finished one
-            if (!entry) openBarPicker(i,node);
-            else if(entry.category==='weapon')post('inspectWeapon',{slot:abs});
+            if (!entry) openBarPicker(i, node);
         });
 
         wireSlot(node, entry, 'player', abs);
@@ -447,7 +605,7 @@ function renderHotbar() {
     }
 }
 
-// A drag that ends on the bar is followed by a click on the same element
+// A drag that ends on the bar is followed by a click on the same element, which would open the picker. `carry` is already null by then, so a timestamp is the guard.
 let barDragged = 0;
 
 // The first empty square in the carried grid, or null if the bag is full.
@@ -497,7 +655,7 @@ function openBarPicker(index, node) {
     } else {
         box.innerHTML = `<p class="barpick__head">SLOT ${index}</p>` + usable.map(({ slot, entry }) => {
             const icon = (typeof BSIcons !== 'undefined')
-                ? BSIcons.get(entry.item, entry.category) : '';
+                ? BSIcons.get(entry.icon || entry.item, entry.category) : '';
             return `<button class="barpick__row" data-slot="${slot}">
                         <span class="barpick__icon">${icon}</span>
                         <span>${esc(entry.label)}</span>
@@ -544,132 +702,144 @@ document.addEventListener('mousedown', (e) => {
     if (!e.target.closest('#barpick') && !e.target.closest('.bar__slot')) closeBarPicker();
 });
 
-// The carry: one pointer-driven drag for everything (grid, container incl. trunk, hotbar).
+// The carry: one pointer-driven drag for everything (grid, container incl. trunk, hotbar). Used because the browser's own drag-and-drop is unreliable in FiveM's embedded browser.
 
-let carry = null;
-let lastDragEnd = 0, dragEscapeAt = 0;
+let carry = null;       // { from: {inv, slot}, entry, ghost, shift }
+let lastDragEnd = 0;
+
+// Finds the element a carry started from, so every place that un-highlights it uses one lookup.
 function sourceNodeFor(from) {
-    if(from.inv==='vicinity') return [...document.querySelectorAll('.vicinity-item')].find(node=>node.dataset.id===String(from.slot)) || null;
-    return document.querySelector(`.slot[data-inv="${from.inv}"][data-slot="${from.slot}"]`);
+    return document.querySelector(
+        `.slot[data-inv="${from.inv}"][data-slot="${from.slot}"]`);
 }
-function inventoryFor(which) {
-    return which==='player'?S.player:which==='container'?S.container:S.player?.[which];
+
+function entryAt(which, slot) {
+    const source = which === 'player' ? S.player : which === 'container' ? S.container
+        : (which === 'pack' || which === 'vest') ? (S.player && S.player[which]) : null;
+    return source && source.slots ? source.slots[String(slot)] : null;
 }
-function entryAt(which,slot) { return inventoryFor(which)?.slots?.[String(slot)] || null; }
-function clearPlacement() {
-    document.querySelectorAll('.is-over,.cell.is-placeable,.cell.is-blocked').forEach(n=>n.classList.remove('is-over','is-placeable','is-blocked'));
-}
-function settleGhost(ghost,rect,accepted) {
-    if(!ghost||!rect||$('root').classList.contains('hidden')||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const k=uiK(), from=ghost._rect;
-    if(!from) return;
-    ghost.classList.add('is-settling'); document.body.appendChild(ghost);
-    ghost.style.left=`${from.left/k}px`;ghost.style.top=`${from.top/k}px`;
-    const dx=(rect.left-from.left)/k,dy=(rect.top-from.top)/k;
-    const animation=ghost.animate([{transform:'translate(0,0) scale(1)',opacity:.9},{transform:`translate(${dx}px,${dy}px) scale(.65)`,opacity:0}],{duration:accepted?180:240,easing:'cubic-bezier(.2,.8,.3,1)'});
-    animation.onfinish=()=>ghost.remove();
-}
-function cancelCarry() {
-    if(!carry) return;
-    const node=sourceNodeFor(carry.from),ghost=carry.ghost;
-    if(ghost) { ghost._rect=ghost.getBoundingClientRect();ghost.remove(); }
-    node?.classList.remove('is-dragging');document.body.classList.remove('is-carrying');clearPlacement();
-    settleGhost(ghost,node?.getBoundingClientRect(),false);carry=null;lastDragEnd=Date.now();
-}
-function paintCarry(e) {
-    if(!carry?.ghost) return;
-    const ghost=carry.ghost,size=BSGridMath.footprint(carry.entry,carry.rot),k=uiK();
-    ghost.style.left=`${e.clientX/k+12}px`;ghost.style.top=`${e.clientY/k+12}px`;
-    ghost.classList.toggle('is-rotated',carry.rot);
-    ghost.querySelector('.ghost__hint').textContent=`${size.w} × ${size.h}${(carry.entry.w||1)!==(carry.entry.h||1)?' · '+t('inv.rotate_hint',{fallback:'R to rotate'}):''}`;
-    const over=document.elementFromPoint(e.clientX,e.clientY),cell=over?.closest('.cell'),slot=over?.closest('.slot');
-    clearPlacement();
-    const grid=(cell||slot)?.closest('.grid');
-    if(cell&&grid) {
-        const x=Number(cell.dataset.x),y=Number(cell.dataset.y),which=cell.dataset.inv;
-        const ignore=which===carry.from.inv&&!(carry.shift&&carry.entry.amount>1)?carry.from.slot:null;
-        const inv=inventoryFor(which),valid=carry.from.inv==='vicinity' ? which==='player' : BSGridMath.fits(inv,carry.entry,x,y,carry.rot,ignore);
-        grid.querySelectorAll('.cell').forEach(n=>{
-            if(Number(n.dataset.x)>=x&&Number(n.dataset.x)<x+size.w&&Number(n.dataset.y)>=y&&Number(n.dataset.y)<y+size.h) n.classList.add(valid?'is-placeable':'is-blocked');
-        });
-    } else (over?.closest('.booster,.bar__slot,.slot'))?.classList.add('is-over');
-}
-document.addEventListener('mousedown',e=>{
-    if(e.button!==0||carry) return;
-    const node=e.target.closest('.slot.has-item');if(!node) return;
-    const from={inv:node.dataset.inv,slot:Number(node.dataset.slot)},entry=entryAt(from.inv,from.slot);if(!entry) return;
-    carry={from,entry,ghost:null,start:{x:e.clientX,y:e.clientY},last:e,shift:e.shiftKey,rot:!!entry.rot};
+
+document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.ctrlKey) return;
+
+    // A bar slot is a normal slot (data-inv="player" plus its absolute slot number), so dragging uses the same code path as the grid.
+    const node = e.target.closest('.slot.has-item');
+    if (!node) return;
+
+    const which = node.dataset.inv;
+    const slot = Number(node.dataset.slot);
+    const entry = entryAt(which, slot);
+    if (!entry) return;
+
+    // Armed, not carrying: a click that never moves is still a click.
+    carry = { from: { inv: which, slot }, entry, ghost: null,
+              start: { x: e.clientX, y: e.clientY }, shift: e.shiftKey };
 });
-document.addEventListener('mousemove',e=>{
-    if(!carry) return;carry.last=e;
-    if(!carry.ghost) {
-        if(Math.abs(e.clientX-carry.start.x)+Math.abs(e.clientY-carry.start.y)<6) return;
-        sourceNodeFor(carry.from)?.classList.add('is-dragging');
-        const ghost=document.createElement('div');ghost.className='ghost';
-        ghost.innerHTML=`<span class="ghost__icon">${typeof BSIcons==='undefined'?'':BSIcons.get(carry.entry.item,carry.entry.category)}</span><span class="ghost__name">${esc(carry.entry.label)}</span><span class="ghost__hint"></span>`;
-        document.body.appendChild(ghost);carry.ghost=ghost;document.body.classList.add('is-carrying');
+
+document.addEventListener('mousemove', (e) => {
+    if (!carry) return;
+
+    if (!carry.ghost) {
+        const moved = Math.abs(e.clientX - carry.start.x) + Math.abs(e.clientY - carry.start.y);
+        if (moved < 6) return;
+
+        const sourceNode = sourceNodeFor(carry.from);
+        if (sourceNode) sourceNode.classList.add('is-dragging');
+
+        const ghost = document.createElement('div');
+        ghost.className = 'ghost';
+        const icon = (typeof BSIcons !== 'undefined')
+            ? BSIcons.get(carry.entry.icon || carry.entry.item, carry.entry.category) : '';
+        ghost.innerHTML = `<span class="ghost__icon">${icon}</span>
+                           <span class="ghost__name">${esc(carry.entry.label)}</span>`;
+        document.body.appendChild(ghost);
+        carry.ghost = ghost;
+        document.body.classList.add('is-carrying');
     }
-    paintCarry(e);
+
+    carry.ghost.style.left = `${e.clientX / uiK() + 12}px`;
+    carry.ghost.style.top  = `${e.clientY / uiK() + 12}px`;
+
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    const target = over && (over.closest('.bar__slot') || over.closest('.booster[data-bidx]')
+        || over.closest('.booster[data-gidx]') || over.closest('.slot'));
+
+    document.querySelectorAll('.is-over').forEach((n) => n.classList.remove('is-over'));
+    if (target) target.classList.add('is-over');
 });
-document.addEventListener('keydown',e=>{
-    if(!carry?.ghost) return;
-    if(e.key==='Escape') { e.preventDefault();dragEscapeAt=Date.now();cancelCarry();return; }
-    if(e.code==='KeyR'&&!e.repeat) {
-        e.preventDefault();
-        if((carry.entry.w||1)!==(carry.entry.h||1)) {carry.rot=!carry.rot;paintCarry(carry.last);}
-    }
-});
-window.addEventListener('blur',cancelCarry);
-document.addEventListener('mouseup',e=>{
-    if(!carry) return;
-    const {from,entry,shift,rot,ghost}=carry,node=sourceNodeFor(from),sourceRect=node?.getBoundingClientRect();
-    if(ghost) {ghost._rect=ghost.getBoundingClientRect();ghost.remove();}
-    node?.classList.remove('is-dragging');document.body.classList.remove('is-carrying');clearPlacement();carry=null;
-    if(!ghost) return;lastDragEnd=Date.now();
-    const over=document.elementFromPoint(e.clientX,e.clientY),cellTarget=over?.closest('.cell'),slotTarget=over?.closest('.slot');
-    if(from.inv==='vicinity'){
-        const target=cellTarget||slotTarget;
-        if(!target||target.dataset.inv!=='player'||companionView){settleGhost(ghost,sourceRect,false);return;}
-        takeVicinity({id:from.slot,kind:from.kind}).then(result=>{
-            settleGhost(ghost,result?.ok?target.getBoundingClientRect():sourceRect,!!result?.ok);
-            if(!result?.ok&&target.isConnected)flashBar(target,result?.error||'Item unavailable.');
-        });
+
+document.addEventListener('mouseup', (e) => {
+    if (!carry) return;
+
+    const had = carry.ghost;
+    const sourceNode = sourceNodeFor(carry.from);
+    if (sourceNode) sourceNode.classList.remove('is-dragging');
+    if (carry.ghost) carry.ghost.remove();
+    document.body.classList.remove('is-carrying');
+    document.querySelectorAll('.is-over').forEach((n) => n.classList.remove('is-over'));
+
+    const { from, entry, shift } = carry;
+    carry = null;
+
+    if (!had) return;   // a click, not a drag
+    lastDragEnd = Date.now();
+
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+
+    // Dropping on the bar is dropping on a slot; it only needs the guard against the click that follows a drag.
+    if (over && over.closest('.bar__slot')) barDragged = Date.now();
+
+    // A drop lands on a cell, not a slot number. The server needs the x/y of the cell the item's top-left should occupy. Dropping onto another item still resolves to that item's slot.
+    const cellTarget = over && over.closest('.cell');
+    const slotTarget = over && over.closest('.slot');
+
+    // Booster/gadget slots take the stack out of the bag (server moves it).
+    const gadgetTarget = over ? over.closest('.booster[data-gidx]') : null;
+    if (gadgetTarget) {
+        if (!entry || entry.category !== 'gadget') { flashBar(gadgetTarget, t('inv.only_gadgets')); return; }
+        post('gadgetSet', { index: Number(gadgetTarget.dataset.gidx), item: entry.item });
         return;
     }
-    const radioTarget=over?.closest('[data-gear="radio"]');
-    if(radioTarget){if(from.inv!=='player'||!entry.radio||from.slot===radioSlotId()){settleGhost(ghost,sourceRect,false);return;}post('radioSlot',{slot:from.slot}).then(result=>{if(!result?.ok)flashBar(radioTarget,result?.error||t('inv.no_room'));settleGhost(ghost,result?.ok?radioTarget.getBoundingClientRect():sourceRect,!!result?.ok);});return;}
-    if(from.inv==='player'&&from.slot===radioSlotId()){if(cellTarget?.dataset.inv!=='player'){settleGhost(ghost,sourceRect,false);return;}post('radioSlot',{slot:0}).then(result=>{if(!result?.ok)flashBar(cellTarget,result?.error||t('inv.no_room'));settleGhost(ghost,result?.ok?cellTarget.getBoundingClientRect():sourceRect,!!result?.ok);});return;}
-    const gadget=over?.closest('.booster[data-gidx]'),booster=over?.closest('.booster[data-bidx]');
-    if(gadget||booster) {
-        const target=gadget||booster,category=gadget?'gadget':'booster';
-        if(entry.category!==category) {flashBar(target,t(gadget?'inv.only_gadgets':'inv.only_boosters'));settleGhost(ghost,sourceRect,false);return;}
-        post(gadget?'gadgetSet':'boosterSet',{index:Number(target.dataset[gadget?'gidx':'bidx']),item:entry.item}).then(r=>settleGhost(ghost,r?.ok?target.getBoundingClientRect():sourceRect,!!r?.ok));return;
-    }
-    if(!cellTarget&&!slotTarget) {
-        const outside=over?.matches('#root,.scrim,.wrap,.layout,.col,.pane');
-        if(from.inv==='player'&&!companionView&&outside){
-            post('drop',{slot:from.slot,amount:shift?1:entry.amount}).then(r=>{
-                settleGhost(ghost,sourceRect,!!r?.ok);
-                if(!r?.ok&&node)flashBar(node,r?.error||'Unable to drop item');
-                refreshVicinity();
-            });
-        }else settleGhost(ghost,sourceRect,false);
+    const boosterTarget = over ? over.closest('.booster[data-bidx]') : null;
+    if (boosterTarget) {
+        if (!entry || entry.category !== 'booster') { flashBar(boosterTarget, t('inv.only_boosters')); return; }
+        post('boosterSet', { index: Number(boosterTarget.dataset.bidx), item: entry.item });
         return;
     }
-    if(over?.closest('.bar__slot')) barDragged=Date.now();
-    const to=slotTarget?{inv:slotTarget.dataset.inv,slot:Number(slotTarget.dataset.slot)}:{inv:cellTarget.dataset.inv,slot:from.slot,x:Number(cellTarget.dataset.x),y:Number(cellTarget.dataset.y),rot};
-    if(slotTarget&&from.inv===to.inv&&from.slot===to.slot&&rot!==!!entry.rot&&entry.x&&entry.y) Object.assign(to,{x:entry.x,y:entry.y,rot});
-    if(!slotTarget&&from.inv==='player'&&to.inv==='player'&&!onGrid(entry,from.slot,S.player?.gridSlots||slotCount())) {
-        const free=firstFreeGridSlot();if(free===null) {flashBar(cellTarget,t('inv.no_room'));settleGhost(ghost,sourceRect,false);return;}to.slot=free;
+
+    if (!cellTarget && !slotTarget) return;
+
+    const to = slotTarget
+        ? { inv: slotTarget.dataset.inv, slot: Number(slotTarget.dataset.slot) }
+        : { inv: cellTarget.dataset.inv,
+            slot: from.slot,                       // keeps its identity
+            x: Number(cellTarget.dataset.x),
+            y: Number(cellTarget.dataset.y),
+            rot: !!(entry && entry.rot) };
+
+    // Coming off a gear frame onto a bag cell: it needs a grid slot id to land in.
+    if (!slotTarget && from.inv === 'player' && to.inv === 'player'
+        && !onGrid(entry, from.slot, (S.player && S.player.gridSlots) || slotCount())) {
+        const free = firstFreeGridSlot();
+        if (free === null) { flashBar(cellTarget, t('inv.no_room')); return; }
+        to.slot = free;
     }
-    if(from.inv===to.inv&&from.slot===to.slot&&to.x===undefined) {settleGhost(ghost,sourceRect,false);return;}
-    if(shift&&entry.amount>1) {
-        pendingSplit={from,to,max:entry.amount};$('splitInput').max=entry.amount;$('splitInput').value=Math.max(1,Math.floor(entry.amount/2));$('split').classList.remove('hidden');$('splitInput').focus();return;
+
+    if (from.inv === to.inv && from.slot === to.slot && to.x === undefined) return;
+
+    if (shift && entry.amount > 1) {
+        pendingSplit = { from, to, max: entry.amount };
+        $('splitInput').max = entry.amount;
+        $('splitInput').value = Math.max(1, Math.floor(entry.amount / 2));
+        $('split').classList.remove('hidden');
+        $('splitInput').focus();
+        return;
     }
-    const flashOn=cellTarget||slotTarget,targetRect=flashOn.getBoundingClientRect();
-    post('move',{from,to,amount:entry.amount}).then(r=>{
-        settleGhost(ghost,r?.ok?targetRect:sourceRect,!!r?.ok);
-        if(!r?.ok&&r?.error&&flashOn.isConnected) flashBar(flashOn,r.error);
+
+    // Refused grid/bar moves (no room, bad placement) flash a reason, so a drop never undoes itself silently.
+    const flashOn = cellTarget || slotTarget;
+    post('move', { from, to, amount: entry.amount }).then((r) => {
+        if (r && !r.ok && r.error && flashOn) flashBar(flashOn, r.error);
     });
 });
 
@@ -699,7 +869,7 @@ function openContext(x, y, which, slot, entry) {
     const bind = $('ctxBind');
     if (bind) bind.classList.toggle('hidden', !mine || !entry.usable);
 
-    ctx.querySelector('[data-act="use"]').disabled  = !mine || !entry.usable;
+    ctx.querySelector('[data-act="use"]').disabled  = !mine || !(entry.usable || entry.equipSlot || entry.category === 'weapon' || isLoadoutItem(entry));
     ctx.querySelector('[data-act="give"]').disabled = !mine;
     ctx.querySelector('[data-act="offer"]').disabled = !mine || !S.trade || S.trade.phase !== 'offering';
     ctx.querySelector('[data-act="drop"]').disabled = !mine;
@@ -711,10 +881,6 @@ function openContext(x, y, which, slot, entry) {
         eq.textContent = entry.category === 'gadget' ? t('inv.equip_gadget') : t('inv.equip_booster');
     }
 
-    ctx.querySelector('[data-act="radioequip"]').classList.toggle('hidden',!mine||!entry.radio);
-    ctx.querySelector('[data-act="radioequip"]').textContent=slot===radioSlotId()?t('inv.radio_unequip',{fallback:'Unequip radio'}):t('inv.radio_equip',{fallback:'Equip radio'});
-    ctx.querySelector('[data-act="rotate"]').disabled = !entry.x || !entry.y || (entry.w||1)===(entry.h||1) || !onGrid(entry,slot,inventoryFor(which)?.gridSlots||slotCount());
-    ctx.querySelector('[data-act="inspectweapon"]').classList.toggle('hidden', !mine || entry.category !== 'weapon');
     ctx.classList.remove('hidden');
 
     // Keep it on screen near the cursor.
@@ -733,24 +899,15 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('#ctx')) closeContext();
 });
 
-const rotateButton=document.createElement('button');rotateButton.className='ctx__item';rotateButton.dataset.act='rotate';rotateButton.textContent=t('inv.rotate',{fallback:'Rotate item'});$('ctx').appendChild(rotateButton);
-
-const inspectButton=document.createElement('button');inspectButton.className='ctx__item';inspectButton.dataset.act='inspectweapon';inspectButton.dataset.i18n='ui.customize_weapon';inspectButton.textContent=(window.BSI18n&&BSI18n.t&&BSI18n.t('ui.customize_weapon',{fallback:'CUSTOMIZE WEAPON'}))||'CUSTOMIZE WEAPON';$('ctx').appendChild(inspectButton);
-
-const radioEquipButton=document.createElement('button');radioEquipButton.className='ctx__item hidden';radioEquipButton.dataset.act='radioequip';radioEquipButton.textContent=t('inv.radio_equip',{fallback:'Equip radio'});$('ctx').appendChild(radioEquipButton);
-
 $('ctx').querySelectorAll('.ctx__item').forEach((btn) => {
     btn.addEventListener('click', async () => {
         if (!ctxTarget) return;
-        const { slot, entry, inv: which } = ctxTarget;
+        const { slot, entry } = ctxTarget;
         const act = btn.dataset.act;
         closeContext();
 
-        if (act === 'rotate') { const from={inv:which,slot},to={inv:which,slot,x:entry.x,y:entry.y,rot:!entry.rot};const r=await post('move',{from,to,amount:entry.amount});if(!r?.ok) { const node=sourceNodeFor(from);if(node) flashBar(node,r?.error||t('inv.no_room')); } return; }
-        if (act === 'radioequip') { const result=await post('radioSlot',{slot:slot===radioSlotId()?0:slot});if(!result?.ok)tradeNotice(result?.error||t('inv.no_room'));return; }
         if (act === 'equipslot') return void await equipLoadout(entry, null);
-        if (act === 'inspectweapon') return void await post('inspectWeapon', { slot });
-        if (act === 'use')  return void await post('use', { slot });
+        if (act === 'use')  return void await alphaZUseOrEquip(slot, entry);
         if (act === 'drop') return void await post('drop', { slot, amount: entry.amount });
         if (act === 'split') return void openSplitPrompt(slot, entry, null);
         if (act === 'offer') {
@@ -783,6 +940,103 @@ $('ctx').querySelectorAll('.ctx__item').forEach((btn) => {
         }
     });
 });
+
+// Cash: first enter the amount. After confirming, the inventory closes and the
+// player is selected directly in the world with the mouse cursor.
+$('cashItem')?.addEventListener('click', () => {
+    const max = Math.max(0, Math.floor(Number(S.cash) || 0));
+    if (max < 1) return;
+    pendingCashGive = { target: null, max };
+    $('split').querySelector('h3').textContent = 'WIE VIEL BARGELD?';
+    $('splitInput').min = 1;
+    $('splitInput').max = max;
+    $('splitInput').value = Math.min(100, max);
+    $('split').classList.remove('hidden');
+    $('splitInput').focus();
+    $('splitInput').select();
+});
+
+$('idItem')?.addEventListener('click', () => $('idMenu').classList.remove('hidden'));
+$('idMenuCancel')?.addEventListener('click', () => $('idMenu').classList.add('hidden'));
+$('idViewSelf')?.addEventListener('click', async () => {
+    $('idMenu').classList.add('hidden');
+    const r = await post('identitySelf', {});
+    if (!r.ok) tradeNotice(r.error || 'Ausweis konnte nicht geladen werden.');
+});
+$('idShowPerson')?.addEventListener('click', async () => {
+    $('idMenu').classList.add('hidden');
+    const r = await post('beginIdentityTarget', {});
+    if (!r.ok) tradeNotice(r.error || 'Ausweis-Zielauswahl konnte nicht gestartet werden.');
+});
+async function closeIdentityCard() {
+    $('idCardOverlay').classList.add('hidden');
+    const wasReceived = document.body.classList.contains('id-card-only');
+    document.body.classList.remove('id-card-only');
+    if (wasReceived) $('root').classList.add('hidden');
+    await post('identityCardClosed', {});
+}
+$('idCardClose')?.addEventListener('click', closeIdentityCard);
+
+// ESC also safely closes a displayed ID card and releases NUI focus for recipients.
+document.addEventListener('keydown', async (e) => {
+    if (e.key === 'Escape' && !$('idCardOverlay')?.classList.contains('hidden')) {
+        e.preventDefault();
+        await closeIdentityCard();
+    }
+});
+function showIdentityCard(d) {
+    const card = d.card || {};
+    // A received card must be visible even when this player's inventory is closed.
+    // Temporarily reveal the NUI root, but hide every inventory panel so only the ID card is shown.
+    if (d.received === true) {
+        document.body.classList.add('id-card-only');
+        $('root').classList.remove('hidden');
+    } else {
+        document.body.classList.remove('id-card-only');
+    }
+    $('idName').textContent = (card.name || `${card.firstName || ''} ${card.lastName || ''}`).trim() || '-';
+    const formatIdDob = (value) => {
+        if (value === null || value === undefined || value === '') return '-';
+        if (typeof value === 'number' || /^\d+$/.test(String(value).trim())) {
+            let n = Number(value);
+            if (!Number.isFinite(n) || n <= 0) return String(value);
+            if (String(Math.trunc(n)).length <= 10) n *= 1000;
+            const d = new Date(n);
+            if (!isNaN(d.getTime())) {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${dd}.${mm}.${yyyy}`;
+            }
+        }
+        const parsed = new Date(value);
+        if (!isNaN(parsed.getTime())) {
+            const dd = String(parsed.getDate()).padStart(2, '0');
+            const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+            const yyyy = parsed.getFullYear();
+            return `${dd}.${mm}.${yyyy}`;
+        }
+        return String(value);
+    };
+    $('idDob').textContent = formatIdDob(card.dob);
+    $('idSex').textContent = card.sex || card.gender || '-';
+    $('idNumber').textContent = card.number || card.citizenid || card.citizenId || '-';
+    $('idIssueDate').textContent = card.issueDate || '-';
+    $('idSignature').textContent = card.signature || card.name || '-';
+
+    const portrait = $('idPortrait');
+    if (portrait) {
+        if (typeof card.photo === 'string' && card.photo.startsWith('data:image/')) {
+            portrait.src = card.photo;
+            portrait.classList.remove('hidden');
+        } else {
+            portrait.removeAttribute('src');
+            portrait.classList.add('hidden');
+        }
+    }
+
+    $('idCardOverlay').classList.remove('hidden');
+}
 
 $('whoCancel').addEventListener('click', () => $('who').classList.add('hidden'));
 
@@ -836,7 +1090,7 @@ function renderTrade(trade) {
                     ? ` · condition ${Math.round(Number(offer.durability))}`
                     : '';
             name.innerHTML = `<span class="trade-panel__icon">${typeof BSIcons !== 'undefined'
-                ? BSIcons.get(offer.item, offer.category) : ''}</span>`;
+                ? BSIcons.get(offer.icon || offer.item, offer.category) : ''}</span>`;
             name.appendChild(document.createTextNode(`${offer.label} ×${offer.amount}${detail}`));
             row.appendChild(name);
             if (removable) {
@@ -871,7 +1125,7 @@ function renderTradeBag() {
         button.draggable = !offered.has(slot);
         button.disabled = offered.has(slot);
         button.title = offered.has(slot) ? t('trade.already_offered') : t('trade.drag_offer');
-        button.innerHTML = `<span class="trade-panel__icon">${typeof BSIcons !== 'undefined' ? BSIcons.get(entry.item, entry.category) : ''}</span><span>${esc(entry.label || entry.item)} ×${Number(entry.amount || 1)}</span>`;
+        button.innerHTML = `<span class="trade-panel__icon">${typeof BSIcons !== 'undefined' ? BSIcons.get(entry.icon || entry.item, entry.category) : ''}</span><span>${esc(entry.label || entry.item)} ×${Number(entry.amount || 1)}</span>`;
         button.addEventListener('dragstart', (event) => {
             event.dataTransfer.setData('text/plain', String(slot));
             event.dataTransfer.effectAllowed = 'move';
@@ -910,7 +1164,8 @@ $('tradeCashSet')?.addEventListener('click', async () => {
     if (!result.ok) tradeNotice(result.error || t('trade.cash_fail'));
 });
 
-$('btnTrade').addEventListener('click', async () => {
+const btnTrade = $('btnTrade');
+if (btnTrade) btnTrade.addEventListener('click', async () => {
     if (S.trade) return;
     const res = await post('nearbyPlayers');
     const list = $('whoList');
@@ -947,6 +1202,14 @@ $('tradeCancel').addEventListener('click', () => post('tradeCancel'));
 // split
 
 $('splitOk').addEventListener('click', async () => {
+    if (pendingCashGive) {
+        const amount = Math.max(1, Math.min(Math.floor(Number($('splitInput').value) || 1), pendingCashGive.max));
+        pendingCashGive = null;
+        $('split').classList.add('hidden');
+        const result = await post('beginCashTarget', { amount });
+        if (!result.ok) tradeNotice(result.error || 'Bargeld-Auswahl konnte nicht gestartet werden.');
+        return;
+    }
     if (!pendingSplit) return;
     const amount = Math.max(1, Math.min(Number($('splitInput').value) || 1, pendingSplit.max));
     const { from, to } = pendingSplit;
@@ -957,12 +1220,13 @@ $('splitOk').addEventListener('click', async () => {
 
 $('splitCancel').addEventListener('click', () => {
     pendingSplit = null;
+    pendingCashGive = null;
     $('split').classList.add('hidden');
 });
 
 // settings
 
-// Filter picker is built from data: the filter list lives in bs_ui's config
+// Filter picker is built from data: the filter list lives in bs_ui's config, so the buttons are generated into the same .seg container and use the generic data-value handler.
 
 // Filter names and notes come from bs_ui's config in English; locale keys win.
 function filterText(preset, field) {
@@ -1056,9 +1320,6 @@ function paintPreview() {
 }
 
 function paintSettings() {
-    const fieldViewOn=document.querySelector('[data-setting="fpsEnabled"] button[data-value="true"]');
-    if(fieldViewOn){fieldViewOn.disabled=S.settings.fpsAvailable!==true;fieldViewOn.title=fieldViewOn.disabled?'Enable First-person prototype availability in F1 first.':'';}
-    document.querySelectorAll('input[type=color][data-setting]').forEach(input=>{const v=S.settings[input.dataset.setting];if(/^#[0-9a-f]{6}$/i.test(v||''))input.value=v;});
     buildChoiceSegs();
     buildFilterSeg();
     paintFilterNote();
@@ -1128,7 +1389,6 @@ function wireSeg(seg) {
 
 // Colours of a palette for the instant preview, as sent by bs_ui.
 function paletteVars(id) {
-    if(id==='custom')return {accent:S.settings.themeAccent||'#e08c46',hi:S.settings.themeAccent||'#e08c46',bg:S.settings.themeBackground||'#0a0a09',text:S.settings.themeText||'#f0ebdd',muted:S.settings.themeMuted||'#a8a293',blood:'#a63d32'};
     const d = ((S.choices && S.choices.palettes) || []).filter((p) => p.id === id)[0];
     return (d && d.vars) || null;
 }
@@ -1184,10 +1444,6 @@ document.querySelectorAll('input[type=range][data-setting]').forEach((input) => 
     });
 });
 
-document.querySelectorAll('input[type=color][data-setting]').forEach(input=>{
-    input.addEventListener('change',()=>{const key=input.dataset.setting;S.settings[key]=input.value;if(S.settings.menuPalette==='custom'&&window.BSPalette)BSPalette.apply(paletteVars('custom'),'custom');post('settings',{patch:{[key]:input.value}});});
-});
-
 // cat filter
 
 const catFilterEl = $('catFilter');
@@ -1216,9 +1472,9 @@ document.querySelectorAll('.tab[data-tab]').forEach((t) => {
 
 $('btnClose').addEventListener('click', () => post('close'));
 
-// ESC only: listening for the open key here would close the window right away
+// ESC only. Listening for the open key here would close the window right away, because the keyup of the opening press arrives while the NUI has focus.
 document.addEventListener('keyup', (e) => {
-    if (e.key === 'Escape' && Date.now()-dragEscapeAt > 400) post('close');
+    if (e.key === 'Escape') post('close');
 });
 
 document.addEventListener('keydown', async (e) => {
@@ -1241,10 +1497,66 @@ function localizeItems(o, depth = 0) {
     }
 }
 
+// While the inventory is hidden, NUI keeps only the mouse cursor so the player can
+// click the character who should receive the cash. The game client decides which
+// nearby player is under the cursor and draws the world-space hover marker.
+document.addEventListener('mousedown', async (e) => {
+    if (!cashTargetMode && !idTargetMode) return;
+    e.preventDefault();
+    if (e.button === 0) await post(cashTargetMode ? 'cashTargetClick' : 'identityTargetClick', {});
+    if (e.button === 2) await post(cashTargetMode ? 'cashTargetCancel' : 'identityTargetCancel', {});
+}, true);
+
+document.addEventListener('contextmenu', (e) => {
+    if (cashTargetMode || idTargetMode) e.preventDefault();
+});
+
+document.addEventListener('keydown', async (e) => {
+    if (!cashTargetMode && !idTargetMode) return;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        await post(cashTargetMode ? 'cashTargetCancel' : 'identityTargetCancel', {});
+    }
+}, true);
+
+
+async function captureIdentityHeadshot(url) {
+    try {
+        if (!url) throw new Error('missing headshot url');
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('headshot timeout')), 4500);
+            img.onload = () => { clearTimeout(timer); resolve(); };
+            img.onerror = () => { clearTimeout(timer); reject(new Error('headshot load failed')); };
+            img.src = url;
+        });
+
+        // 384x384 is plenty for the small printed ID photo and keeps DB payload small.
+        const canvas = document.createElement('canvas');
+        canvas.width = 384;
+        canvas.height = 384;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        await post('identityPhotoCaptured', { ok: true, dataUrl });
+    } catch (err) {
+        await post('identityPhotoCaptured', { ok: false, error: String(err?.message || err) });
+    }
+}
+
 window.addEventListener('message', (e) => {
-    const d = e.data || {};
-    if (companionView && ['hotbar','boosters','gadgets','skillsChanged','medical'].includes(d.action)) return;
-    if (d.action === 'skillsChanged') { renderSheet(d.levels, d.effects, d.trees); return; }
+const d = e.data || {};
+
+    if (d.action === 'captureIdentityPhoto') {
+        captureIdentityHeadshot(d.url);
+        return;
+    }
     if (d.action !== 'bs_i18n') localizeItems(d);
 
     if (d.action === 'tradeOpen') {
@@ -1260,18 +1572,22 @@ window.addEventListener('message', (e) => {
         return;
     }
 
-    if (d.action === 'subjectStats' && companionView) { renderStats(d.stats); renderMedical(d.stats,d.levels,S.player && S.player.equipStats); return; }
     if (d.action === 'open') {
-        companionView = d.companionView === true;
-        S.container = null;
-        if (companionView) { S.boosters = {}; S.gadgets = {}; }
-        document.querySelectorAll('.tab[data-tab]').forEach(tab => { tab.hidden = companionView && tab.dataset.tab !== 'carry'; tab.style.display = tab.hidden ? 'none' : ''; });
         // Reveal the shell first so a bad item or stale cached asset never leaves the game camera active behind an invisible page.
         $('root').classList.remove('hidden');
         try {
         renderTrade(d.trade);
         if (d.grid) S.grid = { w: d.grid.w, h: d.grid.h };
         S.player = d.player || null;
+        S.cash = Number(d.cash) || 0;
+        renderCash();
+        // A normal TAB-open must never reuse the container from the previous session.
+        // Containers (including the personal storage) are only restored by an explicit
+        // server 'update' after the player actually opens one at its world interaction point.
+        S.container = null;
+        $('containerTitle').textContent = t('inv.nothing_open');
+        CurrentSkillLevels = d.levels || {};
+        CurrentSkillTrees = d.trees || {};
         renderStats(d.stats);
         renderMedical(d.stats, d.levels, S.player && S.player.equipStats);
         renderSheet(d.levels, d.effects, d.trees);
@@ -1325,6 +1641,12 @@ window.addEventListener('message', (e) => {
         return;
     }
 
+    if (d.action === 'cash') {
+        S.cash = Number(d.cash) || 0;
+        renderCash();
+        return;
+    }
+
     if (d.action === 'update') {
         if (d.player) S.player = d.player;
         if (d.container !== undefined) S.container = d.container || null;
@@ -1336,9 +1658,24 @@ window.addEventListener('message', (e) => {
 
     if (d.action === 'trade') renderTrade(d.trade);
 
-    if (d.action === 'close') { companionView = false;
-        packWindowOpen = false;
-        $('packBox')?.classList.add('hidden');
+    if (d.action === 'cashTargetMode') {
+        cashTargetMode = d.enabled === true;
+        document.body.classList.toggle('cash-target-mode', cashTargetMode);
+        return;
+    }
+
+    if (d.action === 'identityTargetMode') {
+        idTargetMode = d.enabled === true;
+        document.body.classList.toggle('id-target-mode', idTargetMode);
+        return;
+    }
+
+    if (d.action === 'showIdentityCard') {
+        showIdentityCard(d);
+        return;
+    }
+
+    if (d.action === 'close') {
         renderTrade(null);
         hideTip();
         sel = null;
@@ -1360,7 +1697,8 @@ window.addEventListener('message', (e) => {
 });
 
 
-// hotbar: moves the stack onto one of the five bar slots from the context menu, which frees the source square.
+// hotbar
+// Moves the stack onto one of the five bar slots from the context menu, which frees the source square.
 
 document.querySelectorAll('.ctx__slot').forEach((b) => {
     b.addEventListener('click', async () => {
@@ -1368,20 +1706,71 @@ document.querySelectorAll('.ctx__slot').forEach((b) => {
 
         const index = Number(b.dataset.bind);
         const from = ctxTarget.slot;
-        const sourceInventory=ctxTarget.inv;
         const entry = ctxTarget.entry;
 
         closeContext();
 
         await post('move', {
-            from: { inv: sourceInventory || 'player', slot: from },
+            from: { inv: ctxTarget.inv || 'player', slot: from },
             to:   { inv: 'player', slot: barSlotOf(index) },
             amount: entry.amount,
         });
     });
 });
 
-// stats: snapshot from bs_core GetData() taken when the panel opens, not a live feed (see cl_main.lua).
+// stats
+// Snapshot from bs_core GetData() taken when the panel opens, not a live feed (see cl_main.lua).
+
+let CurrentSkillLevels = {};
+let CurrentSkillTrees = {};
+
+function renderInlineSkills() {
+    const levels = CurrentSkillLevels || {};
+    const trees = CurrentSkillTrees || {};
+    const order = ['combat', 'survival', 'crafting', 'medical', 'lockpicking'];
+    return order.map((id) => {
+        const tree = trees[id] || {};
+        const lvl = Number(levels[id] || 0);
+        const max = Number(tree.maxLevel || 50);
+        const paths = {
+            combat: `<path d="M5 12V9a2 2 0 0 1 4 0V7a2 2 0 0 1 4 0v1a2 2 0 0 1 4 0v2a2 2 0 0 1 3 1.7V15c0 4-3 6-7 6H9c-3 0-5-2-5-5v-2a2 2 0 0 1 1-2z"/>`,
+            survival: `<path d="M12 3c1 4-2 5-1 8 3-2 3-4 3-6 5 5 5 8 3 11a6 6 0 0 1-10 0c-2-4 0-7 5-13z"/><path d="M5 20l14 3M19 20L5 23"/>`,
+            crafting: `<path d="M21 6a6 6 0 0 1-8 7l-7.5 7.5a2 2 0 0 1-3-3L10 10a6 6 0 0 1 7-8l-3 4 4 4 3-4z"/>`,
+            medical: `<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M9 7V4h6v3M12 10v8M8 14h8"/>`,
+            lockpicking: `<path d="M5 21l11-17 3 2-4 6M10 22l10-14M3 18l9-12 2 2M3 18l4 3"/>`
+        };
+        const skillIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[id] || ''}</svg>`;
+        const label = ({combat:'Kampf', survival:'Überleben', crafting:'Herstellung', medical:'Medizin', lockpicking:'Schlossknacken'})[id] || id;
+        // Progress bar shows progress inside the current rank, not only the total 0-50 scale.
+        // Example: level 12 = 30% through AMATEUR (10-19).
+        const rankStart = lvl >= 40 ? 40 : Math.floor(Math.max(0, lvl) / 10) * 10;
+        const rankEnd = lvl >= 40 ? 50 : rankStart + 9;
+        const pct = Math.max(0, Math.min(100,
+            ((lvl - rankStart + 1) / Math.max(1, rankEnd - rankStart + 1)) * 100
+        ));
+
+        // Alpha-Z rank text:
+        // 0-9 Schlecht, 10-19 Amateur, 20-29 Erfahren,
+        // 30-39 Fortgeschritten, 40-50 Profi.
+        const rank = lvl >= 40 ? 'PROFI'
+            : lvl >= 30 ? 'FORTGESCHRITTEN'
+            : lvl >= 20 ? 'ERFAHREN'
+            : lvl >= 10 ? 'AMATEUR'
+            : 'SCHLECHT';
+
+        // Every individual level gets its own colour on a smooth red -> green scale.
+        // HSL 0 = red, HSL 120 = green.
+        const clampedLevel = Math.max(0, Math.min(50, lvl));
+        const hue = Math.round((clampedLevel / 50) * 120);
+        const skillColor = `hsl(${hue}, 78%, 52%)`;
+
+        return `<div class="fieldmedskill">
+            <span class="fieldmedskill__name" title="${esc(label)}" aria-label="${esc(label)}">${skillIcon}</span>
+            <span class="fieldmedskill__track"><i style="width:${pct}%;background:${skillColor};box-shadow:0 0 4px ${skillColor}66"></i></span>
+            <span class="fieldmedskill__level" style="color:${skillColor}">${rank}</span>
+        </div>`;
+    }).join('');
+}
 
 function renderMedical(d, levels, gear) {
     const state = document.getElementById('medicalState');
@@ -1401,7 +1790,7 @@ function renderMedical(d, levels, gear) {
         row(t('fm.food'), `${Math.round(hunger)}%`, hunger <= 20 ? 'is-watch' : ''),
         row(t('fm.water'), `${Math.round(thirst)}%`, thirst <= 20 ? 'is-watch' : ''),
         row(t('fm.vest'), armour > 0 ? `${Math.round(armour)}%` : t('fm.none')),
-        `<div class="fieldmed__note">${t('fm.skill', { n: skill })}</div>`,
+        `<div class="fieldmed__skills">${renderInlineSkills()}</div>`,
         `<button type="button" class="fieldmed__refresh" id="bodyRefresh">${t('fm.refresh')}</button>`,
     ].join('');
     syncRefreshBtn();
@@ -1433,13 +1822,19 @@ document.addEventListener('click', async (e) => {
     syncRefreshBtn();
 });
 function renderStats(d) {
+    const fieldmedTitle = document.getElementById('fieldmedTitle');
     const name = document.getElementById('statName');
     const klass = document.getElementById('statClass');
     const rows = document.getElementById('statRows');
     if (!rows) return;
 
-    if (!d) { rows.innerHTML = ''; return; }
+    if (!d) {
+        if (fieldmedTitle) fieldmedTitle.textContent = 'CHARAKTER';
+        rows.innerHTML = '';
+        return;
+    }
 
+    if (fieldmedTitle) fieldmedTitle.textContent = d.name || 'CHARAKTER';
     if (name) name.textContent = d.name || '-';
     if (klass) klass.textContent = d.className || d.classId || '';
 
@@ -1469,22 +1864,13 @@ function renderStats(d) {
         </div>`;
     });
 
-    // Level and XP last, since it is progress rather than condition.
-    if (d.level !== undefined) {
-        const toNext = d.xpToNext || 0;
-        const pct = toNext > 0 ? Math.max(0, Math.min(100, ((d.xp || 0) / toNext) * 100)) : 100;
-        html += `<div class="stat stat--xp">
-            <span class="stat__label">${esc(t('stat.lv', { n: d.level }))}</span>
-            <span class="stat__track"><span class="stat__fill" style="width:${pct}%"></span></span>
-            <span class="stat__val">${isFinite(toNext) && toNext > 0
-                ? Math.round(pct) + '%' : t('stat.max')}</span>
-        </div>`;
-    }
+    // Alpha-Z: Level/XP is intentionally hidden from the left status panel.
 
     rows.innerHTML = html;
 }
 
-// character sheet: each modifier declares its own polarity (good/bad)
+// character sheet
+// Each modifier declares its own polarity (good/bad), because a negative hunger rate is a buff and the sign alone cannot tell.
 
 const MOD_SPEC = [
     { k: 'carryWeight',  label: 'Carry weight', pct: false, unit: 'kg', good: 'up' },
@@ -1521,7 +1907,7 @@ function renderSheet(levels, effects, trees) {
             <span class="tree__name">${esc(t.label || id)}</span>
             <span class="tree__track"><span class="tree__fill"
                 style="width:${Math.min(100, (lvl / max) * 100)}%"></span></span>
-            <span class="tree__lvl">${lvl}</span>
+            <span class="tree__lvl">LV ${lvl}/${max}</span>
         </div>`;
     });
     treeBox.innerHTML = th || `<span class="mod__none">${t('mod.no_skills')}</span>`;
@@ -1550,7 +1936,8 @@ function renderSheet(levels, effects, trees) {
 
 
 
-// boosters: three slots fed by bs_boosters: name, count left, cooldown.
+// boosters
+// Three slots fed by bs_boosters: name, count left, cooldown.
 let boosterTick = null;
 function renderBoosters() {
     const keys = S.boosterKeys || ['6', '7', '8'];
@@ -1591,7 +1978,8 @@ document.querySelectorAll('.booster[data-bidx]').forEach((node) => {
     });
 });
 
-// gadgets: two deployable slots fed by bs_gadgets. Same look as boosters.
+// gadgets
+// Two deployable slots fed by bs_gadgets. Same look as boosters.
 let gadgetTick = null;
 function renderGadgets() {
     const keys = S.gadgetKeys || ['9', '0'];
@@ -1631,13 +2019,14 @@ document.querySelectorAll('.booster[data-gidx]').forEach((node) => {
     });
 });
 
-// body status: four snapshots (front/right/back/left) cut from one game-view grab (see grabGameView): the flat
+// body status
+// Four snapshots (front/right/back/left) cut from one game-view grab (see grabGameView): the flat backdrop is keyed out and all four are trimmed and scaled the same. If the grab fails the silhouette stays.
 
 const Body = { shots: null, angle: 0, sex: null, injuries: {}, front: 'A' };
 const ANGLE_NAMES = ['FRONT', 'RIGHT SIDE', 'BACK', 'LEFT SIDE'];
 const SHOT_W = 300, SHOT_H = 600;
 
-// Game-view grab in plain WebGL.
+// Game-view grab in plain WebGL. FiveM's NUI swaps in the live game frame when WRAP_T goes CLAMP -> MIRRORED -> REPEAT right after upload. The frame has no NUI in it.
 const GameView = { gl: null, fb: null, rt: null, w: 0, h: 0 };
 
 function gameViewInit() {
@@ -1730,23 +2119,7 @@ function keyPixels(d, w, h, marks) {
             });
             kr /= n; kg /= n; kb /= n;
 
-            // Only remove backdrop-coloured pixels connected to the image border.
-            // Similar colours inside clothing must remain opaque on light themes.
-            const connected = new Uint8Array(w * h), queue = new Uint32Array(w * h);
-            let head = 0, tail = 0;
-            const visit = (x, y) => {
-                if (x < 0 || y < 0 || x >= w || y >= h) return;
-                const p = y * w + x;
-                if (connected[p]) return;
-                const i = p * 4, dr = d[i] - kr, dg = d[i + 1] - kg, db = d[i + 2] - kb;
-                if (dr * dr + dg * dg + db * db >= 115 * 115) return;
-                connected[p] = 1; queue[tail++] = p;
-            };
-            for (let x = 0; x < w; x++) { visit(x, 0); visit(x, h - 1); }
-            for (let y = 0; y < h; y++) { visit(0, y); visit(w - 1, y); }
-            while (head < tail) { const p = queue[head++], x = p % w, y = Math.floor(p / w); visit(x - 1, y); visit(x + 1, y); visit(x, y - 1); visit(x, y + 1); }
             for (let i = 0; i < d.length; i += 4) {
-                if (!connected[i / 4]) continue;
                 const dr = d[i] - kr, dg = d[i + 1] - kg, db = d[i + 2] - kb;
                 const dist = Math.sqrt(dr * dr + dg * dg + db * db);
                 const a = Math.max(0, Math.min(1, (dist - 45) / 70));
@@ -1775,7 +2148,7 @@ function keyPixels(d, w, h, marks) {
                         }
                     }
                 }
-                if (bx1 < 0 || (by1 - by0) < h * 0.15 || ((bx1-bx0)>=(x1-x0)*.95 && (by1-by0)>h*.9)) return null;   // nothing usable
+                if (bx1 < 0 || (by1 - by0) < h * 0.15) return null;   // nothing usable
                 boxes.push({ x: bx0, y: by0, w: bx1 - bx0 + 2, h: by1 - by0 + 2 });
             }
             return boxes;
@@ -1893,35 +2266,40 @@ function renderChips(list) {
 })();
 
 let coverTimer = null;
-let bodyCaptureEpoch=0,bodyCaptureId=0;
 window.addEventListener('message', async (e) => {
     const d = e.data || {};
-    if(d.action==='close'){bodyCaptureEpoch++;return;}
     if (d.action === 'captureCover') {
         const c = $('captureCover');
-        c.classList.toggle('hidden', !d.on);
-        c.querySelector('span').textContent = d.soft ? t('inv.updating_gear', { fallback: 'UPDATING GEAR...' }) : t('inv.preparing', { fallback: 'PREPARING SURVIVOR...' });
+        if (c) c.classList.toggle('hidden', !d.on);
         clearTimeout(coverTimer);
-        if (d.on) coverTimer = setTimeout(() => c.classList.add('hidden'), 5000);   // never stuck
-    } else if (d.action === 'bodyReset') {
-        bodyCaptureEpoch++;
-        Body.shots=null;showAngle(0,true);
-    } else if (d.action === 'bodyShots' || d.action === 'bodyGrab') {
-        if(d.id<bodyCaptureId)return;
-        bodyCaptureId=d.id;const epoch=++bodyCaptureEpoch;
-        let shots=null;
-        try {
-            for(let attempt=0;attempt<(d.action==='bodyGrab'?4:1);attempt++) {
-                await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-                if(d.action==='bodyShots')shots=await keyShots(d.image,d.marks);
-                else {const frame=grabGameView();shots=frame&&keyCanvas(frame,d.marks);}
-                if(shots)break;
-                await new Promise(r=>setTimeout(r,150));
-            }
-            if(epoch!==bodyCaptureEpoch)shots=null;
-            if(shots){Body.shots=shots;showAngle(Body.angle,true);}
-        } catch(err){console.warn('[bs_inventory] character render failed',err);}
-        finally{post('bodyGrabbed',{id:d.id,ok:!!shots});}
+        if (d.on) coverTimer = setTimeout(() => c.classList.add('hidden'), 5000);
+    } else if (d.action === 'bodyShots') {
+        const shots = await keyShots(d.image, d.marks);
+        if (shots) { Body.shots = shots; showAngle(Body.angle, true); }
+        else console.warn('[bs_inventory] body snapshot could not be keyed; keeping silhouette');
+    } else if (d.action === 'bodyGrab') {
+        // The game-view texture is occasionally not ready on slower clients even
+        // though the NUI has already painted. Retry a few frames before giving up.
+        let shots = null;
+        let frame = null;
+        for (let attempt = 0; attempt < 5 && !shots; attempt++) {
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            frame = grabGameView();
+            if (frame) shots = keyCanvas(frame, d.marks);
+            if (!shots && attempt < 4) await new Promise((r) => setTimeout(r, 75));
+        }
+
+        // ACK only after keying succeeded. Previously Lua received ok=true as soon
+        // as a raw frame existed and immediately destroyed the capture set, even
+        // when keyCanvas() had failed. That made the intermittent failure permanent.
+        post('bodyGrabbed', { ok: !!shots });
+
+        if (shots) {
+            Body.shots = shots;
+            showAngle(Body.angle, true);
+        } else {
+            console.warn('[bs_inventory] game view grab/key failed after retries; keeping silhouette');
+        }
     } else if (d.action === 'bodyRefreshDone') {
         BodyRefresh.busy = false; syncRefreshBtn();
     } else if (d.action === 'bodyMode') {
@@ -1974,7 +2352,7 @@ function showTip(entry, e) {
         entry.battery != null ? `<div class="tip__row"><span>${t('tip.battery')}</span><b>${Math.round(entry.battery)}% <small>(${esc(entry.batteryCap || 'small')})</small></b></div>` : '',
     ].join('');
     const itemDesc = entry.item ? t('item.' + entry.item + '.desc', { fallback: '' }) : '';
-    const desc = (entry.item === 'fishing_rod' ? t('inv.rod_reusable',{fallback:'Reusable. One bait per cast.'}) : '') || itemDesc || entry.description || t('blurb.' + entry.category, { fallback: CAT_BLURB[entry.category] || '' });
+    const desc = itemDesc || entry.description || t('blurb.' + entry.category, { fallback: CAT_BLURB[entry.category] || '' });
     tip.innerHTML = `<div class="tip__head"><span class="tip__name">${esc(entry.label)}</span><span class="tip__cat" data-cat="${esc(entry.category || 'misc')}">${esc(catName(entry.category))}</span></div>
         ${rows}${desc ? `<p class="tip__desc">${esc(desc)}</p>` : ''}
         <div class="tip__keys">${entry.usable ? t('tip.dbl_use') : t('tip.click_select')} &middot; ${t('tip.right_more')}</div>`;
@@ -2010,12 +2388,13 @@ function refreshQuick() {
     $('quickName').textContent = entry ? `${entry.label} ×${entry.amount}`.toUpperCase() : t('inv.select_item');
     $('quickBar').classList.toggle('has-sel', !!entry);
     const btn = (k) => document.querySelector(`[data-quick="${k}"]`);
-    btn('use').disabled = !mine || !(entry.usable || isLoadoutItem(entry));
+    btn('use').disabled = !mine || !(entry.usable || entry.equipSlot || entry.category === 'weapon' || isLoadoutItem(entry));
     btn('split').disabled = !mine || !(entry.amount > 1);
     btn('drop').disabled = !mine;
 }
 
-// first free spot for a w x h item in the carried grid Split from the SPLIT button or the right-click menu: the
+// first free spot for a w x h item in the carried grid
+// Split from the SPLIT button or the right-click menu: the new half goes to the first free spot. The server gives it its own slot id.
 function openSplitPrompt(slot, entry, flashOn) {
     if (!entry || !(entry.amount > 1)) return;
     const spot = freeSpot(entry.w || 1, entry.h || 1);
@@ -2051,8 +2430,7 @@ document.querySelectorAll('[data-quick]').forEach((b) => {
         if (!entry || sel.inv !== 'player') return;
         const slot = sel.slot, act = b.dataset.quick;
         // Gadgets (and boosters with no use action) go to their slot.
-        if (act === 'use' && isLoadoutItem(entry) && !entry.usable) { await equipLoadout(entry, b); return; }
-        if (act === 'use') { await post('use', { slot }); return; }
+        if (act === 'use') { await alphaZUseOrEquip(slot, entry, b); return; }
         if (act === 'drop') { sel = null; await post('drop', { slot, amount: entry.amount }); return; }
         if (act === 'split') openSplitPrompt(slot, entry, b);
     });
@@ -2094,7 +2472,7 @@ function renderList() {
     list.innerHTML = '';
     if (!rows.length) { list.innerHTML = `<p class="invlist__empty">${esc(t('inv.nothing_matches', { fallback: 'NOTHING MATCHES' }))}</p>`; return; }
     rows.forEach(({ slot, e }) => {
-        const icon = (typeof BSIcons !== 'undefined') ? BSIcons.get(e.item, e.category) : '';
+        const icon = (typeof BSIcons !== 'undefined') ? BSIcons.get(e.icon || e.item, e.category) : '';
         const row = document.createElement('div');
         row.className = 'invrow';
         row.dataset.inv = 'player'; row.dataset.slot = slot; row.dataset.cat = e.category || 'misc';
@@ -2132,53 +2510,3 @@ renderChips([]);
 
 // /hidehud (bs_ui cl_hidehud.lua): hide the whole page for a clean screenshot.
 window.addEventListener('message', (e) => { const d = e.data || {}; if (d.action === 'bsHideAll') document.documentElement.style.visibility = d.hidden ? 'hidden' : ''; });
-
-// Refresh only while the player's inventory is open; stale replies cannot reopen it.
-let vicinityTimer=null,vicinityVersion=0,vicinityBusy=false;
-async function takeVicinity(item){
-    const result=await post('vicinityTake',{id:item.id,kind:item.kind});
-    refreshVicinity();
-    return result;
-}
-async function refreshVicinity(){
-    const version=vicinityVersion;
-    if(companionView||$('root').classList.contains('hidden')||vicinityBusy||carry?.from.inv==='vicinity')return;
-    vicinityBusy=true;
-    try{
-        const result=await post('vicinity',{});
-        if(version!==vicinityVersion)return;
-        const host=$('vicinityItems');host.replaceChildren();
-        const items=result?.ok?result.items||[]:[];
-        $('vicinityBoard').hidden = !items.length;
-        $('vicinityStatus').textContent=result?.ok?(items.length?'Click to collect or drag into Carried.':'No loose items nearby.'):'Unable to check nearby items.';
-        for(const item of items){
-            const button=document.createElement('button');button.className='vicinity-item';
-            const icon=document.createElement('span');icon.className='slot__icon';icon.innerHTML=BSIcons.get(item.item,item.category);
-            const label=document.createElement('span');label.textContent=`${item.label} ×${item.amount}`;
-            const distance=document.createElement('small');distance.textContent=`${Number(item.distance).toFixed(1)} m`;
-            button.append(icon,label,distance);
-            button.dataset.id=String(item.id);
-            button.title=`${item.label} ×${item.amount} · ${Number(item.distance).toFixed(1)} m`;
-            button.addEventListener('mousedown',e=>{
-                if(e.button!==0||carry)return;
-                carry={from:{inv:'vicinity',slot:item.id,kind:item.kind},entry:{item:item.item,label:item.label,category:item.category,amount:item.amount,w:1,h:1},ghost:null,start:{x:e.clientX,y:e.clientY},last:e,shift:false,rot:false};
-                e.preventDefault();
-            });
-            button.addEventListener('click',async()=>{
-                if(Date.now()-lastDragEnd<250)return;
-                button.disabled=true;
-                const reply=await takeVicinity(item);
-                if(version===vicinityVersion&&!reply?.ok)$('vicinityStatus').textContent=reply?.error||'Item unavailable.';
-                button.disabled=false;
-            });
-            host.appendChild(button);
-        }
-    }finally{vicinityBusy=false;}
-}
-$('vicinityRefresh').onclick=refreshVicinity;
-window.addEventListener('message',({data})=>{
-    if(data?.action==='open'){
-        vicinityVersion++;clearInterval(vicinityTimer);$('vicinityBoard').hidden=true;
-        if(!data.companionView){refreshVicinity();vicinityTimer=setInterval(refreshVicinity,2500);}
-    }else if(data?.action==='close'){vicinityVersion++;clearInterval(vicinityTimer);vicinityTimer=null;}
-});

@@ -1,0 +1,90 @@
+/* ALPHA-Z F10 Crafting Studio: contained dark design, no native dialogs. */
+#cePane{position:relative;color:#dfefe5;font:13px 'Segoe UI',sans-serif;min-height:420px}
+#cePane[hidden],#cePane [hidden]{display:none!important}
+#cePane .ce-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 15px}
+#cePane .ce-header h2{font-size:19px;color:#effaf3;margin:0 0 5px}
+#cePane .ce-header h2 small{font-size:10px;color:#72d3a3}
+#cePane .ce-header p{font-size:12px;color:#a2beb1;line-height:1.45;margin:0}
+#cePane .ce-refresh{width:auto;flex-shrink:0;padding:10px}
+#cePane .ce-tabs{display:flex;flex-wrap:wrap;gap:7px;padding-bottom:10px;border-bottom:1px solid #335346;margin-bottom:12px}
+#cePane .ce-tabs button{background:#182a25;border:1px solid #426c55;border-radius:6px;color:#c2d8c9;padding:10px 15px;font-size:11px;font-weight:700;letter-spacing:.05em;cursor:pointer}
+#cePane .ce-tabs .is-on{background:#75c89b;color:#12241c;border-color:#75c89b}
+#cePane .ce-layout{display:grid;grid-template-columns:minmax(220px,34%) minmax(0,1fr);gap:12px;align-items:stretch;min-height:450px}
+#cePane .ce-sidebar,#cePane .ce-details{background:#111e1d;border:1px solid #395649;border-radius:9px;min-width:0}
+#cePane .ce-sidebar{padding:12px;display:flex;flex-direction:column;max-height:min(68vh,700px)}
+#cePane .ce-search{display:flex;gap:7px;margin-bottom:9px}
+#cePane .ce-search input{min-width:0;flex:1}
+#cePane .ce-search button{background:#285a3e;color:#d9ffe8;border:1px solid #74b38c;border-radius:5px;font-size:22px;min-width:36px;cursor:pointer}
+#cePane input,#cePane select{box-sizing:border-box;width:100%;min-width:0;background:#0e191a;border:1px solid #486456;border-radius:5px;color:#e4f4ea;padding:9px 10px;font:inherit;outline:none}
+#cePane input:focus,#cePane select:focus{border-color:#8bdcb2;box-shadow:0 0 0 1px #4a8564}
+#cePane input[readonly]{background:#172721;color:#92b4a5}
+#cePane .ce-list{flex:1;min-height:180px;overflow-y:auto;scrollbar-color:#507b62 #111d19;scrollbar-width:thin;overscroll-behavior:contain}
+#cePane .ce-group{background:#14231e;border:1px solid #365745;border-radius:6px;margin:5px 0;overflow:hidden}
+#cePane .ce-group summary{background:#1b3025;cursor:pointer;font-size:11px;color:#d0e7d7;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-weight:700;letter-spacing:.04em}
+#cePane .ce-group summary small{color:#8eaf9a}
+#cePane .ce-entry{width:100%;min-height:45px;background:#121f1a;border:0;border-top:1px solid #294236;color:#d6e9dc;cursor:pointer;display:flex;align-items:center;gap:9px;text-align:left;padding:8px;font:inherit}
+#cePane .ce-entry:hover{background:#254434}
+#cePane .ce-entry.is-selected{background:#2a503a;box-shadow:inset 3px 0 #81dda9}
+#cePane .ce-entry-main{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+#cePane .ce-entry-main strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+#cePane .ce-entry-main small{color:#9bb4a6;font:10px Consolas,monospace}
+#cePane .ce-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#a7b5ae;flex:0 0 8px}
+#cePane .ce-edited{background:#eabf68}#cePane .ce-custom{background:#68dfac}#cePane .ce-disabled{background:#ed806d}
+#cePane .ce-entry-badge{color:#ffc2b0;font-size:10px;font-style:normal}
+#cePane .ce-legend{font-size:10px;color:#9cb9a9;display:flex;align-items:center;gap:6px;padding-top:10px;flex-wrap:wrap}
+#cePane .ce-details{padding:17px;max-height:min(68vh,700px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#527c62 #111d19}
+#cePane .ce-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid #365846;margin-bottom:13px;padding-bottom:14px}
+#cePane .ce-title h3{margin:0 0 4px;color:#f0f9f2;font-size:18px}
+#cePane .ce-title p{color:#8cb5a1;margin:0;font:11px Consolas,monospace}
+#cePane .ce-tag{border:1px solid #759683;border-radius:16px;font-size:10px;color:#d4e9db;padding:5px 8px;white-space:nowrap}
+#cePane .ce-tag-edited{border-color:#b89649;color:#f2cf7d}#cePane .ce-tag-custom{border-color:#59b684;color:#7ae4ac}
+#cePane .ce-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#cePane .ce-field{display:flex;flex-direction:column;gap:6px;color:#c5dfd1;font-size:11px;font-weight:700}
+#cePane .ce-field small{color:#88a99a;font-size:10px;font-weight:400}
+#cePane .ce-card{background:#172923;border:1px solid #365e49;border-radius:7px;padding:12px;margin:14px 0}
+#cePane .ce-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+#cePane .ce-section-head strong,#cePane .ce-card>strong{font-size:11px;letter-spacing:.06em;color:#e1f2e5}
+#cePane .ce-section-head small{color:#8faf9a;font-size:10px}
+#cePane .ce-section-head button{padding:7px 9px;border:1px solid #5fa27b;background:#255437;color:#e0f7e7;font-size:11px;font-weight:700;cursor:pointer;border-radius:5px}
+#cePane .ce-hint,#cePane .ce-muted{font-size:11px;color:#a6c3b2;line-height:1.5}
+#cePane .ce-pick{border:1px solid #4c8262;border-radius:5px;background:#0d1c17;color:#e9f7ed;padding:10px;width:100%;min-width:0;display:flex;justify-content:space-between;gap:10px;align-items:center;text-align:left;cursor:pointer}
+#cePane .ce-pick:hover{border-color:#90ddb4;background:#1b3a2a}
+#cePane .ce-pick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+#cePane .ce-pick small{font:10px Consolas,monospace;color:#83bb9a;white-space:nowrap}
+#cePane .ce-cost-row{display:flex;align-items:center;gap:7px;margin:7px 0}
+#cePane .ce-pick-wrap{flex:1;min-width:0}
+#cePane .ce-cost-row .ce-cost-amount{flex:0 0 65px;width:65px}
+#cePane .ce-remove{flex:0 0 34px;background:#4e2c24;color:#ffe1d1;border:1px solid #a15f4c;border-radius:5px;font-size:17px;padding:7px;cursor:pointer}
+#cePane .ce-tool-note{font-size:10px;color:#8eaa9a}
+#cePane .ce-advanced summary{color:#d5e8dc;font-weight:700;font-size:11px;cursor:pointer}
+#cePane .ce-checkbox{display:flex;align-items:center;gap:9px;margin-top:10px;font-size:12px}
+#cePane .ce-checkbox input{min-width:16px;width:16px;height:16px;accent-color:#84d5a3}
+#cePane .ce-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+#cePane .ce-actions button,#cePane .ce-primary{background:#225439;border:1px solid #5caa75;color:#e2f6e6;padding:10px 12px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.04em}
+#cePane .ce-actions .ce-primary,#cePane .ce-primary{background:#338453;border-color:#88d3a1}
+#cePane .ce-actions .ce-warning{background:#554522;border-color:#9b814a;color:#ffe6af}
+#cePane .ce-actions .ce-danger{background:#552e27;border-color:#a66556;color:#ffd0c2}
+#cePane button:disabled{opacity:.5;cursor:not-allowed}
+#cePane .ce-feedback{padding-top:10px;color:#89e4ae;min-height:23px;font-size:12px;font-weight:700}
+#cePane .ce-feedback.is-error{color:#ffab97}
+#cePane .ce-placeholder{min-height:300px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:#9eb9a7}
+#cePane .ce-placeholder strong{font-size:18px;color:#d7f4df}
+#cePane .ce-busy,#cePane .ce-overlay{position:absolute;z-index:90;inset:0;background:#07110fe8;display:flex;align-items:center;justify-content:center;border-radius:7px}
+#cePane .ce-busy{gap:12px;color:#d9f7e4;font-weight:700}
+#cePane .ce-spinner{width:30px;height:30px;border:3px solid #325b42;border-top-color:#99eabd;border-radius:50%;animation:ce-spin .7s linear infinite}
+@keyframes ce-spin{to{transform:rotate(360deg)}}
+#cePane .ce-dialog{max-width:440px;width:88%;background:#182922;padding:24px;border:1px solid #548668;border-radius:9px;box-shadow:0 16px 48px #000a}
+#cePane .ce-dialog h3{font-size:17px;color:#e9f8e9;margin:0 0 10px}
+#cePane .ce-dialog p{color:#bad4c3;font-size:13px;line-height:1.5}
+#cePane .ce-dialog-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+#cePane .ce-dialog-actions button{border-radius:5px;padding:10px;border:1px solid #507e5c;background:#214a34;color:#e0f6df;cursor:pointer}
+#cePane #ceConfirmYes{background:#72442b;border-color:#af7952}
+.ce-popover{z-index:2147483000;position:fixed;box-sizing:border-box;display:flex;flex-direction:column;padding:9px;border:1px solid #65b180;border-radius:7px;background:#10211a;color:#e2f3e7;box-shadow:0 20px 35px #000c;font:12px 'Segoe UI',sans-serif;min-height:150px}
+.ce-popover input{box-sizing:border-box;width:100%;padding:10px;border-radius:4px;border:1px solid #56866c;background:#152d20;color:#e7f6eb}
+.ce-popover-list{overflow-y:auto;min-height:0;flex:1;margin-top:7px;scrollbar-color:#567a61 #15241b}
+.ce-popover-list p{color:#accbb5;padding:7px}
+.ce-popover .ce-option{border:0;border-bottom:1px solid #2c4935;background:transparent;color:#d9e9de;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:8px;width:100%}
+.ce-popover .ce-option:hover{background:#315840}
+.ce-popover .ce-option strong{font-size:12px}.ce-popover .ce-option small{font:10px Consolas,monospace;color:#9cbaa4;padding-top:3px}
+@media(max-width:1060px){#cePane .ce-form-grid{grid-template-columns:minmax(0,1fr)}#cePane .ce-layout{grid-template-columns:minmax(200px,37%) minmax(0,1fr)}}
+@media(max-width:690px){#cePane .ce-layout{grid-template-columns:minmax(0,1fr)}#cePane .ce-sidebar{max-height:255px}#cePane .ce-details{max-height:60vh}}

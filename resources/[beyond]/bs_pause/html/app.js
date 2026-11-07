@@ -19,16 +19,6 @@
       { k: 'hudMode', type: 'seg', opts: [['full', 'o.full'], ['minimal', 'o.minimal']] },
       { k: 'hudAnchor', type: 'seg', opts: [['bottom-left', 'o.left'], ['bottom-right', 'o.right']] },
       RANGE('hudOpacity', 0, 1, 0.05),
-      { k: 'hudStyle', type: 'choice', list: 'styles', pre: 'st.hs_', def: 'classic' },
-      { k:'targetStyle',type:'seg',opts:[['panel','Panel'],['compact','Compact'],['bracket','Bracket']] },
-      RANGE('targetOpacity',.55,1,.05),RANGE('targetScale',.75,1.5,.05),
-      {k:'themeAccent',type:'colour'},
-      {k:'themeBackground',type:'colour'},
-      {k:'themeText',type:'colour'},
-      {k:'themeMuted',type:'colour'},
-      { k: 'menuPalette', type: 'choice', list: 'palettes', pre: 'st.pal_', def: 'default' },
-      { k: 'xpPosition', type: 'seg', opts: [['top', 'o.top'], ['bottom', 'o.bottom']] },
-      RANGE('xpOpacity', 0, 1, 0.05),
       { k: 'hideWhenFull', type: 'seg', opts: ON_OFF },
       { k: 'hotbarAlways', type: 'seg', opts: [[true, 'o.always'], [false, 'o.hold_alt']] },
       { k: 'carHud', type: 'seg', opts: ON_OFF },
@@ -37,40 +27,17 @@
       RANGE('carHudScale', 0.6, 2.4, 0.05),
       RANGE('carHudOpacity', 10, 100, 5),
     ] },
-    { g: 'st.g_audio', items: [
-      RANGE('zombieVoiceVolume', 0, 1, 0.05),
-      RANGE('radioVolume', 0, 100, 5),
-    ] },
     { g: 'st.g_gameplay', items: [
       { k: 'dodge', type: 'seg', opts: ON_OFF },
-      { k: 'fightHud', type: 'seg', opts: [['minimal', 'o.minimal'], ['full', 'o.full'], ['off', 'o.off']] },
-      { k: 'fightCombo', type: 'seg', opts: SHOW_HIDE },
-      { k: 'fightParry', type: 'seg', opts: SHOW_HIDE },
-      { k: 'fightStyle', type: 'seg', opts: SHOW_HIDE },
       { k: 'missionTracker', type: 'seg', opts: SHOW_HIDE },
-      { k: 'safeZoneMarkers', type: 'seg', opts: SHOW_HIDE },
-      { k: 'damageNumbers', type: 'seg', opts: SHOW_HIDE },
-      { k: 'buildMenu', type: 'seg', opts: [['wheel', 'o.wheel'], ['bar', 'o.bar'], ['catalogue', 'o.catalogue']] },
     ] },
     { g: 'st.g_camera', items: [
-      { k: 'fpsEnabled', type: 'seg', opts: ON_OFF },
-      RANGE('fpsFov',55,100,1), RANGE('fpsBob',0,100,5), RANGE('fpsAimZoom',100,150,5),
-      { k: 'fpsCrosshair', type: 'seg', opts: [['off','o.off'],['dot','o.fpsDot'],['cross','o.fpsCross'],['t','o.fpsT']] },
-      RANGE('fpsSide',-8,8,1), RANGE('fpsForward',-8,8,1), RANGE('fpsHeight',-6,6,1),
-
       { k: 'camSmooth', type: 'seg', opts: ON_OFF },
       RANGE('camSmoothAmount', 0, 100, 5),
       { k: 'camSmoothAim', type: 'seg', opts: [['reduced', 'o.reduced'], ['off', 'o.off']] },
       { k: 'camSway', type: 'seg', opts: ON_OFF },
       { k: 'camFov', type: 'seg', opts: ON_OFF },
       { k: 'camChase', type: 'seg', opts: ON_OFF },
-      { k: 'bcEnabled', type: 'seg', opts: ON_OFF },
-      RANGE('bcFov', 70, 120, 1), RANGE('bcMotion', 0, 100, 5), RANGE('bcShake', 0, 100, 5),
-      RANGE('bcGrade', 0, 100, 5), RANGE('bcFilm', 0, 100, 5),
-      { k: 'bcChroma', type: 'seg', opts: ON_OFF },
-      { k: 'bcStamp', type: 'seg', opts: SHOW_HIDE },
-      { k: 'bcRealisticAim', type: 'seg', opts: ON_OFF },
-      { k: 'bcVehicle', type: 'seg', opts: ON_OFF },
     ] },
     { g: 'st.g_chat', items: [
       { k: 'chatMode', type: 'seg', opts: [['fade', 'o.fade'], ['always', 'o.always'], ['hidden', 'o.hidden']] },
@@ -87,9 +54,9 @@
     { id: 'resume', icon: '&#9654;', label: 'p.resume' },
     { id: 'map', icon: '&#9873;', label: 'p.map' },
     { id: 'settings', icon: '&#9881;', label: 'p.settings' },
+    { id: 'keyboard', icon: '&#9000;', label: 'p.keyboard' },
     { id: 'gfx', icon: '&#9681;', label: 'p.graphics' },
     { id: 'server', icon: '&#9776;', label: 'p.server' },
-    { id: 'devlog', icon: '&#9998;', label: 'p.devlog' },
   ];
 
   // Tab icons are glyphs only. Named icons map here; anything unknown gets a generic diamond, never the raw name as text.
@@ -110,7 +77,7 @@
     const ext = S.tabs.map((x) => `<button data-tab="${esc(x.id)}"><span class="ic">${iconHtml(x.icon)}</span>${esc(x.label)}${x.badge ? `<span class="badge">${esc(x.badge)}</span>` : ''}</button>`).join('');
     $('nav').innerHTML = base.map((b) => `<button data-v="${b.id}" class="${S.view === b.id ? 'on' : ''}"><span class="ic">${b.icon}</span>${esc(t(b.label))}</button>`).join('')
       + (ext ? '<hr>' + ext : '')
-      + `<hr><button data-v="gta"><span class="ic">&#9638;</span>${esc(t('p.gta'))}</button><button data-v="switch"><span class="ic">&#8644;</span>${esc(t('p.change_char'))}</button><button data-v="quit" class="quit"><span class="ic">&#10005;</span>${esc(t('p.quit'))}</button>`;
+      + `<hr><button data-v="gta"><span class="ic">&#9638;</span>${esc(t('p.gta'))}</button><button data-v="quit" class="quit"><span class="ic">&#10005;</span>${esc(t('p.quit'))}</button>`;
     document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t, el.textContent); });
   }
 
@@ -120,7 +87,6 @@
     return d && !locked(d) ? d.id : it.def;
   }
   const optLabel = (l) => (S.strings[l] ? S.strings[l] : l);
-  function customPalette(){return {accent:S.settings.themeAccent||'#e08c46',hi:S.settings.themeAccent||'#e08c46',bg:S.settings.themeBackground||'#0a0a09',text:S.settings.themeText||'#f0ebdd',muted:S.settings.themeMuted||'#a8a293',blood:'#a63d32'};}
   function control(it) {
     const v = S.settings[it.k];
     if (v === undefined && it.type !== 'lang') return null;
@@ -132,7 +98,6 @@
       const cur = activeChoice(it, list);
       return `<div class="seg" data-set="${it.k}">${list.map((d) => `<button data-val="${esc(d.id)}" class="${cur === d.id ? 'on' : ''}${locked(d) ? ' lock' : ''}">${d.sw ? `<span class="swatch">${d.sw.map((c) => `<i style="background:${esc(c)}"></i>`).join('')}</span>` : ''}${esc(String(t(it.pre + d.id, d.label)).toLocaleUpperCase())}</button>`).join('')}</div>`;
     }
-    if(it.type==='colour')return `<input type="color" data-set="${it.k}" value="${/^#[0-9a-f]{6}$/i.test(v)?v:'#e08c46'}">`;
     if (it.type === 'seg') {
       return `<div class="seg" data-set="${it.k}">${it.opts.map(([val, l]) => `<button data-val="${esc(String(val))}" class="${String(v) === String(val) ? 'on' : ''}">${esc(optLabel(l))}</button>`).join('')}</div>`;
     }
@@ -154,9 +119,8 @@
     return `<h1>${esc(t('p.settings'))}</h1><div class="sub">${esc(t('p.settings_sub'))}</div>
       <input type="search" id="setSearch" class="search" placeholder="${esc(t('st.search'))}" value="${esc(S.q || '')}" autocomplete="off">
       ${groups}
-      <div class="card" data-grp data-keep><h3>${esc(t('st.g_controls'))}</h3>
-        <div class="keys">${keys}</div><div class="note">${esc(t('p.rebind_note'))}</div>
-        <div class="set" data-q="${esc(t('p.troubleshoot').toLowerCase())}"><label>${esc(t('p.troubleshoot'))}</label><div><button class="btn" data-fix="refreshui">${esc(t('p.refresh_ui'))}</button> <button class="btn" data-fix="unblur">${esc(t('p.unblur'))}</button> <button class="btn" data-fix="refreshtextures">${esc(t('p.refresh_textures'))}</button></div></div></div>
+      <div class="card" data-grp data-keep><h3>${esc(t('p.troubleshoot'))}</h3>
+        <div class="set" data-q="${esc(t('p.troubleshoot').toLowerCase())}"><label>${esc(t('p.troubleshoot'))}</label><div><button class="btn" data-fix="refreshui">${esc(t('p.refresh_ui'))}</button> <button class="btn" data-fix="unblur">${esc(t('p.unblur'))}</button></div></div></div>
       <div class="note hidden" id="setNone">${esc(t('st.noresults'))}</div>`;
   }
   // Hides rows (and groups with no visible row) that miss the query. Pure DOM, so typing keeps focus.
@@ -194,7 +158,7 @@
   function fmtUp(s) { s = Number(s) || 0; const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return `${h}h ${m}m`; }
   function viewServer() {
     const sv = S.server || {};
-    return `<h1>${esc(sv.name || t('p.server'))}</h1><div class="sub">${esc(S.info.website || '')}</div>
+    return `<h1>${esc(t('p.server'))}</h1><div class="sub">${esc(S.info.website || '')}</div>
       <div class="stats"><div class="stat"><b>${sv.online != null ? `${sv.online} / ${sv.max}` : '...'}</b><span>${esc(t('p.online'))}</span></div>
         <div class="stat"><b>${sv.uptime != null ? fmtUp(sv.uptime) : '...'}</b><span>${esc(t('p.uptime'))}</span></div>
         <div class="stat"><b style="font-size:16px">${esc(S.info.discord || '-')}</b><span>${esc(t('p.discord'))}</span></div></div>
@@ -214,10 +178,115 @@
     setTimeout(() => { if (!done && $('dlMsg')) $('dlMsg').textContent = t('p.devlog_fail'); }, 10000);
   }
 
+
+  
+function viewKeyboard() {
+    const binds = [
+      ['F1','Emote-Menü','menu'],['F5','Fraktionsmenü','menu'],['F11','Admin-Menü','menu'],
+      ['TAB','Inventar','menu'],['U','Baumenü','menu'],
+      ['ALT','Action Eye','interaction'],['E','Interagieren','interaction'],['H','Hände hoch','interaction'],
+      ['B','Mit Finger zeigen','interaction'],['X','Animation abbrechen','interaction'],['N','Verdauung','interaction'],
+      ['F','Ein-/Aussteigen','vehicle'],['G','Als Beifahrer einsteigen','vehicle'],['Z','Motor an/aus','vehicle'],
+      ['K','Kofferraum','vehicle'],['.','Sicherheitsgurt','vehicle'],['L','Fahrzeug auf/zu','vehicle'],
+      ['1','Hotkey 1','hotbar'],['2','Hotkey 2','hotbar'],['3','Hotkey 3','hotbar'],['4','Hotkey 4','hotbar'],['5','Hotkey 5','hotbar'],
+      ['↑','Handy öffnen','communication'],['NUM 1–9','Emote-Hotkeys','emote'],['NUM 0','Animation stoppen','emote'],
+      ['R','Nachladen / kein Pistol-Whip','combat'],['SHIFT','Luft anhalten (beim Zielen)','combat']
+    ];
+
+    const active = new Map(binds.map(([k,v,c]) => [k, {v,c}]));
+    const lowerBindClass = (key) => ({
+      'F1':'menu','F5':'menu','F11':'menu','U':'menu','TAB':'menu',
+      'ALT':'interaction','E':'interaction','H':'interaction','B':'interaction','X':'interaction','N':'interaction',
+      'F':'vehicle','G':'vehicle','Z':'vehicle','K':'vehicle','.':'vehicle','L':'vehicle',
+      '1–5':'hotbar','PFEIL ↑':'communication','NUM 1–9':'emote','NUM 0':'emote',
+      'R':'combat','SHIFT':'combat'
+    })[key] || '';
+
+    const k = (label, cls='', forced='') => {
+      const info = active.get(label);
+      const cat = forced || (info && info.c) || '';
+      return `<div class="kbx-key ${cls} ${cat ? 'hot '+cat : ''}"><b>${esc(label)}</b></div>`;
+    };
+    const n = (label, cls='') => {
+      const cat = (/^[1-9]$/.test(label) || label === 'NUM 0') ? 'emote' : '';
+      return k(label, cls, cat);
+    };
+    const row = (items, cls='') => `<div class="kbx-row ${cls}">${items}</div>`;
+
+    const keyboard = `
+      <div class="kbx-shell">
+        <div class="kbx-main">
+          ${row(
+            k('ESC','esc') +
+            '<span class="kbx-gap g1"></span>' +
+            k('F1') + k('F2') + k('F3') + k('F4') +
+            '<span class="kbx-gap"></span>' +
+            k('F5') + k('F6') + k('F7') + k('F8') +
+            '<span class="kbx-gap"></span>' +
+            k('F9') + k('F10') + k('F11') + k('F12'),
+            'frow'
+          )}
+          ${row(
+            k('^') + k('1') + k('2') + k('3') + k('4') + k('5') + k('6') + k('7') + k('8') + k('9') + k('0') + k('ß') + k('´') + k('←','backspace')
+          )}
+          ${row(
+            k('TAB','tab') + k('Q') + k('W') + k('E') + k('R') + k('T') + k('Z') + k('U') + k('I') + k('O') + k('P') + k('Ü') + k('+') + k('ENTER','enter-top')
+          )}
+          ${row(
+            k('CAPS','caps') + k('A') + k('S') + k('D') + k('F') + k('G') + k('H') + k('J') + k('K') + k('L') + k('Ö') + k('Ä') + k('#') + `<div class="kbx-key enter-bottom" aria-hidden="true"></div>`
+          )}
+          ${row(
+            k('SHIFT','shift-left') + k('<') + k('Y') + k('X') + k('C') + k('V') + k('B') + k('N') + k('M') + k(',') + k('.') + k('-') + k('SHIFT','shift-right')
+          )}
+          ${row(
+            k('STRG','ctrl') + k('START','start') + k('ALT','alt') + k('LEERTASTE','space') + k('ALT GR','altgr') + k('FN','fn') + k('ASSIST','assist') + k('STRG','ctrl')
+          )}
+        </div>
+
+        <div class="kbx-nav">
+          <div class="kbx-nav-top">
+            ${k('DRUCK','small')}${k('ROLLEN','small')}${k('PAUSE','small')}
+          </div>
+          <div class="kbx-nav-grid">
+            ${k('EINFG','small')}${k('POS1','small')}${k('BILD↑','small')}
+            ${k('ENTF','small')}${k('ENDE','small')}${k('BILD↓','small')}
+          </div>
+          <div class="kbx-arrows">
+            <span></span>${k('↑','arrow','communication')}<span></span>
+            ${k('←','arrow')}${k('↓','arrow')}${k('→','arrow')}
+          </div>
+        </div>
+
+        <div class="kbx-num">
+          ${n('NUM','small')}${n('÷','small')}${n('×','small')}${n('-','small')}
+          ${n('7','small')}${n('8','small')}${n('9','small')}${n('+','small plus')}
+          ${n('4','small')}${n('5','small')}${n('6','small')}
+          ${n('1','small')}${n('2','small')}${n('3','small')}${n('ENTER','small nenter')}
+          ${n('NUM 0','nzero')}${n(',','small')}
+        </div>
+      </div>`;
+
+    const groups = [
+      ['Server & Menüs', [['F1','Emote-Menü'],['F5','Fraktionsmenü'],['F11','Admin-Menü'],['U','Baumenü'],['TAB','Inventar']]],
+      ['Interaktion', [['ALT','Action Eye'],['E','Interagieren'],['H','Hände hoch'],['B','Mit Finger zeigen'],['X','Animation abbrechen'],['N','Verdauung']]],
+      ['Fahrzeug', [['F','Ein-/Aussteigen'],['G','Als Beifahrer einsteigen'],['Z','Motor an/aus'],['K','Kofferraum'],['.','Sicherheitsgurt'],['L','Fahrzeug auf/zu']]],
+      ['Hotkeys & Animationen', [['1–5','Inventar-Hotkeys'],['PFEIL ↑','Handy öffnen'],['NUM 1–9','Emote-Hotkeys'],['NUM 0','Animation stoppen'],['R','Nachladen / kein Pistol-Whip'],['SHIFT','Luft anhalten (beim Zielen)']]]
+    ];
+
+    return `<div class="keyboard-head">
+        <div><h1>Tastaturbelegung</h1><div class="sub">ALPHA-Z - Server-Tastenbelegung</div></div>
+        <div class="kb-legend"><i></i> belegt</div>
+      </div>
+      <div class="keyboard-card full-layout kbx-card">${keyboard}</div>
+      <div class="bind-sections kbx-binds">
+        ${groups.map(([title, entries]) => `<div class="bind-card"><h3>${esc(title)}</h3>${entries.map(([key,val]) => `<div class="bind ${lowerBindClass(key) ? 'bind-'+lowerBindClass(key) : ''}"><kbd>${esc(key)}</kbd><span>${esc(val)}</span></div>`).join('')}</div>`).join('')}
+      </div>`;
+  }
   function render() {
     nav();
     const m = $('main');
     if (S.view === 'settings') m.innerHTML = viewSettings();
+    else if (S.view === 'keyboard') m.innerHTML = viewKeyboard();
     else if (S.view === 'gfx') m.innerHTML = viewGfx();
     else if (S.view === 'server') m.innerHTML = viewServer();
     else if (S.view === 'devlog') { m.innerHTML = viewDevlog(); loadDevlog(); }
@@ -241,7 +310,6 @@
       if (id === 'resume') return close();
       if (id === 'map') return post('map');
       if (id === 'gta') return post('gta');
-      if (id === 'switch') return confirmBox(t('p.change_char_confirm'), () => post('switchChar'));
       if (id === 'quit') return confirmBox(t('p.quit_confirm'), () => post('quit'));
       S.view = id; return render();
     }
@@ -251,7 +319,7 @@
       const key = segBtn.parentElement.dataset.set; let val = segBtn.dataset.val;
       if (key === 'menuPalette' && window.BSPalette) {
         const d = ((S.choices && S.choices.palettes) || []).filter((x) => x.id === val)[0];
-        BSPalette.apply(val==='custom'?customPalette():(d && d.vars) || null, val);
+        BSPalette.apply((d && d.vars) || null, val);
       }
       if (val === 'true') val = true; else if (val === 'false') val = false;
       S.settings[key] = val; render();
@@ -275,9 +343,9 @@
     if (e.target.matches('input[type=range][data-set]')) { const s = e.target.nextElementSibling; if (s) s.textContent = e.target.value; if (e.target.dataset.set === 'chatBgOpacity') post('settings', { patch: { chatBgOpacity: Number(e.target.value) } }); }
   });
   document.addEventListener('change', (e) => {
-    if (e.target.matches('input[data-set]')) {
-      const key = e.target.dataset.set, val = e.target.type==='color'?e.target.value:Number(e.target.value);
-      S.settings[key] = val;if(e.target.type==='color'&&S.settings.menuPalette==='custom'&&window.BSPalette)BSPalette.apply(customPalette(),'custom'); post('settings', { patch: { [key]: val } });
+    if (e.target.matches('input[type=range][data-set]')) {
+      const key = e.target.dataset.set, val = Number(e.target.value);
+      S.settings[key] = val; post('settings', { patch: { [key]: val } });
     }
   });
 

@@ -1,6 +1,6 @@
 -- Server authority for boosters: loadout, item consumption, cooldowns. Nothing here targets or damages a player.
 
-local lastUse = {}      -- src to GetGameTimer() of last accepted use
+local lastUse = {}      -- src -> GetGameTimer() of last accepted use
 -- Cooldowns live in character metadata as { [item] = readyAt (os.time) } so a relog cannot reset them.
 local CD_KEY = 'booster_cd'
 
@@ -28,7 +28,7 @@ local function countOf(src, item)
     return (ok and tonumber(n)) or 0
 end
 
--- The loadout lives in bs_inventory (items in off-grid slots).
+-- The loadout lives in bs_inventory (items in off-grid slots). Old metadata loadouts are migrated once and the carried items leave the grid.
 local function migrate(src)
     local raw = exports.bs_core:GetPlayerMeta(src, Boosters.MetaKey, nil)
     if type(raw) ~= 'table' or next(raw) == nil then return false end
@@ -46,7 +46,7 @@ local function migrate(src)
     return true
 end
 
--- index to { item, amount } or false
+-- index -> { item, amount } or false
 local function slots(src)
     local out = {}
     if not inv() then return out end

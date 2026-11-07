@@ -3,22 +3,24 @@
 // page of plain questions, each setting the real tunables through the same
 // pending/apply flow, so profiles, presets, the audit log and Apply still work.
 // Entry kinds:
-// choice named buttons; each option sets values or `mul` x the file default
-// single one real setting with a friendly name and help text
+//   choice  named buttons; each option sets values or `mul` x the file default
+//   single  one real setting with a friendly name and help text
 // Entries whose setting does not exist on this server are skipped.
 window.BSSimple = [
   { section: 'Zombies', items: [
     { kind: 'choice', label: 'How many zombies', help: 'How crowded the world feels around players.',
       options: [
         { label: 'Few',    mul: 0.5 }, { label: 'Normal', mul: 1.0 }, { label: 'Many', mul: 1.5 }, { label: 'Swarm', mul: 2.0 } ],
-      ids: ['bs_zombies:Zombies.Net.baseCap', 'bs_zombies:Zombies.Net.perPlayerCap', 'bs_zombies:Zombies.Net.hardCap', 'bs_zombies:Zombies.Net.perPlayerNear', 'bs_zombies:Zombies.Ambient.density'] },
+      ids: ['bs_zombies:Zombies.Net.baseCap', 'bs_zombies:Zombies.Net.perPlayerCap', 'bs_zombies:Zombies.Net.hardCap', 'bs_zombies:Zombies.Net.perPlayerNear'] },
     { kind: 'choice', label: 'Zombie toughness', help: 'How many hits they take. Headshots still kill fastest.',
       options: [ { label: 'Weak', mul: 0.6 }, { label: 'Normal', mul: 1.0 }, { label: 'Tough', mul: 1.5 }, { label: 'Brutal', mul: 2.0 } ],
       ids: ['bs_zombies:Zombies.Types.walker.health', 'bs_zombies:Zombies.Types.brute.health', 'bs_zombies:Zombies.Types.crawler.health'] },
     { kind: 'choice', label: 'Zombie damage', help: 'How much a grab or hit hurts.',
       options: [ { label: 'Low', mul: 0.5 }, { label: 'Normal', mul: 1.0 }, { label: 'High', mul: 1.5 }, { label: 'Deadly', mul: 2.0 } ],
       ids: ['bs_zombies:Zombies.Types.walker.damage', 'bs_zombies:Zombies.Types.brute.damage'] },
-    // Each preset moves the whole set together: the ring, the three floors that would otherwise block it
+    // Each preset moves the whole set together: the ring, the three floors that
+    // would otherwise block it, and the cleanup/despawn distances, which must stay
+    // outside the furthest spawn (ring + 120m open-ground push).
     { kind: 'choice', label: 'Spawn distance', help: 'How far away zombies appear. They always appear out of sight and walk in. Needs a bs_zombies restart.',
       options: [
         { label: 'Very close (50-130m)', set: { 'bs_zombies:Streaming.spawnMin': 50, 'bs_zombies:Streaming.spawnMax': 130, 'bs_zombies:Streaming.spawnFloor': 50, 'bs_zombies:Streaming.Placement.minPlayerDistance': 50, 'bs_zombies:Noise.Materialise.hardFloor': 50, 'bs_zombies:Streaming.cleanupDistance': 400, 'bs_zombies:Zombies.Settings.despawnDistance': 420 } },

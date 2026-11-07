@@ -1,10 +1,11 @@
 -- bs_scenes - notes and who may leave them.
+-- Client input is treated as hostile: length capped, control characters stripped, kind looked up in config, and the position comes from the server's idea of where the player is, so nobody can write inside a base from across the map.
 
 local cache = {}        -- [id] = row, everything currently in the world
 local loaded = false
 local lastWrite = {}    -- [src] = timestamp, rate limit
 
--- Per-character note count is tracked incrementally (O(1)) and kept in sync at load, write and erase
+-- Per-character note count is tracked incrementally (O(1)) and kept in sync at load, write and erase, instead of scanning the whole cache on every write.
 local countByChar = {}  -- [charId] = number of notes currently up
 
 local function bumpCount(charId, delta)
@@ -13,9 +14,13 @@ local function bumpCount(charId, delta)
     countByChar[charId] = math.max(0, (countByChar[charId] or 0) + delta)
 end
 
+--------------------------------------------------------------------------------
 -- Cleaning what arrives
+--------------------------------------------------------------------------------
 
 --- Strips anything that is not text a human typed, and caps the length.
+--- Colour codes (^1, ~r~) are removed rather than escaped: a note that can
+--- recolour itself is a note that can hide itself.
 local function clean(text)
     if type(text) ~= 'string' then return nil end
 
@@ -38,7 +43,9 @@ local function kindOf(kind)
     return Scenes.Kinds[kind] and kind or 'note'
 end
 
+--------------------------------------------------------------------------------
 -- Loading
+--------------------------------------------------------------------------------
 
 local function load()
     local rows = exports.oxmysql:query_async([[
@@ -67,7 +74,9 @@ CreateThread(function()
     load()
 end)
 
+--------------------------------------------------------------------------------
 -- Reading
+--------------------------------------------------------------------------------
 
 --- Everything within `radius` of a point. Plain data only.
 BSB.RegisterCallback('scenes:around', function(src, x, y, z, radius)
@@ -95,7 +104,9 @@ BSB.RegisterCallback('scenes:around', function(src, x, y, z, radius)
     return { ok = true, scenes = out }
 end)
 
+--------------------------------------------------------------------------------
 -- Writing
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('scenes:write', function(src, text, kind)
     local player = exports.bs_core:GetPlayer(src)
@@ -171,9 +182,12 @@ BSB.RegisterCallback('scenes:write', function(src, text, kind)
     return { ok = true, id = id }
 end)
 
+--------------------------------------------------------------------------------
 -- Removing
+--------------------------------------------------------------------------------
 
---- Your own note, or anybody's if you are staff.
+--- Your own note, or anybody's if you are staff. Rubbing out somebody else's
+--- writing is exactly the kind of thing that needs to be a permission.
 BSB.RegisterCallback('scenes:erase', function(src, id)
     id = tonumber(id)
     local note = id and cache[id]
@@ -197,9 +211,12 @@ end)
 
 AddEventHandler('playerDropped', function() lastWrite[source] = nil end)
 
+--------------------------------------------------------------------------------
 -- Sweeping
+--------------------------------------------------------------------------------
 
---- Expired notes go, in the database and in memory.
+--- Expired notes go, in the database and in memory. Runs rarely: a note that
+--- lingers an hour past its date is nobody's problem.
 CreateThread(function()
     while true do
         Wait(600000)   -- ten minutes
@@ -211,7 +228,8 @@ CreateThread(function()
             local gone = {}
             for id, _ in pairs(cache) do gone[#gone + 1] = id end
 
-            -- Reload rather than tracking expiry per note in memory: it is ten minutes apart and the table is small.
+            -- Reload rather than tracking expiry per note in memory: it is ten
+            -- minutes apart and the table is small.
             load()
 
             for _, id in ipairs(gone) do
@@ -221,7 +239,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Staff
+--------------------------------------------------------------------------------
 
 RegisterCommand('scenewipe', function(src)
     if src ~= 0 and not IsPlayerAceAllowed(src, 'bs.superadmin') then return end

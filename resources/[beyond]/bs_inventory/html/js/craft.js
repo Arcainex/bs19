@@ -22,7 +22,7 @@
 
   const S = { ctx: null, data: null, cat: 'all', q: '', sel: null, qty: 1, timer: null, tick: null, busy: false, lastFetch: 0 };
 
-  // loading
+  // ---------------------------------------------------------------- loading
   async function load() {
     const r = await call('bs_crafting', 'state');
     if (!r) { root.innerHTML = '<div class="cempty">...</div>'; return; }
@@ -58,7 +58,7 @@
     });
   }
 
-  // hand / station
+  // ---------------------------------------------------------------- hand / station
   function head() {
     const d = S.data, st = d.station;
     const faster = Math.round(Math.min(0.5, (d.level || 0) * 0.025) * 100);
@@ -84,7 +84,7 @@
         <div class="ctools"><input class="csearch" id="cSearch" placeholder="${esc(t('ui.search'))}" value="${esc(S.q)}" spellcheck="false" autocomplete="off">
         <div class="ccats">${cats.map(c => `<button class="ccat${S.cat === c ? ' is-on' : ''}" data-ccat="${c}">${esc(c === 'all' ? t('ui.all') : t('ui.cat.' + c))}</button>`).join('')}</div></div>
         ${list.map(r => `<div class="crow${r.can ? '' : ' is-off'}${S.sel === r.id ? ' is-sel' : ''}" data-rec="${esc(r.id)}">
-          <div class="cicon" data-cat="${esc(r.category)}">${icon(r.item, r.category)}</div>
+          <div class="cicon" data-cat="${esc(r.category)}">${icon(r.icon || r.item, r.category)}</div>
           <div class="crow__main"><div class="crow__name">${esc(r.label)}${r.amount > 1 ? ` <span class="crow__sub">x${r.amount}</span>` : ''}</div>
           <div class="crow__sub crow__clip">${esc(r.costs.map(c => `${c.need} ${c.label}`).join(' · '))}</div></div>
           <div class="crow__sub crow__time">${fmtT(r.time)}</div></div>`).join('') || `<div class="cempty">-</div>`}
@@ -97,12 +97,12 @@
     const max = Math.max(1, Math.min(10, ...r.costs.map(c => Math.floor(c.have / c.need))));
     return `<div class="cbox"><div class="cbox__head"><b>${esc(t('ui.makes'))}</b>${r.explosive ? `<span class="craft__chip craft__chip--warn">${esc(t('ui.explosive'))}</span>` : ''}</div>
       <div class="cbox__body"><div class="cdetail">
-        <div class="cdetail__top"><div class="cicon cicon--lg" data-cat="${esc(r.category)}">${icon(r.item, r.category)}</div>
+        <div class="cdetail__top"><div class="cicon cicon--lg" data-cat="${esc(r.category)}">${icon(r.icon || r.item, r.category)}</div>
           <div class="crow__main"><div class="cdetail__name">${esc(r.label)}${r.amount > 1 ? ' x' + r.amount : ''}</div>
           <div class="cdetail__meta">${esc(t('ui.time'))} ${fmtT(r.time)}${r.time < r.baseTime ? ` <s>${fmtT(r.baseTime)}</s>` : ''}</div>
           ${r.tools && r.tools.length ? `<div class="cdetail__meta">${esc(t('ui.tools'))}: ${esc(r.tools.join(' / '))}</div>` : ''}</div></div>
         <div><div class="clabel">${esc(t('ui.needs'))}</div>
-          ${r.costs.map(c => `<div class="ccost ${c.have >= c.need ? 'is-ok' : 'is-short'}"><div class="cicon" data-cat="${esc(c.category)}">${icon(c.item, c.category)}</div><span class="ccost__name">${esc(c.label)}</span><span class="ccost__n">${c.have} / ${c.need}</span></div>`).join('')}</div>
+          ${r.costs.map(c => `<div class="ccost ${c.have >= c.need ? 'is-ok' : 'is-short'}"><div class="cicon" data-cat="${esc(c.category)}">${icon(c.icon || c.item, c.category)}</div><span class="ccost__name">${esc(c.label)}</span><span class="ccost__n">${c.have} / ${c.need}</span></div>`).join('')}</div>
         ${r.blocked ? `<div class="cblock">${esc(r.blocked)}</div>` : ''}
         <div class="cqty"><span class="clabel" style="margin:0">${esc(t('ui.amount'))}</span>
           <button class="cbtn cbtn--sm" data-qty="-1">-</button><input id="cQty" type="number" min="1" max="${max}" value="${Math.min(S.qty, max)}"><button class="cbtn cbtn--sm" data-qty="1">+</button>
@@ -114,7 +114,7 @@
     const state = j.status === 'full' ? `<span class="cjob__state is-full">${esc(t('ui.waiting_space'))}</span>`
       : j.running ? `<span class="cjob__state is-run">${esc(t('ui.running'))} ${fmtT(j.left)}</span>` : `<span class="cjob__state">${esc(t('ui.queued'))} ${fmtT(j.dur)}</span>`;
     return `<div class="cjob" data-left="${j.left}" data-dur="${j.dur}" data-run="${j.running && j.status !== 'full' ? 1 : 0}">
-      <div class="cjob__top"><div class="cicon cicon--sm" data-cat="${esc(j.category)}">${icon(j.item, j.category)}</div>
+      <div class="cjob__top"><div class="cicon cicon--sm" data-cat="${esc(j.category)}">${icon(j.icon || j.item, j.category)}</div>
       <span>${esc(j.label)}${j.amount > 1 ? ' x' + j.amount : ''}${j.owner && !j.mine ? ` <small class="crow__sub">${esc(t('ui.by', { name: j.owner }))}</small>` : ''}</span>${state}
       ${canCancel && j.mine ? `<button class="cbtn cbtn--sm cbtn--bad" data-cancel="${esc(j.id)}">${esc(t('ui.cancel'))}</button>` : ''}</div>
       ${j.running ? `<div class="cbar"><i style="width:${Math.min(100, 100 * (1 - j.left / Math.max(1, j.dur)))}%"></i></div>` : ''}</div>`;
@@ -129,7 +129,7 @@
     if (d.station) {
       const st = d.storage || [];
       html += `<div class="cbox cbox--fill"><div class="cbox__head"><b>${esc(t('ui.storage'))}</b>${st.length ? `<button class="cbtn cbtn--sm" data-take="*">${esc(t('ui.take_all'))}</button>` : ''}</div>
-        <div class="cbox__body">${st.length ? `<div class="cstore">${st.map(s => `<div class="cslot" data-cat="${esc(s.category)}" data-take="${esc(s.item)}" title="${esc(s.label)}">${icon(s.item, s.category)}<b>${s.amount}</b></div>`).join('')}</div>` : `<div class="cempty">${esc(t('ui.storage_empty'))}</div>`}</div></div>`;
+        <div class="cbox__body">${st.length ? `<div class="cstore">${st.map(s => `<div class="cslot" data-cat="${esc(s.category)}" data-take="${esc(s.item)}" title="${esc(s.label)}">${icon(s.icon || s.item, s.category)}<b>${s.amount}</b></div>`).join('')}</div>` : `<div class="cempty">${esc(t('ui.storage_empty'))}</div>`}</div></div>`;
     } else {
       const dl = d.dismantle || [];
       html += `<div class="cbox cbox--fill"><div class="cbox__head"><b>${esc(t('ui.dismantle'))}</b></div>
@@ -173,9 +173,9 @@
     if (keepFocus) { const s = document.getElementById('cSearch'); s.focus(); s.setSelectionRange(caret, caret); }
   }
 
-  // recycler machine
+  // ---------------------------------------------------------------- recycler machine
   function machineSlots(list, attr) {
-    const cells = (list || []).map(s => `<div class="cslot" data-cat="${esc(s.category)}" ${attr}="${esc(s.item)}" title="${esc(s.label)}">${icon(s.item, s.category)}<b>${s.amount}</b></div>`);
+    const cells = (list || []).map(s => `<div class="cslot" data-cat="${esc(s.category)}" ${attr}="${esc(s.item)}" title="${esc(s.label)}">${icon(s.icon || s.item, s.category)}<b>${s.amount}</b></div>`);
     while (cells.length < 12) cells.push('<div class="cslot cslot--empty"></div>');
     return `<div class="cstore">${cells.join('')}</div>`;
   }
@@ -198,7 +198,7 @@
       </div>
       <div class="cmach">
         <div class="cbox"><div class="cbox__head"><b>${esc(t('rec.bag'))}</b><span>${esc(t('rec.bag_hint'))}</span></div>
-          <div class="cbox__body">${(m.bag || []).map(s => `<div class="crow" data-load="${esc(s.item)}"><div class="cicon" data-cat="${esc(s.category)}">${icon(s.item, s.category)}</div>
+          <div class="cbox__body">${(m.bag || []).map(s => `<div class="crow" data-load="${esc(s.item)}"><div class="cicon" data-cat="${esc(s.category)}">${icon(s.icon || s.item, s.category)}</div>
             <div class="crow__main"><div class="crow__name">${esc(s.label)} <span class="crow__sub">x${s.amount}</span></div><div class="crow__sub">${esc(s.preview || '')}</div></div><div></div></div>`).join('') || `<div class="cempty">${esc(t('rec.nothing'))}</div>`}</div></div>
         <div class="cbox"><div class="cbox__head"><b>${esc(t('rec.input'))}</b>${m.progress != null ? `<span>${Math.round(m.progress * 100)}%</span>` : ''}</div>
           <div class="cbox__body">${machineSlots(m.input, 'data-unload')}
@@ -222,7 +222,7 @@
     el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2600);
   }
 
-  // input
+  // ---------------------------------------------------------------- input
   root.addEventListener('click', async (e) => {
     const el = e.target.closest('[data-ccat],[data-rec],[data-qty],#cGo,[data-cancel],[data-take],[data-dis],[data-farm],[data-load],[data-unload],[data-mtake],[data-mact]');
     if (!el) return;

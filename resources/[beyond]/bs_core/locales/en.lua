@@ -26,7 +26,4 @@ return {
     ['core.unstuck'] = 'Shaken loose.',
     ['core.denied_title'] = 'Denied',
     ['core.denied_msg'] = 'You do not have permission to do that.',
-    ['core.tex_busy'] = 'Already reloading the world around you...',
-    ['core.tex_start'] = 'Reloading the world around you...',
-    ['core.tex_done'] = 'World reloaded.',
 }

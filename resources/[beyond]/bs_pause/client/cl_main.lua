@@ -1,4 +1,6 @@
--- bs_pause - our ESC menu: takes over ESC/P (controls 200/199) while a character is loaded and no other menu has focus.
+-- bs_pause - our ESC menu. Takes over ESC/P (controls 200/199) while a character is loaded and no other menu has focus.
+-- Map and GTA settings open the vanilla pause menu; while it is up we leave ESC alone so it closes normally.
+-- Other resources add buttons with exports.bs_pause:AddPauseTab({ id, label, icon, order, event, closeMenu }).
 
 local open = false
 local quietUntil = 0
@@ -41,38 +43,29 @@ local function keybinds()
     return out
 end
 
+-- Alpha-Z fixed settings. These are intentionally not exposed in the pause menu.
+-- Applying them client-side on every player makes old saved preferences unable to
+-- re-enable damage numbers / safe-zone markers or switch away from the slim HUD.
+local FORCED_SETTINGS = {
+    hudStyle = 'slim',
+    damageNumbers = false,
+    safeZoneMarkers = false,
+}
+
+local function applyForcedSettings()
+    if not started('bs_inventory') then return end
+    pcall(function() exports.bs_inventory:ApplyPlayerSettings(FORCED_SETTINGS) end)
+end
+
 local function playerSettings()
-    local out = {}
-    if started('bs_inventory') then
-        local ok, s = pcall(function() return exports.bs_inventory:GetPlayerSettings() end)
-        if ok and type(s) == 'table' then for k, v in pairs(s) do out[k] = v end end
+    if not started('bs_inventory') then return {} end
+    applyForcedSettings()
+    local ok, s = pcall(function() return exports.bs_inventory:GetPlayerSettings() end)
+    if ok and type(s) == 'table' then
+        for k, v in pairs(FORCED_SETTINGS) do s[k] = v end
+        return s
     end
-    -- Optional bodycam rows (bc* keys) live in bs_bodycam.
-    if started('bs_bodycam') then
-        local ok, s = pcall(function() return exports.bs_bodycam:GetSettings() end)
-        if ok and type(s) == 'table' then for k, v in pairs(s) do out[k] = v end end
-    end
-    return out
-end
-
--- bc* keys go to bs_bodycam; the rest stay with bs_inventory.
-local function applyBodycam(patch)
-    local bc
-    for k, v in pairs(patch) do
-        if type(k) == 'string' and k:sub(1, 2) == 'bc' then bc = bc or {}; bc[k] = v; patch[k] = nil end
-    end
-    if bc and started('bs_bodycam') then pcall(function() exports.bs_bodycam:ApplySettings(bc) end) end
-end
-
-local function pauseStrings()
-    local base = BSLocale.Dict(BSLocale.Lang())
-    if not started('bs_bodycam') then return base end
-    local ok, extra = pcall(function() return exports.bs_bodycam:PauseStrings() end)
-    if not ok or type(extra) ~= 'table' then return base end
-    local out = {}
-    for k, v in pairs(base) do out[k] = v end
-    for k, v in pairs(extra) do out[k] = v end
-    return out
+    return {}
 end
 
 -- HUD styles and menu palettes from bs_ui, with VIP flags.
@@ -114,7 +107,7 @@ local function openMenu()
     if Pause.Settings.blur then TriggerScreenblurFadeIn(250) end
     setFocus(true)
     send({
-        action = 'open', strings = pauseStrings(), tabs = tabList(),
+        action = 'open', strings = BSLocale.Dict(BSLocale.Lang()), tabs = tabList(),
         settings = playerSettings(), presets = PausePresets.Get(), keybinds = keybinds(),
         info = staticInfo(), languages = BSLocale.Languages, native = BSLocale.Native,
         choices = uiChoices(),
@@ -152,6 +145,15 @@ CreateThread(function()
     end
 end)
 
+-- Re-apply fixed values after character/resource loading and periodically in case
+-- another resource or an old saved preference tries to restore them.
+CreateThread(function()
+    while true do
+        if loaded then applyForcedSettings() end
+        Wait(5000)
+    end
+end)
+
 -- ESC / P takeover.
 CreateThread(function()
     while true do
@@ -186,28 +188,14 @@ RegisterNUICallback('close', function(_, cb) cb({}); closeMenu() end)
 
 RegisterNUICallback('map', function(_, cb) cb({}); openVanilla(4) end)
 RegisterNUICallback('gta', function(_, cb) cb({}); openVanilla(-1) end)
--- Change Character: ask the server if it is allowed, then use the normal logout (saves and opens the selector).
-local switching = false
-RegisterNUICallback('switchChar', function(_, cb)
-    cb({})
-    closeMenu()
-    if switching then return end
-    switching = true
-    local res = BSB.Await('pause:canSwitch', 5000)
-    if res and res.ok then
-        TriggerServerEvent(exports.bs_core:GetEvents().CharacterLogout)
-    else
-        local key = (res and res.reason) or 'p.change_char_busy'
-        TriggerEvent(exports.bs_core:GetEvents().UiNotify, { type = 'error', message = BSLocale.T(BSLocale.Lang(), key) })
-    end
-    switching = false
-end)
-
 RegisterNUICallback('quit', function(_, cb) cb({}); closeMenu(); TriggerServerEvent('bs:pause:quit') end)
 
 RegisterNUICallback('settings', function(data, cb)
-    if type(data) == 'table' and type(data.patch) == 'table' then applyBodycam(data.patch) end
-    if started('bs_inventory') and type(data) == 'table' and type(data.patch) == 'table' and next(data.patch) then
+    if started('bs_inventory') and type(data) == 'table' and type(data.patch) == 'table' then
+        -- Hidden/fixed Alpha-Z settings cannot be changed through a modified NUI either.
+        data.patch.hudStyle = 'slim'
+        data.patch.damageNumbers = false
+        data.patch.safeZoneMarkers = false
         local ok, err = pcall(function() exports.bs_inventory:ApplyPlayerSettings(data.patch) end)
         if not ok then print(('^3[bs_pause] settings apply failed: %s^7'):format(tostring(err))) end
     end
@@ -216,7 +204,7 @@ RegisterNUICallback('settings', function(data, cb)
     if type(data) == 'table' and type(data.patch) == 'table' and data.patch.language then
         CreateThread(function()
             Wait(600)
-            if open then send({ action = 'strings', strings = pauseStrings(), tabs = tabList(), keybinds = keybinds(), info = staticInfo() }) end
+            if open then send({ action = 'strings', strings = BSLocale.Dict(BSLocale.Lang()), tabs = tabList(), keybinds = keybinds(), info = staticInfo() }) end
         end)
     end
 end)
@@ -224,11 +212,6 @@ end)
 RegisterNUICallback('fix', function(data, cb)
     cb({})
     local name = type(data) == 'table' and data.name or nil
-    if name == 'refreshtextures' then
-        closeMenu()
-        pcall(function() exports.bs_core:RefreshTextures() end)
-        return
-    end
     if started('bs_inventory') then pcall(function() exports.bs_inventory:RunSettingsAction(name) end) end
 end)
 

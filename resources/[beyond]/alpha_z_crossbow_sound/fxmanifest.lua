@@ -1,0 +1,11 @@
+fx_version 'cerulean'
+game 'gta5'
+lua54 'yes'
+name 'alpha_z_crossbow_sound'
+author 'Alpha-Z'
+description 'Custom layered crossbow release sound for inventory item crossbow'
+client_script 'client.lua'
+server_script 'server.lua'
+ui_page 'html/index.html'
+files { 'html/index.html', 'html/crossbow_shot.wav' }
+dependency 'bs_inventory'

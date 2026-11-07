@@ -1,10 +1,9 @@
--- bs_ui - HUD defaults: entries marked player-overridable can be changed in inventory to Settings and are saved
+-- bs_ui - HUD defaults. Entries marked player-overridable can be changed in inventory -> Settings and are saved per character; these are the starting values.
 
 UI = {}
 
 UI.Settings = {
     hudEnabled      = true,
-    hudProvider     = 'auto',       -- auto hides this HUD when a supported replacement is running
     hudPushRate     = 200,          -- ms between state pushes to the NUI
     hideInCutscene  = true,
     scale           = 1.0,
@@ -21,47 +20,52 @@ UI.Settings = {
     -- Hide a bar while it is full, so a healthy player sees almost nothing.
     hideWhenFull    = false,
 
-    -- Zombie voice volume, 0.0 to 1.0.
+    -- Zombie voice volume, 0.0 to 1.0. Default 0.15 on purpose: the voices are 3D sources (up to twelve at once) and at full volume a street of walkers is a wall of noise. At 0.15 you hear one zombie from a direction before you see it. The player's slider (Settings -> zombieVoiceVolume) still spans 0-1 and overrides this.
     zombieVoiceVolume = 0.15,
 }
 
--- 3D audio engine: settings for the Web Audio spatialiser in html/js/sound.js (HRTF panner, listener follows the camera).
+-- 3D audio engine: settings for the Web Audio spatialiser in html/js/sound.js (HRTF panner, listener follows the camera). Pushed to the page once when bs_ui starts, so changes need `restart bs_ui`.
+-- Hitmarkers, level-up sting, level music and other feedback sounds are not spatialised on purpose.
 UI.Audio = {
-    -- 'HRTF' or 'equalpower': hRTF can place a sound behind, above or below you
+    -- 'HRTF' or 'equalpower'. HRTF can place a sound behind, above or below you; equalpower is left/right only and cheaper per voice. If the client refuses HRTF it logs once and falls back. Use equalpower only on very low-end clients.
     panningModel  = 'HRTF',
 
-    -- 'inverse' | 'linear' | 'exponential': how loudness falls with distance. 'inverse' (1/distance) is the default
+    -- 'inverse' | 'linear' | 'exponential': how loudness falls with distance. 'inverse' (1/distance) is the default and keeps sounds present mid-range; 'linear' reaches zero at maxDistance (sounds like a fader); 'exponential' drops off too fast up close. 'inverse' never reaches zero, so maxDistance is also a hard cull on the Lua side.
     distanceModel = 'inverse',
 
     -- Metres inside which a sound is at full volume (3 is roughly 'in the room'). Lower = walkers get shrill as they close; higher = nearby sounds flatten.
     refDistance   = 3.0,
 
-    -- Falloff speed past refDistance. 1.0 is physically correct, 1.1 is slightly tighter.
+    -- Falloff speed past refDistance. 1.0 is physically correct, 1.1 is slightly tighter. Raise toward 1.6 if the world sounds crowded, lower toward 0.8 if sounds vanish too fast.
     rolloffFactor = 1.1,
 
-    -- Default audible radius in metres for callers that do not set their own. Nothing beyond it is sent to the page.
+    -- Default audible radius in metres for callers that do not set their own. Nothing beyond it is sent to the page. Individual sounds override it (lurk voice 34 m, feeding 30 m, see Zombies.Voices).
     maxDistance   = 45.0,
 
-    -- Max world sounds audible at once. HRTF has a cost and too many growls turn into noise.
+    -- Max world sounds audible at once. HRTF has a cost and too many growls turn into noise. When full, the farthest voice is dropped, not the newest, so a close walker is never starved out. Enforced here and again in the page.
     maxVoices     = 12,
 
     -- Max feedback sounds at once. Counted separately and never spatialised, so a horde cannot drown out hitmarkers.
     maxUiVoices   = 6,
 
-    -- Default stop fade in ms, used when a caller gives none. A hard cut clicks; 120 removes it.
+    -- Default stop fade in ms, used when a caller gives none. A hard cut clicks; 120 removes it. Death uses its own longer fade (Zombies.Voices.deathFade).
     defaultFadeMs = 120,
 
-    -- How often a moving emitter's position is re-sent, in ms.
+    -- How often a moving emitter's position is re-sent, in ms. The page interpolates between updates. 150 is smooth; above ~400 the sound starts to skate.
     moveInterval  = 150,
 
     -- How often the listener is pushed while nothing is playing, in ms. While sounds play it updates every frame.
     listenerIdleInterval = 500,
 
-    -- Safety net in ms: a source still marked as playing after this long is dropped
+    -- Safety net in ms: a source still marked as playing after this long is dropped (covers a lost 'finished' callback after a reload or restart). Must exceed the longest clip in bs_ui/html/sound/ (eating files are up to ~20 s). Raise it if you add longer sounds.
     voiceTimeout  = 30000,
 }
 
--- Notifications: screen filters: a personal look (grain, vignette, tint, desaturation) chosen in Settings
+-- Notifications.
+-- Screen filters: a personal look (grain, vignette, tint, desaturation) chosen in Settings, stored on the character, visible only to that player. No gameplay effect, so no 'clear fog' preset.
+-- Two layers: `timecycle` (changes game rendering; candidate names are probed at runtime, a preset whose names all fail just loses its grade) and `overlay` (HUD-page layer for grain, vignette, tint, scanlines).
+-- Fields: id (stored), label/note (Settings), tc (timecycle names, best first), strength 0-1, grain 0-1, vignette 0-1, tint { r, g, b, a } (keep a low), scanlines 0-1 (VHS only).
+-- Add presets freely; the picker is built from this list.
 UI.Filters = {
     {
         id = 'off', label = 'None', note = 'The world as the server renders it.',
@@ -150,7 +154,8 @@ UI.FilterDefaults = {
 }
 
 UI.Notifications = {
-    -- Long enough to read a short sentence, short enough not to stack up during a fight.
+    -- Long enough to read a short sentence, short enough not to stack up
+    -- during a fight.
     defaultDuration = 3200,
 }
 
@@ -165,12 +170,13 @@ UI.XPBar = {
     -- Show a floating "+25 XP" every time XP is awarded.
     popups      = true,
     popupDuration = 2200,
-    -- Fade the whole bar out when nothing has happened for this long (ms). 0 keeps it on screen permanently.
+    -- Fade the whole bar out when nothing has happened for this long (ms).
+    -- 0 keeps it on screen permanently.
     idleFade    = 0,
 }
 
 UI.Minimap = {
-    -- Live corner map: off: this is a survival game, the field map (M) is the only map.
+    -- Live corner map: off on purpose. This is a survival game, the field map (M) is the only map. Set to true for the corner radar; everything it needs is built.
     alwaysHidden    = true,
     showWithInventory = false,
 
@@ -178,17 +184,20 @@ UI.Minimap = {
     zoom            = 900,
 }
 
--- The field map: a large stylised version of the vanilla map
+-- The field map: a large stylised version of the vanilla map (GTA's expanded bigmap radar, see HudSetBigmap in cl_hud.lua), framed like a journal page. Gameplay keeps running underneath.
 UI.FieldMap = {
     key     = 'M',
     command = 'bs_fieldmap',
 
-    -- Which map the M key opens. 'pause' - GTA's full map as in the pause menu (zoom, legend, blips, waypoints).
+    -- Which map the M key opens.
+    -- 'pause' - GTA's full map as in the pause menu (zoom, legend, blips, waypoints). No paper frame.
+    -- 'radar' - the corner radar enlarged into a framed box. The vanilla radar is semi-transparent and its terrain fill does not scale up, so it looks like road lines floating over the world; blur and a backing only help so much.
+    -- Set to 'radar' if you prefer the frame.
     mode         = 'pause',
 
     -- Field map readability. The map itself is GTA's and cannot be redrawn, so two layers sit between it and the world:
-    -- blurWorld - blurs the game behind the map (TriggerScreenblur, like the radial wheel; NUI cannot do this)
-    -- backing - a dark rectangle under the map area
+    --   blurWorld - blurs the game behind the map (TriggerScreenblur, like the radial wheel; NUI cannot do this)
+    --   backing - a dark rectangle under the map area
     -- `backingAlpha` is 0..255. If the backing draws over the map on your build, set backing = false and keep the blur.
     blurWorld    = true,
     backing      = true,
@@ -198,14 +207,11 @@ UI.FieldMap = {
     zoom         = 460.0,
 }
 
--- UI theme pack for every NUI page: 'dossier' (default), 'classic', 'fieldradio', 'rustbelt', 'quarantine' or 'nightops'. F1 > Themes & UI can override it.
-UI.ThemePack = 'classic'
-
 UI.Theme = {
-    accent          = '#c8763a',    -- amber: the world telling you something
+    accent          = '#728c42',    -- amber: the world telling you something
     accentGood      = '#7fd4a2',
     accentDanger    = '#b4574a',
-    accentWarn      = '#d9a441',
+    accentWarn      = '#93ab63',
     background      = '#0a0a09',
     text            = '#d8d2c2',
     textMuted       = '#6f6a5c',
@@ -220,10 +226,8 @@ UI.Bars = {
     { key = 'health',    label = 'Health',    color = '#b4574a', icon = 'heart',  show = true,  critical = 25 },
     { key = 'armour',    label = 'Armour',    color = '#5b7d9d', icon = 'shield', show = true,  critical = 0, hideAtZero = true },
     { key = 'stamina',   label = 'Stamina',   color = '#7fd4a2', icon = 'bolt',   show = true,  critical = 15 },
-    { key = 'hunger',    label = 'Hunger',    color = '#d99b5b', icon = 'food',   show = true,  critical = 20 },
+    { key = 'hunger',    label = 'Hunger',    color = '#8fa653', icon = 'food',   show = true,  critical = 20 },
     { key = 'thirst',    label = 'Thirst',    color = '#5bc8d9', icon = 'drop',   show = true,  critical = 20 },
-    -- How far your last sound carried (bs_zombies noise event). Value reads in metres; never pulses.
-    { key = 'noise',     label = 'Noise',     color = '#c9a35a', icon = 'sound',  show = true,  critical = 101, inverted = true, unit = 'm' },
     -- Infection fills UP, so its warning is inverted: high is bad.
     { key = 'infection', label = 'Infection', color = '#8d6bb0', icon = 'virus',  show = true,  critical = 60, inverted = true, hideAtZero = true },
 }
@@ -231,15 +235,17 @@ UI.Bars = {
 --- Which bars survive in minimal mode.
 UI.MinimalBars = { 'health', 'stamina', 'infection' }
 
--- Panels the HUD hides itself for.
+-- Panels the HUD hides itself for. A full-screen NUI panel already shows name, class, hunger, thirst and cash, so the survival cluster underneath would duplicate it.
+-- Keyed by the panel name passed to TriggerEvent('bs:ui:opened', <name>); the value is the resource that owns the panel, used by cl_hud.lua's watchdog in case that resource stops while its panel is open.
+-- Not listed on purpose: fieldmap (gameplay continues, the HUD belongs there) and radial (brief, flickering the HUD would be worse).
+-- Add a panel by name only; both ends already use bs:ui:opened/closed.
 UI.HideHudFor = {
-    survivorLink = 'bs_survivor_link',
     inventory = 'bs_inventory',
     menu      = 'bs_menu',
     vip       = 'bs_vip',
     admin     = 'bs_admin',
 
-    -- Not a panel: bs_cinecam fires this pair around /hidehud and cinematic camera mode
+    -- Not a panel: bs_cinecam fires this pair around /hidehud and cinematic camera mode, so a clean screen goes through the same latch as real panels (including release on death, character switch and bs_cinecam stopping).
     cinecam   = 'bs_cinecam',
 
     -- bs_gadgets fires this pair while flying the scout drone
@@ -259,9 +265,9 @@ UI.HudStyles = {
     { id = 'plate',   label = 'Plate', vip = true },
 }
 
---- Menu palettes. `vars` are hex colours pushed to every NUI through bs_ui/html/shared/palette.js: accent
+--- Menu palettes. `vars` are hex colours pushed to every NUI through bs_ui/html/shared/palette.js:
+--- accent, hi (accent highlight), bg, text, muted, blood. 'default' keeps each menu's own colours.
 UI.Palettes = {
-    { id='custom', label='Custom', sw={'#e08c46','#0a0a09','#f0ebdd'} },
     { id = 'default', label = 'Rust', sw = { '#e08c46', '#0a0a09', '#f0ebdd' } },
     { id = 'frost',   label = 'Frost',   vars = { accent = '#5fa8d3', hi = '#8cc6e8', bg = '#090c0e', text = '#e6eef2', muted = '#8fa0aa', blood = '#2b4a6e' } },
     { id = 'verdant', label = 'Verdant', vars = { accent = '#7fb069', hi = '#a3cf8d', bg = '#0a0c09', text = '#e9efdf', muted = '#9aa58c', blood = '#2f4a2a' } },

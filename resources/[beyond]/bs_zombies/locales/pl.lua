@@ -19,7 +19,7 @@ return {
     ['zed.safezone'] = 'Strefa bezpieczna',
     ['zed.search_body'] = 'Przeszukaj ciało',
     ['zed.skin'] = 'Oskóruj ciało',
-    ['zed.takedown_opt'] = 'Wyeliminuj',
+    ['zed.take_down'] = '[E]  POWAL GO',
     ['zed.they_here'] = 'Są tutaj.',
     ['zed.unknown_opt'] = 'Nieznana opcja.',
     ['zed.vip_colours'] = 'Własne kolory to przywilej VIP.',

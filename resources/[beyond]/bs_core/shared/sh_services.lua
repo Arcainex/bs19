@@ -6,7 +6,8 @@
 -- BS.Use returns nil and logs the caller when the provider is missing, stopped
 -- or lacks a promised export. Additive: direct exports keep working.
 
--- Self-contained: consumers include this file directly and do not load sh_framework.lua, so BS
+-- Self-contained on purpose: consumers include this file directly and do not load sh_framework.lua,
+-- so BS, BS.Log and BS.Assert may not exist here. Local fallbacks below keep behaviour the same either way.
 BS = BS or {}
 
 BS.Services = BS.Services or {}     -- [name] = { resource, functions = {} }
@@ -25,7 +26,9 @@ local function logDebug(msg)
     if BS.Log and BS.Log.debug then return BS.Log.debug('services', msg) end
 end
 
+--------------------------------------------------------------------------------
 -- Providing
+--------------------------------------------------------------------------------
 
 -- Declares that this resource offers a named service.
 -- @param name string  service name consumers ask for
@@ -47,9 +50,12 @@ function BS.Provide(name, fns)
         :format(name, #fns, GetCurrentResourceName()))
 end
 
+--------------------------------------------------------------------------------
 -- Consuming
+--------------------------------------------------------------------------------
 
 -- Where a service lives, for consumers that cannot ask bs_core (the registry is per Lua state).
+-- Kept as plain data since tables of functions do not cross resources.
 local KNOWN = {
     core        = 'bs_core',
     inventory   = 'bs_inventory',
@@ -82,6 +88,7 @@ local function warnOnce(key, message)
 end
 
 -- Resolves a service into a callable handle, or nil.
+-- Calls are wrapped: a provider error or missing export is logged with both resource names instead of returning nil.
 -- @param name string
 -- @return table|nil
 function BS.Use(name)

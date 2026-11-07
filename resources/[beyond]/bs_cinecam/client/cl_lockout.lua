@@ -1,4 +1,7 @@
 -- bs_cinecam - lockout and HUD hide.
+-- LOCKOUT: block the player's keys while the camera flies (a key opening the inventory or firing would ruin the take).
+-- HUD HIDE: follows the camera menu setting while filming.
+-- They share the clean-screen question but neither turns the other on.
 
 CineLock = { locked = false, hud = false, selfPanic = false }
 
@@ -48,22 +51,22 @@ end
 
 -- Input lockout
 
--- Controls the camera itself uses stay enabled (re-enabled after the blanket disable).
+-- Controls the camera itself uses stay enabled (re-enabled after the blanket disable). Read with IsDisabledControlPressed, since a disabled control reads as not pressed through IsControlPressed.
 CineLock.CameraControls = {
     32, 33, 34, 35,     -- W A S D
-    22,                 -- SPACE up
-    36,                 -- LCTRL down / slow
-    21,                 -- LSHIFT fast
+    22,                 -- SPACE       up
+    36,                 -- LCTRL       down / slow
+    21,                 -- LSHIFT      fast
     1, 2,               -- mouse look
     14, 15,             -- mouse wheel (FOV)
-    44, 38,             -- Q / E roll
-    47,                 -- G drop a keyframe
-    246,                -- Y play the path
+    44, 38,             -- Q / E       roll
+    47,                 -- G          drop a keyframe
+    246,                -- Y          play the path
     -- 1-9 stay disabled as gameplay controls; cl_camera reads them raw.
     157, 158, 159, 160, 161, 162, 163, 164, 165
 }
 
--- DisableAllControlActions(0) covers gameplay controls and every RegisterKeyMapping binding.
+-- DisableAllControlActions(0) covers gameplay controls and every RegisterKeyMapping binding. Groups 1 and 2 are disabled too (vehicle and mounted-weapon controls) so a driver has no live throttle. F8 and the pause menu are client-level and cannot be blocked. If a menu still opens under lockout, it is not opening on a control and needs an explicit gate.
 CreateThread(function()
     while true do
         if CineLock.locked then

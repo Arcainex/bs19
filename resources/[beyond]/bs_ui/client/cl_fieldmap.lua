@@ -1,4 +1,4 @@
--- bs_ui - field map (M): expands GTA's own map to most of the screen inside a paper-style frame.
+-- bs_ui - field map (M). Expands GTA's own map to most of the screen inside a paper-style frame. Gameplay continues underneath. Only HudSetBigmap and HudSetMinimapRect (cl_hud.lua) can change the map itself.
 
 local F = UI.FieldMap
 
@@ -6,12 +6,12 @@ local open = false
 local zoom = F.zoom or 460.0    -- lower = more zoomed in. Scroll adjusts this.
 local ZOOM_MIN, ZOOM_MAX = 100.0, 1400.0
 
--- Map box: these four numbers must match the `.fieldmap` rule in bs_ui/html/css/hud.css by hand
+-- Map box. These four numbers must match the `.fieldmap` rule in bs_ui/html/css/hud.css by hand (currently left 8vw, top 8vh, 84vw x 84vh). If the map sits off inside the frame, adjust these, not the CSS. The minimap may overshoot on some aspect ratios, so keep the rect generous.
 local RECT = { x = 0.08, y = 0.08, w = 0.84, h = 0.84 }
 
 local function send(p) SendNUIMessage(p) end
 
--- Uses GTA's own bigmap: a custom-sized radar box draws nothing past a certain size
+-- Uses GTA's own bigmap: a custom-sized radar box draws nothing past a certain size, and SetRadarBigmapEnabled ignores a custom minimap rect. Component 4 opens straight on the MAP tab. The world does not pause, so do not open it mid-fight. GetHashKey is used instead of backtick literals so files stay checkable with luac.
 local PAUSE_MENU = GetHashKey('FE_MENU_VERSION_SP_PAUSE')
 local MAP_COMPONENT = 4
 
@@ -67,7 +67,7 @@ local function closeMap()
     if not open then return end
     open = false
 
-    -- Mirror of openMap: release the claim (HudSetBigmap(false)) before the announcement
+    -- Mirror of openMap: release the claim (HudSetBigmap(false)) before the announcement, so cl_hud.lua's guard lets the map close normally.
     if F.blurWorld then TriggerScreenblurFadeOut(120) end
 
     pcall(SetRadarBigmapEnabled, false, false)
@@ -94,7 +94,9 @@ RegisterCommand(F.command, function()
 end, false)
 RegisterKeyMapping(F.command, L('ui.key_fieldmap'), 'keyboard', F.key)
 
+--------------------------------------------------------------------------------
 -- While it is open
+--------------------------------------------------------------------------------
 
 -- ESC closes it. Scroll zooms with the vanilla controls (241 up, 242 down).
 CreateThread(function()

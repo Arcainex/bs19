@@ -1,4 +1,4 @@
-/* bs_traders - trade menu styles. Soot/bone/amber, same tokens as the rest of the framework's NUI. */
+/* bs_traders - trade menu styles. Soot/bone/amber, same tokens as the rest of the framework's NUI. Icons are inline SVG in app.js (no image files, one flat colour inherited from the row). The layout is wider because a single narrow column hid half of the trade. */
 
 :root{
     --soot:#0c0c0b; --panel:rgba(15,15,12,.97); --line:rgba(240,235,221,.10);
@@ -19,7 +19,7 @@ body{font-family:var(--sans);color:var(--bone);font-size:13px;user-select:none;
 .hidden{display:none !important}
 
 #panel{
-    /* Bigger by default and resizable. */
+    /* Bigger by default and resizable. A trade menu compares two columns of stock, prices and quantities. `resize: both` needs overflow other than visible; min/max keep a drag usable. app.js remembers the size. */
     width:1060px;height:740px;
     min-width:720px;min-height:460px;
     max-width:calc(94vw / var(--ui-scale, 1));max-height:calc(90vh / var(--ui-scale, 1));
@@ -31,7 +31,7 @@ body{font-family:var(--sans);color:var(--bone);font-size:13px;user-select:none;
     background-image:linear-gradient(180deg,rgba(224,140,70,.05),transparent 220px);
 }
 
-/* The visible grip over the native resize corner. pointer-events:none so the drag stays with #panel's own resize */
+/* The visible grip over the native resize corner. pointer-events:none so the drag stays with #panel's own resize, except the double-click reset which needs auto. */
 #grip{position:absolute;right:2px;bottom:2px;width:14px;height:14px;
     display:flex;align-items:center;justify-content:center;
     color:var(--faint);cursor:nwse-resize}
@@ -124,7 +124,7 @@ section.on{display:flex;flex-direction:column}
     /* Line-art icons use stroke:currentColor, so color is set once on the container. */
     color:var(--amber)}
 
-/* bs_ui icons come as an <svg class="bs-icon"> (line art) or <img class="bs-icon bs-icon--art"> (painted art). */
+/* bs_ui icons come as an <svg class="bs-icon"> (line art) or <img class="bs-icon bs-icon--art"> (painted art). Both need a fixed size or painted images overflow their box. */
 .ricon .bs-icon{width:26px;height:26px;display:block}
 .ricon svg.bs-icon{fill:none;stroke:currentColor}
 .ricon img.bs-icon--art{width:32px;height:32px;object-fit:contain}
@@ -215,7 +215,11 @@ section.on{display:flex;flex-direction:column}
 .empty{text-align:center;color:var(--faint);font-size:.82rem;padding:2.5rem 0}
 .empty.hidden{display:none}
 
-/* objective tracker: quest readout pinned to the right of the screen */
+/*
+   objective tracker
+   Quest readout pinned to the right of the screen, visible while the menu is closed.
+   pointer-events:none is required: the page is always loaded, so otherwise it would block clicks on the game world when another NUI takes focus.
+*/
 #tracker{
     position:fixed;top:calc(22vh / var(--ui-scale, 1));right:18px;width:268px;
     display:flex;flex-direction:column;gap:.35rem;
@@ -265,7 +269,10 @@ section.on{display:flex;flex-direction:column}
     display:none}
 .tkrow.ready .tkdone{display:block;animation:tkPulse 1.9s ease-in-out infinite}
 
-/* animations: each one fires on a real state change, never on an idle redraw (see the keyed rows in app.js). */
+/*
+   animations
+   Each one fires on a real state change, never on an idle redraw (see the keyed rows in app.js). Kept short (180-420ms) since the tracker sits in peripheral vision.
+*/
 
 /* A new contract slides in from the screen edge. */
 .tkrow{animation:none}
@@ -339,9 +346,12 @@ kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
     border-radius:2px;padding:.05rem .28rem;color:var(--dust)}
 
 
-/* wardrobe: full-screen clothing shop that owns the camera. */
+/*
+   wardrobe
+   Full-screen clothing shop that owns the camera. Rail on the left, garment list on the right, middle left empty so the character stays visible.
+*/
 
-/* Sits above the tracker: the tracker also hides itself while this screen is up (pushTracker in cl_main.lua) */
+/* Sits above the tracker. The tracker also hides itself while this screen is up (pushTracker in cl_main.lua); the z-index is a fallback for screens that forget to tell it. */
 #wardrobe { position: fixed; inset: 0; pointer-events: auto; cursor: grab; z-index: 40; }
 #wardrobe.hidden { display: none !important; }
 #wardrobe:active { cursor: grabbing; }
@@ -479,7 +489,10 @@ kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
 .wdbtn--buy:disabled { opacity: .4; cursor: not-allowed;
     border-color: var(--line2); color: var(--faint); background: none; }
 
-/* /traderdebug. different look (cooler grey, red accent) so this staff tool is never mistaken for the player menu. */
+/*
+   /traderdebug
+   Deliberately different look (cooler grey, red accent) so this staff tool is never mistaken for the player menu. Icons here are plain text.
+*/
 #dbgRoot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:rgba(0,0,0,.35)}
 #dbgRoot.hidden{display:none}
@@ -594,7 +607,10 @@ kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
 .dbgBtn.danger:hover{background:var(--blood);color:#0c0c0b}
 
 
-/* wardrobe: additions: outfits, arms toggle, save bar and ownership mark, all inside the existing panel. */
+/*
+   wardrobe: additions
+   Outfits, arms toggle, save bar and ownership mark, all inside the existing panel.
+*/
 
 /* Outfits sits at the top of the rail and is marked as not a body part. */
 .wdcat--outfits {
@@ -664,7 +680,10 @@ kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
     margin-left: .6rem; text-transform: uppercase;
 }
 
-/* /traderdebug: additions: clothing flag and duplicate field. */
+/*
+   /traderdebug: additions
+   Clothing flag and duplicate field.
+*/
 
 /* A checkbox that is a grid field; it spans the grid so its long label is not squeezed into one column. */
 .dbgCheck--field {
@@ -679,7 +698,10 @@ kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
 .dbgId--dup.hidden { display: none !important; }
 
 
-/* wardrobe: poses: toggle group in the footer, styled as chips so they read as latching toggles rather than nudge arrows. */
+/*
+   wardrobe: poses
+   Toggle group in the footer, styled as chips so they read as latching toggles rather than nudge arrows.
+*/
 
 .wdposes { display: flex; align-items: center; gap: .35rem; }
 .wdpose {
@@ -825,23 +847,3 @@ kbd{font-family:var(--mono);font-size:.6rem;border:1px solid var(--line2);
 .d-action:disabled{opacity:.4;cursor:not-allowed;border-color:var(--line2);color:var(--faint);background:none}
 
 @media (max-width:900px){.shop{grid-template-columns:1fr}}
-
-
-/* Changing room: keep the fitting controls and checkout inside the safe area. */
-#wardrobe { font-family: "Segoe UI", Arial, sans-serif; }
-#wdPanel { width: min(390px, 31vw); top: calc(12vh / var(--ui-scale, 1)); bottom: calc(19vh / var(--ui-scale, 1)); box-shadow: 0 18px 55px #0007; }
-#wdCats { top: calc(12vh / var(--ui-scale, 1)); bottom: calc(19vh / var(--ui-scale, 1)); }
-#wdPanel .wdlist { min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 7px; }
-#wdPanel .wdrow { min-height: 76px; padding: 12px; align-content: center; border-color: rgba(205,187,151,.12); border-radius: 2px; }
-#wdPanel .wdrow__name { flex-basis: 100%; font-size: 13px; line-height: 1.3; }
-#wdPanel .wdrow.on { border-color: var(--amber); box-shadow: inset 2px 0 var(--amber); }
-#wdFoot { left: 1.4rem; right: 1.4rem; bottom: calc(2vh / var(--ui-scale, 1)); flex-wrap: wrap; padding: 16px 20px; background: rgba(17,18,15,.97); border: 1px solid var(--line2); border-top: 2px solid var(--amber); box-shadow: 0 8px 28px #0008; cursor: default; }
-#wdFoot .wdactions { margin-left: auto; flex-wrap: wrap; }
-#wdFoot .wdbtn { min-height: 42px; font-family: inherit; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
-#wdFoot .wdbtn--buy { background: var(--amber); color: #171712; }
-#wdFoot .wdbtn--ghost { color: var(--bone); }
-#wdFoot .wdhint { letter-spacing: .04em; }
-#wardrobe ::-webkit-scrollbar { width: 5px; }
-#wardrobe ::-webkit-scrollbar-track { background: #171812; }
-#wardrobe ::-webkit-scrollbar-thumb { background: #856541; border-radius: 0; }
-@media (max-height: 720px) { #wdFoot { padding: 10px 14px; gap: 8px; } #wdFoot .wdhint { display: none; } #wdPanel { bottom: calc(23vh / var(--ui-scale, 1)); } }

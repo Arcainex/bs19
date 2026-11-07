@@ -1,4 +1,7 @@
--- bs_medical - conditions on the client: what you feel (limp, sway, blur, coughing)
+-- bs_medical - conditions on the client: what you feel (limp, sway, blur,
+-- coughing), what hit you (reported to the server), the HUD icons, the
+-- Medical tab in the inventory and the paid doctors.
+-- Nothing here decides an outcome; the server does.
 
 local SYS = Medical.System
 local Cur = { on = false }          -- last state from the server
@@ -338,7 +341,8 @@ CreateThread(function()
             setLimp((f.legFrac or f.legSplint) and not inCar)
             if f.legFrac and not inCar then sprintBlocker() else Fx.sprintBlock = false end
 
-            -- Shake: a broken arm or pain sways the aim; pain alone shakes the view. Painkillers mask the pain part.
+            -- Shake: a broken arm or pain sways the aim; pain alone shakes the view.
+            -- Painkillers mask the pain part.
             local pain = ((Cur.pk or 0) > 0) and 0 or (Cur.pain or 0)
             local aiming = IsPlayerFreeAiming(PlayerId())
             local kind, amp = nil, 0.0
@@ -527,24 +531,59 @@ local docPeds = {}
 
 local function spawnDoctor(i, d)
     local model = GetHashKey(Medical.DoctorModel)
+
+    -- Alpha-Z FIX: remove a stale/duplicate service doctor left at exactly the
+    -- same position (for example after a resource restart). This prevents two
+    -- Medic NPCs from standing on top of each other while leaving unrelated
+    -- doctor peds elsewhere untouched.
+    for _, existing in ipairs(GetGamePool('CPed')) do
+        if existing ~= PlayerPedId() and DoesEntityExist(existing) and GetEntityModel(existing) == model then
+            local ep = GetEntityCoords(existing)
+            if #(ep - vector3(d.x, d.y, d.z)) < 0.75 then
+                SetEntityAsMissionEntity(existing, true, true)
+                DeleteEntity(existing)
+            end
+        end
+    end
+
     RequestModel(model)
     local w = 0
     while not HasModelLoaded(model) and w < 3000 do Wait(20) w = w + 20 end
     if not HasModelLoaded(model) then return end
-    local ped = CreatePed(4, model, d.x, d.y, d.z - 1.0, d.h, false, false)
+    -- Load collision before creating the service ped. Never subtract 1.0 from
+    -- the configured Z: that was the reason doctors could sink into the floor.
+    RequestCollisionAtCoord(d.x, d.y, d.z)
+    local collisionWait = 0
+    while not HasCollisionLoadedAroundEntity(PlayerPedId()) and collisionWait < 2000 do
+        Wait(50)
+        collisionWait = collisionWait + 50
+        RequestCollisionAtCoord(d.x, d.y, d.z)
+    end
+
+    local ped = CreatePed(4, model, d.x, d.y, d.z, d.h, false, false)
     SetModelAsNoLongerNeeded(model)
-    if ped == 0 or not DoesEntityExist(ped)then return end
-    Entity(ped).state:set('bsProtected',true,false)
-    SetEntityAsMissionEntity(ped,true,true)
+    if ped == 0 then return end
+
+    -- Protect service doctors from bs_world's ambient-ped sweep. Without this
+    -- tag the sweep deletes the doctor after a few seconds; the stale handle in
+    -- docPeds then prevented a respawn until the player left the streaming area.
+    SetEntityAsMissionEntity(ped, true, true)
+    local pedState = Entity(ped).state
+    if pedState then pedState:set('bsProtected', true, false) end
+
+    SetEntityCoordsNoOffset(ped, d.x, d.y, d.z, false, false, false)
+    SetEntityHeading(ped, d.h or 0.0)
     SetEntityInvincible(ped, true)
-    FreezeEntityPosition(ped, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     SetPedCanRagdoll(ped, false)
+    FreezeEntityPosition(ped, true)
     docPeds[i] = ped
     if GetResourceState('bs_interactions') == 'started' then
+        -- Service doctors are frozen local NPCs. Do not pass them through GTA's
+        -- entity-outline native; on some game builds that can hard-crash the client.
         exports.bs_interactions:AddEntity(ped, {
             { label = L('dot_doctor', { price = SYS.doctorPrice }), icon = 'medical', distance = 2.5, event = 'bs:medical:dot:doctor' },
-        })
+        }, { noOutline = true })
     end
 end
 
@@ -563,22 +602,132 @@ CreateThread(function()
         local list = GlobalState.bsMedDoctors or {}
         local at = GetEntityCoords(PlayerPedId())
         for i, d in ipairs(list) do
-            local existing=docPeds[i]
-            if existing and not DoesEntityExist(existing)then
-                pcall(function()exports.bs_interactions:RemoveEntity(existing)end)
-                docPeds[i]=nil
-            end
             local near = GlobalState.bsMedicalOn and #(at - vector3(d.x, d.y, d.z)) < 60.0
+            -- If another cleanup/resource removed the entity, clear the stale
+            -- handle immediately so it is recreated on the next pass.
+            if docPeds[i] and not DoesEntityExist(docPeds[i]) then
+                docPeds[i] = nil
+            end
             if near and not docPeds[i] then spawnDoctor(i, d)
             elseif not near and docPeds[i] then despawnDoctor(i) end
         end
     end
 end)
 
+-- Alpha-Z: Arzt legt den Patienten für 60 Sekunden auf eine echte Liege.
+local doctorTreatmentBusy = false
+local doctorTreatmentToken = nil
+local doctorTreatmentPed = nil
+local bedModelHashes = nil
+
+local function findDoctorBed()
+    local cfg = Medical.DoctorTreatment or {}
+    if not bedModelHashes then
+        bedModelHashes = {}
+        for _, name in ipairs(cfg.bedModels or {}) do bedModelHashes[GetHashKey(name)] = true end
+    end
+    local player = PlayerPedId()
+    local from = GetEntityCoords(player)
+    local best, dist = nil, cfg.bedSearchRadius or 16.0
+    for _, obj in ipairs(GetGamePool('CObject')) do
+        if DoesEntityExist(obj) and bedModelHashes[GetEntityModel(obj)] then
+            local p = GetEntityCoords(obj)
+            local d = #(p - from)
+            if d < dist then
+                local occupied = false
+                for _, other in ipairs(GetGamePool('CPed')) do
+                    if other ~= player and DoesEntityExist(other) and not IsPedDeadOrDying(other, true)
+                        and #(GetEntityCoords(other) - p) < 1.2 then
+                        occupied = true
+                        break
+                    end
+                end
+                if not occupied then best, dist = obj, d end
+            end
+        end
+    end
+    return best
+end
+
+local function stopDoctorTreatment()
+    local ped = doctorTreatmentPed
+    doctorTreatmentBusy = false
+    doctorTreatmentPed = nil
+    if ped and DoesEntityExist(ped) then
+        FreezeEntityPosition(ped, false)
+        ClearPedTasksImmediately(ped)
+    end
+end
+
 AddEventHandler('bs:medical:dot:doctor', function()
+    if doctorTreatmentBusy then return end
+    doctorTreatmentBusy = true
     CreateThread(function()
-        local r = BSB.Await('medical:doctor', 8000)
-        notify((r and r.ok) and 'success' or 'warn', (r and (r.message or r.error)) or L('err_cannot_use'))
+        local bed = findDoctorBed()
+        if not bed then
+            notify('warn', 'Keine freie Krankenliege in der Nähe gefunden. Prüfe Medical.DoctorTreatment.bedModels.')
+            doctorTreatmentBusy = false
+            return
+        end
+        local pos = GetEntityCoords(bed)
+        local r = BSB.Await('medical:doctorStart', 8000, { x = pos.x, y = pos.y, z = pos.z })
+        if not r or not r.ok then
+            notify('warn', (r and r.error) or L('err_cannot_use'))
+            doctorTreatmentBusy = false
+            return
+        end
+        local token, duration = r.token, tonumber(r.duration) or 60000
+        doctorTreatmentToken = token
+        local ped = PlayerPedId()
+        doctorTreatmentPed = ped
+        local bedPos = GetEntityCoords(bed)
+        local heading = GetEntityHeading(bed)
+        RequestCollisionAtCoord(bedPos.x, bedPos.y, bedPos.z)
+        local amin, amax = GetModelDimensions(GetEntityModel(bed))
+        -- Object origin is usually at floor height; place the lying pose on top of the mattress.
+        local height = math.max(0.45, math.min(1.15, (amax and amax.z or 0.65)))
+        SetEntityCoordsNoOffset(ped, bedPos.x, bedPos.y, bedPos.z + height, false, false, false)
+        SetEntityHeading(ped, heading + 180.0)
+        FreezeEntityPosition(ped, true)
+        local dict, clip = 'amb@world_human_sunbathe@male@back@base', 'base'
+        RequestAnimDict(dict)
+        local waited = 0
+        while not HasAnimDictLoaded(dict) and waited < 5000 do Wait(50) waited = waited + 50 end
+        if HasAnimDictLoaded(dict) then TaskPlayAnim(ped, dict, clip, 4.0, 4.0, -1, 1, 0, false, false, false) end
+        local started = GetGameTimer()
+        local aborted = false
+        while GetGameTimer() - started < duration do
+            Wait(0)
+            DisableAllControlActions(0)
+            EnableControlAction(0, 1, true) -- camera only
+            EnableControlAction(0, 2, true)
+            local remaining = math.max(0, math.ceil((duration - (GetGameTimer() - started)) / 1000))
+            SetTextFont(4) SetTextScale(0.0, 0.42) SetTextColour(255, 255, 255, 230)
+            SetTextCentre(true) SetTextOutline() BeginTextCommandDisplayText('STRING')
+            AddTextComponentSubstringPlayerName(('Behandlung: %ds'):format(remaining))
+            EndTextCommandDisplayText(0.5, 0.88)
+            if not doctorTreatmentBusy or not DoesEntityExist(ped) or IsPedDeadOrDying(ped, true)
+                or isDowned() or #(GetEntityCoords(ped) - (bedPos + vector3(0.0, 0.0, height))) > 2.0 then
+                aborted = true
+                break
+            end
+            if HasAnimDictLoaded(dict) and not IsEntityPlayingAnim(ped, dict, clip, 3) then
+                TaskPlayAnim(ped, dict, clip, 4.0, 4.0, -1, 1, 0, false, false, false)
+            end
+        end
+        if aborted then
+            TriggerServerEvent('bs:medical:doctorCancel', token)
+            stopDoctorTreatment()
+            notify('warn', 'Behandlung abgebrochen.')
+            return
+        end
+        -- Tiny buffer for client/server clock differences, no client-side healing.
+        Wait(250)
+        local result = BSB.Await('medical:doctorFinish', 8000, token)
+        stopDoctorTreatment()
+        doctorTreatmentToken = nil
+        notify((result and result.ok) and 'success' or 'warn',
+            (result and (result.message or result.error)) or L('err_cannot_use'))
     end)
 end)
 

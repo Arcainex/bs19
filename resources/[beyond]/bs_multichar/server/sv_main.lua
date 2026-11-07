@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_multichar server: validates the creator choices (identity, kit, outfit, faction) and
+-- BeyondSurvival - bs_multichar server: validates the creator choices (identity, kit, outfit, faction) and creates characters through bs_core.
 
 -- Creator data and validation. The client only ever sends choices (ids); every list below is checked against config here.
 
@@ -13,57 +13,72 @@ local function clothingOn()
     return Multichar.Creator and Multichar.Creator.clothingStep ~= false
 end
 
-local function emblemOf(fid)
-    if not fid or GetResourceState('bs_factions') ~= 'started' then return nil end
-    local ok, e = pcall(function() return exports.bs_factions:GetEmblem(fid) end)
-    return ok and e or nil
+-- Always read the CURRENT wardrobe rules; no restart is needed after an admin disables a texture.
+local function currentClothingRules()
+    local raw = LoadResourceFile('bs_clothing', 'data/clothing_rules.json')
+    if not raw then return { disabled = {}, disabledTextures = {}, torsoMappings = {} } end
+    local ok, rules = pcall(json.decode, raw)
+    if not ok or type(rules) ~= 'table' then return { disabled = {}, disabledTextures = {}, torsoMappings = {} } end
+    return {
+        disabled = type(rules.disabled) == 'table' and rules.disabled or {},
+        disabledTextures = type(rules.disabledTextures) == 'table' and rules.disabledTextures or {},
+        torsoMappings = type(rules.torsoMappings) == 'table' and rules.torsoMappings or {},
+    }
 end
 
-local function mottoOf(fid)
-    if not fid or GetResourceState('bs_factions') ~= 'started' then return nil end
-    local ok, id = pcall(function() return exports.bs_factions:GetIdentity(fid) end)
-    return ok and type(id) == 'table' and id.motto or nil
-end
-
--- Faction and emblem for each of this account's characters, for the selection cards.
-BSB.RegisterCallback('multichar:cards', function(src)
-    local ok, list = pcall(function() return exports.bs_core:ListCharacters(src) end)
-    if not ok or type(list) ~= 'table' or #list == 0 then return { ok = true, cards = {} } end
-    local ids, marks = {}, {}
-    for _, c in ipairs(list) do
-        local id = tonumber(c.id)
-        if id then ids[#ids + 1] = id; marks[#marks + 1] = '?' end
+-- The scene uses a separate non-player ped. Provide the stored weapons
+-- for ONLY a character belonging to this connected account.
+BSB.RegisterCallback('multichar:previewCarry', function(src, charId)
+    charId = tonumber(charId)
+    if not charId or charId < 1 or charId % 1 ~= 0 then
+        return { ok = false, items = {} }
     end
-    if #ids == 0 then return { ok = true, cards = {} } end
-    local query = ('SELECT m.character_id, m.faction_id, m.rank, r.label, r.short, r.logo FROM bs_faction_members m LEFT JOIN bs_faction_registry r ON r.faction_id = m.faction_id WHERE m.character_id IN (%s)'):format(table.concat(marks, ','))
-    local okq, res = pcall(function() return exports.oxmysql:query_async(query, ids) end)
-    local cards = {}
-    for _, r in ipairs(okq and type(res) == 'table' and res or {}) do
-        local fid = r.faction_id
-        cards[tostring(r.character_id)] = { faction = fid, label = r.label or fid, short = r.short or '', logo = r.logo, emblem = emblemOf(fid), motto = mottoOf(fid) }
+    local owned = false
+    local okList, characters = pcall(function() return exports.bs_core:ListCharacters(src) end)
+    if not okList or type(characters) ~= 'table' then return { ok = false, items = {} } end
+    for _, char in ipairs(characters) do
+        if tonumber(char.id) == charId then owned = true; break end
     end
-    return { ok = true, cards = cards }
+    if not owned then return { ok = false, items = {} } end
+    if GetResourceState('bs_inventory') ~= 'started' then return { ok = false, items = {} } end
+    local ok, items = pcall(function()
+        return exports.bs_inventory:WeaponCarryCharacterPreviewItems(charId)
+    end)
+    if not ok or type(items) ~= 'table' then
+        print('^3[Alpha-Z]^7 Konnte Hotbar fuer Vorschau nicht laden: '..tostring(items))
+        return { ok = false, items = {} }
+    end
+    return { ok = true, items = items }
 end)
+
+local function readDefaultOutfits()
+    local raw = LoadResourceFile(GetCurrentResourceName(), 'data/default_outfits.json')
+    local ok, data = pcall(json.decode, raw or '{}')
+    return ok and type(data) == 'table' and data or {}
+end
+local function canSetDefault(src)
+    return src > 0 and IsPlayerAceAllowed(src, 'alphaz.outfit.admin')
+end
 
 BSB.RegisterCallback('multichar:creatorData', function(src)
     local fac = creatorFactions()
-    for _, f in ipairs(fac.factions or {}) do
-        if type(f) == 'table' and f.id then f.emblem = f.emblem or emblemOf(f.id); f.motto = f.motto or mottoOf(f.id) end
-    end
     return {
         ok = true,
         clothingStep = clothingOn(),
         identity = Multichar.Identity,
         kit = Multichar.Kit,
         clothes = Multichar.Clothes,
+        clothingRules = currentClothingRules(),
         defaults = Multichar.Defaults,
+        defaultOutfits = readDefaultOutfits(),
+        canSaveDefaultOutfit = canSetDefault(src),
         roll = Multichar.Roll,
         factions = fac.factions,
         bonusCash = fac.bonusCash, bonusXp = fac.bonusXp,
     }
 end)
 
--- Text field: control characters and angle brackets removed, whitespace collapsed
+-- Text field: control characters and angle brackets removed, whitespace collapsed, length counted in characters (accents count once).
 local function cleanText(v, maxChars)
     if type(v) ~= 'string' then return '' end
     v = v:gsub('[%c<>]', ' '):gsub('%s+', ' '):gsub('^%s+', ''):gsub('%s+$', '')
@@ -104,23 +119,16 @@ local function validateKit(src, kit, classId)
     kit = type(kit) == 'table' and kit or {}
 
     local out = {}
-    local own = {}
-    for _, e in ipairs(classItems(classId)) do own[e.item] = true end
 
-    local melee
-    for _, m in ipairs(K.melee) do if m.id == kit.melee then melee = m end end
-    if not melee then return nil, Lp(src, 'mc.bad_kit') end
-    -- Already part of the origin's own kit: refused, so it is never granted twice.
-    if own[melee.item] then return nil, Lp(src, 'mc.kit_dup') end
-    out[#out + 1] = { item = melee.item, amount = 1 }
+    -- Fixed starter weapon. Never trust a client weapon selection; grant once on
+    -- successful character creation, independently of payload.kit.melee.
+    out[#out + 1] = { item = 'hunting_knife', amount = 1 }
 
     local seen, count = {}, 0
     for _, id in ipairs(type(kit.goodies) == 'table' and kit.goodies or {}) do
         local g
         for _, c in ipairs(K.goodies) do if c.id == id then g = c end end
         if not g or seen[id] then return nil, Lp(src, 'mc.bad_kit') end
-        -- Already part of the origin's own kit: refused, so it is never stacked twice.
-        if own[g.item] then return nil, Lp(src, 'mc.kit_dup_goodie') end
         seen[id] = true
         count = count + 1
         if count > (K.maxGoodies or 2) then return nil, Lp(src, 'mc.bad_kit') end
@@ -129,40 +137,104 @@ local function validateKit(src, kit, classId)
     return out
 end
 
-local DEFAULT_PICK = { top = 0, legs = 0, shoes = 1 }
+-- Server checks the chosen rule identity and active texture against the current rules.
+-- FiveM's collection-to-global native is client only; validation also uses a
+-- per-player catalog generated from the current preview ped; current rule bans
+-- are re-checked on every save (global indices are client-side native data).
+local catalogBySource = {}
+local function validRuleKey(key, gender, def)
+    if type(key) ~= 'string' or #key > 280 then return false end
+    local kind = def.c ~= nil and 'component' or 'prop'
+    local slot = tostring(def.c or def.p)
+    local prefix = gender .. '|' .. kind .. '|' .. slot .. '|'
+    return key:sub(1, #prefix) == prefix and key:match('^.-|.-|.-|.-|%d+$') ~= nil
+end
+
+-- Catalog is freshly generated by the client from actual collections. Registration
+-- validates *shape* and prevents value swapping after the character changes sex.
+BSB.RegisterCallback('multichar:registerCatalog', function(src, gender, list)
+    gender = gender == 'female' and 'female' or 'male'
+    if type(list) ~= 'table' then return { ok = false } end
+    local allowed = {}
+    local total = 0
+    for cat, entries in pairs(list) do
+        local def = Multichar.Clothes[cat]
+        if not def or type(def) ~= 'table' or (not def.c and not def.p) or type(entries) ~= 'table' then return { ok = false } end
+        local sub = {}
+        for _, entry in ipairs(entries) do
+            total = total + 1
+            if total > 12000 then return { ok = false } end
+            local d = math.floor(tonumber(entry.d) or -999)
+            local key = entry.k
+            if d >= 0 and d <= 15000 and validRuleKey(key, gender, def) and type(entry.ts)=='table' then
+                local ts = {}
+                for _, v in ipairs(entry.ts) do
+                    local n = tonumber(v)
+                    if n and n >= 0 and n <= 255 then ts[math.floor(n)] = true end
+                end
+                sub[d] = { k = key, ts = ts }
+            elseif def.p ~= nil and d == -1 then sub[-1] = { k = '', ts = { [0] = true } }
+            end
+        end
+        allowed[cat] = sub
+    end
+    catalogBySource[src] = catalogBySource[src] or {}
+    catalogBySource[src][gender] = allowed
+    return { ok = true }
+end)
+AddEventHandler('playerDropped', function() catalogBySource[source] = nil end)
 
 local function validateOutfit(src, o, gender)
     local C = Multichar.Clothes
     if type(o) ~= 'table' then return nil, Lp(src, 'mc.bad_outfit') end
     local sex = gender == 'female' and 'female' or 'male'
+    local saved = catalogBySource[src] and catalogBySource[src][sex]
+    if type(saved) ~= 'table' then return nil, Lp(src, 'mc.bad_outfit') end
+    local rules = currentClothingRules()
     local comps, props = {}, {}
-    local function tex(v) return math.max(0, math.min(C.maxTexture or 24, math.floor(tonumber(v) or 0))) end
-
     for id, def in pairs(C) do
-        if type(def) == 'table' and (def.c or def.p) then
-            local pick = type(o[id]) == 'table' and o[id] or {}
-            local d = math.floor(tonumber(pick.d) or (def.p and -1) or (DEFAULT_PICK[id] or 0))
-            if not inList(def[sex], d) then return nil, Lp(src, 'mc.bad_outfit') end
-            if def.c then
-                comps[tostring(def.c)] = { drawable = d, texture = tex(pick.t), palette = 2 }
+        if type(def) == 'table' and (def.c ~= nil or def.p ~= nil) then
+            local pick = o[id]
+            if type(pick) ~= 'table' then return nil, Lp(src, 'mc.bad_outfit') end
+            local d, tex = tonumber(pick.d), tonumber(pick.t)
+            if not d or d ~= math.floor(d) or not tex or tex ~= math.floor(tex) then return nil, Lp(src, 'mc.bad_outfit') end
+            local entry = saved[id] and saved[id][d]
+            if not entry or tex < 0 or tex > 255 or not entry.ts[tex] then return nil, Lp(src, 'mc.bad_outfit') end
+            if d >= 0 then
+                if not validRuleKey(pick.k, sex, def) or entry.k ~= pick.k then return nil, Lp(src, 'mc.bad_outfit') end
+                if rules.disabled[entry.k] or rules.disabledTextures[entry.k .. '|texture|' .. tostring(tex)] then
+                    return nil, Lp(src, 'mc.bad_outfit')
+                end
+                -- exclude gulag collection names even if a manipulated client sends a catalog
+                local lowered = entry.k:lower()
+                for _, fragment in ipairs(C.excludedCollections or {}) do
+                    if lowered:find(fragment:lower(), 1, true) then return nil, Lp(src, 'mc.bad_outfit') end
+                end
+            end
+            if def.c ~= nil then
+                comps[tostring(def.c)] = { drawable = d, texture = tex, palette = 2 }
             else
-                props[tostring(def.p)] = { drawable = d, texture = d < 0 and -1 or tex(pick.t) }
+                props[tostring(def.p)] = { drawable = d, texture = d < 0 and -1 or tex }
             end
         end
     end
-
-    -- Fixed bare undershirt (no creator slot for it).
-    comps['8'] = { drawable = 15, texture = 0, palette = 2 }
-
-    -- Arms follow the top unless the player set them; always inside armsRange.
-    local topD = comps['11'].drawable
-    local arms = tonumber(o.arms)
-    if arms == nil then arms = C.armsFor[sex][topD] or topD end
-    arms = math.floor(arms)
-    if arms < C.armsRange[1] or arms > C.armsRange[2] then return nil, Lp(src, 'mc.bad_outfit') end
-    comps['3'] = { drawable = arms, texture = 0, palette = 2 }
+    -- Bag/backpack slot cannot be selected or saved from character creation.
+    comps['5'] = { drawable = 0, texture = 0, palette = 2 }
     return { components = comps, props = props }
 end
+
+BSB.RegisterCallback('multichar:saveDefaultOutfit', function(src, gender, choices)
+    if not canSetDefault(src) then return { ok = false, error = 'Keine Adminberechtigung (alphaz.outfit.admin).' } end
+    gender = gender == 'female' and 'female' or 'male'
+    local validated, err = validateOutfit(src, choices, gender)
+    if not validated then return { ok = false, error = err or 'Ungültiges Outfit.' } end
+    local defaults = readDefaultOutfits()
+    defaults[gender] = choices
+    local ok = SaveResourceFile(GetCurrentResourceName(), 'data/default_outfits.json', json.encode(defaults), -1)
+    if not ok then return { ok = false, error = 'Outfit konnte nicht gespeichert werden.' } end
+    print(('[Alpha-Z] Standard-Outfit (%s) durch Spieler %s gespeichert.'):format(gender, src))
+    return { ok = true }
+end)
 
 BSB.RegisterCallback('multichar:create', function(src, payload)
     payload = type(payload) == 'table' and payload or {}
@@ -180,6 +252,13 @@ BSB.RegisterCallback('multichar:create', function(src, payload)
     local loadout, kitErr = validateKit(src, payload.kit, classId)
     if not loadout then return { ok = false, error = kitErr } end
 
+    -- Guaranteed starter supplies for every newly created character.
+    -- These are granted in addition to any optional creator extras selected above.
+    -- If the player also selects food/water/bandages as extras, the amounts stack.
+    loadout[#loadout + 1] = { item = 'canned_food',  amount = 2 }
+    loadout[#loadout + 1] = { item = 'water_bottle', amount = 2 }
+    loadout[#loadout + 1] = { item = 'bandage',      amount = 1 }
+
     local outfit
     if clothingOn() then
         local oErr
@@ -187,13 +266,35 @@ BSB.RegisterCallback('multichar:create', function(src, payload)
         if not outfit then return { ok = false, error = oErr } end
     end
 
-    -- Faction: required when the step exists (the list comes from bs_tutorial and is empty when the picker is off).
+    -- Alpha-Z: ein einziger Erstspawn-Bereich, unabhängig von der Fraktion.
+-- Radius per sqrt(uniform) -> gleichmäßige Verteilung über die Kreisfläche.
+-- Die einmalige Position wird beim Erstellen gespeichert und von bs_core
+-- nur beim ersten Spawn benutzt; alte Charaktere bleiben unverändert.
+local function newCharacterSpawn()
+    local cfg = Multichar.FirstSpawn
+    local r = math.sqrt(math.random()) * math.max(0.0, math.min(10.0, tonumber(cfg.radius) or 10.0))
+    local a = math.random() * math.pi * 2.0
+    return {
+        x = cfg.x + math.cos(a) * r,
+        y = cfg.y + math.sin(a) * r,
+        z = cfg.z,
+        h = cfg.h,
+    }
+end
+
+-- Every newly created character starts as a Civilian.
+    -- The canonical faction id in bs_factions is "civilians" (plural).
+    -- Ignore any faction id supplied by the client so character creation cannot override it.
     local fac = creatorFactions()
     local chosen
-    if #fac.factions > 0 then
-        for _, f in ipairs(fac.factions) do if f.id == payload.faction then chosen = f end end
-        if not chosen then return { ok = false, error = Lp(src, 'mc.bad_faction') } end
+    for _, f in ipairs(fac.factions or {}) do
+        if f.id == 'civilians' or f.id == 'civilian' or f.id == 'zivilisten' then
+            chosen = f
+            break
+        end
     end
+
+    -- Guaranteed starter supplies are already appended to loadout above.
 
     -- bs_core owns validation and the row itself.
     local result = exports.bs_core:CreateCharacterFor(src, {
@@ -207,8 +308,8 @@ BSB.RegisterCallback('multichar:create', function(src, payload)
         outfit = outfit,
         loadout = loadout,
         identity = identity,
-        spawn = chosen and chosen.spawn or nil,
-        pendingFaction = chosen and chosen.id or nil,
+        spawn = newCharacterSpawn(),
+        pendingFaction = chosen and chosen.id or 'civilians',
     })
 
     if not result or not result.ok then
@@ -225,7 +326,7 @@ BSB.RegisterCallback('multichar:create', function(src, payload)
     return { ok = true, charId = result.charId, characters = exports.bs_core:ListCharacters(src) }
 end)
 
--- Checked again on save.
+-- In-game appearance edit. bs_vip decides who may (monthly VIP change or staff ticket); bs_core sanitises and stores. Checked again on save.
 
 local function canChange(src)
     if GetResourceState('bs_vip') ~= 'started' then return false, Lp(src, 'mc.na') end
@@ -263,30 +364,3 @@ BSB.RegisterCallback('multichar:appearanceSave', function(src, appearance)
 end)
 
 exports.bs_core:RegisterModule('multichar', { side = 'server', version = '0.1.0' })
-
-
--- A character-selection bucket is temporary; it never makes the map location a safezone.
-local selectionBuckets = {}
-local function leaveSelection(src)
-    local entry=selectionBuckets[src]
-    if not entry then return end
-    selectionBuckets[src]=nil
-    if GetPlayerRoutingBucket(src)==entry.bucket then SetPlayerRoutingBucket(src,entry.previous)end
-end
-BSB.RegisterCallback('multichar:sceneEnter',function(src)
-    if exports.bs_core:GetPlayer(src) then return {ok=false,error='A character is already loaded.'}end
-    if not selectionBuckets[src] then
-        local bucket=900000+src
-        selectionBuckets[src]={bucket=bucket,previous=GetPlayerRoutingBucket(src)}
-        SetRoutingBucketPopulationEnabled(bucket,false)
-        SetRoutingBucketEntityLockdownMode(bucket,'strict')
-        SetPlayerRoutingBucket(src,bucket)
-    end
-    return {ok=true}
-end)
-RegisterNetEvent('bs:multichar:sceneLeave',function()leaveSelection(source)end)
-AddEventHandler('bs:hook:player:loaded',function(player)leaveSelection(player.source)end)
-AddEventHandler('playerDropped',function()selectionBuckets[source]=nil end)
-AddEventHandler('onResourceStop',function(resource)
-    if resource==GetCurrentResourceName()then for src in pairs(selectionBuckets)do leaveSelection(src)end end
-end)

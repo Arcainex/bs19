@@ -1,20 +1,22 @@
 -- bs_esx_bridge - ESX-shaped API for third-party ESX scripts.
+-- Add this file as a shared_script (after '@bs_core/shared/sh_bridge.lua') so ESX is built in the script's own Lua state; functions do not survive export boundaries.
+-- The getSharedObject export in sv_main.lua is a best-effort fallback only.
+-- See the unsupported-features list at the bottom of this file.
 
 ESX = ESX or {}
 ESX.Version = 'bs_esx_bridge 0.1.0'
 
 
 if IsDuplicityVersion() then
-    -- server --
+    ----------------------------------------------------------------- server --
 
-    -- xPlayer: a real object built locally, never sent across a boundary.
+    -- xPlayer: a real object built locally, never sent across a boundary. Every method calls bs_core's/bs_inventory's plain-data exports directly.
     local function buildXPlayer(src)
         src = tonumber(src)
         local self = { source = src }
 
         function self.getIdentifier()
-            local summary = exports.bs_core:GetPlayerSummary(src)
-            return summary and ('bs:%s'):format(summary.charId) or nil
+            return ('bs:%d'):format(src)
         end
 
         function self.getMoney()
@@ -67,17 +69,6 @@ if IsDuplicityVersion() then
             return exports.bs_core:RemoveMoney(src, key, amount, reason or 'esx_bridge')
         end
 
-        function self.setAccountMoney(name, amount, reason)
-            local key = accountKey(name)
-            amount = tonumber(amount)
-            if not key or not amount or amount < 0 or amount == math.huge or amount ~= amount then return false end
-            local current = self.getAccount(name).money
-            local target = math.floor(amount)
-            if target > current then return exports.bs_core:AddMoney(src, key, target - current, reason or 'esx_bridge') end
-            if target < current then return exports.bs_core:RemoveMoney(src, key, current - target, reason or 'esx_bridge') end
-            return true
-        end
-
         function self.addInventoryItem(item, count)
             local ok, given = pcall(function() return exports.bs_inventory:GiveItem(src, item, count or 1) end)
             return ok and given and true or false
@@ -110,7 +101,7 @@ if IsDuplicityVersion() then
             exports.bs_core:SetPlayerMeta(src, key, nil)
         end
 
-        -- Not real job/grade/salary parity (see the unsupported-features note).
+        -- Not real job/grade/salary parity (see the unsupported-features note). This is a label so job-gated scripts do not error on a nil job.
         function self.getJob()
             return { name = 'unemployed', label = 'Unemployed', grade = 0, grade_name = 'unemployed',
                 grade_label = 'Unemployed', grade_salary = 0 }
@@ -149,23 +140,6 @@ if IsDuplicityVersion() then
         return buildXPlayer(src)
     end
 
-    function ESX.GetPlayerFromIdentifier(identifier)
-        if type(identifier) ~= 'string' then return nil end
-        for src, player in pairs(exports.bs_core:GetPlayers()) do
-            if ('bs:%s'):format(player.charId) == identifier then
-                return ESX.GetPlayerFromId(src)
-            end
-        end
-    end
-
-    function ESX.GetExtendedPlayers()
-        local players = {}
-        for src in pairs(exports.bs_core:GetPlayers()) do
-            players[#players + 1] = ESX.GetPlayerFromId(src)
-        end
-        return players
-    end
-
     -- Server callback transport (client asks server)
 
     local SV_REQUEST  = 'bsesx:triggerServerCallback'
@@ -197,7 +171,7 @@ if IsDuplicityVersion() then
         end)
     end)
 
-    -- ESX.TriggerClientCallback(target, name, cb, ...) is built on BSB.AwaitClient
+    -- ESX.TriggerClientCallback(target, name, cb, ...) is built on BSB.AwaitClient, so clients register with the plain BSB.RegisterClientCallback name.
     function ESX.TriggerClientCallback(target, name, cb, ...)
         local args = table.pack(...)
         CreateThread(function()
@@ -246,7 +220,7 @@ if IsDuplicityVersion() then
         end)
     end
 else
-    -- client --
+    ----------------------------------------------------------------- client --
 
     ESX.PlayerData  = ESX.PlayerData or {}
     ESX.PlayerLoaded = ESX.PlayerLoaded or false
@@ -273,13 +247,12 @@ else
     -- Registers a callback the server may invoke on this client via ESX.TriggerClientCallback (alias of BSB.RegisterClientCallback).
     ESX.RegisterClientCallback = BSB.RegisterClientCallback
 
-    -- Standard events are re-broadcast from bs_core hooks by bs_esx_bridge/server/sv_main.lua and client/cl_main.lua.
+    -- Standard events are re-broadcast from bs_core hooks by bs_esx_bridge/server/sv_main.lua and client/cl_main.lua. Not registered here, since a shared file runs once per including resource and would re-broadcast.
 end
 
 -- Not supported by this bridge:
 -- - ESX job/society system (job/grade/salary). getJob()/setJob() are labels only; BeyondSurvival has bs_factions.
 -- - black_money: always 0.
 -- - Full weapon-loadout/component API (addWeaponComponent, setWeaponTint, per-component ammo). Use bs_weapons' exports.
--- - GetExtendedPlayers does not support ESX job/property filters yet.
--- - The es_extended resource name is provided by bs_esx_bridge on standalone BS19.
---   Scripts requiring other ESX files or unsupported APIs still need an adapter.
+-- - ESX.GetPlayerFromIdentifier: use ESX.GetPlayerFromId(source).
+-- - Scripts that hardcode exports['es_extended']:getSharedObject() need that line changed to bs_esx_bridge.

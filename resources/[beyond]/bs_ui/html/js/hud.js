@@ -12,6 +12,17 @@ let XPCFG = {};
 let barNodes = {};
 let idleTimer = null;
 
+// Alpha-Z: keep the last real HUD sample across settings/UI rebuilds.
+// Rebuilding the DOM must never reset the four base bars to 0 for a frame.
+let lastHudData = null;
+
+// Alpha-Z: optional bars must represent a real, stable status. Short one-tick
+// spikes from GTA/core updates must never make the HUD jump from 4 to 6 rows.
+const OPTIONAL_BAR_DELAY_MS = 1000;
+const optionalBarSince = {};
+const optionalBarActive = {};
+
+
 // Settings
 
 BS.on('settings', ({ settings = {}, theme = {}, bars = [], minimal = [], xp = {}, paletteVars = false }) => {
@@ -39,8 +50,8 @@ BS.on('settings', ({ settings = {}, theme = {}, bars = [], minimal = [], xp = {}
     root.setProperty('--bs-xp-width',    `${xp.width ?? 46}%`);
 
     hudEl.dataset.anchor = settings.hudAnchor || 'bottom-left';
-    hudEl.dataset.mode   = settings.hudMode || 'full';
-    hudEl.dataset.style  = settings.hudStyle || 'classic';
+    hudEl.dataset.mode   = 'full'; // Alpha-Z: fixed base HUD; optional statuses hide at zero
+    hudEl.dataset.style  = 'slim'; // Alpha-Z: server-fixed slim HUD
     xpEl.dataset.position = settings.xpPosition || 'top';
 
     // The quick bar and XP bar share the bottom of the screen; the bar lifts itself clear only when it has to.
@@ -55,9 +66,13 @@ BS.on('settings', ({ settings = {}, theme = {}, bars = [], minimal = [], xp = {}
 
 // Bars
 
+// Alpha-Z HUD: the four survival basics are always present. Optional status
+// bars are created too, but their hideAtZero flag keeps them invisible until
+// the status is actually active. Do not let a saved HUD mode swap the cluster
+// to a different 3/6-bar layout.
 function visibleBars() {
-    if ((SETTINGS.hudMode || 'full') !== 'minimal') return BARS.filter((b) => b.show !== false);
-    return BARS.filter((b) => b.show !== false && MINIMAL.includes(b.key));
+    const base = new Set(['health', 'stamina', 'hunger', 'thirst']);
+    return BARS.filter((b) => b.show !== false && (base.has(b.key) || b.hideAtZero === true));
 }
 
 // Bar names come from config in English; the locale key wins when it exists.
@@ -82,9 +97,12 @@ function buildBars() {
 
     for (const bar of visibleBars()) {
         const row = document.createElement('div');
-        row.className = 'hud__bar';
+        // Alpha-Z: optional bars must never flash visible when the settings
+        // message rebuilds the HUD. Preserve their current active state; on
+        // first build they start hidden until hudData proves the status active.
+        row.className = 'hud__bar' + (bar.hideAtZero && optionalBarActive[bar.key] !== true ? ' is-hidden' : '');
         row.innerHTML = `
-            ${BS.icon(bar.icon, 'hud__bar-icon')}
+            <span class="hud__bar-icon-wrap" style="color:${bar.color}">${BS.icon(bar.icon, 'hud__bar-icon')}</span>
             <span class="hud__bar-label">${barLabel(bar)}</span>
             <div class="hud__bar-track">
                 <div class="hud__bar-fill" style="background-color:${bar.color}"></div>
@@ -98,6 +116,18 @@ function buildBars() {
             fill: row.querySelector('.hud__bar-fill'),
             value: row.querySelector('.hud__bar-value'),
         };
+
+        // A settings refresh recreates the rows. Seed each recreated row with
+        // the last *real* status sample instead of the HTML/CSS default (0%).
+        // This removes the visible empty -> current-value jump.
+        if (lastHudData && Object.prototype.hasOwnProperty.call(lastHudData, bar.key)) {
+            const cached = Math.max(0, Math.min(100, Math.round(lastHudData[bar.key] ?? 0)));
+            barNodes[bar.key].fill.style.width = `${cached}%`;
+            barNodes[bar.key].row.style.setProperty('--bs-fill', `${cached}%`);
+            if (bar.key === 'health' && lastHudData.healthMax > 0) {
+                barNodes[bar.key].row.title = `${Math.round(lastHudData.healthNow)}/${Math.round(lastHudData.healthMax)} HP`;
+            }
+        }
     }
 }
 
@@ -113,14 +143,15 @@ BS.on('hud', ({ visible }) => {
 BS.on('hudData', ({ data }) => {
     if (!data) return;
 
+    // Cache only genuine Lua samples. Settings messages never overwrite this,
+    // so a later buildBars() can restore the current bar lengths immediately.
+    lastHudData = { ...data };
+
     for (const [key, node] of Object.entries(barNodes)) {
         const raw = Math.max(0, Math.min(100, Math.round(data[key] ?? 0)));
         node.fill.style.width = `${raw}%`;
         // Every bar reads as a percent so the columns line up; real HP (e.g. 190/190) lives in the tooltip.
-        // The noise row reads in metres of carry, not percent.
-        node.value.textContent = node.cfg.unit === 'm'
-            ? (data.noiseMetres === false ? '' : `${data.noiseRadius ?? 0}m`)
-            : `${raw}%`;
+        node.value.textContent = ''; // percentage hidden in HUD
         node.row.style.setProperty('--bs-fill', `${raw}%`);
         if (key === 'health' && data.healthMax > 0) {
             node.row.title = `${Math.round(data.healthNow)}/${Math.round(data.healthMax)} HP`;
@@ -133,18 +164,40 @@ BS.on('hudData', ({ data }) => {
             : raw <= (cfg.critical ?? -1);
         node.row.classList.toggle('is-critical', critical);
 
-        // Armour and infection vanish at zero rather than sitting there empty.
-        const hide = (cfg.hideAtZero && raw === 0) ||
-                     (SETTINGS.hideWhenFull && !cfg.inverted && raw >= 100) ||
-                     (key === 'noise' && !data.noiseShow);
-        node.row.classList.toggle('is-hidden', !!hide);
+        // Alpha-Z: optional rows (armour/infection) only appear when the status is
+        // genuinely active. Require a continuous positive value for one second so
+        // transient engine/core samples cannot make the HUD jump 4 -> 6 -> 4.
+        let hide = false;
+        if (cfg.hideAtZero) {
+            const now = performance.now();
+            if (raw > 0) {
+                if (!optionalBarSince[key]) optionalBarSince[key] = now;
+                if ((now - optionalBarSince[key]) >= OPTIONAL_BAR_DELAY_MS) optionalBarActive[key] = true;
+            } else {
+                optionalBarSince[key] = 0;
+                optionalBarActive[key] = false;
+            }
+            hide = optionalBarActive[key] !== true;
+        }
+        if (SETTINGS.hideWhenFull && !cfg.inverted && raw >= 100 && !cfg.hideAtZero) hide = true;
+        node.row.classList.toggle('is-hidden', hide);
     }
 
-    document.getElementById('hud-name').textContent = data.name || '';
-    document.getElementById('hud-class').textContent = data.class || '';
     document.getElementById('hud-cash').textContent = BS.money(data.cash);
 
     setXP(data.xp, data.xpToNext, data.level);
+});
+
+
+// YaCA microphone state + current proximity voice range.
+BS.on('yacaVoice', ({ muted = true, range = 0 }) => {
+    const voice = document.getElementById('hud-voice');
+    const rangeEl = document.getElementById('hud-voice-range');
+    if (voice) voice.dataset.muted = muted ? '1' : '0';
+    if (rangeEl) {
+        const metres = Number(range);
+        rangeEl.textContent = Number.isFinite(metres) && metres > 0 ? `${Math.round(metres)} m` : '-- m';
+    }
 });
 
 // XP bar
@@ -206,7 +259,7 @@ BS.on('levelUp', ({ level, from, skill }) => {
     el.classList.toggle('is-skill', skill === true);
     el.classList.remove('hidden');
 
-    // Restart every animation on the card. `animation: none` on the parent does not retrigger children
+    // Restart every animation on the card. `animation: none` on the parent does not retrigger children, so each element is reset and offsetWidth is read in between to force a reflow.
     [el, fromEl, toEl].forEach((node) => {
         node.style.animation = 'none';
         void node.offsetWidth;
@@ -232,7 +285,8 @@ function wake() {
     idleTimer = setTimeout(() => xpEl.classList.add('is-idle'), XPCFG.idleFade);
 }
 
-// Hotbar: five slots driven by bs_inventory. Drawn here because it must be visible while the bag is closed.
+// Hotbar
+// Five slots driven by bs_inventory. Drawn here because it must be visible while the bag is closed.
 
 const hotbarEl = document.getElementById('hotbar');
 
@@ -258,16 +312,18 @@ BS.on('hotbar', ({ slots, visible }) => {
                     ${bound ? `<span class="hotbar__count">${slot.capacity
                         ? Math.round(((slot.fill || 0) / slot.capacity) * 100) + '%'
                         : (slot.count ?? 0)}</span>` : ''}
+                    ${bound && slot.maxDurability ? `<span class="hotbar__durability"><i style="width:${Math.max(0, Math.min(100, Math.round((((slot.durability == null ? slot.maxDurability : slot.durability) || 0) / slot.maxDurability) * 100)))}%"></i></span>` : ''}
                  </div>`;
     }
 
     hotbarEl.innerHTML = html;
 
-    // Always five slots: empty slots show the keys and right-clicking an item in the bag offers to fill one.
+    // Always five slots. Empty slots show the keys and right-clicking an item in the bag offers to fill one. Hidden only when a menu is up.
     hotbarEl.classList.toggle('hidden', visible === false);
 });
 
-// Map frame: follows the radar's visibility. Pure overlay around the map, so nothing else to do.
+// Map frame
+// Follows the radar's visibility. Pure overlay around the map, so nothing else to do.
 
 const mapEl = document.getElementById('mapframe');
 
@@ -276,7 +332,8 @@ BS.on('mapframe', ({ show }) => {
     mapEl.classList.toggle('hidden', !show);
 });
 
-// Field map: the M-key full map; cl_fieldmap.lua moves a live minimap behind this frame, so only show/hide is needed.
+// Field map
+// The M-key full map; cl_fieldmap.lua moves a live minimap behind this frame, so only show/hide is needed.
 
 const fieldmapEl = document.getElementById('fieldmap');
 
@@ -285,7 +342,8 @@ BS.on('fieldmap', ({ show }) => {
     fieldmapEl.classList.toggle('hidden', !show);
 });
 
-// Dash HUD: speed, RPM, gear, heading, status icons, fuel and condition while driving
+// Dash HUD
+// Speed, RPM, gear, heading, status icons, fuel and condition while driving, as a compact technical panel. bs_vehicles (cl_hud.lua) sends one message per frame while driving; this only draws what it is given.
 
 const dashEl = document.getElementById('dashhud');
 const dashCtx = dashEl && dashEl.getContext('2d');
@@ -293,10 +351,10 @@ const dashCtx = dashEl && dashEl.getContext('2d');
 const DASH = {
     ink:    '#d6cea8',
     dim:    'rgba(214, 206, 168, 0.35)',
-    accent: '#c8763a',
+    accent: '#728c42',
     good:   '#a89e60',
-    worn:   '#d09e40',
-    poor:   '#c46c30',
+    worn:   '#93ab63',
+    poor:   '#728c42',
     gone:   '#a8342c',
 };
 const DASH_COLOR = { GOOD: DASH.good, WORN: DASH.worn, POOR: DASH.poor, GONE: DASH.gone };
@@ -450,7 +508,8 @@ function dashRow(x, y, w, label, value, valueColor, frac, barColor) {
     }
 }
 
-// Dash styles: the player picks one in the inventory Settings tab; bs_vehicles sends it as data.style.
+// Dash styles. The player picks one in the inventory Settings tab; bs_vehicles sends it as data.style.
+// Each style draws the same facts its own way. All are plain fills and strokes, no shadows or filters, so a frame stays cheap.
 
 // Field: the technical panel (default).
 function dashDrawField(data, W, H) {
@@ -547,7 +606,7 @@ function dashDrawField(data, W, H) {
 
 // Classic: the old round dial with the readout strip under it.
 function dashDrawClassic(data, W, H) {
-    // Layout: the dial holds the big speed number and the RPM sweep
+    // Layout: the dial holds the big speed number and the RPM sweep; facts (engine, hull, gear, fuel) sit below in a labelled readout strip.
 
     const cx = W / 2;
     const dialR = W * 0.47;
@@ -608,7 +667,7 @@ function dashDrawClassic(data, W, H) {
 }
 
 // Scrap: rusty analog speedo with a swinging needle and a small fuel dial.
-const SCRAP = { plate: 'rgba(52, 34, 22, 0.78)', rim: '#7a4a2a', rust: '#a3592e', ink: '#e3cfa4', needle: '#d8452c', rivet: '#5c3a22' };
+const SCRAP = { plate: 'rgba(52, 34, 22, 0.78)', rim: '#4b573e', rust: '#4b5d2a', ink: '#e3cfa4', needle: '#d8452c', rivet: '#5c3a22' };
 function dashDrawScrap(data, W, H) {
     const cx = W / 2, cy = W * 0.5, R = W * 0.46;
     const mph = data.unit === 'mph';
@@ -622,7 +681,7 @@ function dashDrawScrap(data, W, H) {
     dashCtx.strokeStyle = SCRAP.rim; dashCtx.lineWidth = W * 0.03;
     dashCtx.beginPath(); dashCtx.arc(cx, cy, R - W * 0.015, 0, Math.PI * 2); dashCtx.stroke();
     // rust blotches on the rim, fixed spots so nothing flickers
-    dashCtx.fillStyle = 'rgba(163, 89, 46, 0.55)';
+    dashCtx.fillStyle = 'rgba(114, 140, 66, 0.55)';
     for (const a of [0.3, 1.9, 2.6, 4.1, 5.2]) {
         dashCtx.beginPath();
         dashCtx.arc(cx + Math.cos(a) * (R - W * 0.02), cy + Math.sin(a) * (R - W * 0.02), W * 0.025, 0, Math.PI * 2);
@@ -839,7 +898,7 @@ function dashDrawTactical(data, W, H) {
     dashCtx.textBaseline = 'alphabetic';
 }
 
-// Extra dash styles: gauge, slate, cipher (VIP), hologram (VIP). SVG icons are Path2D (24x24 box).
+// ---- Extra dash styles: gauge, slate, cipher (VIP), hologram (VIP). SVG icons are Path2D (24x24 box).
 const DASH_SVG = {
     fuel:   'M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M6 7h6v4H6zM14 9h2.5a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V8l-3-3',
     engine: 'M3 11v4M6.5 9h3l1.5-2.5h5V9H19l2 2v5l-2 2H9l-2.5-2.5z',

@@ -1,19 +1,17 @@
 -- bs_zombies - networked walkers: one server-created OneSync ped per walker
 
 ZNet = {
-    enabled  = (Zombies.Mode or 'networked') ~= 'legacy',
+    enabled  = (Zombies.Mode or 'networked') == 'networked',
     ents     = {},   -- [entity] = record id (live walkers)
     corpses  = {},   -- [entity] = { id =, untilAt =, killCheckAt = }
     expected = {},   -- [entity] = reason, for deletes this file made itself
-    expectedAt = {}, -- [entity] = ms the delete was asked (a delete that never lands must not hide the ped forever)
     fps      = {},   -- [src] = { fps =, at = }
     count    = 0,
     cap      = 0,
     perf     = { avg = 0.0, samples = 0 },
     entities = { total = 0, peds = 0, objects = 0, vehicles = 0, at = 0 },
     stats    = { created = 0, failed = 0, demoted = 0, shed = 0, unexpected = 0,
-                 replaced = 0, orphans = 0, corpses = 0,
-                 deathAcked = 0, deathForced = 0, deathReplaced = 0 },
+                 replaced = 0, orphans = 0, corpses = 0 },
 }
 
 -- Clients read this at load to run the same mode (config_net.lua).
@@ -135,16 +133,6 @@ local function mirrorBags(record, ent, force)
     if force or m.feed ~= feed then m.feed = feed; bag(ent, 'zFeed', feed) end
     if force or m.state ~= st then m.state = st; bag(ent, 'zState', st) end
     if force or m.mhp ~= record.maxHp then m.mhp = record.maxHp; bag(ent, 'zMhp', record.maxHp) end
-    -- Server hp for the health bar on every client
-    if force or m.hp ~= record.hp then m.hp = record.hp; bag(ent, 'zHp', record.hp) end
-end
-
-function ZNet.MirrorHp(record)
-    if not record or not record.ent or not DoesEntityExist(record.ent) then return end
-    local m = record._bags or {}
-    record._bags = m
-    m.hp = record.hp
-    bag(record.ent, 'zHp', record.hp)
 end
 
 -- Create / delete
@@ -156,7 +144,6 @@ local function deleteEnt(ent, reason)
     -- Only expect an entityRemoved for an entity that still exists
     if DoesEntityExist(ent) then
         ZNet.expected[ent] = reason or 'server'
-        ZNet.expectedAt[ent] = GetGameTimer()
         DeleteEntity(ent)
     end
 end
@@ -171,8 +158,6 @@ end
 
 local function demote(record, reason)
     local ent = record.ent
-    -- A demoted record may get a ped again later; any other second create is refused (spawnEnt)
-    record.demotedAt = GetGameTimer()
     clearRecordEnt(record)
     deleteEnt(ent, reason or 'demote')
     ZNet.stats.demoted = ZNet.stats.demoted + 1
@@ -181,20 +166,6 @@ local function demote(record, reason)
 end
 
 local function spawnEnt(record)
-    -- Hard guard: an id that died never gets a ped again, and a ped is created once (again only after a demote)
-    if record.dead or (Registry.endedIds and Registry.endedIds[record.id]) then
-        print(('[BS ZOMBIES] RESPAWN BLOCKED id=%s (already dead/removed)'):format(tostring(record.id)))
-        return false
-    end
-    if (record.entCreated or 0) > 0 and not record.demotedAt then
-        print(('[BS ZOMBIES] RESPAWN BLOCKED id=%s (second create without a demote)'):format(tostring(record.id)))
-        return false
-    end
-    -- A promoted filler keeps its exact model and look, so no archetype swap
-    local variant = Zombies.Mode == 'networked_plus' and not record.look and Zombies.PickArchetype(record) or nil
-    if variant and variant.models and #variant.models > 0 then
-        record.model = variant.models[(math.floor(record.id or 0) % #variant.models) + 1]
-    end
     local model = record.model or (Zombies.Models or {})[1] or 'u_m_y_zombie_01'
     local hash = type(model) == 'number' and model or GetHashKey(model)
     local z = tonumber(record.z) or 0.0
@@ -202,11 +173,6 @@ local function spawnEnt(record)
     if needsGround then z = 0.0 end
 
     local ent = CreatePed(4, hash, record.x + 0.0, record.y + 0.0, z + 0.0, (record.h or 0.0) + 0.0, true, true)
-    if (not ent or ent == 0) and variant then
-        -- An unavailable add-on must not stall the promotion queue.
-        record.model = 'u_m_y_zombie_01'
-        ent = CreatePed(4, GetHashKey(record.model), record.x + 0.0, record.y + 0.0, z + 0.0, (record.h or 0.0) + 0.0, true, true)
-    end
     if not ent or ent == 0 then
         ZNet.stats.failed = ZNet.stats.failed + 1
         return false
@@ -231,8 +197,6 @@ local function spawnEnt(record)
     if needsGround then FreezeEntityPosition(ent, true) end
 
     record.ent = ent
-    record.entCreated = (record.entCreated or 0) + 1
-    record.demotedAt = nil
     record.farSince = nil
     record.net = NetworkGetNetworkIdFromEntity(ent)
     record.materialisedAt = record.materialisedAt or GetGameTimer()
@@ -242,19 +206,11 @@ local function spawnEnt(record)
 
     bag(ent, 'bsZombie', record.id)
     bag(ent, 'zType', tostring(record.typeId or 'walker'))
-    bag(ent, 'zGait', (variant and not record.crawler and variant.gait) or gaitFor(record.id, model, record.typeId, record.crawler))
-    if variant then bag(ent, 'zArchetype', variant.id); bag(ent, 'zPace', variant.speed) end
+    bag(ent, 'zGait', gaitFor(record.id, model, record.typeId, record.crawler))
     bag(ent, 'zReach', record.reacher == true)
-    if record.look then bag(ent, 'zLook', record.look) end
     bag(ent, 'zGround', needsGround)
     mirrorBags(record, ent, true)
     return true
-end
-
--- Hybrid population: a promoted filler walker gets its ped now, not on the next pass
-function ZNet.SpawnNow(record)
-    if not record or record.ent then return record and record.ent ~= nil end
-    return spawnEnt(record)
 end
 
 -- Caps
@@ -313,15 +269,6 @@ local function computeCap(nPlayers)
     local dens = ZDiff and ZDiff.Density() or 1.0
     base = math.min(math.floor(base * dens + 0.5), num(n.hardCap, 160))
     local why = {}
-    -- Hybrid population: the shared cap eases off with a crowded server and at night (config_filler.lua)
-    if ZFiller and ZFiller.Enabled() then
-        local k = ZFiller.PlayerScale(#GetPlayers())
-            * ZFiller.NightFactor(ZFiller.ServerHour and ZFiller.ServerHour() or nil)
-        if k ~= 1.0 then
-            base = math.floor(base * k + 0.5)
-            why[#why + 1] = ('hybrid x%.2f'):format(k)
-        end
-    end
     local f = 1.0
     local budget = num(n.perfBudgetMs, 70.0)
     if ZNet.perf.avg > budget then
@@ -365,7 +312,6 @@ local function pass()
 
     -- 1. SYNC every networked walker from its entity.
     local live = {}
-    local lost = {}
     for ent, id in pairs(ZNet.ents) do
         local record = Registry.zombies[id]
         if not record or record.ent ~= ent then
@@ -374,8 +320,8 @@ local function pass()
             ZNet.count = math.max(0, ZNet.count - 1)
             deleteEnt(ent, 'stale')
         elseif not DoesEntityExist(ent) then
-            -- entityRemoved normally handles this first. The walker is over: it never comes back with a new ped.
-            lost[#lost + 1] = record.id
+            -- entityRemoved normally handles this first
+            clearRecordEnt(record)
         else
             local at = GetEntityCoords(ent)
             if not (at.x == 0.0 and at.y == 0.0) then
@@ -407,11 +353,6 @@ local function pass()
                 live[#live + 1] = { record = record, d = d }
             end
         end
-    end
-
-    for _, id in ipairs(lost) do
-        local record = Registry.zombies[id]
-        if record then clearRecordEnt(record); Registry.Remove(id, 'entity-lost') end
     end
 
     -- 2. SHED over the cap / entity hard limit, farthest first.
@@ -544,8 +485,7 @@ function ZNet.OnRemove(record, reason)
             id = record.id,
             bornAt = GetGameTimer(),
             untilAt = GetGameTimer() + num(N().corpseSeconds, 120) * 1000,
-            -- The owner must confirm the ped really died (bs:z:net:deadAck), see the death confirmation below
-            deathAt = GetGameTimer(),
+            killCheckAt = GetGameTimer() + 3000,
             net = NetworkGetNetworkIdFromEntity(ent),
         }
         ZNet.stats.corpses = ZNet.stats.corpses + 1
@@ -637,49 +577,16 @@ CreateThread(function()
                 ZNet.corpses[ent] = nil
             elseif now >= deadline and (c.heldUntil or 0) <= now then
                 deleteEnt(ent, 'corpse')
-            end
-        end
-    end
-end)
-
--- Death confirmation. The server decides a walker is dead; the ped only dies on the client that owns it.
--- The server copy of a walker's engine health is not trustworthy (live walkers read 0 there), so the owner
--- confirms instead. No confirmation within deathConfirmMs: every client is told to kill or drop it.
--- Still none after deathReplaceMs more: the entity is deleted, so no walker stays standing after it died.
-RegisterNetEvent('bs:z:net:deadAck', function(id, net)
-    local src = source
-    local ent = NetworkGetEntityFromNetworkId(tonumber(net) or 0)
-    if not ent or ent == 0 then return end
-    local c = ZNet.corpses[ent]
-    if not c or tostring(c.id) ~= tostring(id) or c.ack then return end
-    if NetworkGetEntityOwner(ent) ~= src and c.forcedAt == nil then return end
-    c.ack, c.ackAt = src, GetGameTimer()
-    ZNet.stats.deathAcked = ZNet.stats.deathAcked + 1
-end)
-
-CreateThread(function()
-    while true do
-        Wait(250)
-        local now = GetGameTimer()
-        local confirmMs = num(N().deathConfirmMs, 1500)
-        local replaceMs = num(N().deathReplaceMs, 2500)
-        for ent, c in pairs(ZNet.corpses) do
-            if c.deathAt and not c.ack and DoesEntityExist(ent) then
-                if not c.forcedAt and now - c.deathAt >= confirmMs then
-                    c.forcedAt = now
-                    ZNet.stats.deathForced = ZNet.stats.deathForced + 1
+            elseif c.killCheckAt and now >= c.killCheckAt then
+                c.killCheckAt = nil
+                if GetEntityHealth(ent) > 0 then
                     local owner = NetworkGetEntityOwner(ent)
-                    if not owner or owner <= 0 then
+                    if owner and owner > 0 then
+                        TriggerClientEvent('bs:z:netkill', owner, c.net)
+                    else
                         -- nobody can kill it (server-owned): a standing corpse is worse than none
                         deleteEnt(ent, 'corpse-unowned')
-                    else
-                        TriggerClientEvent('bs:z:netkill', -1, c.net, c.id)
                     end
-                elseif c.forcedAt and now - c.forcedAt >= replaceMs then
-                    ZNet.stats.deathReplaced = ZNet.stats.deathReplaced + 1
-                    print(('^3[BS ZNET]^7 walker %s died on the server but its owner (src %s) never confirmed the ped died - entity deleted (%d so far)')
-                        :format(tostring(c.id), tostring(NetworkGetEntityOwner(ent)), ZNet.stats.deathReplaced))
-                    deleteEnt(ent, 'corpse-unconfirmed')
                 end
             end
         end
@@ -690,7 +597,6 @@ end)
 
 AddEventHandler('entityRemoved', function(ent)
     local expectedWhy = ZNet.expected[ent]
-    ZNet.expectedAt[ent] = nil
     if expectedWhy then ZNet.expected[ent] = nil; return end
     if ZNet.corpses[ent] then ZNet.corpses[ent] = nil; return end
     local id = ZNet.ents[ent]
@@ -705,9 +611,12 @@ AddEventHandler('entityRemoved', function(ent)
     end
     print(('^1[BS ZNET]^7 walker %s entity removed WITHOUT a server reason (owner src %s) - %d so far')
         :format(tostring(id), tostring(owner), ZNet.stats.unexpected))
-    -- Logged, not flagged: walkers can vanish without cheating. The record ends with its ped: re-creating it
-    -- under the same id gave a "new" walker at the same spot (a killed walker coming back with another look).
-    if record then Registry.Remove(id, 'entity-deleted') end
+    -- Logged, not flagged: walkers can vanish without cheating
+    if record and N().replaceOnUnexpectedDelete == false then
+        Registry.Remove(id, 'entity-deleted')
+    elseif record then
+        ZNet.stats.replaced = ZNet.stats.replaced + 1
+    end
 end)
 
 -- Orphans: bsZombie peds the registry does not know (resource restarts, races).
@@ -715,13 +624,7 @@ CreateThread(function()
     while true do
         Wait(math.max(2000, math.floor(num(N().orphanSweepMs, 10000))))
         local ok, peds = pcall(GetAllPeds)
-        local now = GetGameTimer()
         for _, p in ipairs(ok and peds or {}) do
-            -- A delete that has not landed after 15 s did not work: the ped is an orphan again
-            if ZNet.expected[p] and now - (ZNet.expectedAt[p] or now) > 15000 then
-                ZNet.expected[p], ZNet.expectedAt[p] = nil, nil
-                ZNet.stats.staleDeletes = (ZNet.stats.staleDeletes or 0) + 1
-            end
             if not ZNet.ents[p] and not ZNet.corpses[p] and not ZNet.expected[p] then
                 local st = Entity(p).state
                 local id = st and st.bsZombie
@@ -764,12 +667,6 @@ RegisterNetEvent('bs:z:net:grounded', function(id, z)
     z = tonumber(z)
     if z and z > -100.0 and z < 2000.0 then record.z = z; record.needsGround = false end
     bag(record.ent, 'zGround', false)
-end)
-
-RegisterNetEvent('bs:z:net:groundFailed', function(id)
-    local record = Registry.zombies[tonumber(id) or -1]
-    if not record or not record.ent or record.netOwner ~= source then return end
-    demote(record, 'noGround')
 end)
 
 RegisterNetEvent('bs:z:net:app', function(id)
@@ -829,20 +726,11 @@ function ZNet.DiagLines(src)
             local actual = ZStream and ZStream.PedsNear and ZStream.PedsNear(at.x,at.y,at.z,200.0) or 0
             out[#out+1] = ('   encounter: %d grounded/alive within 200m | owned %d | below %d above %d grounding %d | bucket %s')
                 :format(actual,owned,low,high,grounding,tostring(GetPlayerRoutingBucket(src)))
-            out[#out+1] = ('   entity checks: server-health-zero=%d (server copy only, not used for deaths) owner-never-reported=%d'):format(zeroHealth,unreported)
+            out[#out+1] = ('   entity checks: server-health-zero=%d owner-never-reported=%d'):format(zeroHealth,unreported)
         end
     end
     local d = ZNet.demotedBy or {}
     out[#out+1] = ('   demotions: far=%d cap=%d'):format(d.far or 0,d.cap or 0)
-    local hs = Registry.hitStats or {}
-    local refused = {}
-    for k, v in pairs(hs.refused or {}) do refused[#refused + 1] = k .. '=' .. v end
-    table.sort(refused)
-    out[#out+1] = ('   hits: received %d applied %d deaths %d | refused %s'):format(hs.received or 0, hs.applied or 0,
-        hs.deaths or 0, #refused > 0 and table.concat(refused, ' ') or 'none')
-    out[#out+1] = ('   deaths: owner-confirmed %d forced %d deleted-unconfirmed %d | reports healed %d refused %d | stale deletes %d')
-        :format(s.deathAcked or 0, s.deathForced or 0, s.deathReplaced or 0, Registry.reportHealed or 0,
-                Registry.reportRefused or 0, s.staleDeletes or 0)
     return out
 end
 

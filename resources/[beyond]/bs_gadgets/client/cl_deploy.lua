@@ -1,4 +1,5 @@
 -- Placement ghost and placed gadgets: turret, medic beacon, decoy.
+-- The turret only shoots peds bs_zombies says are its walkers; the server applies the damage.
 
 local G = GadgetCl
 
@@ -134,7 +135,7 @@ local function placeProp(model, pos, heading)
     return obj, netId
 end
 
--- Object health watcher: true once it has been broken locally.
+-- Object health watcher: true once it has been broken locally. Hits from other players are handled by the server (sv_main PvP), so only own shots, fire and falls are counted here. Nothing in safe zones.
 local function hitByOtherPlayer(obj)
     local me = PlayerId()
     for _, p in ipairs(GetActivePlayers()) do
@@ -185,12 +186,12 @@ RegisterNetEvent('bs:gadgets:breakFx', function(kind, pos)
     end
 end)
 
--- turret
+------------------------------------------------------------------ turret
 
 local function yawTo(from, to) return GetHeadingFromVector_2d(to.x - from.x, to.y - from.y) end
 local function angDiff(a, b) return (b - a + 540.0) % 360.0 - 180.0 end
 
--- Any player standing close to the atob line (a real bullet could clip them).
+-- Any player standing close to the a->b line (a real bullet could clip them).
 local function playerNearLine(a, b, pad)
     local ab = b - a
     local len2 = math.max(0.0001, ab.x * ab.x + ab.y * ab.y + ab.z * ab.z)
@@ -342,7 +343,7 @@ function G.TurretStart(t, pos, heading)
     end)
 end
 
--- Anyone near a turret sees and hears it fire; `from` is the barrel tip.
+-- Anyone near a turret sees and hears it fire; `from` is the barrel tip. A local harmless bullet gives the gunshot sound, tracer and impact. The server does the damage (GadgetHit).
 RegisterNetEvent('bs:gadgets:shotFx', function(from, to)
     if type(from) ~= 'vector3' or type(to) ~= 'vector3' then return end
     local fx = Gadgets.Fx
@@ -376,7 +377,7 @@ RegisterNetEvent('bs:gadgets:shotFx', function(from, to)
     end
 end)
 
--- beacon
+------------------------------------------------------------------ beacon
 
 local function ring(pos, radius, untilAt)
     CreateThread(function()
@@ -419,7 +420,7 @@ RegisterNetEvent('bs:gadgets:beaconFx', function(pos, radius, secs)
     ring(pos, tonumber(radius) or 10.0, GetGameTimer() + (tonumber(secs) or 30) * 1000)
 end)
 
--- decoy
+------------------------------------------------------------------- decoy
 
 function G.DecoyStart(t, pos, heading)
     putDownAnim()

@@ -162,7 +162,9 @@ AddEventHandler('bs:hook:player:action', function(player, actionId)
     if src and ACTION[actionId] and J.Ready then J.Progress(src, ACTION[actionId], 1) end
 end)
 
+--------------------------------------------------------------------------------
 -- Board callbacks
+--------------------------------------------------------------------------------
 
 local function board(src)
     local cid, fid = J.CharId(src), J.Faction(src)

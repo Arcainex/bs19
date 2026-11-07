@@ -6,12 +6,12 @@ const BS = {
         ? GetParentResourceName()
         : 'bs_ui',
 
-    /* Registers a handler for an incoming NUI action. */
+    /** Registers a handler for an incoming NUI action. */
     on(action, fn) {
         (this.handlers[action] ||= []).push(fn);
     },
 
-    /* POSTs to a RegisterNUICallback in cl_nui.lua. Returns the parsed body. */
+    /** POSTs to a RegisterNUICallback in cl_nui.lua. Returns the parsed body. */
     async post(endpoint, data = {}) {
         const res = await fetch(`https://${this.resource}/${endpoint}`, {
             method: 'POST',
@@ -21,7 +21,7 @@ const BS = {
         return res.json().catch(() => ({}));
     },
 
-    /* Calls a bs_core server callback through the generic bridge. */
+    /** Calls a bs_core server callback through the generic bridge. */
     callback(name, ...args) {
         return this.post('callback', { callback: name, args });
     },
@@ -44,7 +44,6 @@ const BS = {
             info:    'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4v.5M12 11v6',
             virus:   'M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19',
             bag:     'M6 8h12l-1 12H7L6 8zm3 0V6a3 3 0 0 1 6 0v2',
-            sound:   'M4 10v4h4l5 4V6l-5 4H4zm12-1.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12',
         };
         const d = paths[name] || paths.info;
         return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor"

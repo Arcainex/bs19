@@ -6,7 +6,7 @@ local pending  = {}
 local sequence = 0
 
 --- Registers a server callback a client can request.
---- fn(source, ...) to any (return values are sent back)
+--- fn(source, ...) -> any (return values are sent back)
 function BS.Callbacks.Register(name, fn)
     BS.Assert(type(name) == 'string', 'callback name must be a string')
     BS.Assert(type(fn) == 'function', 'callback handler must be a function')
@@ -19,6 +19,7 @@ end
 RegisterNetEvent(BS.Events.CallbackRequest, function(name, token, ...)
     local src = source
     local handler = handlers[name]
+    -- Stay silent: this event reaches every resource that includes sh_bridge.lua and only the owner of the name may answer.
     if not handler then return end
     local args = table.pack(...)
     CreateThread(function()

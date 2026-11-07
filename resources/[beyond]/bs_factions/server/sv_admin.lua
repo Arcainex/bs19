@@ -1,4 +1,4 @@
--- bs_factions - staff console behind the hub's ADMIN tab.
+-- bs_factions - staff console behind the hub's ADMIN tab. Every callback re-checks the ACE (bs.admin / bs.superadmin) and logs one audit line.
 
 local C, G = FactionsCore, FactionsProg
 local MARKS = { wolf = true, skull = true, claw = true, shield = true, eye = true, bolt = true, crown = true, serpent = true }
@@ -56,14 +56,16 @@ local function admin(name, needFaction, fn)
     end)
 end
 
--- reads
+--------------------------------------------------------------------- reads
 admin('overview', false, function()
     local counts = {}
     for _, r in ipairs(C.q('SELECT faction_id, COUNT(*) AS n FROM bs_faction_members GROUP BY faction_id')) do counts[r.faction_id] = tonumber(r.n) or 0 end
     local list = {}
     for id, f in pairs(C.Registry) do
-        local d = G and G.ready() and G.load(id)
-        list[#list + 1] = { id = id, label = f.label, short = f.short, logo = f.logo, emblem = FactionEmblem and FactionEmblem(id), isConfig = f.config, members = counts[id] or 0, level = d and d.level or 1 }
+        if id == 'civilians' or id == 'mechanic_workshop' then
+            local d = G and G.ready() and G.load(id)
+            list[#list + 1] = { id = id, label = f.label, short = f.short, logo = f.logo, isConfig = f.config, members = counts[id] or 0, level = d and d.level or 1 }
+        end
     end
     table.sort(list, function(a, b) if a.isConfig ~= b.isConfig then return a.isConfig end return a.label < b.label end)
     local online = {}
@@ -82,7 +84,7 @@ admin('detail', true, function(_, _, f)
         local st = m.src and C.State[m.src]
         m.rep = (st and st.rep) or reps[m.charId] or 0
     end
-    local out = { ok = true, id = f.id, label = f.label, short = f.short, description = f.description or '', logo = f.logo, emblem = FactionEmblem and FactionEmblem(f.id), custom = f.emblem ~= nil,
+    local out = { ok = true, id = f.id, label = f.label, short = f.short, description = f.description or '', logo = f.logo,
         isConfig = f.config, owner = f.owner, members = roster, treasury = C.treasury(f.id).balance, ranks = {} }
     for _, r in ipairs(C.ranksOf(f.id)) do out.ranks[#out.ranks + 1] = { id = r.id, label = r.label } end
     local d = progress(f.id)
@@ -100,7 +102,7 @@ admin('detail', true, function(_, _, f)
     return out
 end)
 
--- progression
+----------------------------------------------------------------- progression
 admin('progress', true, function(_, a, f)
     local d = progress(f.id); if not d then return fail('fac.adm.progstart') end
     local op, v = tostring(a.op or ''), int(a.value)
@@ -177,7 +179,7 @@ admin('treasury', true, function(src, a, f)
     return { ok = true, balance = want }
 end)
 
--- members
+--------------------------------------------------------------------- members
 local function detach(cid)
     C.x('DELETE FROM bs_faction_members WHERE character_id=?', { cid })
     if SquadRemoveChar then pcall(SquadRemoveChar, cid) end
@@ -264,7 +266,7 @@ admin('disband', true, function(_, _, f)
     return { ok = true, removed = true }
 end)
 
--- missions
+--------------------------------------------------------------------- missions
 admin('reroll', true, function(_, a, f)
     local d = progress(f.id); if not d then return fail('fac.adm.progstart') end
     local period = tostring(a.period or '')
@@ -291,7 +293,7 @@ admin('resetCooldowns', true, function(_, _, f)
     return { ok = true }
 end)
 
--- flags
+------------------------------------------------------------------------ flags
 admin('flagTeleport', false, function(src, a)
     local ok, flags = pcall(function() return exports.bs_faction_bases:ListFlags() end)
     if not ok then return fail('fac.adm.nobases') end
@@ -299,8 +301,7 @@ admin('flagTeleport', false, function(src, a)
         if fl.id == int(a.flagId) then
             local ped = GetPlayerPed(src)
             if not ped or ped == 0 then return fail('fac.adm.noped') end
-            if GetResourceState('bs_guard') == 'started' then pcall(function() exports.bs_guard:Allow(src, 'teleport', 20000) end) end
-            TriggerClientEvent('bs:core:safeTp', src, fl.x + 0.0, fl.y + 0.0, fl.z + 0.0)
+            SetEntityCoords(ped, fl.x + 0.0, fl.y + 0.0, fl.z + 1.0, false, false, false, false)
             return { ok = true }
         end
     end
@@ -313,7 +314,7 @@ admin('flagRemove', false, function(_, a)
     return done and { ok = true } or fail('fac.adm.noflag')
 end)
 
--- identity
+--------------------------------------------------------------------- identity
 admin('identity', true, function(_, a, f)
     local label = tostring(a.label or f.label):gsub('[%c]', ''):sub(1, 48)
     local short = tostring(a.short or f.short):upper():gsub('[^A-Z0-9]', ''):sub(1, 8)
@@ -342,7 +343,8 @@ admin('clearBriefing', true, function(_, _, f)
     return { ok = true }
 end)
 
--- bs_admin F10 exports: plain data for the staff menu's PLAYER view. bs_admin does the staff check and the
+-------------------------------------------------------- bs_admin F10 exports
+-- Plain data for the staff menu's PLAYER view. bs_admin does the staff check and the logging; these only apply.
 exports('AdminFactionList', function()
     local out = {}
     for id, f in pairs(C.Registry) do
@@ -392,3 +394,80 @@ exports('AdminSetMember', function(charId, factionId, rank)
     if s then C.State[s].rank = rank; C.sync(s) end
     return true
 end)
+
+-- Admin chat helper: move an online player directly into a faction.
+-- Usage: /setfaction <serverId> <factionId>
+-- Example: /setfaction 1 mechanic_workshop
+RegisterCommand('setfaction', function(src, args)
+    if src ~= 0 and not C.isAdmin(src) then
+        TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = 'Keine Berechtigung fuer /setfaction.', duration = 5000 })
+        return
+    end
+
+    local target = tonumber(args[1])
+    local fid = tostring(args[2] or '')
+    if not target or fid == '' then
+        local msg = 'Benutzung: /setfaction [ID] [Fraktion], z.B. /setfaction 1 mechanic_workshop'
+        if src == 0 then print('[bs_factions] ' .. msg) else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = msg, duration = 6500 }) end
+        return
+    end
+
+    if not GetPlayerName(target) then
+        local msg = 'Spieler-ID ist nicht online.'
+        if src == 0 then print('[bs_factions] ' .. msg) else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = msg, duration = 5000 }) end
+        return
+    end
+
+    local faction = C.Registry[fid]
+    if not faction then
+        local msg = ('Fraktion "%s" existiert nicht.'):format(fid)
+        if src == 0 then print('[bs_factions] ' .. msg) else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = msg, duration = 5000 }) end
+        return
+    end
+
+    local st = C.State[target]
+    if not st or not st.cid then
+        local msg = 'Charakterdaten des Spielers sind noch nicht geladen.'
+        if src == 0 then print('[bs_factions] ' .. msg) else TriggerClientEvent('bs:ui:notify', src, { type = 'error', message = msg, duration = 5000 }) end
+        return
+    end
+
+    local cid = st.cid
+    -- Mechaniker Werkstatt is an optional SECONDARY faction. Civilians always stays the primary faction.
+    if fid == 'mechanic_workshop' then
+        C.x([[CREATE TABLE IF NOT EXISTS bs_faction_secondary_members (character_id INT NOT NULL, faction_id VARCHAR(64) NOT NULL, rank VARCHAR(32) NOT NULL DEFAULT 'member', joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(character_id,faction_id))]])
+        C.x('INSERT INTO bs_faction_secondary_members(character_id,faction_id,rank) VALUES(?,?,?) ON DUPLICATE KEY UPDATE rank=VALUES(rank)',{cid,fid,'member'})
+        -- Ensure permanent Civilians primary membership.
+        C.x('DELETE FROM bs_faction_members WHERE character_id=?',{cid})
+        C.x('INSERT INTO bs_faction_members(character_id,faction_id,rank) VALUES(?,?,?)',{cid,'civilians','member'})
+        st.id='civilians'; st.rank='member'; st.rep=0; C.sync(target)
+        TriggerEvent('bs:hook:faction:changed',{source=target,charId=cid,factionId=fid,secondary=true})
+        TriggerClientEvent('bs:ui:notify',target,{type='success',message='Du bist jetzt zusaetzlich Mitglied der Mechaniker Werkstatt.',duration=5500})
+        if src~=0 and src~=target then TriggerClientEvent('bs:ui:notify',src,{type='success',message=(GetPlayerName(target) or ('#'..target))..' ist jetzt zusaetzlich Mechaniker.',duration=5500}) end
+        audit(src~=0 and src or target,'setfaction',fid,('target=%s char=%s secondary=true'):format(target,cid))
+        return
+    end
+    if fid ~= 'civilians' then
+        local msg='Diese Fraktion ist derzeit deaktiviert.'
+        if src==0 then print('[bs_factions] '..msg) else TriggerClientEvent('bs:ui:notify',src,{type='error',message=msg,duration=5000}) end
+        return
+    end
+    -- Remove the character from any previous faction and insert into the requested one.
+    C.x('DELETE FROM bs_faction_members WHERE character_id=?', { cid })
+    if SquadRemoveChar then pcall(SquadRemoveChar, cid) end
+    local rank = C.lowestRank(fid)
+    C.x('INSERT INTO bs_faction_members(character_id,faction_id,rank) VALUES(?,?,?)', { cid, fid, rank })
+
+    st.id = fid
+    st.rank = rank
+    st.rep = 0
+    C.sync(target)
+
+    -- Let dependent resources refresh immediately (jobs, crafting, UI).
+    TriggerEvent('bs:hook:faction:changed', { source = target, charId = cid, factionId = fid, rank = rank })
+    TriggerClientEvent('bs:ui:notify', target, { type = 'success', message = ('Du bist jetzt Mitglied von %s.'):format(faction.label or fid), duration = 5500 })
+    if src ~= 0 and src ~= target then
+        TriggerClientEvent('bs:ui:notify', src, { type = 'success', message = ('%s wurde %s zugewiesen.'):format(GetPlayerName(target) or ('#'..target), faction.label or fid), duration = 5500 })
+    end
+    audit(src ~= 0 and src or target, 'setfaction', fid, ('target=%s char=%s rank=%s'):format(target, cid, rank))
+end, false)

@@ -7,6 +7,8 @@ local Time = {
     lastTick = os.clock(),
 }
 
+local AlphaWeatherLocked = false
+
 local Weather = {
     current = World.Weather.startWith or 'OVERCAST',
     -- What we are blending to, nil when nothing is in progress.
@@ -84,7 +86,9 @@ end
 
 -- A newly connected client asks and is told immediately, so it does not join into the wrong sky
 RegisterNetEvent('bs:world:request', function()
-    broadcast(source)
+    local src = source
+    broadcast(src)
+    TriggerClientEvent('bs:world:alphaLock', src, AlphaWeatherLocked)
 end)
 
 -- The loops
@@ -107,7 +111,7 @@ CreateThread(function()
     while true do
         Wait(5000)
 
-        if not Weather.frozen then
+        if not AlphaWeatherLocked and not Weather.frozen then
             local holdFor = (World.Weather.holdMinutes or 30) * 60
 
             -- A finished transition becomes the settled weather
@@ -132,12 +136,6 @@ CreateThread(function()
 end)
 
 -- What staff can do to it
-
--- Current in-game hour, for systems that change with day and night
-exports('GetClockHours', function()
-    local h = clockParts()
-    return h
-end)
 
 -- Set the time and let it run; freezing is a separate choice.
 exports('SetTime', function(hour, minute)
@@ -180,6 +178,25 @@ exports('FreezeWeather', function(on)
     Weather.since = os.time()
     broadcast()
     return { ok = true, frozen = Weather.frozen }
+end)
+
+-- Alpha-Z can temporarily take exclusive ownership of weather without stopping the world clock.
+exports('SetAlphaWeatherLock', function(on)
+    AlphaWeatherLocked = on == true
+    TriggerClientEvent('bs:world:alphaLock', -1, AlphaWeatherLocked)
+
+    if not AlphaWeatherLocked then
+        -- Resume from a clean hold window and immediately restore normal world weather.
+        Weather.since = os.time()
+        TriggerClientEvent('bs:world:weather', -1, Weather.current, 0)
+        broadcast()
+    end
+
+    return { ok = true, locked = AlphaWeatherLocked }
+end)
+
+exports('IsAlphaWeatherLocked', function()
+    return AlphaWeatherLocked
 end)
 
 exports('WorldState', function()

@@ -1,4 +1,4 @@
-// BeyondSurvival - draggable + resizable floating panels for NUI menus.
+// BeyondSurvival - draggable + resizable floating panels for NUI menus. Position/size is remembered per id in localStorage. Works with BSScale (shared/scale.js): all math is in scaled (layout) pixels.
 (function () {
     'use strict';
     if (window.BSWindow) return;

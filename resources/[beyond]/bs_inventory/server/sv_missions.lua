@@ -1,6 +1,6 @@
 -- Mission Log tab. Any resource can list missions here: call exports.bs_inventory:RegisterMissionSource(GetCurrentResourceName())
--- and export MissionLogList(src) to { { id, title, steps = { { label, done } }, complete, claimed } } and
--- MissionLogClaim(src, id) to { ok, error }. The provider validates and pays the reward; this file only routes.
+-- and export MissionLogList(src) -> { { id, title, steps = { { label, done } }, complete, claimed } } and
+-- MissionLogClaim(src, id) -> { ok, error }. The provider validates and pays the reward; this file only routes.
 -- Optional entry fields: group (header text), hint (note under the steps), noClaim (progress only, no button).
 
 local Sources = {}   -- [resourceName] = true
@@ -45,10 +45,4 @@ BSB.RegisterCallback('inventory:missionClaim', function(src, res, id)
     if type(res) ~= 'string' or not Sources[res] or GetResourceState(res) ~= 'started' then return { ok = false } end
     local ok, r = pcall(function() return exports[res]:MissionLogClaim(src, tostring(id or '')) end)
     return (ok and type(r) == 'table') and r or { ok = false }
-end)
-
-BSB.RegisterCallback('inventory:missionAccept', function(src, res, id)
-    if type(res) ~= 'string' or not Sources[res] or GetResourceState(res) ~= 'started' then return { ok = false } end
-    local ok, result = pcall(function() return exports[res]:MissionLogAccept(src, tostring(id or '')) end)
-    return ok and type(result) == 'table' and result or { ok = false, error = 'This offer is unavailable.' }
 end)

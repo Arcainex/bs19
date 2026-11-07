@@ -1,4 +1,5 @@
--- Crash breadcrumbs: other resources call Crumb(tag, fmt, ...) from @bs_core/shared/sh_crumbs.lua.
+-- Crash breadcrumbs. Keeps the last N events in memory, flushes to KVP every couple of seconds and prints the previous session's list on start.
+-- Other resources call Crumb(tag, fmt, ...) from @bs_core/shared/sh_crumbs.lua.
 
 local cfg = Config.Crumbs or {}
 local KEY = 'bs_crumbs'

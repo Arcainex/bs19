@@ -1,4 +1,4 @@
--- BeyondSurvival - framework object: module registry, hooks and public exports.
+-- BeyondSurvival - framework object: module registry, hooks and public exports. Other resources use exports.bs_core:GetFramework() instead of requiring core files.
 
 BS = BS or {}
 
@@ -10,9 +10,12 @@ BS.Ready    = false
 BS.Modules  = {}
 BS.Hooks    = {}
 
+--------------------------------------------------------------------------------
 -- Module registry
+--------------------------------------------------------------------------------
 
 -- Registers a named module table so resources can attach to the core without circular requires.
+-- Pass plain data only: tables with functions do not survive the export boundary. Drive behaviour from 'bs:hook:*' events instead.
 function BS.RegisterModule(name, module)
     BS.Assert(type(name) == 'string' and name ~= '', 'module name must be a string')
     module = module or {}
@@ -53,12 +56,12 @@ end
 
 --- Subscribes to a framework hook. Returns an unsubscribe function.
 --- Known core hooks:
---- 'core:ready' ()
---- 'player:loaded' (player) server / (data) client
---- 'player:unloaded' (player)
---- 'player:levelUp' (player, level)
---- 'character:selected' (player, charId)
---- 'character:created' (player, charId)
+---   'core:ready'              ()
+---   'player:loaded'           (player)          server / (data) client
+---   'player:unloaded'         (player)
+---   'player:levelUp'          (player, level)
+---   'character:selected'      (player, charId)
+---   'character:created'       (player, charId)
 function BS.On(hook, fn)
     BS.Assert(type(fn) == 'function', 'hook handler must be a function')
     BS.Hooks[hook] = BS.Hooks[hook] or {}
@@ -71,7 +74,8 @@ function BS.On(hook, fn)
     end
 end
 
--- Fires a hook: handlers in this resource are called directly, then it is re-broadcast as the event 'bs:hook:<name>'.
+-- Fires a hook. Handlers in this resource are called directly, then it is re-broadcast as the event 'bs:hook:<name>'.
+-- Other resources must listen to that event, not BS.On: functions do not survive export marshalling ("error object is not a string").
 function BS.Emit(hook, ...)
     for _, fn in ipairs(BS.Hooks[hook] or {}) do
         local ok, err = pcall(fn, ...)
@@ -87,7 +91,9 @@ function BS.Emit(hook, ...)
     end
 end
 
+--------------------------------------------------------------------------------
 -- Config access
+--------------------------------------------------------------------------------
 
 BS.Config = Config
 
@@ -102,7 +108,9 @@ function BS.GetConfig(path, fallback)
     return node
 end
 
+--------------------------------------------------------------------------------
 -- Exports
+--------------------------------------------------------------------------------
 
 exports('GetFramework', function() return BS end)
 exports('RegisterModule', function(name, module) return BS.RegisterModule(name, module) end)

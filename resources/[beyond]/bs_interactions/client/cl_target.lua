@@ -1,30 +1,15 @@
--- bs_interactions - the dot.
+-- bs_interactions - the dot. Hold LALT to cast a ray from the camera; if it hits something with options the dot opens into a ring
+-- with the option list. E or click runs the highlighted one. Own raycast, registry and UI (not ox_target).
 
 Target = { active = false, entity = nil, options = {}, index = 1, open = false }
 
 local S = Interactions.Settings
 local lastScan = 0
-local lastTargetSig = nil   -- last options pushed to the page
 local outlined = nil
 local lastHide = 0
 local lastScanError = 0
 
 local function send(p) SendNUIMessage(p) end
-
-local function targetSettings(settings)
-    send({action='targetSettings',settings=settings or {}})
-end
-AddEventHandler('bs:ui:settingsChanged',targetSettings)
-CreateThread(function()
-    while true do
-        if GetResourceState('bs_ui')=='started' then
-            local ok,settings=pcall(function()return exports.bs_ui:GetHudSettings()end)
-            if ok then targetSettings(settings)end
-        end
-        Wait(4000)
-    end
-end)
-
 
 -- Raycast
 
@@ -58,12 +43,11 @@ local function castFromCamera()
     if hit == 0 or hit == false then return nil end
     -- Map geometry hits return handles that are not entities; never pass those on.
     if not entity or entity == 0 or not DoesEntityExist(entity) then return nil, endCoords end
-    -- The camera can sit past a wall in tight rooms: the player must see it too
-    if not HasEntityClearLosToEntity(ped, entity, 17) then return nil, endCoords end
     return entity, endCoords
 end
 
 -- Second cast from the player: a fan of three synchronous probes angled downward (no sync capsule native exists).
+-- Catches low things like bodies, bins and boot lids. Only runs when the camera probe found nothing.
 local function castFromPlayer()
     local ped = PlayerPedId()
     local at  = GetEntityCoords(ped)
@@ -101,7 +85,7 @@ local function castFromPlayer()
     return nil
 end
 
--- noOutline per entity: skips SetEntityDrawOutline for peds with an unusual flag combination
+-- noOutline per entity: skips SetEntityDrawOutline for peds with an unusual flag combination (frozen, invincible, untargetable, mission entity), e.g. bs_traders peds, as a suspected crash cause.
 local function setOutline(entity)
     if outlined == entity then return end
 
@@ -111,12 +95,16 @@ local function setOutline(entity)
     outlined = nil
 
     local flags = Registry.entityFlags and Registry.entityFlags[entity]
-    -- Never outline peds: the outline native crashes the client on some NPCs (military base doctor)
+    -- No outline on bodies: a corpse can be deleted by the server or the cleanup at any
+    -- moment, and an outline left on a removed ped took the client down.
+    -- Never use GTA's native outline on NPC peds. Frozen/local service NPCs (for
+    -- example the medical doctor) can crash the game inside SetEntityDrawOutline.
+    -- The ALT target and option list still work; only the risky ped outline is skipped.
+    local isPed = entity and entity ~= 0 and DoesEntityExist(entity) and IsEntityAPed(entity)
     if S.useOutline and entity and entity ~= 0 and DoesEntityExist(entity)
        and not (flags and flags.noOutline)
-       and not IsEntityAPed(entity)
-       -- Vehicles: GTA's outline shader draws a thick blob over the whole body and interior, so they get none
-       and not (IsEntityAVehicle(entity) and not S.outlineVehicles) then
+       and not (isPed and not IsPedAPlayer(entity))
+       and not (isPed and IsEntityDead(entity)) then
         SetEntityDrawOutlineColor(S.outline.r, S.outline.g, S.outline.b, S.outline.a)
         SetEntityDrawOutline(entity, true)
         outlined = entity
@@ -125,7 +113,7 @@ end
 
 -- Blocking conditions
 
--- Cross-resource exports are not free and this loop runs every frame
+-- Cross-resource exports are not free and this loop runs every frame, so the loaded flag is re-read from bs_core at most every 250ms.
 local _perfLoadedAt, _perfLoaded = 0, false
 local function loadedCached()
     local now = GetGameTimer()
@@ -145,14 +133,15 @@ local function blocked()
     if S.blockInVehicle and IsPedInAnyVehicle(ped, false) then return true end
     if not exports.bs_core:IsLoaded() then return true end
 
-    -- Disabled while a firearm is aimed or firing.
+    -- Disabled while a firearm is aimed or firing. A freshly deleted ped (shot zombie) can leave a stale entity handle, and reading it can crash the game.
+    -- Melee is not blocked. If crashes continue with melee, widen this check.
     if S.blockWhileAiming ~= false then
         if IsPlayerFreeAiming(PlayerId()) then return true end
         if IsPedShooting(ped) then return true end
 
         -- Read the aim control through both accessors, since other systems disable it.
         if IsControlPressed(0, 25) or IsDisabledControlPressed(0, 25) then
-            -- Only block when the held item can be aimed (GetMaxAmmoInClip > 0).
+            -- Only block when the held item can be aimed (GetMaxAmmoInClip > 0). Control 25 is also cover/vehicle aim, so unarmed RMB must not block looting.
             local _, hash = GetCurrentPedWeapon(ped, true)
             if hash and hash ~= 0 and IsWeaponValid(hash)
                 and GetMaxAmmoInClip(ped, hash, 0) > 1 then
@@ -166,7 +155,8 @@ end
 
 -- Proximity fallback: anything registered that is standing right next to you
 
--- Proximity scan for registered entities or entities with a registered model.
+-- Proximity scan for registered entities or entities with a registered model. Containers are registered by model and had no fallback.
+-- Uses GetGamePool, never the Find/EndFind iterators (use-after-free risk). Throttled by `poolInterval` in config.lua.
 local poolCacheAt = 0
 local poolCache = nil
 
@@ -187,12 +177,11 @@ local function registeredNearby(pedCoords)
         end
     end
 
-    -- Returns every candidate in reach, nearest first, so the caller can walk the list until one offers options.
+    -- Returns every candidate in reach, nearest first, so the caller can walk the list until one offers options. Registered handles sort ahead of model matches at equal distance.
     local candidates = {}
 
     for entityId in pairs(Registry.entities) do
-        local flags = Registry.entityFlags[entityId]
-        if DoesEntityExist(entityId) and not (flags and flags.raycastOnly) then
+        if DoesEntityExist(entityId) then
             local d = #(pedCoords - GetEntityCoords(entityId))
             if d <= S.maxDistance then
                 candidates[#candidates + 1] = { entity = entityId, dist = d, rank = 0 }
@@ -223,7 +212,7 @@ end
 
 -- Aiming loop
 
--- Compare options by value, not identity: tables crossing an export boundary are copies
+-- Compare options by value, not identity: tables crossing an export boundary are copies, so the same drop registered via AddEntity and AddZone would otherwise show up twice.
 local function sameOption(a, b)
     if a == b then return true end
     if type(a) ~= 'table' or type(b) ~= 'table' then return false end
@@ -257,12 +246,11 @@ local function clearTarget()
     Target.entity = nil
     Target.options = {}
     Target.index = 1
-    lastTargetSig = nil
     setOutline(nil)
     send({ action = 'target', state = 'idle' })
 end
 
--- Called by Registry.RemoveEntity while the handle is still valid
+-- Called by Registry.RemoveEntity while the handle is still valid, so the outline can be switched off before the caller deletes the entity.
 function Target.ForceRelease(entity)
     if entity and (entity == Target.entity or entity == outlined) then
         clearTarget()
@@ -278,7 +266,7 @@ CreateThread(function()
     local wasAiming = false
 
     while true do
-        -- LALT is INPUT_CHARACTER_WHEEL, which freezes the camera and slows time.
+        -- LALT is INPUT_CHARACTER_WHEEL, which freezes the camera and slows time. Disable it every frame and read it through the disabled check.
         if loadedCached() then
             DisableControlAction(0, S.targetKey, true)
             DisableControlAction(0, 20, true)      -- multiplayer info / char wheel sibling
@@ -295,14 +283,12 @@ CreateThread(function()
         -- Re-send "hidden" a few times a second while not aiming, so a dropped message can never leave the dot stuck on screen.
         if not aiming and GetGameTimer() - (lastHide or 0) > 400 then
             lastHide = GetGameTimer()
-            lastTargetSig = nil
             send({ action = 'dot', visible = false })
             send({ action = 'target', state = 'idle' })
         end
 
         if aiming then
-            -- Keys are read every frame; only the scan below is throttled by scanInterval.
-            Wait(0)
+            Wait(S.scanInterval or 0)
 
             if GetGameTimer() - lastScan >= (S.scanInterval or 0) then
                 lastScan = GetGameTimer()
@@ -327,7 +313,8 @@ CreateThread(function()
                 local options = {}
                 local hitEntity = nil
 
-                -- Fallbacks are gated on "no options yet", not on "the ray hit something": in third person the ray usually hits
+                -- Fallbacks are gated on "no options yet", not on "the ray hit something": in third person the ray usually hits some unrelated entity past the target and the fallbacks were being skipped.
+                -- An entity that offers nothing is not claimed as the target.
                 if entity and entity ~= 0 and distance <= S.maxDistance then
                     local hitOptions = Registry.Resolve(entity, coords, distance, false)
                     if #hitOptions > 0 then
@@ -338,7 +325,9 @@ CreateThread(function()
                     end
                 end
 
-                -- Vehicles are found by proximity to the player, since the camera ray passes over low bonnets and boot lids.
+                -- Vehicles are found by proximity to the player, since the camera ray passes over low bonnets and boot lids. Only fills in when the ray found nothing.
+                -- General fallback, tried first of the three; it also covers props. The two below catch cars beside you and bodies underfoot.
+                -- Gated on "no options yet", not "no raycast hit".
                 if #options == 0 then
                     local entity2, coords2 = castFromPlayer()
                     if entity2 then
@@ -402,24 +391,18 @@ CreateThread(function()
 
                     setOutline(hitEntity)
 
-                    local list, sig = {}, {}
-                    for i, o in ipairs(options) do
-                        local label = Registry.Label(o)
-                        list[i] = { label = label, icon = o.icon, hint = o.hint }
-                        sig[i] = tostring(label) .. '|' .. tostring(o.icon) .. '|' .. tostring(o.hint)
-                    end
-                    sig = Target.index .. '#' .. table.concat(sig, ';')
-
-                    -- Same options as the last scan: the page already has them, skip the message.
-                    if sig ~= lastTargetSig then
-                        lastTargetSig = sig
-                        send({
-                            action = 'target',
-                            state = 'live',
-                            options = list,
-                            index = Target.index,
-                        })
-                    end
+                    send({
+                        action = 'target',
+                        state = 'live',
+                        options = (function()
+                            local list = {}
+                            for i, o in ipairs(options) do
+                                list[i] = { label = Registry.Label(o), icon = o.icon, hint = o.hint }
+                            end
+                            return list
+                        end)(),
+                        index = Target.index,
+                    })
                 else
                     clearTarget()
                 end
@@ -464,16 +447,10 @@ function Target.Run(index)
     local entity = Target.entity
     if not option then return end
 
-    -- Direct targets must still be under the cursor when the player selects an option.
-    local flags = entity and Registry.entityFlags[entity]
-    if flags and flags.raycastOnly and castFromCamera() ~= entity then
-        clearTarget()
-        return
-    end
-
     clearTarget()
 
-    -- The body or prop was removed between the scan and the key press.
+    -- The body or prop was removed between the scan and the key press. Running the option
+    -- would hand a dead handle to the kneel and loot code.
     if entity and not DoesEntityExist(entity) then return end
 
     local netId = 0
@@ -523,11 +500,12 @@ end)
 exports('IsTargeting', function() return Target.active end)
 exports('CurrentEntity', function() return Target.entity end)
 
--- Prop debug overlay: lives in this file to use the file-local castFromCamera/castFromPlayer.
+-- Prop debug overlay. Lives in this file to use the file-local castFromCamera/castFromPlayer. Kept at the bottom because a local function referenced above its declaration is nil at runtime.
+-- Shows model name (if resolvable), model hash (always, paste it into configs), entity type, handle, distance and whether the registry has options for the model.
 
 local debugOn = false
 
--- Names cannot be recovered from hashes.
+-- Names cannot be recovered from hashes. Sources: GetEntityArchetypeName if the build has it (called via _G in pcall), then model names this resource registered earlier.
 local function modelName(entity, hash)
     local native = rawget(_G, 'GetEntityArchetypeName')
     if type(native) == 'function' then
@@ -542,6 +520,7 @@ end
 local typeNames = { [1] = 'ped', [2] = 'vehicle', [3] = 'object' }
 
 -- Nearest entity of any kind, registered or not (the overlay identifies props the registry does not know yet).
+-- Uses GetGamePool, never the Find/EndFind iterators, and reuses poolCache.
 local function debugNearest(pedCoords)
     -- Refreshes poolCache on the poolInterval throttle when the aiming loop is not doing it.
     registeredNearby(pedCoords)
@@ -559,7 +538,10 @@ local function debugNearest(pedCoords)
     return best, bestDist
 end
 
--- Debug pick does not use Target.entity (only set for entities with options).
+-- Debug pick does not use Target.entity (only set for entities with options). Both ray and pool sources are collected and the closest to the player wins.
+-- Separate debug ray: uses S.debugDistance instead of maxDistance; ray first since static map props are not in the object pool, pool as fallback; uses S.traceFlags (all bits).
+-- Terrain and baked building shells have no entity, so that case reports hit position and surface material instead.
+-- Returns entity|nil, distance|nil, worldHit|nil.
 local function debugCast()
     local ped = PlayerPedId()
     local camCoords = GetGameplayCamCoord()
@@ -604,7 +586,7 @@ local function debugPick()
     local entity, distance, worldHit = debugCast()
     if entity then return entity, distance end
 
-    -- The pool, at debug range. Second, so a far pool object does not beat the thing you point at.
+    -- Then the pool, at debug range. Second on purpose, so a far pool object does not beat the thing you point at.
     registeredNearby(pedCoords)
 
     local best, bestDist = nil, math.huge
@@ -677,7 +659,7 @@ CreateThread(function()
                 local name = hash and modelName(entity, hash) or nil
                 local eType = typeNames[GetEntityType(entity)] or 'unknown'
 
-                -- Name and hash lines are separate: the hash is what you paste into a config, so it must show even if the name lookup fails.
+                -- Name and hash lines are separate on purpose: the hash is what you paste into a config, so it must show even if the name lookup fails.
                 drawDebugLine(('model: ~b~%s~s~'):format(name or 'unresolved'), 0.040)
                 drawDebugLine(('hash : ~g~%s~s~'):format(
                     hash and tostring(hash) or 'UNREADABLE'), 0.055)
@@ -693,6 +675,8 @@ CreateThread(function()
 end)
 
 -- Toggled from the server only (see sv_main.lua), since the client cannot test an ACE. Off by default.
+-- Exports the debug pick (long-range ray plus pool fallback, see debugCast) for overlays like bs_admin's prop-ID tool.
+-- Returns entity|nil, distance|nil, worldHit|nil. worldHit is set when the ray hit map geometry with no entity.
 exports('DebugLookAt', function()
     local ok, entity, distance, worldHit = pcall(debugPick)
     if not ok then return nil end

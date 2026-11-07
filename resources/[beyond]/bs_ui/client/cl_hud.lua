@@ -1,4 +1,4 @@
--- bs_ui - HUD driver: pushes state to the NUI on a timer, hides the vanilla minimap and replaced HUD components
+-- bs_ui - HUD driver. Pushes state to the NUI on a timer, hides the vanilla minimap and replaced HUD components, and re-applies saved player preferences (mode, anchor, opacity, XP bar) on spawn.
 
 local visible = false
 local settings = nil          -- resolved player preferences
@@ -18,25 +18,15 @@ local function defaults()
         xpPosition   = UI.XPBar.position,
         xpOpacity    = UI.XPBar.opacity,
         xpPopups     = UI.XPBar.popups,
-        hudStyle     = 'classic',   -- status HUD look, see UI.HudStyles
-        targetStyle = 'panel', targetOpacity = 0.94, targetScale = 1.0,
-        themeAccent = '#e08c46',
-        themeBackground = '#0a0a09',
-        themeText = '#f0ebdd',
-        themeMuted = '#a8a293',
+        hudStyle     = 'slim',   -- status HUD look, see UI.HudStyles
         menuPalette  = 'default',   -- menu colours, see UI.Palettes
         dodge        = true,   -- Shift + double-tap roll (bs_skills); a player can switch it off
-        -- Fighting HUD (bs_fighting): minimal / full / off, plus each piece on its own
-        fightHud     = 'minimal',
-        fightCombo   = true,
-        fightParry   = true,
-        fightStyle   = true,
 
         -- Personal screen filter (see cl_filter.lua), stored with the other per-character display preferences.
         filter         = UI.FilterDefaults.filter,
         filterStrength = UI.FilterDefaults.filterStrength,
 
-        -- Zombie voice volume: must be in this table or it is never pushed to the page nor saved
+        -- Zombie voice volume. Must be in this table or it is never pushed to the page nor saved, and the slider (read by cl_sound.lua, default 0.15) does nothing.
         zombieVoiceVolume = UI.Settings.zombieVoiceVolume,
     }
 end
@@ -64,25 +54,19 @@ end
 function HudEffectivePalette()
     local id = effective(UI.Palettes, settings and settings.menuPalette, 'default')
     local d = findDef(UI.Palettes, id)
-    if id == 'custom' then
-        local function colour(key, fallback)
-            local v = settings and settings[key]
-            return type(v)=='string' and v:match('^#%x%x%x%x%x%x$') and v or fallback
-        end
-        return id, { accent=colour('themeAccent','#e08c46'), hi=colour('themeAccent','#e08c46'), bg=colour('themeBackground','#0a0a09'), text=colour('themeText','#f0ebdd'), muted=colour('themeMuted','#a8a293'), blood='#a63d32' }
-    end
     return id, d and d.vars or nil
 end
 
 local function pushSettings()
-    -- Filter is applied here because every settings change (settings pane, spawn hook, cinematic camera picker)
+    -- Filter is applied here because every settings change (settings pane, spawn hook, cinematic camera picker) ends up in this function. Guarded on the global so the HUD still works if cl_filter.lua failed to load.
     if FilterApply then
         FilterApply(settings and settings.filter, settings and settings.filterStrength)
     end
 
     local shown = {}
     for k, v in pairs(settings or {}) do shown[k] = v end
-    shown.hudStyle = effective(UI.HudStyles, shown.hudStyle, 'classic')
+    shown.hudStyle = 'slim' -- Alpha-Z: fixed server HUD style
+    shown.hudMode = 'full'  -- Alpha-Z: fixed four-bar base layout
     local palId, palVars = HudEffectivePalette()
     shown.menuPalette = palId
 
@@ -96,7 +80,7 @@ local function pushSettings()
         xp       = UI.XPBar,
     })
 
-    -- Raise bs:ui:settingsChanged for listeners such as the zombie mixer in cl_sound.lua.
+    -- Raise bs:ui:settingsChanged for listeners such as the zombie mixer in cl_sound.lua. Fired last, after the page is updated, so a throwing handler cannot cost the HUD its update.
     TriggerEvent('bs:ui:settingsChanged', settings)
 end
 
@@ -104,12 +88,8 @@ end
 function HudApplySettings(patch, persist)
     settings = settings or defaults()
     for k, v in pairs(patch or {}) do
-        if k == 'targetStyle' then
-            if v=='panel' or v=='compact' or v=='bracket' then settings[k]=v end
-        elseif k=='targetOpacity' or k=='targetScale' then
-            if type(v)=='number' and v==v then settings[k]=math.max(k=='targetOpacity' and .55 or .75,math.min(k=='targetOpacity' and 1 or 1.5,v)) end
-        elseif k=='themeAccent' or k=='themeBackground' or k=='themeText' or k=='themeMuted' then
-            if type(v)=='string' and v:match('^#%x%x%x%x%x%x$') then settings[k]=v:lower() end
+        if k == 'hudMode' then
+            settings.hudMode = 'full' -- Alpha-Z: layout is server-fixed
         elseif k == 'hudStyle' or k == 'menuPalette' then
             -- unknown ids and locked VIP looks are ignored
             local def = findDef(k == 'hudStyle' and UI.HudStyles or UI.Palettes, v)
@@ -126,15 +106,13 @@ function HudApplySettings(patch, persist)
     return settings
 end
 
-exports('ApplyHudSettings', function(patch, persist) return HudApplySettings(patch, persist) end)
-exports('GetHudSettings', function() return settings or defaults() end)
+-- Alpha-Z: external HUD exports are registered early by cl_hud_exports.lua.
 
 -- Lists for the settings screens (inventory, pause). vip = whether the locks are open for this player.
 exports('UiChoices', function()
     local pal = {}
     for _, d in ipairs(UI.Palettes) do
         local v = d.vars
-        if d.id=='custom' then local _,custom=HudEffectivePalette(); if settings and settings.menuPalette=='custom' then v=custom end end
         pal[#pal + 1] = { id = d.id, label = d.label, vip = d.vip == true,
             sw = v and { v.accent, v.bg, v.text } or d.sw, vars = v }
     end
@@ -148,7 +126,7 @@ function HudGetSettings() return settings or defaults() end
 
 -- Minimap
 
--- Turns the game's radar on/off.
+-- Turns the game's radar on/off. The paper frame around it is drawn by the NUI, since the page cannot recolour the radar itself. The vanilla ring, health bar and sonar cone are removed and zoom is pulled back.
 -- @param show boolean turn the vanilla radar on/off.
 -- @param showFrame boolean|nil whether the corner paper-frame follows it (default true). The field map passes false because it moves the radar to its own box (HudSetMinimapRect) while the corner frame is pinned in CSS. See openMap() in cl_fieldmap.lua.
 function HudSetMinimap(show, showFrame)
@@ -168,30 +146,34 @@ end
 -- Strip vanilla map pieces. Re-applied on a loop because the engine restores several on respawn and interior transitions.
 CreateThread(function()
     while true do
-        Wait(1500)
+        Wait(0)
 
-        -- Health/armour ring around the minimap.
-        pcall(SetMinimapComponent, 13, false)   -- ring
+        -- Alpha-Z owns the normal gameplay HUD. Keep GTA's radar/minimap and
+        -- its built-in health/armour strip hidden every frame. The field map
+        -- is the only system allowed to force the radar back on.
+        if not minimapForced and not bigmapForced then
+            DisplayRadar(false)
+        end
+
+        pcall(SetMinimapComponent, 13, false)
         pcall(SetMinimapComponent, 14, false)
         pcall(SetMinimapComponent, 15, false)
 
-        -- Square map instead of the round one. Skipped while the field map wants the expanded view, or this thread would force it back off.
         if not bigmapForced then
             pcall(SetRadarBigmapEnabled, false, false)
-            -- Zoom pulled back (default 900; GTA's default is too zoomed in, 1100 too far out). Configurable via UI.Minimap.zoom.
-            pcall(SetRadarZoom, UI.Minimap.zoom or 900)
         end
     end
 end)
 
--- Expanded map: this no longer calls SetRadarBigmapEnabled: in bigmap mode the game ignores
+-- Expanded map. This no longer calls SetRadarBigmapEnabled: in bigmap mode the game ignores SetMinimapComponentPosition, so the custom rect never applied.
+-- Instead the normal radar component is resized through HudSetMinimapRect, and this only sets the flag the strip-back thread checks so its zoom reset does not fight the field map's scroll-to-zoom.
 function HudSetBigmap(on)
     bigmapForced = on and true or false
 end
 
 exports('SetBigmap', HudSetBigmap)
 
--- Relocate the radar (SET_MINIMAP_COMPONENT_POSITION).
+-- Relocate the radar (SET_MINIMAP_COMPONENT_POSITION). Coordinates are screen fractions (0..1, top-left origin), so callers can pass getBoundingClientRect() values straight through.
 local DEFAULT_MINIMAP = { alignX = 'L', alignY = 'B', pivotX = 0.0, pivotY = -0.047, sizeX = 0.1638, sizeY = 0.183 }
 local customRect = nil     -- non-nil while something has relocated the map
 
@@ -206,7 +188,7 @@ local function applyRect(r)
         r.x - 0.01, r.y - 0.01, r.w + 0.02, r.h + 0.02)
 end
 
--- The vanilla radar is three scaleform components: minimap (imagery), minimap_mask (visible window) and minimap_blur (glow).
+-- The vanilla radar is three scaleform components: minimap (imagery), minimap_mask (visible window) and minimap_blur (glow). All three must move together, otherwise the map is moved but still masked to the corner and shows an empty box. The glow gets a slightly larger rect.
 
 -- @param rect table|nil { x, y, w, h } as 0..1 screen fractions, top-left origin. Falls back to the vanilla corner if nil.
 function HudSetMinimapRect(rect)
@@ -234,7 +216,7 @@ function HudResetMinimapRect()
     pcall(SetMinimapClipType, 0)
 end
 
--- Reassert the custom rect every frame while one is active
+-- Reassert the custom rect every frame while one is active; the engine can reset HUD flags on its own and a one-shot call may silently show nothing.
 CreateThread(function()
     while true do
         if customRect then
@@ -254,7 +236,8 @@ AddEventHandler('bs:ui:opened', function(panel)
     if panel == 'inventory' and UI.Minimap.showWithInventory then HudSetMinimap(true) end
 end)
 
--- Another panel closing must not switch the radar off while the field map owns it. openMap() turns the radar on
+-- Another panel closing must not switch the radar off while the field map owns it. openMap() turns the radar on, then announces bs:ui:opened, which makes other open panels close themselves and fire bs:ui:closed, which used to turn the radar off again.
+-- bigmapForced is set only by the field map, so it doubles as "the field map owns the radar".
 AddEventHandler('bs:ui:closed', function(panel)
     if bigmapForced and panel ~= 'fieldmap' then return end
     HudSetMinimap(false)
@@ -263,6 +246,9 @@ end)
 -- State collection
 
 -- The HUD hides while a full-screen panel is open, so the survival cluster does not duplicate the inventory's own stats block.
+-- Driven by the existing bs:ui:opened/closed events. Which panels count is data: UI.HideHudFor in config_ui.lua (it stores the owning resource name too).
+-- A hidden HUD is worse than an overlapping one, so every exit path is covered: matching bs:ui:closed, closed with no name (/refreshui), bs:ui:panic, player unload, death, and the owning resource no longer being 'started' (re-checked on the push loop).
+-- No timeout, since players can sit in the inventory for minutes.
 local hidePanel = nil    -- name of the open panel the HUD is standing down for
 
 local function clearHidePanel() hidePanel = nil end
@@ -283,7 +269,7 @@ AddEventHandler('bs:ui:opened', function(panel)
     if panel and (UI.HideHudFor or {})[panel] then hidePanel = panel end
 end)
 
--- A nil panel name means everything is closed (/refreshui), so clear the latch too
+-- A nil panel name means everything is closed (/refreshui), so clear the latch too, otherwise the HUD stays hidden after the panic button.
 AddEventHandler('bs:ui:closed', function(panel)
     if panel == nil or panel == hidePanel then clearHidePanel() end
 end)
@@ -295,30 +281,6 @@ local function setVisible(state)
     visible = state
     send({ action = 'hud', visible = state })
 end
-
--- Noise row: fed by bs_zombies' local noise event (5 Hz). Its own HUD options decide whether the row and metres show.
-local noise = { at = 0, level = 0, radius = 0, active = false, visible = true }
-local noiseMetres = true
-
-AddEventHandler('bs:zombies:noiseHud', function(p)
-    if type(p) ~= 'table' then return end
-    noise.at = GetGameTimer()
-    noise.level = math.max(0, math.min(1, tonumber(p.level) or 0))
-    noise.radius = math.max(0, tonumber(p.radius) or 0)
-    noise.active = p.active == true
-    noise.visible = p.visible ~= false
-end)
-
-AddEventHandler('bs:combatfx:options', function(o)
-    if type(o) == 'table' then noiseMetres = o.zombieNoiseRadius ~= false end
-end)
-
-CreateThread(function()
-    Wait(2000)
-    if GetResourceState('bs_zombies') ~= 'started' then return end
-    local ok, o = pcall(function() return exports.bs_zombies:GetFxOptions() end)
-    if ok and type(o) == 'table' then noiseMetres = o.zombieNoiseRadius ~= false end
-end)
 
 local function collect()
     local ped = PlayerPedId()
@@ -341,12 +303,6 @@ local function collect()
         thirst    = math.floor(needs.thirst or 100),
         infection = math.floor(needs.infection or 0),
 
-        -- Hidden when bs_zombies is not sending (stopped) or the player turned the noise HUD off.
-        noise       = math.floor(noise.level * 100 + 0.5),
-        noiseRadius = noise.active and math.floor(noise.radius + 0.5) or 0,
-        noiseShow   = noise.visible and GetGameTimer() - noise.at < 1500,
-        noiseMetres = noiseMetres,
-
         level     = data.level or 1,
         xp        = data.xp or 0,
         xpToNext  = data.xpToNext or 1,
@@ -361,23 +317,6 @@ end
 
 -- Loops
 
-local lastHud, lastHudAt = nil, 0
-
-local replacementHuds = {
-    'munlay_hud', 'dt_hud', 'cx-hud', 'ryn-hud',
-    'esx_hud', 'qb-hud', 'qbx_hud', 'ps-hud', 'lj-hud',
-}
-
-local function useExternalHud()
-    local provider = UI.Settings.hudProvider or 'auto'
-    if provider == 'external' then return true end
-    if provider == 'bs19' then return false end
-    for _, resource in ipairs(replacementHuds) do
-        if GetResourceState(resource) == 'started' then return true end
-    end
-    return false
-end
-
 CreateThread(function()
     settings = defaults()
     pushSettings()
@@ -388,37 +327,24 @@ CreateThread(function()
 
         local loaded = exports.bs_core:IsLoaded()
 
-        if not UI.Settings.hudEnabled or not loaded or useExternalHud() then
+        if not UI.Settings.hudEnabled or not loaded then
             setVisible(false)
         else
             -- The pause menu always wins over the cutscene setting.
+            -- Death releases the panel latch outright so the HUD is not suppressed after respawn.
             if IsEntityDead(PlayerPedId()) then clearHidePanel() end
 
             local hide = IsPauseMenuActive()
                 or panelSuppressed()
                 or (UI.Settings.hideInCutscene and IsCutsceneActive())
             setVisible(not hide)
-            if not hide then
-                -- Same numbers as last tick: skip the message, but refresh once a second.
-                local d, now = collect(), GetGameTimer()
-                local same = lastHud ~= nil and now - lastHudAt < 1000
-                if same then
-                    for k, v in pairs(d) do
-                        if lastHud[k] ~= v then same = false break end
-                    end
-                end
-                if not same then
-                    lastHud, lastHudAt = d, now
-                    send({ action = 'hudData', data = d })
-                end
-            else
-                lastHud = nil
-            end
+            if not hide then send({ action = 'hudData', data = collect() }) end
         end
     end
 end)
 
--- Vanilla HUD components the custom HUD replaces.
+-- Vanilla HUD components the custom HUD replaces. Runs every frame because the engine re-enables them; not gated on the radar being forced, so opening the field map does not bring them back.
+-- The health/armour bars belong to the minimap scaleform, so SetMinimapComponent 13/14/15 are also asserted every frame here.
 CreateThread(function()
     while true do
         Wait(0)
@@ -433,11 +359,32 @@ CreateThread(function()
         HideHudComponentThisFrame(7)    -- area name
         HideHudComponentThisFrame(9)    -- street name
 
-        -- Ring, health bar and armour bar that ride along with the radar. Needed while the field map has the radar on.
-        if minimapForced then
-            SetMinimapComponent(13, false)
-            SetMinimapComponent(14, false)
-            SetMinimapComponent(15, false)
+        -- Vanilla minimap health/armour components stay disabled; Alpha-Z draws its own bars.
+        SetMinimapComponent(13, false)
+        SetMinimapComponent(14, false)
+        SetMinimapComponent(15, false)
+    end
+end)
+
+
+-- Alpha-Z HUD recovery watchdog.
+-- Keeps the custom survival HUD alive if another resource reloads NUI/HUD state.
+CreateThread(function()
+    local announced = false
+    while true do
+        Wait(1000)
+        local okLoaded, loaded = pcall(function() return exports.bs_core:IsLoaded() end)
+        if okLoaded and loaded and UI.Settings.hudEnabled then
+            if not announced then
+                pushSettings()
+                announced = true
+            end
+            if not IsPauseMenuActive() and not panelSuppressed() then
+                setVisible(true)
+                send({ action = 'hudData', data = collect() })
+            end
+        else
+            announced = false
         end
     end
 end)
@@ -448,9 +395,12 @@ AddEventHandler('bs:hook:player:loaded', function(data)
     -- A character's saved layout wins over the server defaults.
     settings = defaults()
     for k, v in pairs((data and data.hudSettings) or {}) do settings[k] = v end
+    settings.hudStyle = 'slim' -- Alpha-Z: old saved HUD styles may not override server layout
+    settings.hudMode = 'full'  -- Alpha-Z: old saved layouts may not switch the base HUD
     pushSettings()
 end)
 
+-- VIP state changed (or the owner toggled the VIP system): re-evaluate locks.
 AddEventHandler('bs:vip:changed', function()
     if settings then pushSettings() end
 end)
@@ -464,8 +414,8 @@ end)
 
 -- XP popup: the moment the player sees the reward land.
 AddEventHandler('bs:hook:player:xp', function(xp, xpToNext, level, gained)
-    if not gained or gained <= 0 then return end
-    send({ action = 'xpGain', amount = gained, xp = xp, xpToNext = xpToNext, level = level })
+    -- Alpha-Z: progression is intentionally silent; no XP popup.
+    return
 end)
 
 -- The card is drawn here; the sequence (card, sound, music) is owned by cl_levelup.lua via bs:ui:levelCard.
@@ -488,10 +438,13 @@ AddEventHandler('bs:hook:player:xp', function(_, _, level)
 end)
 
 AddEventHandler('bs:hook:player:levelUp', function(level)
+    -- Alpha-Z: no level-up card or sound.
+    lastLevel = level
+    return
     local from = lastLevel
     lastLevel = level
 
-    -- Never show "3 to 3": a missing or stale previous level falls back to level - 1.
+    -- Never show "3 -> 3": a missing or stale previous level falls back to level - 1.
     if type(from) ~= 'number' or from >= level then from = level - 1 end
 
     if BSLevelUpSequence then
@@ -516,3 +469,28 @@ RegisterCommand('hud', function(_, args)
             L('ui.hud_usage') } })
     end
 end, false)
+
+
+-- YaCA voice status for the survival HUD. The TS plugin owns the actual mute state;
+-- bs_ui only mirrors it into NUI. Kept isolated so the HUD still runs if YaCA is stopped.
+CreateThread(function()
+    local lastMuted, lastRange = nil, nil
+    while true do
+        Wait(200)
+
+        local muted, range = true, 0
+        if GetResourceState('yaca-voice') == 'started' then
+            local okMute, isMuted = pcall(function() return exports['yaca-voice']:getMicrophoneMuteState() end)
+            local okDisabled, isDisabled = pcall(function() return exports['yaca-voice']:getMicrophoneDisabledState() end)
+            local okRange, voiceRange = pcall(function() return exports['yaca-voice']:getVoiceRange() end)
+
+            muted = (not okMute) or isMuted == true or (okDisabled and isDisabled == true)
+            if okRange then range = tonumber(voiceRange) or 0 end
+        end
+
+        if muted ~= lastMuted or range ~= lastRange then
+            lastMuted, lastRange = muted, range
+            send({ action = 'yacaVoice', muted = muted, range = range })
+        end
+    end
+end)

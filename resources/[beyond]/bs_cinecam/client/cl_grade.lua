@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_cinecam grade.
+-- BeyondSurvival - bs_cinecam grade. Filter presets (grain, vignette, tint, timecycle) belong to bs_ui (UI.Filters, cl_filter.lua); this file only borrows them so the look never drifts from Settings.
 
 CineGrade = { held = false }
 
@@ -13,7 +13,7 @@ function CineGrade.Presets()
     return ok and list or {}
 end
 
--- Puts the shoot's grade on or off.
+-- Puts the shoot's grade on or off. Runs on entering the camera and on every settings change, so it must be repeat-safe: the suspend is guarded by `held` to avoid leaving the player's own filter off after landing.
 function CineGrade.Set(settings)
     if not ui() then return end
 
@@ -34,7 +34,7 @@ function CineGrade.Set(settings)
         pcall(function() exports.bs_ui:SuspendFilter(true) end)
     end
 
-    -- Order matters: SuspendFilter clears the screen and remembers it, then ApplyFilter paints the shoot's grade.
+    -- Order matters: SuspendFilter clears the screen and remembers it, then ApplyFilter paints the shoot's grade. Reversed, the suspend would wipe it.
     pcall(function() exports.bs_ui:ApplyFilter(id, strength) end)
 end
 
@@ -53,7 +53,7 @@ function CineGrade.Release()
     pcall(function() exports.bs_ui:SuspendFilter(false) end)
 end
 
--- A restart mid-flight would leave the player suspended with nothing to resume them.
+-- A restart mid-flight would leave the player suspended with nothing to resume them. Same reasoning as the weapon un-hide in bs_interactions.
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     CineGrade.Release()

@@ -31,6 +31,40 @@ BS.on('notify', ({ notification }) => {
     node.className = `notification notification--${type}`;
     node.dataset.key = key;
 
+// Show the matching inventory item icon in loot notifications.
+if (notification.itemImage) {
+    const itemIcon = document.createElement('img');
+    itemIcon.className = 'notification__item-image';
+    itemIcon.alt = '';
+    itemIcon.loading = 'eager';
+
+    const itemName = String(notification.itemImage).replace(/[^a-zA-Z0-9_-]/g, '');
+    const candidates = [
+        `img/items/${itemName}.png`,
+        `img/xanderp/items/${itemName}.png`,
+        `img/weapons/${itemName}.png`,
+        `img/xanderp/weapons/${itemName}.png`
+    ];
+
+    let candidate = 0;
+
+    itemIcon.onerror = () => {
+        candidate += 1;
+
+        if (candidate < candidates.length) {
+            itemIcon.src = candidates[candidate];
+        } else {
+            console.error('[BS UI] Item icon not found:', itemName, candidates);
+            itemIcon.remove();
+        }
+    };
+
+    itemIcon.src = candidates[candidate];
+    node.appendChild(itemIcon);
+}
+
+
+
     // Title and message are built as DOM text, not innerHTML, so payloads from other resources can't inject markup.
     const icon = document.createElement('div');
     icon.innerHTML = BS.icon(notification.icon || ICON_FOR[type] || 'info', 'notification__icon');

@@ -46,7 +46,7 @@ files {
     'html/js/debug.js',
 }
 
--- Dependencies: FXServer stops every resource that declares a dependency on a stopped one, transitively.
+-- Dependencies: FXServer stops every resource that declares a dependency on a stopped one, transitively. Only list what is truly required, otherwise restarting bs_inventory also stops bs_traders and its peds.
 dependencies {
     'bs_core',      -- @-included shared files (sh_util, sh_bridge)
     'bs_zombies',   -- @-included config_zones.lua; NPCs anchor to Zones.Safe

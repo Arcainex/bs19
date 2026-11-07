@@ -1,19 +1,30 @@
--- bs_inventory - server authority on what anyone carries.
+-- bs_inventory - server authority on what anyone carries. The client asks and is told; every move is re-validated against real rows, weight is checked against the class carry limit, containers are shared.
 
 Inv = {}
 local cache = {}        -- [invKey] = { id, ownerType, ownerId, slots = {}, maxWeight, size }
 Inv.TradeLock = {}      -- A live trade freezes ordinary inventory changes.
 Inv.TradeLockedOwner = {} -- Character lock also survives a source-id reconnect.
-local pendingWrites = {}
+local pendingWrites = {} -- Outstanding slot writes must settle before a trade commits.
+
+-- F10 food deletion guard: DB alone is insufficient while inventories are cached in RAM.
+function Inv.FoodDeletionSafety(itemName)
+    for _, count in pairs(pendingWrites) do
+        if count > 0 then return false, 'Inventarspeicherung läuft noch. Bitte gleich erneut versuchen.' end
+    end
+    for _, inv in pairs(cache) do
+        for _, stack in pairs(inv.slots or {}) do
+            if stack.item == itemName and (tonumber(stack.amount) or 0) > 0 then
+                return false, 'Das Item liegt noch in einem Spielerinventar oder Behälter. Erst verbrauchen oder entfernen.'
+            end
+        end
+    end
+    return true
+end
 local openContainers = {}  -- [src] = invKey the player currently has open
 local openedAt = {}        -- [src] = { pos = vector3, bagId = string|nil } where/what that open was
 local containerGrants = {} -- [src] = { [containerId] = { expires = ms, pos = vector3 } }
 local GRANT_TTL = 10000     -- a grant is only good for the open it was issued for
 local CONTAINER_REACH = 5.0 -- step further than this (m) and the container is out of reach
-
-local function receipt(src, item, amount, kind, character)
-    if Inv.Pickups then Inv.Pickups.Record(src, item, amount, kind, character) end
-end
 
 -- Deep copy so a split stack or a world drop never shares a table with its source.
 local function copyTable(t)
@@ -23,7 +34,7 @@ local function copyTable(t)
     return out
 end
 
--- Who may open what: the server side that decided an open was legitimate (boot unlocked, stash owned, bag worn)
+-- Who may open what: the server side that decided an open was legitimate (boot unlocked, stash owned, bag worn) grants it here, for that player, briefly, at where they stand.
 local function grantContainer(src, containerId)
     src = tonumber(src)
     if not src or type(containerId) ~= 'string' then return false end
@@ -36,13 +47,6 @@ end
 
 -- Container specs are registered server-side. Size and max weight come from the registry, never from client arguments.
 local containerSpecs = {}  -- [containerId] = { size, maxWeight, label }
-
--- Sealed containers can be looked into but nothing moves in or out (the Dark Zone bag).
-local function sealedInv(i)
-    if not i or i.ownerType ~= 'container' then return false end
-    local sp = containerSpecs[i.ownerId]
-    return sp ~= nil and sp.sealed == true
-end
 
 exports('RegisterContainer', function(containerId, spec, src)
     if type(containerId) ~= 'string' or #containerId > 64 then return false end
@@ -69,8 +73,7 @@ exports('RegisterContainer', function(containerId, spec, src)
         size      = w * h,
         maxWeight = math.max(1.0, math.min(500.0, tonumber(spec.maxWeight) or 100.0)),
         label     = type(spec.label) == 'string' and spec.label:sub(1, 48) or 'Container',
-        compact   = spec.compact == true,
-        sealed    = spec.sealed == true,  -- panel shows only the rows in use
+        compact   = spec.compact == true,  -- panel shows only the rows in use
     }
     return true
 end)
@@ -87,18 +90,20 @@ end)
 
 local function key(ownerType, ownerId) return ('%s:%s'):format(ownerType, ownerId) end
 
--- Stack ids 1-40 (+ extra ids 101-199) are the bag, then the bar and equipment.
+-- Stack ids 1-40 (+ extra ids 101-199) are the bag, then the bar and equipment. This stays at the
+-- old 8x5 layout on purpose: the grid size is only cells now, so a bigger or F1-changed grid never
+-- renumbers the bar or equipment in saved inventories.
 local SLOT_BASE = 40
 local function slotCount()
     return SLOT_BASE
 end
 
--- The hotbar is 5 more slots of the same inventory
+-- The hotbar is 5 more slots of the same inventory, so bar items are real stacks with weight and metadata instead of name references.
 local BAR_SLOTS = 5
 
 local function barFrom() return slotCount() + 1 end
 
--- Equipment is more slots of the same inventory, so worn items have weight
+-- Equipment is more slots of the same inventory, so worn items have weight, can be looted and share the same stacking and persistence. A character inventory is three regions of one array: bag, bar, equipment.
 local function equipCount() return Clothing and Clothing.Count() or 0 end
 local function equipFrom() return slotCount() + BAR_SLOTS + 1 end
 local function playerSize() return slotCount() + BAR_SLOTS + equipCount() end
@@ -112,6 +117,7 @@ local function equipSlotAt(slot)
 end
 
 -- Extra bag ids (101-199) so a bigger grid is not capped at 40 stacks.
+-- Loadout ids (901+) hold boosters/gadgets off the grid; weight still counts.
 local EXTRA_FROM, EXTRA_TO = 101, 199
 local LOADOUT = { booster = { from = 901, count = 3 }, gadget = { from = 911, count = 2 } }
 
@@ -157,7 +163,7 @@ local function rowsOf(entry)
     return (def and def.data and tonumber(def.data.rows)) or 0
 end
 
--- What is worn, as slot id to item name plus that garment's condition (the shape Clothing.Aggregate wants).
+-- What is worn, as slot id -> item name plus that garment's condition (the shape Clothing.Aggregate wants). Separate from equipmentOf below, which returns names only for the client.
 local function equipmentEntries(inv)
     local out = {}
     if not Clothing then return out end
@@ -176,7 +182,7 @@ local function equipmentEntries(inv)
     return out
 end
 
--- What the character is wearing: slot id to item name.
+-- What the character is wearing: slot id -> item name.
 local function equipmentOf(inv)
     local out = {}
     if not Clothing then return out end
@@ -212,6 +218,13 @@ local function loadInventory(ownerType, ownerId, maxWeight, size, dims)
 
     local slots = {}
     for _, item in ipairs(items) do
+        local loadedDef = Items.Get(item.item) or {}
+        local isBackpack = loadedDef.equipSlot == 'backpack' and loadedDef.data and loadedDef.data.bag
+        local loadedRot = item.rotated == true or item.rotated == 1
+        -- Backpacks always keep their configured upright footprint (1x2 in the normal inventory).
+        -- Old saved 2x1 placements are normalized on load as well.
+        if isBackpack then loadedRot = false end
+
         slots[item.slot_x] = {
             id = item.id,
             item = item.item,
@@ -220,10 +233,10 @@ local function loadInventory(ownerType, ownerId, maxWeight, size, dims)
             durability = item.durability,
             metadata = item.metadata and json.decode(item.metadata) or {},
 
-            -- Where the item physically sits (see 017_inventory_grid.sql). `slot` is the identity
+            -- Where the item physically sits (see 017_inventory_grid.sql). `slot` is the identity (hotbar, crafting and moves key on it); x/y is the top-left cell it occupies. 0 means never placed.
             x   = (item.grid_x and item.grid_x > 0) and item.grid_x or nil,
             y   = (item.grid_y and item.grid_y > 0) and item.grid_y or nil,
-            rot = item.rotated == true or item.rotated == 1, -- oxmysql returns TINYINT(1) as boolean
+            rot = loadedRot,
         }
     end
 
@@ -249,34 +262,34 @@ local function loadInventory(ownerType, ownerId, maxWeight, size, dims)
         maxWeight = maxWeight or row.max_weight or 40.0,
         size = size or slotCount(),
 
-        -- Grid shape of this inventory, carried on the inventory itself so containers can differ from the player's bag
+        -- Grid shape of this inventory, carried on the inventory itself so containers can differ from the player's bag (see RegisterContainer).
         gridW = (dims and dims.width)  or Inventory.Settings.gridWidth,
         gridH = (dims and dims.height) or Inventory.Settings.gridHeight,
     }
     return cache[k]
 end
 
--- Forward declared: playerInventory calls ensurePlaced, which needs persistSlot, which is defined below.
+-- Forward declared on purpose: playerInventory calls ensurePlaced, which needs persistSlot, which is defined below. Without it the call compiles as a global lookup.
+-- The character's carry limit comes from their class.
 local ensurePlaced
 
 local function playerInventory(src, tradeRead)
     if Inv.TradeLock[src] and not tradeRead then return nil end
     local player = exports.bs_core:GetPlayer(src)
     if not player then return nil end
-    if Inv.MutationOwners and Inv.MutationOwners[tostring(player.charId)] then return nil end
     if Inv.TradeLockedOwner[tostring(player.charId)] and not tradeRead then return nil end
     local carry = (player.class and player.class.stats and player.class.stats.carryWeight) or 40.0
 
     local inv = loadInventory('character', player.charId, carry, playerSize())
 
-    -- A cached inventory from before a reload may have the old size.
+    -- A cached inventory from before a reload may have the old size. Fix it here instead of clearing the cache so a live `restart bs_inventory` does not drop items.
     if inv.size < playerSize() then inv.size = playerSize() end
     inv.gridSlots = slotCount()
 
-    -- A backpack raises the carry limit.
+    -- A backpack raises the carry limit. Recomputed on every access from the class limit plus equipment, never added/subtracted in place, so it cannot drift.
     inv.maxWeight = carry
 
-    -- Worn clothing goes through Clothing.Aggregate (stats scaled by rarity and condition).
+    -- Worn clothing goes through Clothing.Aggregate (stats scaled by rarity and condition). The panel and bs_zombies use the same function, so numbers always agree.
     inv.equipStats = {}
 
     if Clothing and Clothing.Aggregate then
@@ -344,7 +357,7 @@ end
 
 -- Grid placement
 
--- The grid part of an inventory for the packing engine.
+-- The grid part of an inventory for the packing engine. The last `hotbarSlots` entries are the bar and are excluded so the packer never fills it. `def` is looked up per entry, so size changes in config_items apply on next load.
 local function gridEntries(inv)
     local limit = inv.gridSlots or inv.size
     local out = {}
@@ -381,7 +394,7 @@ ensurePlaced = function(inv)
     local needsWork = false
     local bounds = gridBounds(inv)
 
-    -- Only the placed items are checked for a broken layout.
+    -- Only the placed items are checked for a broken layout. An item without coordinates (just added or moved in) is fitted around them below, so it never reshuffles items that already have a spot.
     local placedNow, loose = {}, {}
     for _, e in ipairs(entries) do
         if e.x and e.y and e.x > 0 and e.y > 0 then
@@ -477,7 +490,7 @@ function Inv.Weight(inv)
     return total
 end
 
--- Last slot automatic placement may use.
+-- Last slot automatic placement may use. For a player this is the end of the grid, not the bar, so pickups never rearrange quick slots.
 local function autoLimit(inv)
     return inv.gridSlots or inv.size
 end
@@ -515,7 +528,7 @@ local function stackWithRoom(inv, itemName)
     local max = def and def.stack or 1
     if max <= 1 then return nil end
 
-    -- Grid-only, like firstFreeSlot, so the bar does not hoover up everything you pick up.
+    -- Grid-only on purpose, like firstFreeSlot, so the bar does not hoover up everything you pick up.
     for _, slot in ipairs(bagSlotList(inv)) do
         local entry = inv.slots[slot]
         if entry and entry.item == itemName and entry.amount < max then return slot end
@@ -523,26 +536,14 @@ local function stackWithRoom(inv, itemName)
     return nil
 end
 
-local weaponSerialCounter=0
-local function weaponMetadata(def,metadata)
-    local meta=copyTable(metadata) or {}
-    if def.data and def.data.weapon and not def.data.throwable and (def.stack or 1)==1 and not meta.serial then
-        weaponSerialCounter=weaponSerialCounter+1
-        meta.serial=('BS19-%x-%x-%08x-%08x'):format(os.time(),weaponSerialCounter,math.random(0,0x7fffffff),math.random(0,0x7fffffff))
-    end
-    return meta
-end
-
 -- Public operations
 
--- Adds items to any inventory, player or container.
+-- Adds items to any inventory, player or container. Split from Inv.Give so the recycler can put output into the machine and keep one copy of the stacking logic.
 local function addToInv(inv, itemName, amount, metadata)
     local def = Items.Get(itemName)
     if not def then return false, 'unknown item' end
 
     amount = math.max(1, math.floor(tonumber(amount) or 1))
-
-    if amount>1 and def.data and def.data.weapon and not def.data.throwable and metadata and next(metadata) then return false,'Give customized weapons one at a time.' end
 
     -- Items that carry state (drone battery) start with their default metadata.
     if (not metadata or next(metadata) == nil) and def.data and type(def.data.defaultMeta) == 'table' then
@@ -576,7 +577,7 @@ local function addToInv(inv, itemName, amount, metadata)
             if not px then return false, 'no room' end
 
             inv.slots[slot] = {
-                item = itemName, amount = put, slot = slot, metadata = weaponMetadata(def,metadata),
+                item = itemName, amount = put, slot = slot, metadata = copyTable(metadata) or {},
                 x = px, y = py, rot = prot,
                 -- A tool arrives with its durability from the item definition.
                 durability = (def.data and tonumber(def.data.durability)) or nil,
@@ -590,17 +591,16 @@ local function addToInv(inv, itemName, amount, metadata)
 end
 
 -- Adds items, stacking where possible. Returns ok, label.
-function Inv.Give(src, itemName, amount, metadata, quietPickup)
+function Inv.Give(src, itemName, amount, metadata)
     local inv = playerInventory(src)
     if not inv then return false, 'no character' end
 
     local ok, label = addToInv(inv, itemName, amount, metadata)
-    if ok and not quietPickup then receipt(src, itemName, math.max(1, math.floor(tonumber(amount) or 1)), 'received', inv.ownerId) end
     Inv.Push(src)              -- push even on a partial add: some went in
     return ok, label
 end
 
--- Places a garment straight into its equipment slot, bypassing the bag.
+-- Places a garment straight into its equipment slot, bypassing the bag. Only for dressing a brand new character; it refuses to replace anything already worn.
 function Inv.Equip(src, itemName)
     local inv = playerInventory(src)
     if not inv then return false end
@@ -626,7 +626,7 @@ function Inv.Equip(src, itemName)
 end
 
 -- Removes items across stacks. Returns true only if the full amount was taken.
-function Inv.Remove(src, itemName, amount, quietPickup)
+function Inv.Remove(src, itemName, amount)
     local inv = playerInventory(src)
     if not inv then return false end
 
@@ -656,12 +656,11 @@ function Inv.Remove(src, itemName, amount, quietPickup)
         end
     end
 
-    if not quietPickup then receipt(src, itemName, amount, 'removed', inv.ownerId) end
     Inv.Push(src)
     return true
 end
 
--- Empties every slot in a player's inventory (hotbar included).
+-- Empties every slot in a player's inventory (hotbar included). Only called by the admin wipeInventory action in bs_admin, which re-checks the requester's ACE.
 function Inv.Wipe(src)
     local inv = playerInventory(src)
     if not inv then return false end
@@ -678,6 +677,12 @@ function Inv.Wipe(src)
     end
 
     -- Also removes weapons from the ped, since GiveWeaponToPed weapons live on the ped and not in the inventory rows.
+    -- Clear the core's persisted lastWeapon too. Otherwise cl_spawn.lua can re-arm the
+    -- weapon after a death wipe even though the inventory is already empty.
+    if GetResourceState('bs_core') == 'started' then
+        pcall(function() exports.bs_core:SetPlayerMeta(src, 'lastWeapon', nil) end)
+        pcall(function() exports.bs_core:SavePlayer(src, true) end)
+    end
     TriggerClientEvent('bs:inventory:wiped', src)
 
     Inv.Push(src)
@@ -696,7 +701,7 @@ function Inv.Count(src, itemName)
     return total
 end
 
--- Worn bags: a pack or vest with data.bag owns the container 'bag:<bagId>'.
+-- Worn bags. A pack or vest with data.bag owns the container 'bag:<bagId>'. The id is on the item, so the contents travel with it (drop, trade, stash).
 local serialise
 
 local function bagIdFor(entry)
@@ -769,16 +774,6 @@ local function packLooks(tier)
     return out
 end
 
-local function packFill(b)
-    local used = 0
-    for _, entry in pairs(b.slots or {}) do
-        local def = Items.Get(entry.item)
-        used = used + (tonumber(entry.w) or (def and def.w) or 1) * (tonumber(entry.h) or (def and def.h) or 1)
-    end
-    local total = math.max(1, (b.gridW or 1) * (b.gridH or 1))
-    local fill = math.min(1, used / total)
-    return fill, math.max(1, math.min(5, math.ceil(fill * 5)))
-end
 local function bagView(inv, id)
     local b, e, def = wornBag(inv, id)
     if not b then return nil end
@@ -788,10 +783,8 @@ local function bagView(inv, id)
         local tier = tonumber(def.data.tier) or 1
         v.tier = tier
         v.looks = packLooks(tier)
-        v.look = tonumber(e.metadata.look) or def.data.defaultLook or (Clothing.PackDefaultLook or {})[tier] or 1
+        v.look = tonumber(e.metadata.look) or (Clothing.PackDefaultLook or {})[tier] or 1
         v.hidden = e.metadata.hidden == true
-        v.fill, v.fillStage = packFill(b)
-        v.family = def.data.packFamily
     end
     return v
 end
@@ -806,16 +799,48 @@ local function packVisual(inv)
     local meta = e.metadata or {}
     if meta.hidden then return { hidden = true } end
     local tier = tonumber(def.data.tier) or 1
-    local idx = tonumber(meta.look) or def.data.defaultLook or (Clothing.PackDefaultLook or {})[tier]
+    local idx = tonumber(meta.look) or (Clothing.PackDefaultLook or {})[tier]
     local look = idx and Clothing.PackLooks and Clothing.PackLooks[idx]
     if not look or (look.tier or 1) > tier then return nil end
-    local b = wornBag(inv, 'backpack')
-    local fill, stage = 0, 1
-    if b then fill, stage = packFill(b) end
-    return { male = look.male, female = look.female, family = def.data.packFamily, fill = fill, fillStage = stage }
+    return { male = look.male, female = look.female }
 end
 
 -- Client-facing shape
+
+-- Alpha-Z: one classification shared by hotbar validation and the UI's
+-- automatic "Benutzen => Ausrüsten" action. The client only receives a hint;
+-- inventory:move still enforces the rules on the server.
+local function azWeaponSlotType(entry)
+    if not entry then return 'item' end
+    local def = Items.Get(entry.item)
+    if not def or def.category ~= 'weapon' then return 'item' end
+    local weapon = def.data and def.data.weapon
+    if type(weapon) ~= 'string' or weapon == '' then return 'unknown' end
+    local backMelee = {
+        reinforced_bat=true, crowbar=true, weapon_poolcue=true,
+        zombie_arm=true, weapon_golfclub=true
+    }
+    if backMelee[entry.item] then return 'melee' end
+    local beltMelee = {
+        WEAPON_KNIFE=true, WEAPON_BOTTLE=true, WEAPON_HATCHET=true,
+        WEAPON_STONE_HATCHET=true, WEAPON_BATTLEAXE=true,
+        WEAPON_DAGGER=true, WEAPON_SWITCHBLADE=true, WEAPON_KNUCKLE=true,
+        WEAPON_HAMMER=true, WEAPON_FLASHLIGHT=true, WEAPON_WRENCH=true,
+        WEAPON_MACHETE=true, WEAPON_POOLCUE=true, WEAPON_NIGHTSTICK=true,
+        WEAPON_MOLOTOV=true
+    }
+    local beltFirearms = {
+        WEAPON_PISTOL=true, WEAPON_COMBATPISTOL=true,
+        WEAPON_REVOLVER=true, WEAPON_SNSPISTOL=true,
+        WEAPON_PISTOL50=true, WEAPON_HEAVYPISTOL=true,
+        WEAPON_VINTAGEPISTOL=true, WEAPON_MARKSMANPISTOL=true,
+        WEAPON_DOUBLEACTION=true, WEAPON_CERAMICPISTOL=true,
+        WEAPON_NAVYREVOLVER=true, WEAPON_APPISTOL=true,
+        WEAPON_STUNGUN=true, WEAPON_FLAREGUN=true
+    }
+    if beltMelee[weapon] or beltFirearms[weapon] or entry.item == 'spiked_bat' then return 'belt' end
+    return 'ranged'
+end
 
 function serialise(inv)
     local out = {
@@ -826,14 +851,14 @@ function serialise(inv)
         -- Grid shape, so the panel lays out cells without hardcoding it and containers can differ from the bag.
         grid = { w = inv.gridW or Inventory.Settings.gridWidth,
                  h = inv.gridH or Inventory.Settings.gridHeight },
-        -- Free bag id, so the panel never guesses one.
+        -- First free bag id, so the panel never guesses one.
         freeSlot = firstFreeSlot(inv) or false,
         baseRows = inv.ownerType == 'character' and Inventory.Settings.gridHeight or nil,
     }
     local cspec = inv.ownerType == 'container' and containerSpecs[inv.ownerId] or nil
     if cspec and cspec.compact then out.compact = true end
 
-    -- Which indices are equipment frames and what is worn.
+    -- Which indices are equipment frames and what is worn. Derived on the server so the client config cannot disagree after a slot is added.
     if inv.ownerType == 'character' and Clothing then
         out.equipFrom = equipFrom()
         out.equip = {}
@@ -843,7 +868,6 @@ function serialise(inv)
                 slot = equipFrom() + i - 1,
             }
         end
-        out.radioSlot = 921
         out.worn = equipmentOf(inv)
 
         -- Totals and per-garment breakdown, so the character sheet can show both the bonus and which item gives it.
@@ -863,7 +887,10 @@ function serialise(inv)
         out.slots[tostring(slot)] = {
             slot = slot,
             item = entry.item,
-            label = def.label or entry.item,
+            -- Dynamic book titles are stored per copy; the underlying item remains 'book'.
+            label = (entry.item == 'book' and type(entry.metadata) == 'table'
+                and type(entry.metadata.bookTitle) == 'string' and entry.metadata.bookTitle ~= ''
+                and entry.metadata.bookTitle:sub(1, 100)) or def.label or entry.item,
             ongrid = isBagSlot(inv, slot),
 
             -- Where and how big, for the grid renderer. w/h are the natural size; `rot` tells the panel to swap them.
@@ -872,12 +899,12 @@ function serialise(inv)
             amount = entry.amount,
             weight = def.weight or 0.5,
             category = def.category or 'misc',
+            icon = def.icon or entry.item,
             usable = def.usable or false,
-            radio = def.data and def.data.radio == true or false,
             stack = def.stack or 1,
-            serial = entry.metadata and entry.metadata.serial,
             description = def.description,  -- tooltip; nil for most items
             durability = entry.durability,
+            maxDurability = def.data and tonumber(def.data.durability) or nil,
             -- drone battery %, shown on the slot and tooltip
             battery = def.data and def.data.battery and tonumber((entry.metadata or {}).battery or 100) or nil,
             batteryCap = def.data and def.data.battery and ((entry.metadata or {}).capacity or 'small') or nil,
@@ -885,7 +912,7 @@ function serialise(inv)
             fill = def.data and def.data.capacity and (entry.durability or 0) or nil,
             capacity = def.data and def.data.capacity or nil,
 
-            -- True for anything that opens as its own grid.
+            -- True for anything that opens as its own grid. The panel uses it to decide whether clicking a worn item does anything. Size is only sent once it is opened.
             bag = (def.data and def.data.bag) and true or nil,
 
             -- Rarity and condition for garments. Sent as the tier name, not a colour; the stylesheet owns the palette.
@@ -895,38 +922,18 @@ function serialise(inv)
 
             -- Which body slot this goes on, so the panel can offer double-click to wear it. Only a hint; the server still validates.
             equipSlot = def.equipSlot,
+            weaponSlotType = def.category == 'weapon' and azWeaponSlotType(entry) or nil,
         }
     end
     return out
 end
 
 -- Pushes the player's inventory (and any open container) to their client.
+-- The hotbar lives in sv_hotbar.lua; declared here so both files share it.
 Hotbar = Hotbar or {}
 
 -- playerInventory is local to this file, so sv_hotbar.lua gets it through Inv.Of instead of a nonexistent global.
 Inv.Of = playerInventory
-
--- A committed snapshot remains readable while an equipment transaction is in flight.
-function Inv.RadioSnapshot(src)
-    local player = exports.bs_core:GetPlayer(tonumber(src))
-    if not player or not player.charId then return nil end
-    local inv = cache[key('character',player.charId)] or playerInventory(tonumber(src),true)
-    if not inv then return nil end
-    local result = { owned = {} }
-    for slot,entry in pairs(inv.slots) do
-        local def = Items.Get(entry.item)
-        if def and def.data and def.data.radio == true then
-            result.owned[entry.item] = (result.owned[entry.item] or 0) + entry.amount
-            if slot == 921 then
-                result.equipped=entry.item
-                result.radio={item=entry.item,id=entry.id,slot=921,metadata=copyTable(entry.metadata or {})}
-            end
-        end
-    end
-    return result
-end
-exports('RadioOwnership',function(src) return Inv.RadioSnapshot(src) end)
-
 
 -- One-shot tokens for ammunition that turned out not to fit. See the use path.
 AmmoPending = AmmoPending or {}
@@ -940,13 +947,13 @@ RegisterNetEvent('bs:inventory:ammoRefund', function(token)
     if not pending then return end
     if tonumber(token) ~= pending.token then return end
 
-    Inv.Give(src, pending.item, pending.count or 1, nil, true)
+    Inv.Give(src, pending.item, pending.count or 1)
     Inv.Push(src)
 end)
 
 AddEventHandler('playerDropped', function() AmmoPending[source] = nil end)
 
--- Reloading is an item transaction.
+-- Reloading is an item transaction. GTA's native reload moves rounds from the ped's reserve and consumes nothing, so ammo items are spent here instead.
 BSB.RegisterCallback('inventory:reload', function(src, need)
     local inv = Inv.Of and Inv.Of(src)
     if not inv then return { ok = false, error = 'no character' } end
@@ -959,7 +966,7 @@ BSB.RegisterCallback('inventory:reload', function(src, need)
         return { ok = false, error = Lp(src, 'inv.e_hands') }
     end
 
-    -- The ped gives a weapon hash; `ammoFor` is keyed by model name.
+    -- The ped gives a weapon hash; `ammoFor` is keyed by model name. Match on hash against the player's own slots so the item registry stays the single source for which rounds fit which gun.
     local item, def, model = nil, nil, nil
 
     for _, slot in ipairs(sortedSlots(inv)) do
@@ -981,7 +988,7 @@ BSB.RegisterCallback('inventory:reload', function(src, need)
 
     if not item then return { ok = false, error = Lp(src, 'inv.e_no_rounds') } end
 
-    -- Enough boxes to fill the mag, never more than one mag (size from bs_weapons config, extended mag aware).
+    -- Enough boxes to fill the mag, never more than one mag (size from bs_weapons config, extended mag aware). Leftover of the last box stays on the ped as reserve.
     local per = tonumber(def.data.rounds) or 1
     local mag = nil
     if GetResourceState('bs_weapons') == 'started' then
@@ -1038,16 +1045,10 @@ function Inv.Push(src)
 
     local openKey = openContainers[src]
     if openKey and cache[openKey] then
-        local container=cache[openKey]
-        if container.linkBaseCarry then
-            local view=serialise(container)
-            container.maxWeight=container.linkBaseCarry+(view.equipStats and view.equipStats.carry or 0)
-        end
-        payload.container = serialise(container)
+        payload.container = serialise(cache[openKey])
         payload.containerLabel = cache[openKey].label
     end
 
-    if Inv.Pickups then Inv.Pickups.Flush(src, payload) end
     TriggerClientEvent('bs:inventory:state', src, payload)
 
     -- The bar reflects the bag: counts change, slots grey out, bindings stay.
@@ -1055,7 +1056,6 @@ function Inv.Push(src)
 end
 
 Inv.TradeInternals = {
-    character = function(id,carry) local i=loadInventory('character',id,carry,playerSize());i.gridSlots=slotCount();return i end,
     of = function(src) return playerInventory(src, true) end,
     serialise = serialise,
     gridEntries = gridEntries,
@@ -1065,11 +1065,6 @@ Inv.TradeInternals = {
     bagSlots = bagSlotList,
     pending = function(inv) return pendingWrites[inv.id] or 0 end,
     evict = function(charId) cache[key('character', charId)] = nil end,
-    persist = function(inv, slot) persistSlot(inv, slot) end,
-    add = function(inv, item, amount, metadata) return addToInv(inv, item, amount, metadata) end,
-    -- Survivor Link: the companion's own character inventory shown as the open container.
-    openAs = function(src, invKey, pos) openContainers[src] = invKey; openedAt[src] = invKey and { pos = pos } or nil end,
-    openKey = function(src) return openContainers[src] end,
 }
 
 -- Callbacks
@@ -1094,12 +1089,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
 
     -- Opening a container does not allow using it from across the map.
     local opened = openedAt[src]
-    local linkedId=containerKey and containerKey:match('^character:(%d+)$')
-    local function remoteSide(side)return side=='container'or side=='linkPack'or side=='linkVest'end
-    if linkedId and (remoteSide(from.inv)or remoteSide(to.inv))and not Inv.LinkNear(src,tonumber(linkedId))then
-        return {ok=false,error='Stay near your living companion to change his equipment.'}
-    end
-    if containerKey and (remoteSide(from.inv) or remoteSide(to.inv)) then
+    if containerKey and (from.inv == 'container' or to.inv == 'container') then
         if not opened then return { ok = false, error = Lp(src, 'inv.e_bad_inv') } end
         if not opened.bagId then
             local here = GetEntityCoords(GetPlayerPed(src))
@@ -1113,12 +1103,6 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     local function resolve(which)
         if which == 'player' then return inv end
         if which == 'container' and containerKey then return cache[containerKey] end
-        if which == 'linkPack' or which == 'linkVest' then
-            local charId=containerKey and containerKey:match('^character:(%d+)$')
-            if not charId or not Inv.LinkNear(src,tonumber(charId)) then return nil end
-            local linked=cache[containerKey]
-            return linked and wornBag(linked,which=='linkPack'and 'backpack'or 'armour')
-        end
         -- Your own worn pack / vest pockets.
         if which == 'pack' then return (wornBag(inv, 'backpack')) end
         if which == 'vest' then return (wornBag(inv, 'armour')) end
@@ -1128,24 +1112,6 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     local srcInv = resolve(from.inv)
     local dstInv = resolve(to.inv)
     if not srcInv or not dstInv then return { ok = false, error = Lp(src, 'inv.e_bad_inv') } end
-    if linkedId and (Inv.TradeLockedOwner[tostring(linkedId)]or Inv.MutationOwners[tostring(linkedId)])then
-        return {ok=false,error='Companion inventory is busy.'}
-    end
-
-    if srcInv ~= dstInv and (sealedInv(srcInv) or sealedInv(dstInv)) then
-        return { ok = false, error = Lp(src, 'inv.e_sealed') }
-    end
-    -- Dark Zone: a take from a container inside the zone lands in the contaminated bag instead.
-    local dzMoved = false
-    if Inv.DzTarget and from.inv == 'container' and srcInv.ownerType == 'container' and srcInv.wornBy ~= inv
-        and srcInv ~= dstInv and (dstInv == inv or dstInv.wornBy == inv) then
-        local alt = Inv.DzTarget(src, srcInv.ownerId)
-        if alt and alt ~= srcInv then
-            local free = firstFreeSlot(alt)
-            if not free then return { ok = false, error = Lp(src, 'inv.e_dz_full') } end
-            dstInv, to, dzMoved = alt, { inv = 'dz', slot = free }, true
-        end
-    end
 
     local fromSlot, toSlot = tonumber(from.slot), tonumber(to.slot)
     if not fromSlot or not toSlot then return { ok = false, error = Lp(src, 'inv.e_bad_slot') } end
@@ -1158,7 +1124,8 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     local moving = srcInv.slots[fromSlot]
     if not moving then return { ok = false, error = 'nothing there' } end
 
-    -- A split, or a stack dropped on an empty cell of another inventory, arrives with the source slot id.
+    -- A split, or a stack dropped on an empty cell of another inventory, arrives with the source slot id. The new stack needs its own free slot id there,
+    -- otherwise it hits the "moved within its own slot" case (nothing happens) or lands on whatever owns that id in the other inventory.
     local splitting = (tonumber(amount) or moving.amount) < moving.amount
     if tonumber(to.x) and tonumber(to.y) and isBagSlot(dstInv, toSlot) then
         local there = dstInv.slots[toSlot]
@@ -1166,6 +1133,41 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
             local free = firstFreeSlot(dstInv)
             if not free then return { ok = false, error = Lp(src, 'inv.e_room') } end
             toSlot = free
+        end
+    end
+
+    -- Alpha-Z: authoritative five-slot hotbar restrictions, including both sides of swaps.
+    -- 1 melee, 2 ranged, 3/4 belt (small firearm or melee), 5 non-weapon items.
+    do
+        local base = inv.gridSlots or inv.size
+        local function barIndex(which, slot)
+            if which == inv and slot > base and slot <= base + BAR_SLOTS then return slot - base end
+            return nil
+        end
+        local fromIndex, toIndex = barIndex(srcInv, fromSlot), barIndex(dstInv, toSlot)
+        if fromIndex or toIndex then
+            local classify = azWeaponSlotType
+            local function allowed(index, entry)
+                if not entry then return true end
+                local c = classify(entry)
+                if index == 1 then return c == 'melee' end
+                if index == 2 then return c == 'ranged' end
+                if index == 3 or index == 4 then return c == 'belt' end
+                return c == 'item'
+            end
+            -- Validate the final destinations, not only the incoming item.
+            local swapped = dstInv.slots[toSlot]
+            if fromIndex and toIndex then
+                if not allowed(toIndex, moving) or not allowed(fromIndex, swapped) then
+                    return { ok = false, error = 'Waffe passt nicht in diesen Slot' }
+                end
+            elseif toIndex then
+                if not allowed(toIndex, moving) then
+                    return { ok = false, error = 'Waffe passt nicht in diesen Slot' }
+                end
+            elseif fromIndex and swapped and not allowed(fromIndex, swapped) then
+                return { ok = false, error = 'Waffe passt nicht in diesen Slot' }
+            end
         end
     end
 
@@ -1177,15 +1179,21 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     if dstInv.bagId and moving.metadata and moving.metadata.bagId == dstInv.bagId then
         return { ok = false, error = Lp(src, 'inv.e_itself') }
     end
-    -- Only an empty bag goes into a container, stash or another bag (SCUM rule).
-    if dstInv.ownerType == 'container' and srcInv ~= dstInv then
+    -- A filled backpack may only stay worn in the backpack equipment slot.
+    -- It may never be placed into the normal character inventory, a stash, vehicle,
+    -- world/container inventory or another bag. This is enforced server-side.
+    do
         local mdef = Items.Get(moving.item)
         if mdef and mdef.data and mdef.data.bag and not bagEmpty(moving) then
-            return { ok = false, error = Lp(src, 'inv.e_bag_not_empty') }
+            local targetGear = dstInv.ownerType == 'character' and equipSlotAt(toSlot)
+            local goesToWornBackpack = targetGear and targetGear.id == 'backpack'
+            if not goesToWornBackpack then
+                return { ok = false, error = Lp(src, 'inv.e_pack_must_be_empty') }
+            end
         end
     end
 
-    -- An equipment frame only accepts items for that body part.
+    -- An equipment frame only accepts items for that body part. Enforced on the server, since the panel refusing a drop is only a courtesy.
     if Clothing then
         -- Swapping out of a gear slot would put the other item on your body unchecked.
         local fromGear = srcInv.ownerType == 'character' and equipSlotAt(fromSlot)
@@ -1203,6 +1211,14 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         and (srcInv ~= dstInv or toSlot ~= fromSlot)
     local keepRows = 0
     if packLeaving then
+        -- A worn backpack may only be moved back into the normal inventory when its own bag grid is empty.
+        -- This is checked server-side so a modified NUI/client cannot bypass it.
+        local leavingPack = srcInv.slots[fromSlot]
+        local targetGear = dstInv.ownerType == 'character' and equipSlotAt(toSlot)
+        if dstInv.ownerType == 'character' and (not targetGear or targetGear.id ~= 'backpack')
+            and leavingPack and not bagEmpty(leavingPack) then
+            return { ok = false, error = Lp(src, 'inv.e_pack_must_be_empty') }
+        end
         keepRows = rowsOf(dstInv.slots[toSlot])
         if not packFits(srcInv, keepRows) then return { ok = false, error = PACK_FULL } end
     end
@@ -1236,9 +1252,14 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         end
     end
 
-    -- Grid position is always validated on the server.
+    -- Grid position is always validated on the server. The panel's x/y is only a request, so the destination is re-tested against the real rows with Grid.Fits.
     local wantX, wantY = tonumber(to.x), tonumber(to.y)
     local wantRot = to.rot == true
+    local movingDefForGrid = Items.Get(moving.item) or {}
+    local movingIsBackpack = movingDefForGrid.equipSlot == 'backpack'
+        and movingDefForGrid.data and movingDefForGrid.data.bag
+    -- Backpack items are fixed upright: configured 1x2 must never rotate into 2x1.
+    if movingIsBackpack then wantRot = false end
     local toBag = isBagSlot(dstInv, toSlot)
 
     -- Coming onto the grid from bar/gear/loadout with no cell picked: find one.
@@ -1248,7 +1269,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         local bounds = gridBounds(dstInv)
         if packLeaving and srcInv == dstInv then bounds.height = Inventory.Settings.gridHeight + keepRows end
         local fx, fy, frot = Grid.FirstFit(bounds, gridEntries(dstInv),
-            { id = fromSlot, w = mdef.w or 1, h = mdef.h or 1 }, true)
+            { id = fromSlot, w = mdef.w or 1, h = mdef.h or 1 }, not movingIsBackpack)
         if not fx then return { ok = false, error = Lp(src, 'inv.e_room') } end
         wantX, wantY, wantRot = fx, fy, frot
     end
@@ -1280,12 +1301,6 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         if not splitting then moving.x, moving.y, moving.rot = wantX, wantY, wantRot end
     end
 
-    -- A refused move must leave the item where it was, otherwise the next refresh shows it jumping back.
-    local function refuse(msg)
-        moving.x, moving.y, moving.rot = fromX, fromY, fromRot
-        return { ok = false, error = msg }
-    end
-
     amount = math.floor(tonumber(amount) or moving.amount)
     amount = math.max(1, math.min(amount, moving.amount))
 
@@ -1296,26 +1311,22 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
     if srcInv ~= dstInv then
         local incoming = (def and def.weight or 0.5) * amount
         if Inv.Weight(dstInv) + incoming > dstInv.maxWeight then
-            return refuse(Lp(src, 'inv.e_heavy'))
+            return { ok = false, error = Lp(src, 'inv.e_heavy') }
         end
         -- Into your pack from outside you: the whole load counts, not just the pack.
         if dstInv.wornBy == inv and srcInv ~= inv and srcInv.wornBy ~= inv
             and carriedWeight(inv) + incoming > inv.maxWeight then
-            return refuse(Lp(src, 'inv.e_heavy'))
+            return { ok = false, error = Lp(src, 'inv.e_heavy') }
         end
     end
 
-    local movedAmount, movedItem = amount, moving.item
-    local swappedItem, swappedAmount
     if target == moving then
-        movedAmount = 0
         -- Moved within its own slot (just a new spot in the grid). Coordinates were set above; nothing else changes.
     elseif target and target.item == moving.item and def and def.stack > 1 then
         -- Merge into the stack, up to its limit.
         local room = def.stack - target.amount
         local put = math.min(room, amount)
-        if put <= 0 then return refuse(Lp(src, 'inv.e_stack')) end
-        movedAmount = put
+        if put <= 0 then return { ok = false, error = Lp(src, 'inv.e_stack') } end
         target.amount = target.amount + put
         moving.amount = moving.amount - put
         if moving.amount <= 0 then
@@ -1326,8 +1337,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
         end
     elseif target then
         -- Swap, but only when the whole stack is being moved.
-        if amount ~= moving.amount then return refuse(Lp(src, 'inv.e_split')) end
-        swappedItem, swappedAmount = target.item, target.amount
+        if amount ~= moving.amount then return { ok = false, error = Lp(src, 'inv.e_split') } end
         srcInv.slots[fromSlot], dstInv.slots[toSlot] = target, moving
         target.slot, moving.slot = fromSlot, toSlot
         target.id, moving.id = nil, nil       -- rows are rewritten below
@@ -1339,7 +1349,7 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
             dstInv.slots[toSlot] = moving
         else
             moving.amount = moving.amount - amount
-            -- The rest of the stack stays where it was; only the split half goes to the picked cell.
+            -- The rest of the stack stays where it was; only the split half goes to the picked cell. Otherwise both sat on the same cells and the whole grid was repacked.
             moving.x, moving.y, moving.rot = fromX, fromY, fromRot
             -- The split half is the same stuff, so it keeps the same metadata.
             dstInv.slots[toSlot] = { item = moving.item, amount = amount, slot = toSlot,
@@ -1350,23 +1360,12 @@ BSB.RegisterCallback('inventory:move', function(src, from, to, amount)
 
     persistSlot(srcInv, fromSlot)
     persistSlot(dstInv, toSlot)
-    -- Bag, bar, equipment and worn pack/vest form one carried inventory.
-    -- Only crossing its boundary is a receipt; splitting/rearranging is not.
-    local fromCarried = srcInv == inv or srcInv.wornBy == inv
-    local toCarried = dstInv == inv or dstInv.wornBy == inv
-    if fromCarried ~= toCarried and movedAmount > 0 then
-        receipt(src, movedItem, movedAmount, toCarried and 'received' or 'removed', inv.ownerId)
-        if swappedItem then receipt(src, swappedItem, swappedAmount, fromCarried and 'received' or 'removed', inv.ownerId) end
-    end
     Inv.Push(src)
+    -- Someone looting a downed player's pack: the owner sees it change too.
     for _, b in ipairs({ srcInv, dstInv }) do
         local owner = b.wornBy and b.wornBy.src
         if owner and owner ~= src then Inv.Push(owner) end
-        -- Another character's inventory (a Survivor Link companion) changed: let its owner re-equip it.
-        local character=b.wornBy or b
-        if character ~= inv and character.ownerType == 'character' then TriggerEvent('bs:inventory:characterChanged', tonumber(character.ownerId), src) end
     end
-    if dzMoved then TriggerEvent('bs:darkzone:contaminated', src) end
     return { ok = true }
 end)
 
@@ -1380,7 +1379,15 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
     local def = Items.Get(entry.item)
     if not def or not def.usable then return { ok = false, error = Lp(src, 'inv.e_cant_use') } end
 
-    if def.data and def.data.radio and tonumber(slot)~=921 then return {ok=false,error='Equip this radio in its radio slot before using it.'}end
+    -- No weapons usable from ordinary inventory or equipment: server authoritative.
+    -- Slots 41-44 are the four equipped weapon slots; hotbar callback resolves
+    -- the same actual slot when a mapped key is pressed.
+    if def.category == 'weapon' then
+        local number = tonumber(slot)
+        if not number or number < barFrom() or number >= barFrom() + 4 then
+            return { ok = false, error = 'Die Waffe muss erst ausgerüstet werden' }
+        end
+    end
 
     -- Medical system on: medical items open the Medical tab instead (bs_medical decides).
     if def.category == 'medical' and GetResourceState('bs_medical') == 'started' then
@@ -1389,9 +1396,19 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
     end
 
     local data = def.data or {}
+
+    -- Downed players may never use a revive-capable item on themselves.
+    -- This check happens before animation/effects/consumption, so a medkit is kept.
+    if data.revive and GetResourceState('bs_medical') == 'started' then
+        local okD, down = pcall(function() return exports.bs_medical:IsDowned(src) end)
+        if okD and down then
+            return { ok = false, error = 'Du kannst dich nicht selbst wiederbeleben.' }
+        end
+    end
+
     local consumed = true
 
-    -- animKind says which use animation to play (eat, heal, ...), decided from the item data.
+    -- animKind says which use animation to play (eat, heal, ...), decided from the item data. The client (cl_main.lua) picks the actual anim/scenario.
     local animKind = nil
     if data.heal then
         animKind = 'heal'
@@ -1406,7 +1423,7 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
         exports.bs_core:RestoreNeeds(src, data.hunger or 0, data.thirst or 0)
     end
     if data.heal then
-        -- data.heal is a percent of max health.
+        -- data.heal is a percent of max health. Triage: the perk lives in bs_skills, the decision lives here, so a client never says how much it healed.
         local heal = data.heal
         if GetResourceState('bs_skills') == 'started' then
             local ok, has = pcall(function() return exports.bs_skills:HasPerk(src, 'triage') end)
@@ -1416,13 +1433,6 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
         TriggerClientEvent('bs:inventory:heal', src, heal)
         exports.bs_core:AwardAction(src, 'wound_treated')
     end
-    -- A revive-capable item (medkit) used while down goes through bs_medical's revive path
-    if data.revive and GetResourceState('bs_medical') == 'started' then
-        local okD, down = pcall(function() return exports.bs_medical:IsDowned(src) end)
-        if okD and down then
-            pcall(function() return exports.bs_medical:SelfRevive(src) end)
-        end
-    end
     if data.cure then
         exports.bs_core:ChangeInfection(src, -math.abs(data.cure))
     end
@@ -1430,14 +1440,6 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
         TriggerClientEvent('bs:inventory:armour', src, data.armour)
     end
     if data.weapon then
-        local from=inv.gridSlots or 0
-        if tonumber(slot)<=from or tonumber(slot)>from+BAR_SLOTS then return {ok=false,error='Move this weapon to your quick bar before drawing it.'} end
-        local drawnSerial
-        if GetResourceState('bs_weapons')=='started' then
-            local ok,value=pcall(function() return exports.bs_weapons:SetActive(src,data.weapon,tonumber(slot)) end)
-            if not ok or not value then return {ok=false,error='The weapon instance could not be selected.'} end
-            drawnSerial=value
-        end
         -- Use the ammo left in the weapon (remembered by bs_weapons), not the static data.ammo default.
         local savedAmmo = nil
         if type(data.weapon) == 'string' and GetResourceState('bs_weapons') == 'started' then
@@ -1445,18 +1447,22 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
             if ok then savedAmmo = saved end
         end
 
+        -- Tell bs_weapons which gun this is, so its own attachments are used.
+        if type(data.weapon) == 'string' and GetResourceState('bs_weapons') == 'started' then
+            pcall(function() exports.bs_weapons:SetActive(src, data.weapon, tonumber(slot)) end)
+        end
         if data.throwable then
             -- Throwables: equip with ammo = stack count and keep the item. One is removed per throw (bs:inventory:thrown).
-            TriggerClientEvent('bs:inventory:equipWeapon', src, data.weapon, entry.amount or 1, drawnSerial)
+            TriggerClientEvent('bs:inventory:equipWeapon', src, data.weapon, entry.amount or 1)
             consumed = false
         else
-            TriggerClientEvent('bs:inventory:equipWeapon', src, data.weapon, savedAmmo or data.ammo, drawnSerial)
+            TriggerClientEvent('bs:inventory:equipWeapon', src, data.weapon, savedAmmo or data.ammo)
             -- A thrown weapon is consumed, a bat is not. The item's own definition decides.
             consumed = (data.ammo ~= nil)
         end
     end
 
-    -- Loading rounds: the box is consumed here and handed back if it does not fit.
+    -- Loading rounds: the box is consumed here and handed back if it does not fit. The hand-back needs a one-shot token issued with the load, so a client cannot request a refund twice.
     if data.rounds and data.ammoFor then
         AmmoToken = (AmmoToken or 0) + 1
         AmmoPending[src] = { item = entry.item, token = AmmoToken }
@@ -1475,23 +1481,17 @@ BSB.RegisterCallback('inventory:use', function(src, slot)
         TriggerEvent('bs:drugs:use', src, entry.item)
     end
 
-    -- ESX compatibility hook (see ESX.RegisterUsableItem in bs_esx_bridge).
+    -- ESX compatibility hook (see ESX.RegisterUsableItem in bs_esx_bridge). Same-side TriggerEvent, silent if nobody listens. Fires after the item's own effects, not instead of them.
     TriggerEvent('bsesx:useItem:' .. entry.item, src)
     -- Items another resource reacts to (bs_crafting kits, traps, raw meat).
     if type(data.useEvent) == 'string' then TriggerEvent(data.useEvent, src, entry.item, slot) end
 
-    if consumed then
-        local removed = Inv.Remove(src, entry.item, 1)
-        if removed and (data.hunger or data.thirst) and GetResourceState('bs_bodily') == 'started' then
-            exports.bs_bodily:RecordConsumption(src, entry.item, data.hunger or 0, data.thirst or 0)
-        end
-        if not removed then return { ok = false, error = 'The item is no longer available.' } end
-    end
+    if consumed then Inv.Remove(src, entry.item, 1) end
     Inv.Push(src)
     return { ok = true, label = ItemLabel(entry.item, src), consumed = consumed }
 end)
 
--- A throwable left the hand (ammo went down on the client): take one from the stack.
+-- A throwable left the hand (ammo went down on the client): take one from the stack. Needs a held throwable of that weapon, one per call, rate limited.
 local LastThrow = {}
 RegisterNetEvent('bs:inventory:thrown', function(weapon)
     local src = source
@@ -1526,7 +1526,6 @@ BSB.RegisterCallback('inventory:drop', function(src, slot, amount)
     entry.amount = entry.amount - amount
     if entry.amount <= 0 then inv.slots[tonumber(slot)] = nil end
     persistSlot(inv, tonumber(slot))
-    receipt(src, item, amount, 'removed', inv.ownerId)
     Inv.Push(src)
 
     -- The world drop itself is bs_economy's business; for now it simply leaves the character's hands.
@@ -1534,7 +1533,7 @@ BSB.RegisterCallback('inventory:drop', function(src, slot, amount)
     return { ok = true }
 end)
 
--- Opens a shared container (stash, searched crate). label/size/maxWeight arguments are kept for compatibility but are ignored.
+-- Opens a shared container (stash, searched crate). label/size/maxWeight arguments are kept for compatibility but are ignored. A containerId with no registered spec is refused.
 BSB.RegisterCallback('inventory:openContainer', function(src, containerId)
     if type(containerId) ~= 'string' or #containerId > 64 then return { ok = false } end
 
@@ -1559,7 +1558,7 @@ BSB.RegisterCallback('inventory:openContainer', function(src, containerId)
     return { ok = true, container = serialise(inv), label = inv.label }
 end)
 
--- Opening the bag you are wearing.
+-- Opening the bag you are wearing. The container is keyed to the pack item (metadata bagId), not the player or slot, so contents travel with the pack when it is dropped or stashed.
 local function bagIdFor(entry)
     entry.metadata = entry.metadata or {}
     if entry.metadata.bagId then return entry.metadata.bagId, false end
@@ -1635,7 +1634,7 @@ BSB.RegisterCallback('inventory:closeContainer', function(src)
     return { ok = true }
 end)
 
--- Is there anything in it? bs_vehicles asks before cleaning up a car.
+-- Is there anything in it? bs_vehicles asks before cleaning up a car. Reads the database if the container is not in memory. Returns a plain boolean.
 exports('ContainerHasItems', function(containerId)
     if type(containerId) ~= 'string' then return false end
 
@@ -1657,7 +1656,7 @@ exports('ContainerHasItems', function(containerId)
     return #rows > 0
 end)
 
--- Containers as machines (bs_recycler): exports to read what is inside a container, take it, and put something back.
+-- Containers as machines (bs_recycler): exports to read what is inside a container, take it, and put something back. Exports because the caller is a resource, not a client.
 
 local function containerInv(containerId)
     if type(containerId) ~= 'string' then return nil end
@@ -1716,16 +1715,9 @@ exports('ContainerGive', function(containerId, item, amount)
     return ok, label
 end)
 
--- Death: moves every row a player owns (grid, bar, worn gear) into a corpse container, keeping metadata and durability.
+-- Death: moves every row a player owns (grid, bar, worn gear) into a corpse container, keeping metadata and durability. Rows are copied; the caller wipes the player side with WipeInventory. Returns moved row count.
 exports('DeathTransfer', function(src, containerId, label)
     if type(containerId) ~= 'string' then return 0 end
-    local player = exports.bs_core:GetPlayer(src)
-    local owner = player and tostring(player.charId)
-    local deadline = GetGameTimer() + 10000
-    while owner and Inv.MutationOwners and Inv.MutationOwners[owner] and GetGameTimer() < deadline do Wait(25) end
-    local current = exports.bs_core:GetPlayer(src)
-    if not current or tostring(current.charId) ~= owner then return 0 end
-
     local inv = playerInventory(src)
     if not inv then return 0 end
 
@@ -1789,14 +1781,14 @@ end)
 -- Lifecycle
 
 AddEventHandler('bs:hook:player:spawned', function(player)
-    -- Hook payloads are serialised copies without methods
+    -- Hook payloads are serialised copies without methods, so the meta flag is cleared through bs_core's export instead of player:SetMeta.
     local pending = player.metadata and player.metadata.pendingLoadout
 
     if pending and #pending > 0 then
         -- Cleared first, so a second spawn event cannot grant the same list again.
         exports.bs_core:SetPlayerMeta(player.source, 'pendingLoadout', nil)
         for _, entry in ipairs(pending) do
-            Inv.Give(player.source, entry.item, entry.amount or 1, nil, true)
+            Inv.Give(player.source, entry.item, entry.amount or 1)
         end
     end
 
@@ -1817,13 +1809,13 @@ AddEventHandler('playerDropped', function()
     local src = source
     openContainers[src], openedAt[src], containerGrants[src] = nil, nil, nil
     local player = exports.bs_core:GetPlayer(src)
-    -- A committing trade still owns this cache until its transaction resolves
+    -- A committing trade still owns this cache until its transaction resolves; dropping it now would leave the other trader with stale rows.
     if player and not Inv.TradeLockedOwner[tostring(player.charId)] then
         cache[key('character', player.charId)] = nil
     end
 end)
 
--- Using a tool up: called by whatever made the tool work (mining, felling), never by the client.
+-- Using a tool up. Called by whatever made the tool work (mining, felling), never by the client. Wears the most worn copy first and returns the life left and whether it just broke.
 exports('WearItem', function(src, itemName, amount)
     local inv = playerInventory(src)
     if not inv then return false end
@@ -1917,7 +1909,7 @@ exports('WearEquipment', function(src, amount)
     return touched
 end)
 
--- Net entry point for the above.
+-- Net entry point for the above. The amount is not trusted but only lightly guarded: lying only wears your own clothes faster. The rate limit protects the database; the clamp is secondary.
 local wearRate = {}
 
 RegisterNetEvent('bs:inventory:wearWorn', function(stopped)
@@ -1937,7 +1929,7 @@ end)
 
 AddEventHandler('playerDropped', function() wearRate[source] = nil end)
 
--- Measured containers (jerrycan, bottle): fuel is a quantity held in a container, not an item.
+-- Measured containers (jerrycan, bottle): fuel is a quantity held in a container, not an item. All diesel is gathered with a jerrycan or an empty bottle, and pouring empties the container instead of consuming it.
 
 local function measuredCapacity(itemName)
     local def = Items.Get(itemName)
@@ -1982,7 +1974,7 @@ exports('MeasuredInfo', function(src, names)
     return { held = held, room = room, containers = count }
 end)
 
--- Pours in: tops up the fullest container first.
+-- Pours in. Tops up the fullest container first. Returns how much actually went in, so callers can tell when the source had more than you could carry.
 exports('PourInto', function(src, names, amount)
     local inv = playerInventory(src)
     if not inv then return 0 end
@@ -2031,7 +2023,7 @@ exports('PourOut', function(src, names, amount)
     return drawn
 end)
 
--- Which box of rounds feeds a weapon.
+-- Which box of rounds feeds a weapon. Lives here because `Items` is global only in this resource's Lua state; other resources must use this export.
 local ammoByWeapon = nil
 
 exports('AmmoItemFor', function(weaponName)
@@ -2060,9 +2052,17 @@ exports('ItemBlurb', function(itemName, src)
              rounds = def.data and def.data.rounds or nil }
 end)
 
-exports('GiveItem', function(src, item, amount, metadata, options)
-    return Inv.Give(src, item, amount, type(metadata) == 'table' and metadata or nil,
-        type(options) == 'table' and options.pickup == false)
+exports('GiveItem', function(src, item, amount, metadata)
+    return Inv.Give(src, item, amount, type(metadata) == 'table' and metadata or nil)
+end)
+
+-- Same add logic as GiveItem, but without an immediate inventory sync.
+-- Used by container looting so several loot rolls can be inserted first and
+-- the complete inventory is pushed to the client only once at the end.
+exports('GiveItemSilent', function(src, item, amount, metadata)
+    local inv = playerInventory(src)
+    if not inv then return false, 'no character' end
+    return addToInv(inv, item, amount, type(metadata) == 'table' and metadata or nil)
 end)
 exports('RemoveItem', function(src, item, amount) return Inv.Remove(src, item, amount) end)
 
@@ -2216,7 +2216,6 @@ exports('RemoveSlot', function(src, slot, item)
     e.amount = e.amount - 1
     if e.amount <= 0 then inv.slots[slot] = nil end
     persistSlot(inv, slot)
-    receipt(src, item, 1, 'removed', inv.ownerId)
     Inv.Push(src)
     return true
 end)
@@ -2225,23 +2224,21 @@ exports('Refresh', function(src) return Inv.Push(src) end)
 
 exports.bs_core:RegisterModule('inventory', { side = 'server', version = '0.2.0' })
 
--- World drops: a dropped stack becomes an object anyone can pick up.
+-- World drops. A dropped stack becomes an object anyone can pick up. The server owns the list; clients spawn props for nearby drops locally, so a drop costs no networked entity.
 
 local drops = {}          -- [dropId] = { id, item, amount, coords, at, by }
 local dropMeta = {}       -- [dropId] = metadata, kept server-side (never broadcast)
-local dropBusy = {}
 local dropSeq = 0
-local dropBy = {}         -- [dropId] = src that dropped it
 
 -- Caps the nearby-drop payload per call; the decay thread keeps the total count sane over time.
 local NEARBY_DROPS_MAX = 150
 
-local function nearbyDrops(coords, radius, bucket)
+local function nearbyDrops(coords, radius)
     local out = {}
     local n = 0
     for _, drop in pairs(drops) do
         local dx, dy, dz = drop.coords.x - coords.x, drop.coords.y - coords.y, drop.coords.z - coords.z
-        if (drop.bucket or 0) == (bucket or 0) and (dx * dx + dy * dy + dz * dz) <= radius * radius then
+        if (dx * dx + dy * dy + dz * dz) <= radius * radius then
             n = n + 1
             out[n] = drop
             if n >= NEARBY_DROPS_MAX then break end
@@ -2252,12 +2249,7 @@ end
 
 -- Broadcasts the drop list to everyone near it. The list is tiny, so sending the whole nearby set is simpler than deltas.
 local function broadcastDrop(drop, removed)
-    for _,id in ipairs(GetPlayers()) do
-        local target=tonumber(id)
-        if removed or GetPlayerRoutingBucket(target)==(drop.bucket or 0) then
-            TriggerClientEvent('bs:inventory:drop' .. (removed and 'Removed' or 'Added'), target, drop)
-        end
-    end
+    TriggerClientEvent('bs:inventory:drop' .. (removed and 'Removed' or 'Added'), -1, drop)
 end
 
 BSB.RegisterCallback('inventory:dropWorld', function(src, slot, amount, coords)
@@ -2270,7 +2262,7 @@ BSB.RegisterCallback('inventory:dropWorld', function(src, slot, amount, coords)
 
     amount = math.max(1, math.min(math.floor(tonumber(amount) or entry.amount), entry.amount))
 
-    -- The drop must be within a couple of metres of where the server thinks the player is, Z included
+    -- The drop must be within a couple of metres of where the server thinks the player is, Z included, so a client cannot drop items on other floors.
     local ped = GetPlayerPed(src)
     local real = GetEntityCoords(ped)
     if type(coords) ~= 'table' then coords = { x = real.x, y = real.y, z = real.z } end
@@ -2284,14 +2276,12 @@ BSB.RegisterCallback('inventory:dropWorld', function(src, slot, amount, coords)
     local meta = copyTable(entry.metadata)
     if entry.amount <= 0 then inv.slots[tonumber(slot)] = nil end
     persistSlot(inv, tonumber(slot))
-    receipt(src, item, amount, 'removed', inv.ownerId)
     Inv.Push(src)
 
     dropSeq = dropSeq + 1
     local def = Items.Get(item) or {}
     local drop = {
         id = ('d%d'):format(dropSeq),
-        bucket = GetPlayerRoutingBucket(src),
         item = item,
         label = def.label or item,
         category = def.category or 'misc',
@@ -2302,7 +2292,6 @@ BSB.RegisterCallback('inventory:dropWorld', function(src, slot, amount, coords)
     drops[drop.id] = drop
     -- A dropped bag has to still be the same bag when it is picked up.
     if meta and next(meta) ~= nil then dropMeta[drop.id] = meta end
-    dropBy[drop.id] = src
     broadcastDrop(drop, false)
 
     return { ok = true, drop = drop }
@@ -2310,51 +2299,25 @@ end)
 
 BSB.RegisterCallback('inventory:pickup', function(src, dropId)
     local drop = drops[dropId]
-    if not drop or dropBusy[dropId] or (drop.bucket or 0) ~= GetPlayerRoutingBucket(src) then return { ok = false, error = Lp(src, 'inv.e_gone') } end
-    if not playerInventory(src) then return { ok = false } end
+    if not drop then return { ok = false, error = Lp(src, 'inv.e_gone') } end
 
     local ped = GetPlayerPed(src)
     local coords = GetEntityCoords(ped)
     local dx, dy, dz = drop.coords.x - coords.x, drop.coords.y - coords.y, drop.coords.z - coords.z
-    if (dx * dx + dy * dy + dz * dz) > 100.0 then return { ok = false, error = Lp(src, 'inv.e_far') } end
+    if (dx * dx + dy * dy + dz * dz) > 9.0 then return { ok = false, error = Lp(src, 'inv.e_far') } end
 
-    -- Picked up inside the Dark Zone (and not your own drop): into the contaminated bag.
-    local ok, label
-    dropBusy[dropId] = true
-    local succeeded, err = pcall(function()
-        local dz = dropBy[dropId] ~= src and Inv.DzGive and Inv.DzGive(src, drop.item, drop.amount, dropMeta[dropId]) or nil
-        if dz then ok, label = dz.ok, dz.label
-        else ok = exports.bs_inventory:GiveAll(src, drop.item, drop.amount, dropMeta[dropId]); label = drop.label end
-    end)
-    dropBusy[dropId] = nil
-    if not succeeded then print('[bs_inventory] Ground pickup failed: '..tostring(err)); return {ok=false,error='Unable to collect item'} end
-    if not ok then return { ok = false, error = 'No room in your inventory' } end
+    local ok, label = Inv.Give(src, drop.item, drop.amount, dropMeta[dropId])
+    if not ok then return { ok = false, error = label } end
 
     drops[dropId] = nil
     dropMeta[dropId] = nil
-    dropBy[dropId] = nil
     broadcastDrop(drop, true)
-    return { ok = true, label = label, amount = drop.amount }
+    return { ok = true, label = label, amount = drop.amount, item = drop.item }
 end)
 
 BSB.RegisterCallback('inventory:nearbyDrops', function(src)
     local coords = GetEntityCoords(GetPlayerPed(src))
-    return { ok = true, drops = nearbyDrops(coords, 120.0, GetPlayerRoutingBucket(src)) }
-end)
-
-BSB.RegisterCallback('inventory:vicinity', function(src)
-    if not playerInventory(src) then return {ok=false,items={}} end
-    local coords=GetEntityCoords(GetPlayerPed(src))
-    local out={}
-    for _,drop in ipairs(nearbyDrops(coords,10.0,GetPlayerRoutingBucket(src))) do
-        if not drop.pack then
-            local row={};for k,v in pairs(drop) do row[k]=v end
-            row.distance=math.sqrt((coords.x-drop.coords.x)^2+(coords.y-drop.coords.y)^2+(coords.z-drop.coords.z)^2)
-            out[#out+1]=row
-        end
-    end
-    table.sort(out,function(a,b)return a.distance<b.distance end)
-    return {ok=true,items=out}
+    return { ok = true, drops = nearbyDrops(coords, 120.0) }
 end)
 
 -- Giving to another player: both must be close, and the receiver must have room.
@@ -2377,7 +2340,7 @@ BSB.RegisterCallback('inventory:give', function(src, slot, amount, targetSrc)
     amount = math.max(1, math.min(math.floor(tonumber(amount) or entry.amount), entry.amount))
     local item = entry.item
 
-    local ok, label = Inv.Give(targetSrc, item, amount, nil, true)
+    local ok, label = Inv.Give(targetSrc, item, amount)
     if not ok then return { ok = false, error = Lp(src, 'inv.e_cant_carry', { why = label or '' }) } end
 
     entry.amount = entry.amount - amount
@@ -2390,8 +2353,214 @@ BSB.RegisterCallback('inventory:give', function(src, slot, amount, targetSrc)
         message = Lp(targetSrc, 'inv.gave_you', {
             name = (exports.bs_core:GetPlayer(src) or {}).name or Lp(targetSrc, 'inv.someone'),
             n = amount, item = ItemLabel(item, targetSrc) }),
+        itemImage = item,
     })
     return { ok = true }
+end)
+
+-- Hand real character cash to another nearby player. The UI presents cash like an item,
+-- while bs_core remains the single source of truth for the balance.
+BSB.RegisterCallback('inventory:giveCash', function(src, amount, targetSrc)
+    amount = math.floor(tonumber(amount) or 0)
+    targetSrc = tonumber(targetSrc)
+    if amount < 1 or amount > 100000000 then
+        return { ok = false, error = 'Invalid cash amount' }
+    end
+    if not targetSrc or targetSrc == src then
+        return { ok = false, error = Lp(src, 'inv.e_you') }
+    end
+
+    local sender = exports.bs_core:GetPlayer(src)
+    local target = exports.bs_core:GetPlayer(targetSrc)
+    if not sender or not target then return { ok = false, error = Lp(src, 'inv.e_not_here') } end
+
+    local a, b = GetEntityCoords(GetPlayerPed(src)), GetEntityCoords(GetPlayerPed(targetSrc))
+    if #(a - b) > 3.5 then return { ok = false, error = Lp(src, 'trade.e_closer') } end
+
+    local cash = sender.accounts and tonumber(sender.accounts.cash) or 0
+    if cash < amount then return { ok = false, error = Lp(src, 'trade.e_no_cash') } end
+
+    if not exports.bs_core:RemoveMoney(src, 'cash', amount, 'cash item give') then
+        return { ok = false, error = Lp(src, 'trade.e_no_cash') }
+    end
+    if not exports.bs_core:AddMoney(targetSrc, 'cash', amount, 'cash item received') then
+        exports.bs_core:AddMoney(src, 'cash', amount, 'cash item give rollback')
+        return { ok = false, error = 'Cash transfer failed' }
+    end
+
+    -- Play a short physical hand-over on both characters after the authoritative transfer succeeds.
+    TriggerClientEvent('bs:inventory:cashHandoverAnim', src)
+    TriggerClientEvent('bs:inventory:cashHandoverAnim', targetSrc)
+
+    TriggerClientEvent('bs:ui:notify', src, {
+        type = 'success', message = ('$%d Bargeld weitergegeben.'):format(amount), itemImage = 'cash'
+    })
+    TriggerClientEvent('bs:ui:notify', targetSrc, {
+        type = 'success', message = ('%d$ erhalten'):format(amount), itemImage = 'cash'
+    })
+    return { ok = true }
+end)
+
+-- Permanent ID photo storage -------------------------------------------------
+-- One photo per character. Once saved it is never overwritten automatically,
+-- so later hats, glasses, masks, hair/clothing changes do not alter the ID photo.
+local identityPhotoTableReady = false
+
+local function ensureIdentityPhotoTable()
+    if identityPhotoTableReady then return true end
+    local ok = pcall(function()
+        MySQL.query.await([[
+            CREATE TABLE IF NOT EXISTS `bs_identity_photos` (
+                `char_id` VARCHAR(64) NOT NULL,
+                `photo_data` LONGTEXT NOT NULL,
+                `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`char_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ]])
+    end)
+    identityPhotoTableReady = ok
+    return ok
+end
+
+CreateThread(function()
+    ensureIdentityPhotoTable()
+end)
+
+local function identityPhotoForChar(charId)
+    if not charId or not ensureIdentityPhotoTable() then return nil end
+    local ok, photo = pcall(function()
+        return MySQL.scalar.await(
+            'SELECT `photo_data` FROM `bs_identity_photos` WHERE `char_id` = ? LIMIT 1',
+            { tostring(charId) }
+        )
+    end)
+    if not ok or type(photo) ~= 'string' or photo == '' then return nil end
+    return photo
+end
+
+-- Permanent character identity card. No inventory row is created: the card is derived
+-- from bs_core character identity, therefore it survives death and cannot be dropped/moved.
+local function identityCardFor(src)
+    local p = exports.bs_core:GetPlayer(src)
+    if not p then return nil end
+    local gender = tostring(p.gender or '')
+    if gender == 'm' or gender == 'male' or gender == '0' then gender = 'Männlich'
+    elseif gender == 'f' or gender == 'female' or gender == '1' then gender = 'Weiblich'
+    elseif gender == '' then gender = '-'
+    end
+    local dob = p.dob
+    if type(dob) == 'string' then
+        local y,m,d = dob:match('^(%d%d%d%d)%-(%d%d)%-(%d%d)')
+        if y then dob = ('%s.%s.%s'):format(d,m,y) end
+    end
+    -- The issue date is the character creation date. That means every ID keeps the
+    -- same ISSUE DATE instead of changing every time the inventory is opened.
+    local issueDate = '-'
+    local ok, createdAt = pcall(function()
+        return MySQL.scalar.await('SELECT `created_at` FROM `bs_characters` WHERE `id` = ? LIMIT 1', { p.charId })
+    end)
+    if ok and createdAt then
+        local raw = tostring(createdAt)
+        local y,m,d = raw:match('^(%d%d%d%d)%-(%d%d)%-(%d%d)')
+        if y then issueDate = ('%s.%s.%s'):format(d,m,y) end
+    end
+
+    local firstName, lastName = p.firstName or '', p.lastName or ''
+
+    -- Use the permanent RP Citizen ID. Beyond Survival Citizen IDs always use
+    -- the SA-420 prefix. Prefer an ID already supplied by bs_core; older core
+    -- versions fall back to a stable ID derived from the permanent charId.
+    local citizenId = p.citizenid or p.citizenId or p.citizen_id or p.citizenID
+    if citizenId == nil or tostring(citizenId) == '' then
+        citizenId = ('SA-420%03d'):format(tonumber(p.charId) or 0)
+    else
+        citizenId = tostring(citizenId)
+        if not citizenId:match('^SA%-420') then
+            local digits = citizenId:match('(%d+)$') or tostring(p.charId or '')
+            citizenId = 'SA-420' .. digits
+        end
+    end
+
+    return {
+        firstName = firstName,
+        lastName = lastName,
+        name = ((firstName .. ' ' .. lastName):gsub('^%s+', ''):gsub('%s+$', '')),
+        dob = dob or '-',
+        gender = gender,
+        sex = (gender == 'Männlich' and 'MALE') or (gender == 'Weiblich' and 'FEMALE') or gender,
+        number = citizenId,
+        citizenid = citizenId,
+        citizenId = citizenId,
+        issueDate = issueDate,
+        signature = ((firstName .. ' ' .. lastName):gsub('^%s+', ''):gsub('%s+$', '')),
+        charId = p.charId,
+        photo = identityPhotoForChar(p.charId)
+    }
+end
+
+BSB.RegisterCallback('inventory:identitySelf', function(src)
+    local card = identityCardFor(src)
+    return card and { ok=true, card=card } or { ok=false, error='Charakter nicht geladen.' }
+end)
+
+BSB.RegisterCallback('inventory:identitySavePhoto', function(src, photoData)
+    local p = exports.bs_core:GetPlayer(src)
+    if not p or not p.charId then return { ok=false, error='Charakter nicht geladen.' } end
+    if type(photoData) ~= 'string' then return { ok=false, error='Ungültiges Passfoto.' } end
+
+    -- Accept only NUI-generated PNG/JPEG data URLs and keep database payload bounded.
+    local isImage = photoData:match('^data:image/png;base64,')
+        or photoData:match('^data:image/jpeg;base64,')
+        or photoData:match('^data:image/jpg;base64,')
+    if not isImage or #photoData > 900000 then
+        return { ok=false, error='Passfoto ist ungültig oder zu groß.' }
+    end
+    if not ensureIdentityPhotoTable() then
+        return { ok=false, error='Passfoto-Speicher nicht verfügbar.' }
+    end
+
+    -- Never replace an existing photo automatically: first valid capture wins.
+    local ok = pcall(function()
+        MySQL.insert.await(
+            'INSERT IGNORE INTO `bs_identity_photos` (`char_id`, `photo_data`) VALUES (?, ?)',
+            { tostring(p.charId), photoData }
+        )
+    end)
+    if not ok then return { ok=false, error='Passfoto konnte nicht gespeichert werden.' } end
+
+    return { ok=true, photo=identityPhotoForChar(p.charId) or photoData }
+end)
+
+BSB.RegisterCallback('inventory:identityShow', function(src, targetSrc)
+    targetSrc = tonumber(targetSrc)
+    if not targetSrc or targetSrc == src then return { ok=false, error='Ungültiges Ziel.' } end
+    local sender, target = exports.bs_core:GetPlayer(src), exports.bs_core:GetPlayer(targetSrc)
+    if not sender or not target then return { ok=false, error='Spieler nicht verfügbar.' } end
+    local a,b = GetEntityCoords(GetPlayerPed(src)), GetEntityCoords(GetPlayerPed(targetSrc))
+    if #(a-b) > 3.5 then return { ok=false, error='Spieler ist zu weit entfernt.' } end
+    local card = identityCardFor(src)
+    if not card then return { ok=false, error='Ausweis nicht verfügbar.' } end
+    TriggerClientEvent('bs:inventory:showIdentityCard', targetSrc, card)
+    TriggerClientEvent('bs:ui:notify', src, { type='success', message=('Personalausweis %s gezeigt.'):format(target.name or '') })
+    return { ok=true }
+end)
+
+
+-- Capture a permanent ID photo shortly after a character has fully spawned.
+-- Existing characters get their first photo after this update; new characters
+-- keep that first stored image permanently.
+AddEventHandler('bs:hook:player:spawned', function(player)
+    if not player or not player.source or not player.charId then return end
+    local src, charId = player.source, player.charId
+    CreateThread(function()
+        Wait(6000)
+        local current = exports.bs_core:GetPlayer(src)
+        if not current or tostring(current.charId) ~= tostring(charId) then return end
+        if not identityPhotoForChar(charId) then
+            TriggerClientEvent('bs:inventory:ensureIdentityPhoto', src)
+        end
+    end)
 end)
 
 -- Who is standing close enough to hand something to.
@@ -2413,7 +2582,7 @@ end)
 -- New arrivals need the drops that already exist near them.
 AddEventHandler('bs:hook:player:spawned', function(player)
     local coords = GetEntityCoords(GetPlayerPed(player.source))
-    TriggerClientEvent('bs:inventory:dropSync', player.source, nearbyDrops(coords, 200.0, GetPlayerRoutingBucket(player.source)))
+    TriggerClientEvent('bs:inventory:dropSync', player.source, nearbyDrops(coords, 200.0))
 end)
 
 -- Drops decay so the map does not fill with backpacks forever.
@@ -2522,7 +2691,6 @@ exports('GiveAll', function(src, item, amount, metadata)
     local inv = playerInventory(src)
     if not inv then return false end
     local ok = addAll(inv, item, math.max(1, math.floor(tonumber(amount) or 1)), metadata)
-    if ok then receipt(src, item, math.max(1, math.floor(tonumber(amount) or 1)), 'received', inv.ownerId) end
     Inv.Push(src)
     return ok
 end)
@@ -2535,7 +2703,7 @@ exports('MoveToContainer', function(src, item, amount, containerId)
     amount = math.max(1, math.floor(tonumber(amount) or 1))
     if Inv.Count(src, item) < amount then return false end
     if not addAll(box, item, amount) then return false end
-    Inv.Remove(src, item, amount, box.wornBy == inv)
+    Inv.Remove(src, item, amount)
     pushContainer(containerId)
     return true
 end)
@@ -2549,7 +2717,6 @@ exports('MoveFromContainer', function(src, item, amount, containerId)
     if not addAll(inv, item, amount) then return false end
     removeFromInv(box, item, amount)
     pushContainer(containerId)
-    if box.wornBy ~= inv then receipt(src, item, amount, 'received', inv.ownerId) end
     Inv.Push(src)
     return true
 end)
@@ -2568,7 +2735,9 @@ exports('ItemCounts', function(src)
 end)
 
 
+--------------------------------------------------------------------------------
 -- Backpacks: death drop, looting a dropped pack, looting a downed player's pack, look picker
+--------------------------------------------------------------------------------
 
 local function guardLog(src, detail)
     local ped = GetPlayerPed(src)
@@ -2579,7 +2748,7 @@ local function guardLog(src, detail)
           'inventory', 50, tostring(detail):sub(1, 512), c.x, c.y, c.z })
 end
 
--- Called from DeathTransfer before the wipe.
+-- Called from DeathTransfer before the wipe. The pack row is copied to a world drop with its metadata, so the bag id (and the contents) survive.
 function Inv.DropPackOnDeath(src, entry)
     local def = Items.Get(entry.item) or {}
     entry.metadata = entry.metadata or {}
@@ -2670,64 +2839,11 @@ BSB.RegisterCallback('inventory:packLook', function(src, look, hidden)
     return { ok = true }
 end)
 
---------------------------------------------------------------------------------
--- Dark Zone (bs_darkzone): contaminated bag hooks and whole-container moves
---------------------------------------------------------------------------------
-
--- The bag a take has to go to instead, or nil.
-function Inv.DzTarget(src, fromId)
-    if GetResourceState('bs_darkzone') ~= 'started' then return nil end
-    local ok, bagId = pcall(function() return exports.bs_darkzone:BagFor(src, fromId) end)
-    if not ok or type(bagId) ~= 'string' or bagId == fromId then return nil end
-    return containerInv(bagId)
-end
-
--- World pickup inside the zone. nil = not a Dark Zone pickup.
-function Inv.DzGive(src, item, amount, meta)
-    local box = Inv.DzTarget(src, nil)
-    if not box then return nil end
-    if not addAll(box, item, amount, meta) then return { ok = false, label = Lp(src, 'inv.e_dz_full') } end
-    pushContainer(box.ownerId)
-    TriggerEvent('bs:darkzone:contaminated', src)
-    local def = Items.Get(item)
-    return { ok = true, label = def and def.label or item }
-end
-
-local function moveStacks(a, b)
-    local moved, left = 0, 0
-    local slots = {}
-    for slot in pairs(a.slots) do slots[#slots + 1] = slot end
-    table.sort(slots)
-    for _, slot in ipairs(slots) do
-        local e = a.slots[slot]
-        if e then
-            if addAll(b, e.item, e.amount, e.metadata) then
-                a.slots[slot] = nil
-                persistSlot(a, slot)
-                moved = moved + 1
-            else
-                left = left + 1
-            end
-        end
-    end
-    return moved, left
-end
-
--- Every stack from one container to another, metadata kept. What does not fit stays.
-exports('ContainerTransfer', function(fromId, toId)
-    local a, b = containerInv(fromId), containerInv(toId)
-    if not a or not b or a == b then return { moved = 0, left = 0 } end
-    local moved, left = moveStacks(a, b)
-    pushContainer(fromId); pushContainer(toId)
-    return { moved = moved, left = left }
-end)
-
--- Same into a player's inventory (Dark Zone extraction).
-exports('ContainerToPlayer', function(fromId, src)
-    local a, inv = containerInv(fromId), playerInventory(tonumber(src))
-    if not a or not inv then return { moved = 0, left = 0 } end
-    local moved, left = moveStacks(a, inv)
-    pushContainer(fromId)
-    Inv.Push(tonumber(src))
-    return { moved = moved, left = left }
+-- A revive from the downed/bleedout state bypasses the full death inventory wipe.
+-- Clear only the persisted equipped-weapon metadata; keep every inventory item.
+RegisterNetEvent('bs:inventory:reviveHandCleanup', function()
+    local src = source
+    if GetResourceState('bs_core') ~= 'started' then return end
+    pcall(function() exports.bs_core:SetPlayerMeta(src, 'lastWeapon', nil) end)
+    pcall(function() exports.bs_core:SavePlayer(src, true) end)
 end)

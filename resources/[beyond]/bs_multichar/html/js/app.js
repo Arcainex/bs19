@@ -1,4 +1,6 @@
 // bs_multichar - character select and creator.
+// The 3D ped lives in the game; this file decides what to show and posts it to Lua via post(), which restyles the preview ped.
+// Every choice is only a request: the server re-validates identity, kit, outfit and faction against its own config.
 
 const RES = (typeof GetParentResourceName === 'function')
     ? GetParentResourceName() : 'bs_multichar';
@@ -48,10 +50,11 @@ const S = {
     step: 'identity',
     counts: {},          // per sex: drawable counts reported by the preview ped
     tex: {},             // texture counts of the pieces currently worn
+    catalog: {},         // valid and enabled addon clothing, per gender
+    catalogLoading: false,
+    wardrobeGroup: 'wear',
     hands: false,
     busy: false,
-    cards: {},           // charId -> { faction, label, short, emblem, logo, motto }
-    portraits: {},       // charId -> nui-img url of the headshot
 };
 
 // select view
@@ -64,50 +67,9 @@ function playtime(seconds) {
     return tr('ui.days_survived', { n: d }, `${d}D SURVIVED`);
 }
 
-// Exact time on the clock for the card, e.g. 14h 05m.
-function played(seconds) {
-    const m = Math.floor((seconds || 0) / 60);
-    if (m < 1) return tr('sel.fresh', null, 'Fresh');
-    const h = Math.floor(m / 60);
-    return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
-}
-
-// last_played arrives as ms, seconds or a date string depending on the driver.
-function lastSeen(v) {
-    if (v === null || v === undefined || v === '') return tr('sel.never', null, 'Never');
-    let t = typeof v === 'number' ? v : Date.parse(v);
-    if (!Number.isFinite(t)) return tr('sel.never', null, 'Never');
-    if (t < 1e12) t *= 1000;
-    const mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
-    if (mins < 60) return tr('sel.mins_ago', { n: Math.max(1, mins) }, `${Math.max(1, mins)} min ago`);
-    const h = Math.floor(mins / 60);
-    if (h < 24) return tr('sel.hours_ago', { n: h }, `${h} h ago`);
-    const d = Math.floor(h / 24);
-    if (d < 60) return tr('sel.days_ago', { n: d }, `${d} days ago`);
-    try { return new Date(t).toLocaleDateString(lang(), { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; }
-}
-
 function slotCountText() {
     return tr('ui.slots_used', { n: S.characters.length, max: S.maxSlots },
         `${S.characters.length} / ${S.maxSlots} SLOTS USED`);
-}
-
-function cardOf(c) { return (c && S.cards[String(c.id)]) || null; }
-
-function emblemFor(card, size) {
-    if (!card || !window.BSEmblem) return '';
-    const spec = card.emblem ? BSEmblem.normalize(card.emblem) : BSEmblem.fromLegacy(card.logo, card.faction || '');
-    return BSEmblem.render(spec, size ? { size } : undefined);
-}
-
-function initials(c) {
-    return ((String(c.first_name || '?')[0] || '') + (String(c.last_name || '')[0] || '')).toUpperCase();
-}
-
-function portraitHtml(c) {
-    const url = S.portraits[String(c.id)];
-    const img = url ? `<img src="${escape(url)}" alt="" onerror="this.remove()">` : '';
-    return `<span class="slot__face"><b>${escape(initials(c))}</b>${img}</span>`;
 }
 
 function renderSlots() {
@@ -117,36 +79,20 @@ function renderSlots() {
     $('slotCount').textContent = slotCountText();
 
     S.characters.forEach((c, i) => {
-        const card = cardOf(c);
-        const on = i === S.selected;
-        const node = el('div', 'slot' + (on ? ' is-active' : ''));
-        node.setAttribute('role', 'option');
-        node.setAttribute('aria-selected', on ? 'true' : 'false');
-        node.tabIndex = on ? 0 : -1;
-        node.style.setProperty('--n', i);
-        const fac = card ? `<span class="slot__fac">${escape(card.label || card.faction)}</span>` : `<span class="slot__fac is-none">${escape(tr('sel.no_faction', null, 'No faction'))}</span>`;
+        const node = el('div', 'slot' + (i === S.selected ? ' is-active' : ''));
         node.innerHTML = `
-            <span class="slot__no">${String(i + 1).padStart(2, '0')}</span>
-            <span class="slot__pic">${portraitHtml(c)}${card ? `<span class="slot__mark">${emblemFor(card)}</span>` : ''}</span>
-            <span class="slot__body">
-                <span class="slot__name">${escape(c.first_name)} ${escape(c.last_name)}</span>
-                <span class="slot__sub"><em>${escape(c.classLabel || c.class)}</em>${fac}</span>
-                <span class="slot__meta">
-                    <span class="slot__lvl"><small>${escape(tr('ui.lvl', null, 'LVL'))}</small>${c.level ?? 1}</span>
-                    <span><small>${escape(tr('sel.played', null, 'PLAYED'))}</small>${escape(played(c.playtime))}</span>
-                    <span><small>${escape(tr('sel.last', null, 'LAST SEEN'))}</small>${escape(lastSeen(c.last_played))}</span>
-                </span>
-            </span>`;
+            <div class="slot__name">${escape(c.first_name)} ${escape(c.last_name)}</div>
+            <div class="slot__meta">
+                <span><em>${escape(c.classLabel || c.class)}</em></span>
+                <span>${escape(playtime(c.playtime))}</span>
+            </div>`;
         node.addEventListener('click', () => selectSlot(i));
-        node.addEventListener('dblclick', () => { selectSlot(i); $('btnPlay').click(); });
         list.appendChild(node);
     });
 
     // Empty slots are shown so a fresh account does not look broken.
     for (let i = S.characters.length; i < S.maxSlots; i++) {
-        const node = el('button', 'slot slot--empty', `<span class="slot__no">${String(i + 1).padStart(2, '0')}</span><span class="slot__plus">+</span><span class="slot__body"><span class="slot__name">${escape(tr('ui.new_survivor', null, 'NEW SURVIVOR'))}</span><span class="slot__sub">${escape(tr('ui.empty_slot', null, 'EMPTY SLOT'))}</span></span>`);
-        node.type = 'button';
-        node.style.setProperty('--n', i);
+        const node = el('div', 'slot slot--empty', escape(tr('ui.empty_slot', null, 'EMPTY SLOT')));
         node.addEventListener('click', openCreator);
         list.appendChild(node);
     }
@@ -155,39 +101,11 @@ function renderSlots() {
     $('btnPlay').disabled = !has;
     $('btnDelete').disabled = !has;
     $('btnNew').disabled = S.characters.length >= S.maxSlots;
-    const cur = S.characters[S.selected];
-    $('playName').textContent = cur ? `${cur.first_name} ${cur.last_name}` : '';
-    renderDossier();
 }
 
-// Plate under the survivor on show: name, faction mark and motto.
-function renderDossier() {
-    const box = $('dossier');
-    if (!box) return;
-    const c = S.characters[S.selected];
-    if (!c || $('select').classList.contains('hidden')) { box.classList.add('hidden'); return; }
-    const card = cardOf(c);
-    const motto = card && card.motto ? tr(`fi.${card.faction}.motto`, null, card.motto) : '';
-    box.innerHTML = `${card ? `<span class="dossier__mark">${emblemFor(card)}</span>` : ''}
-        <span class="dossier__txt"><small>${escape(card ? `[${card.short || card.faction}] ${card.label || ''}` : tr('sel.no_faction', null, 'No faction'))}</small>
-        <b>${escape(c.first_name)} ${escape(c.last_name)}</b>
-        ${motto ? `<em>“${escape(motto)}”</em>` : `<em>${escape(c.classLabel || c.class)} · ${escape(tr('ui.lvl', null, 'LVL'))} ${c.level ?? 1}</em>`}</span>`;
-    box.classList.remove('hidden');
-    box.classList.remove('is-in'); void box.offsetWidth; box.classList.add('is-in');
-}
-
-let selectorSound=true,selectorReducedMotion=false;
-function updateSelectorOptions(){document.documentElement.dataset.selectorMotion=selectorReducedMotion?'off':'on';$('selectorSound').textContent=selectorSound?'SOUND ON':'SOUND OFF';$('selectorMotion').textContent=selectorReducedMotion?'MOTION OFF':'MOTION ON';}
-$('selectorSound').addEventListener('click',()=>{selectorSound=!selectorSound;updateSelectorOptions();post('selectionPreferences',{sound:selectorSound});});
-$('selectorMotion').addEventListener('click',()=>{selectorReducedMotion=!selectorReducedMotion;updateSelectorOptions();post('selectionPreferences',{reducedMotion:selectorReducedMotion});});
 function selectSlot(i) {
-    if(selectorLoading)return;
-    if(i!==S.selected&&selectorSound)post('selectionSound');
-    if (i < 0 || i >= S.characters.length) return;
     S.selected = i;
     renderSlots();
-    const n = $('slots').children[i];
-    if (n) { n.focus({ preventScroll: true }); n.scrollIntoView({ block: 'nearest' }); }
     post('preview', { index: i + 1 });
 }
 
@@ -198,7 +116,37 @@ function escape(s) {
 
 // creator: draft
 
-const CLOTH_CATS = ['top', 'legs', 'shoes'];
+const CLOTH_CATS = ['top', 'undershirt', 'arms', 'legs', 'shoes', 'mask', 'hat', 'glasses', 'ears', 'accessory', 'watch', 'bracelet'];
+// Small, consistent stroke icons. No external library or font dependency.
+const AZ_ICONS = {
+    shirt: '<path d="M16 4h-8L5 7 2 9l2 5 3-1v8h10v-8l3 1 2-5-3-2-3-3z"/><path d="M8 4c0 2 2 3 4 3s4-1 4-3"/>',
+    layers:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M4 14h16"/>',
+    hand:'<path d="M8 13V6a1.5 1.5 0 0 1 3 0v5-7a1.5 1.5 0 0 1 3 0v7-5a1.5 1.5 0 0 1 3 0v6-3a1.5 1.5 0 0 1 3 0v5c0 5-3 8-8 8h-1c-3 0-4-2-6-5l-2-2a1.5 1.5 0 0 1 2-2l3 2"/>',
+    pants:'<path d="M6 3h12l1 18h-5l-2-11-2 11H5L6 3z"/><path d="M6 7h12"/>',
+    shoe:'<path d="M4 12c2 0 3 2 6 2l3-3 4 3 4 2v4H3v-4l1-4z"/><path d="M5 17h15"/>',
+    mask:'<path d="M4 9c5-3 11-3 16 0v5c0 5-3 7-8 9-5-2-8-4-8-9V9z"/><path d="M7 13h3M14 13h3"/>',
+    hat:'<path d="M5 14l2-9 5-2 5 2 2 9M2 15c6 4 14 4 20 0v3c-6 4-14 4-20 0v-3z"/>',
+    glasses:'<circle cx="6.7" cy="13" r="3.5"/><circle cx="17.3" cy="13" r="3.5"/><path d="M10.2 12c1-1 2.6-1 3.6 0M3 10L1 9M21 10l2-1"/>',
+    ear:'<path d="M8 17c-4-4-2-11 4-12 5-1 9 3 8 8-.5 3-3 4-5 5-1 1-1 4-4 4-2 0-3-2-3-5z"/><path d="M11 12c0-3 5-4 6-1 1 2-2 3-3 5"/>',
+    gem:'<path d="M6 4h12l4 6-10 11L2 10l4-6z"/><path d="M2 10h20M8 4l4 6 4-6M12 10v11"/>',
+    watch:'<rect x="7" y="7" width="10" height="10" rx="5"/><path d="M9 7 8 2h8l-1 5M9 17l-1 5h8l-1-5M12 10v3l2 1"/>',
+    bracelet:'<circle cx="12" cy="12" r="8"/><path d="M8 4 9 8M16 4l-1 4M4 12h4M16 12h4M8 20l1-4m7 4-1-4"/>',
+    head:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2c0-4 3-6 8-6s8 2 8 6v2"/>',
+};
+function azIcon(name) {
+    return `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${AZ_ICONS[name] || AZ_ICONS.gem}</svg>`;
+}
+const WGROUPS = [
+    { id:'wear', icon:'shirt', name:'Kleidung', cats:['top','undershirt','arms','legs','shoes'] },
+    { id:'head', icon:'head', name:'Kopf', cats:['mask','hat','glasses','ears'] },
+    { id:'details', icon:'gem', name:'Accessoires', cats:['accessory','watch','bracelet'] },
+];
+const WCAT = {
+    mask:['mask','Maske'], top:['shirt','Oberteil'], undershirt:['layers','Unterhemd'], arms:['hand','Arme'],
+    legs:['pants','Hose'], shoes:['shoe','Schuhe'], accessory:['gem','Kette / Schmuck'],
+    hat:['hat','Kopfbedeckung'], glasses:['glasses','Brille'], ears:['ear','Ohrschmuck'],
+    watch:['watch','Uhr'], bracelet:['bracelet','Armband'],
+};
 const STEP_LABEL = {
     identity: ['ui.identity', 'IDENTITY'], origin: ['ui.origin', 'ORIGIN'], faction: ['ui.faction', 'FACTION'],
     look: ['ui.look', 'LOOK'], clothing: ['ui.clothing', 'CLOTHING'], kit: ['ui.kit', 'STARTING KIT'], review: ['ui.review', 'REVIEW'],
@@ -215,52 +163,86 @@ function seedAppearance(gender) {
 
 function clothDef(cat) { return S.cfg.clothes[cat]; }
 function clothKey(cat) { const d = clothDef(cat); return d.c !== undefined ? 'c' + d.c : 'p' + d.p; }
-function noneOf(cat) { const d = clothDef(cat); return d.none !== undefined ? d.none : null; }
-
-/* Listed drawables of a category for the current sex, minus any the preview ped reported as missing. */
-function catList(cat) {
-    const list = (clothDef(cat)[S.draft.gender] || []).slice();
-    const n = (S.counts[S.draft.gender] || {})[clothKey(cat)];
-    return n ? list.filter((d) => d < 0 || d < n) : list;
-}
+function catList(cat, gender = S.draft?.gender) { return ((S.catalog[gender] || {})[cat] || []); }
+function currentEntry(cat) { return catList(cat).find(e => e.d === S.draft.clothes[cat]?.d); }
 
 function defaultClothes(gender) {
     const out = {};
+    const preset = S.cfg?.defaultOutfits?.[gender] || {};
     for (const cat of CLOTH_CATS) {
-        const list = clothDef(cat)[gender] || [];
-        const none = noneOf(cat);
-        out[cat] = { d: none !== null && list.includes(none) ? none : (list[0] ?? 0), t: 0 };
+        const d = clothDef(cat);
+        const list = catList(cat, gender);
+        const saved = preset[cat];
+        // Stored IDs are only used if still present and enabled in the live catalog.
+        let entry = list.find(x => x.d === saved?.d && x.k === (saved?.k || ''));
+        if (!entry) entry = list.find(x => x.d === d.default) || (d.p !== undefined ? list.find(x => x.d === -1) : null) || list[0];
+        const tex = entry?.ts?.includes(saved?.t) ? saved.t : entry?.ts?.[0] ?? 0;
+        out[cat] = { d: entry?.d ?? d.default ?? (d.p !== undefined ? -1 : 0), t: tex };
     }
-    out.arms = { auto: true, d: 0 };
     return out;
 }
 
-function armsDrawable() {
-    const C = S.draft.clothes;
-    if (!C.arms.auto) return C.arms.d;
-    const map = (S.cfg.clothes.armsFor || {})[S.draft.gender] || {};
-    return map[C.top.d] ?? C.top.d;
+function normalizeClothes() {
+    if (!S.draft || !S.catalog[S.draft.gender]) return false;
+    let changed = false;
+    for (const cat of CLOTH_CATS) {
+        const all = catList(cat);
+        const current = S.draft.clothes[cat];
+        const entry = all.find(x => x.d === current?.d);
+        const chosen = entry || (clothDef(cat).p !== undefined ? all.find(x => x.d === -1) : null) || all[0];
+        if (!chosen) continue;
+        const texture = chosen.ts.includes(current?.t) ? current.t : chosen.ts[0];
+        if (chosen.d !== current?.d || texture !== current?.t) changed = true;
+        S.draft.clothes[cat] = { d: chosen.d, t: texture };
+    }
+    return changed;
 }
 
-/* The outfit as the preview ped (and later the saved metadata.outfit) wears it. */
 function draftOutfit() {
-    const C = S.draft.clothes;
     const comps = {}, props = {};
+    if (!S.draft) return { components: comps, props };
     for (const cat of CLOTH_CATS) {
-        comps[clothDef(cat).c] = { drawable: C[cat].d, texture: C[cat].t, palette: 2 };
+        const def = clothDef(cat), c = S.draft.clothes[cat];
+        if (!c) continue;
+        if (def.c !== undefined) comps[def.c] = { drawable: c.d, texture: c.t, palette: 2 };
+        else props[def.p] = { drawable: c.d, texture: c.d < 0 ? -1 : c.t };
     }
-    comps[8] = { drawable: 15, texture: 0, palette: 2 };   // bare undershirt, no slot
-    comps[3] = { drawable: armsDrawable(), texture: 0, palette: 2 };
+    // No backpack in creator. Keep the component empty even when switching genders.
+    comps[5] = { drawable: 0, texture: 0, palette: 2 };
     return { components: comps, props };
 }
 
-/* Choices only (ids), the server rebuilds the real outfit from them. */
 function outfitChoices() {
-    const C = S.draft.clothes;
-    const o = {};
-    for (const cat of CLOTH_CATS) o[cat] = { d: C[cat].d, t: C[cat].t };
-    if (!C.arms.auto) o.arms = C.arms.d;
-    return o;
+    const out = {};
+    for (const cat of CLOTH_CATS) {
+        const c = S.draft.clothes[cat], entry = currentEntry(cat);
+        out[cat] = { d: c.d, t: c.t, k: entry?.k || '' };
+    }
+    return out;
+}
+
+async function loadWardrobe() {
+    if (!S.draft || !S.cfg || S.catalogLoading || S.catalog[S.draft.gender]) return;
+    const gender = S.draft.gender;
+    S.catalogLoading = true;
+    renderWardrobe();
+    let r = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+        r = await post('wardrobeCatalog', { gender, rules: S.cfg.clothingRules || {} });
+        if (r?.ok) break;
+        await new Promise(resolve => setTimeout(resolve, 220));
+    }
+    S.catalogLoading = false;
+    if (!S.draft || S.draft.gender !== gender) return;
+    if (r?.ok) {
+        S.catalog[gender] = r.catalog;
+        S.draft.clothes = defaultClothes(gender);
+        if (normalizeClothes()) pushDraft(false);
+        else pushDraft(false);
+    } else {
+        S.catalogError = 'Kleidung konnte nicht eingelesen werden. Bitte erneut versuchen.';
+    }
+    renderWardrobe();
 }
 
 function blankDraft() {
@@ -271,7 +253,7 @@ function blankDraft() {
         gender: 'male',
         height: I.heightDefault, bloodType: I.bloodTypes[0], occupation: I.occupations[0], backstory: '',
         class: S.classes[0]?.id || 'survivor',
-        faction: null,
+        faction: 'civilians', // canonical bs_factions id; server enforces this as well
         kit: { melee: null, goodies: [] },
         appearance: seedAppearance('male'),
         clothes: defaultClothes('male'),
@@ -279,7 +261,6 @@ function blankDraft() {
 }
 
 async function openCreator() {
-    if(selectorLoading)return;
     if (S.busy || S.characters.length >= S.maxSlots) return;
     S.busy = true;
     // Open framed. Zoom and rotation persist while browsing survivors, but should not carry into a new character.
@@ -290,14 +271,13 @@ async function openCreator() {
     if (!cfg || !cfg.ok) { alertLine(tr('ui.could_not_create', null, 'Could not create the character.')); return; }
 
     S.cfg = cfg;
-    S.counts = {}; S.tex = {}; S.hands = false;
+    S.counts = {}; S.tex = {}; S.hands = false; S.catalog = {}; S.catalogLoading = false; S.catalogError = ''; S.wardrobeGroup = 'wear';
     S.draft = blankDraft();
     ensureKit();
     S.steps = buildSteps();
     S.edit = false;
 
-    $('select').classList.add('hidden');$('selectorOptions').classList.add('hidden');
-    $('dossier').classList.add('hidden');
+    $('select').classList.add('hidden');
     $('creator').classList.remove('hidden');
     $('createError').textContent = '';
     $('btnHands').classList.remove('hidden');
@@ -313,19 +293,17 @@ async function openCreator() {
 
 function closeCreator() {
     $('creator').classList.add('hidden');
-    $('select').classList.remove('hidden');$('selectorOptions').classList.remove('hidden');
+    $('select').classList.remove('hidden');
     $('btnHands').classList.add('hidden');
     S.draft = null;
     S.hands = false;
-    renderDossier();
     // The list opens framed; otherwise zoom and rotation from the creator carry over after cancelling.
     post('resetView', {});
     post('preview', { index: S.selected + 1 });
 }
 
 function buildSteps() {
-    const s = ['identity', 'origin'];
-    if ((S.cfg.factions || []).length) s.push('faction');
+    const s = ['identity'];
     s.push('look');
     if (S.cfg.clothingStep) s.push('clothing');
     if (S.cfg.kit && S.cfg.kit.enabled !== false) s.push('kit');
@@ -349,7 +327,7 @@ function daysInMonth(month, year) {
     return new Date(year, month, 0).getDate();
 }
 
-// The creator can be opened many times: option lists are rebuilt each time but listeners are bound once
+// The creator can be opened many times: option lists are rebuilt each time but listeners are bound once, otherwise handlers stack up.
 let dobBound = false;
 
 function buildDobPickers() {
@@ -421,7 +399,7 @@ function updateAgeHint() {
     hint.classList.toggle('bad', bad);
 }
 
-/* The wire format bs_core validates is still YYYY-MM-DD. */
+/** The wire format bs_core validates is still YYYY-MM-DD. */
 function draftDobString() {
     const p = (n) => String(n).padStart(2, '0');
     return `${S.draft.dobYear}-${p(S.draft.dobMonth)}-${p(S.draft.dobDay)}`;
@@ -564,10 +542,9 @@ function renderFactions() {
         const node = el('div', 'card card--fac' + (on ? ' is-active' : ''));
         node.style.setProperty('--fc', f.colour || '');
         const name = tr('fac.' + f.id + '.n', null, f.id);
-        let html = (f.emblem && window.BSEmblem) ? `<span class="card__mark">${BSEmblem.render(f.emblem)}</span>` : '';
+        let html = '';
         if (f.bonus) html += `<span class="card__tag">${escape(tr('ui.smallest_bonus', { cash: S.cfg.bonusCash || 0, xp: S.cfg.bonusXp || 0 }, 'SMALLEST'))}</span>`;
         html += `<div class="card__title">${escape(name)}</div>
-            ${f.motto ? `<div class="card__motto">“${escape(tr('fi.' + f.id + '.motto', null, f.motto))}”</div>` : ''}
             <div class="card__blurb">${escape(tr('fac.' + f.id + '.d', null, ''))}</div>`;
         if (on) {
             const perks = [1, 2, 3].map((n) => tr('fac.' + f.id + '.p' + n, null, '')).filter(Boolean);
@@ -636,7 +613,8 @@ function renderSliders() {
     }
 }
 
-/* ROLL A FACE: everything comes from the server's Multichar.Roll lists - curated parent pairs */
+/* ROLL A FACE: everything comes from the server's Multichar.Roll lists - curated parent pairs, shape/skin ranges
+   that follow the dominant parent, natural hair and eye colours, small face details. Female never gets a beard. */
 function randomiseLook() {
     if (!S.draft || !S.cfg || !S.cfg.roll) return;
     const g = S.draft.gender;
@@ -686,7 +664,7 @@ function randomiseLook() {
     pushDraft(false);
 }
 
-/* Debounced so dragging a slider does not spam the client every frame. */
+/* Debounced so dragging a slider does not spam the client every frame. The answer carries what the preview ped has (drawable and texture counts). */
 let draftTimer = null;
 function pushDraft(rebuild) {
     clearTimeout(draftTimer);
@@ -703,68 +681,74 @@ function pushDraft(rebuild) {
     }, rebuild ? 0 : 60);
 }
 
-// creator: clothing
+// creator: clothing, enabled collections only, without dead model slots
 
 function wardrobeRow(cat) {
     const C = S.draft.clothes[cat];
     const list = catList(cat);
-    const none = noneOf(cat);
-    const pos = Math.max(0, list.indexOf(C.d));
-    const isNone = none !== null && C.d === none;
-    const val = isNone ? up(tr('cl.none', null, 'NONE')) : `${pos + 1} / ${list.length}`;
-    const texN = Math.max(1, Math.min((S.tex[clothKey(cat)] || (S.cfg.clothes.maxTexture + 1)), S.cfg.clothes.maxTexture + 1));
-    const showTex = !isNone;
-    return `<div class="wrow"><span class="wrow__label">${escape(tr('cl.' + cat, null, cat.toUpperCase()))}</span>
-        <div class="wrow__pick">
-            <button class="arrow" data-cat="${cat}" data-act="prev">&#8249;</button>
-            <span class="wrow__val">${escape(val)}</span>
-            <button class="arrow" data-cat="${cat}" data-act="next">&#8250;</button>
-        </div>
-        <div class="wrow__col">
-            <button class="arrow" data-cat="${cat}" data-act="tprev" ${showTex ? '' : 'disabled'}>&#8249;</button>
-            <span class="wrow__val" style="min-width:2.2rem">${showTex ? (C.t + 1) + '/' + texN : '-'}</span>
-            <button class="arrow" data-cat="${cat}" data-act="tnext" ${showTex ? '' : 'disabled'}>&#8250;</button>
-        </div></div>`;
-}
-
-function armsRow() {
-    const A = S.draft.clothes.arms;
-    const d = armsDrawable();
-    return `<div class="wrow"><span class="wrow__label">${escape(tr('cl.arms_gloves', null, 'GLOVES / ARMS'))}</span>
-        <div class="wrow__pick">
-            <button class="arrow" data-cat="arms" data-act="prev" ${A.auto ? 'disabled' : ''}>&#8249;</button>
-            <span class="wrow__val">${d}</span>
-            <button class="arrow" data-cat="arms" data-act="next" ${A.auto ? 'disabled' : ''}>&#8250;</button>
-        </div>
-        <div class="wrow__col"><button class="mini${A.auto ? ' is-active' : ''}" data-cat="arms" data-act="auto">${escape(tr('cl.auto', null, 'AUTO'))}</button></div></div>`;
+    const entry = list.find(e => e.d === C?.d);
+    const pos = Math.max(0, list.findIndex(e => e.d === C?.d));
+    const noItem = entry?.d === -1;
+    const texList = entry?.ts || [];
+    const texPos = Math.max(0, texList.indexOf(C?.t));
+    const [symbol,label] = WCAT[cat] || ['◇',cat];
+    const val = noItem ? 'Keine' : (entry ? `${pos+1} / ${list.length}` : 'Nicht verfügbar');
+    return `<div class="az-wardrobe-card">
+      <div class="az-wardrobe-header"><span class="az-garment-icon" aria-hidden="true">${azIcon(symbol)}</span>
+        <div class="az-garment-name"><b>${escape(label)}</b><small>${list.length ? `${list.length} freigegebene Modelle` : 'Keine freigegebenen Modelle'}</small></div>
+        <span class="az-wardrobe-tag">${clothDef(cat).p !== undefined ? 'Zubehör' : 'Kleidung'}</span>
+      </div>
+      <div class="az-selectors"><div class="az-selector">
+        <span>Modell</span><div class="az-selector-control">
+          <button class="arrow" type="button" data-cat="${cat}" data-act="prev" ${!list.length?'disabled':''} aria-label="Vorheriges Modell">&#8249;</button>
+          <strong>${escape(val)}</strong>
+          <button class="arrow" type="button" data-cat="${cat}" data-act="next" ${!list.length?'disabled':''} aria-label="Nächstes Modell">&#8250;</button>
+        </div></div><div class="az-selector">
+        <span>Textur</span><div class="az-selector-control">
+          <button class="arrow" type="button" data-cat="${cat}" data-act="tprev" ${noItem||texList.length<2?'disabled':''} aria-label="Vorherige Textur">&#8249;</button>
+          <strong>${noItem||!texList.length ? '–' : `${texPos+1} / ${texList.length}`}</strong>
+          <button class="arrow" type="button" data-cat="${cat}" data-act="tnext" ${noItem||texList.length<2?'disabled':''} aria-label="Nächste Textur">&#8250;</button>
+        </div></div></div>
+    </div>`;
 }
 
 function renderWardrobe() {
     if (!S.draft || !S.cfg || !S.cfg.clothingStep) return;
-    $('wardrobe').innerHTML = wardrobeRow('top') + armsRow() +
-        ['legs', 'shoes'].map(wardrobeRow).join('');
+    const box = $('wardrobe');
+    if (!S.catalog[S.draft.gender]) {
+        box.innerHTML = `<div class="az-loading"><span class="az-loading-symbol">◈</span><b>Kleidung wird erfasst</b><small>${escape(S.catalogError || 'Verfügbare Modelle und Texturen werden überprüft …')}</small></div>`;
+        return;
+    }
+    const group = WGROUPS.find(g => g.id === S.wardrobeGroup) || WGROUPS[0];
+    box.innerHTML = `<nav class="az-wardrobe-tabs" aria-label="Kleidungskategorien">${WGROUPS.map(g =>
+        `<button class="az-wardrobe-tab ${g.id===group.id?'is-active':''}" data-group="${g.id}" type="button"><span>${azIcon(g.icon)}</span>${g.name}</button>`).join('')}</nav>
+        ${S.cfg.canSaveDefaultOutfit ? '<button type="button" class="az-save-default" id="azSaveDefault">Als Standard-Outfit speichern</button>' : ''}
+        <p class="az-wardrobe-guide">Nur freigegebene Kleidung · Rucksäcke nicht verfügbar</p>
+        <div class="az-wardrobe-list">${group.cats.map(wardrobeRow).join('')}</div>`;
 }
 
 function stepCloth(cat, act) {
-    const C = S.draft.clothes;
-    if (cat === 'arms') {
-        const A = C.arms;
-        if (act === 'auto') { A.auto = !A.auto; if (!A.auto) A.d = armsDrawable(); }
-        else if (!A.auto) {
-            const [lo, hi] = S.cfg.clothes.armsRange;
-            const n = (S.counts[S.draft.gender] || {}).c3;
-            const top = Math.min(hi, n ? n - 1 : hi);
-            A.d = act === 'next' ? (A.d >= top ? lo : A.d + 1) : (A.d <= lo ? top : A.d - 1);
+    const list = catList(cat);
+    const current = S.draft?.clothes[cat];
+    if (!current || !list.length) return;
+    if (act === 'prev' || act === 'next') {
+        const index = list.findIndex(x => x.d === current.d);
+        const next = list[(index + (act === 'next' ? 1 : -1) + list.length) % list.length];
+        S.draft.clothes[cat] = { d: next.d, t: next.ts[0] };
+        // Follow the operator's mapped arm/torso variant when the top changes.
+        if (cat === 'top') {
+            const map = S.cfg.clothingRules?.torsoMappings?.[next.k];
+            const fallback = S.cfg.clothes.armsFor?.[S.draft.gender]?.[next.d];
+            const armId = Number(map?.drawable ?? fallback);
+            const arm = catList('arms').find(x => x.d === armId);
+            if (arm) S.draft.clothes.arms = { d: arm.d, t: arm.ts.includes(map?.texture) ? map.texture : arm.ts[0] };
         }
-    } else if (act === 'prev' || act === 'next') {
-        const list = catList(cat);
-        if (!list.length) return;
-        let i = list.indexOf(C[cat].d);
-        i = act === 'next' ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
-        C[cat] = { d: list[i], t: 0 };
     } else {
-        const texN = Math.max(1, Math.min((S.tex[clothKey(cat)] || (S.cfg.clothes.maxTexture + 1)), S.cfg.clothes.maxTexture + 1));
-        C[cat].t = act === 'tnext' ? (C[cat].t + 1) % texN : (C[cat].t - 1 + texN) % texN;
+        const entry = list.find(x => x.d === current.d);
+        const arr = entry?.ts || [];
+        if (!arr.length) return;
+        const index = arr.indexOf(current.t);
+        current.t = arr[(index + (act === 'tnext' ? 1 : -1) + arr.length) % arr.length];
     }
     renderWardrobe();
     pushDraft(false);
@@ -794,49 +778,29 @@ function buildLangPicker() {
 }
 
 function meleeOptions() {
-    const own = classItemSet();
-    return ((S.cfg.kit && S.cfg.kit.melee) || []).filter((m) => !own.has(m.item));
+    return ((S.cfg.kit && S.cfg.kit.melee) || []);
 }
 
-/* Keep the kit choice valid after the origin changes: a weapon the origin already carries is not offered twice. */
+/* Keep the kit choice valid after the origin changes. Creator choices are always available. */
 function ensureKit() {
     if (!S.draft || !S.cfg || !S.cfg.kit || S.cfg.kit.enabled === false) return;
     const opts = meleeOptions();
     if (!opts.some((m) => m.id === S.draft.kit.melee)) S.draft.kit.melee = opts.length ? opts[0].id : null;
-    // Goodies the origin already carries are not offered (and not kept) a second time.
-    const own = classItemSet();
-    S.draft.kit.goodies = S.draft.kit.goodies.filter((id) => {
-        const g = (S.cfg.kit.goodies || []).find((x) => x.id === id);
-        return g && !own.has(g.item);
-    });
+    S.draft.kit.goodies = S.draft.kit.goodies.filter((id) =>
+        (S.cfg.kit.goodies || []).some((g) => g.id === id));
 }
 
 function renderKit() {
     const K = S.cfg.kit;
-    const melee = $('kitMelee');
-    melee.innerHTML = '';
-    meleeOptions().forEach((m) => {
-        const b = el('button', 'opt-card' + (m.id === S.draft.kit.melee ? ' is-active' : ''), escape(itemName(m.item)));
-        b.type = 'button';
-        b.addEventListener('click', () => { S.draft.kit.melee = m.id; renderKit(); });
-        melee.appendChild(b);
-    });
-    const own = [...classItemSet()].filter((i) => (K.melee || []).some((m) => m.item === i));
-    if (own.length) {
-        melee.appendChild(el('p', 'card__note', escape(tr('kit.origin_has', { items: own.map(itemName).join(', ') }, ''))));
-    }
-
     const max = K.maxGoodies || 2;
     const have = S.draft.kit.goodies.length;
     $('kitCount').textContent = tr('kit.goodies_hint', { n: max, have }, `${have} / ${max}`);
     const box = $('kitGoodies');
     box.innerHTML = '';
-    const ownSet = classItemSet();
     K.goodies.forEach((g) => {
-        if (ownSet.has(g.item)) return;
         const on = S.draft.kit.goodies.includes(g.id);
         const b = el('button', 'opt-card' + (on ? ' is-active' : ''),
-            `${escape(itemName(g.item))}<em>×${g.amount || 1}</em>`);
+            `${escape(g.label || itemName(g.item))}<em>×${g.amount || 1}</em>`);
         b.type = 'button';
         b.disabled = !on && have >= max;
         b.addEventListener('click', () => {
@@ -876,10 +840,9 @@ function renderReview() {
     else add('look', 'rv.outfit', 'OUTFIT', tr('rv.default_outfit', null, 'Default outfit'));
     if (S.steps.includes('kit')) {
         const K = S.cfg.kit;
-        const m = (K.melee || []).find((x) => x.id === D.kit.melee);
         const goods = D.kit.goodies.map((id) => K.goodies.find((g) => g.id === id)).filter(Boolean)
             .map((g) => `${itemName(g.item)} ×${g.amount || 1}`);
-        add('kit', 'rv.kit', 'KIT', m ? itemName(m.item) : '-', goods.join(' · '));
+        add('kit', 'rv.kit', 'KIT', 'Jagdmesser ×1', goods.join(' · '));
     }
 
     $('review').innerHTML = rows.map((r) => `<div class="rv">
@@ -916,7 +879,7 @@ function setStep(id) {
     if (id === 'origin') renderClasses();
     if (id === 'faction') renderFactions();
     if (id === 'look') renderSliders();
-    if (id === 'clothing') renderWardrobe();
+    if (id === 'clothing') { renderWardrobe(); loadWardrobe(); }
     if (id === 'kit') { ensureKit(); renderKit(); }
     if (id === 'review') renderReview();
     renderSteps();
@@ -925,6 +888,7 @@ function setStep(id) {
     post('focus', { mode });
     document.querySelectorAll('.cam__btn[data-focus]').forEach((x) =>
         x.classList.toggle('is-active', x.dataset.focus === mode));
+    updateCameraLabel(mode);
 }
 
 // validation
@@ -943,7 +907,8 @@ function problem(id) {
     }
     if (id === 'origin' && !D.class) return tr('ui.pick_origin', null, 'Choose an origin.');
     if (id === 'faction' && !D.faction) return tr('ui.pick_faction', null, 'Choose a faction.');
-    if (id === 'kit' && !D.kit.melee) return tr('ui.pick_melee', null, 'Choose a melee weapon.');
+    if (id === 'clothing' && !S.catalog[D.gender]) return 'Die Kleidungsmodelle werden noch geprüft.';
+
     return null;
 }
 
@@ -957,7 +922,7 @@ function firstProblem() {
 
 function syncHands() {
     const b = $('btnHands');
-    b.textContent = up(tr(S.hands ? 'ui.hands_down' : 'ui.hands_up', null, S.hands ? 'HANDS DOWN' : 'HANDS UP'));
+    b.innerHTML = `<span class="az-hands-icon" aria-hidden="true">⌃</span>${S.hands ? 'Hände runter' : 'Hände hoch'}`;
     b.classList.toggle('is-active', S.hands);
 }
 
@@ -968,10 +933,8 @@ $('btnPlay').addEventListener('click', async () => {
     if (!c) return;
     $('btnPlay').disabled = true;
 
-    // Read at the moment of pressing, sent with the selection and never stored
-    const safe = !!($('safeSpawn') && $('safeSpawn').checked);
-
-    const res = await post('play', { id: c.id, safeSpawn: safe });
+    // The old safe-spawn option was removed from character selection.
+    const res = await post('play', { id: c.id, safeSpawn: false });
     if (!res.ok) {
         $('btnPlay').disabled = false;
         alertLine(res.error || tr('ui.could_not_enter', null, 'Could not enter the world.'));
@@ -996,11 +959,14 @@ $('btnHands').addEventListener('click', () => {
 $('btnOutfitReset').addEventListener('click', () => {
     if (!S.draft) return;
     S.draft.clothes = defaultClothes(S.draft.gender);
+    normalizeClothes();
     renderWardrobe();
     pushDraft(false);
 });
 
 $('wardrobe').addEventListener('click', (e) => {
+    const group = e.target.closest('[data-group]');
+    if (group) { S.wardrobeGroup = group.dataset.group; renderWardrobe(); return; }
     const b = e.target.closest('[data-act]');
     if (b && S.draft) stepCloth(b.dataset.cat, b.dataset.act);
 });
@@ -1010,7 +976,8 @@ $('review').addEventListener('click', (e) => {
     if (b) setStep(b.dataset.go);
 });
 
-// appearance edit mode: opened in-game by bs_vip. Only the LOOK pane, on the live character.
+// appearance edit mode
+// Opened in-game by bs_vip. Only the LOOK pane, on the live character.
 function setEditChrome(on) {
     $('steps').style.display = on ? 'none' : '';
     $('stepName').style.display = on ? 'none' : '';
@@ -1035,8 +1002,7 @@ async function enterEdit(d) {
     for (const f of S.appearance) appearance[f.key] = (d.current && d.current[f.key] !== undefined) ? d.current[f.key] : f.default;
     S.draft = { gender: d.gender || 'male', appearance, firstName: '', lastName: '', class: '', dobYear: 2000, dobMonth: 1, dobDay: 1 };
     $('root').classList.remove('hidden');
-    $('select').classList.add('hidden');$('selectorOptions').classList.add('hidden');
-    $('dossier').classList.add('hidden');
+    $('select').classList.add('hidden');
     $('confirm').classList.add('hidden');
     $('creator').classList.remove('hidden');
     $('btnHands').classList.add('hidden');
@@ -1077,7 +1043,7 @@ async function submitCreate() {
         },
     };
     if (S.steps.includes('faction')) character.faction = D.faction;
-    if (S.steps.includes('kit')) character.kit = { melee: D.kit.melee, goodies: D.kit.goodies };
+    if (S.steps.includes('kit')) character.kit = { goodies: D.kit.goodies };
     if (S.steps.includes('clothing')) character.outfit = outfitChoices();
 
     $('createError').textContent = '';
@@ -1091,7 +1057,7 @@ async function submitCreate() {
 
     if (!res.ok) { $('createError').textContent = res.error || tr('ui.could_not_create', null, 'Could not create the character.'); return; }
 
-    // Use the list the client handed back.
+    // Use the list the client handed back. Reading S.characters here raced the setData broadcast and could select the slot before the new one existed.
     if (res.characters) S.characters = res.characters;
 
     S.selected = Math.max(0, S.characters.length - 1);
@@ -1133,7 +1099,8 @@ $('height').addEventListener('input', (e) => {
 });
 $('occupation').addEventListener('change', (e) => { if (S.draft) S.draft.occupation = e.target.value; });
 
-/* Switching sex swaps the model AND resets the face, hair, brows, beard */
+/* Switching sex swaps the model AND resets the face, hair, brows, beard, makeup and outfit to that sex's starting look,
+   otherwise the male head blend stays on the female model. */
 document.querySelectorAll('#genderChoice .choice__btn').forEach((b) => {
     b.addEventListener('click', () => {
         if (!S.draft) return;
@@ -1145,8 +1112,15 @@ document.querySelectorAll('#genderChoice .choice__btn').forEach((b) => {
 
         syncIdentityInputs();
         pushDraft(true);           // different model - the ped must respawn
+        if (S.catalog[S.draft.gender]) normalizeClothes();
     });
 });
+
+function updateCameraLabel(mode) {
+    const count = { full:'01', face:'02', body:'03', legs:'04' }[mode] || '01';
+    const indicator = document.querySelector('.az-cam-label em');
+    if (indicator) indicator.textContent = `${count} / 04`;
+}
 
 // [data-focus] only. The turn arrows share the .cam__btn class and would post focus:undefined, snapping the camera back to FULL.
 document.querySelectorAll('.cam__btn[data-focus]').forEach((b) => {
@@ -1155,6 +1129,7 @@ document.querySelectorAll('.cam__btn[data-focus]').forEach((b) => {
             .forEach((x) => x.classList.remove('is-active'));
         b.classList.add('is-active');
         post('focus', { mode: b.dataset.focus });
+        updateCameraLabel(b.dataset.focus);
     });
 });
 
@@ -1164,7 +1139,7 @@ $('btnDelete').addEventListener('click', () => {
     const c = S.characters[S.selected];
     if (!c) return;
     $('confirmBody').textContent = tr('ui.abandon_body',
-        { name: `${c.first_name} ${c.last_name}`, level: c.level ?? 1, time: playtime(c.playtime).toLowerCase() },
+        { name: `${c.first_name} ${c.last_name}`, time: playtime(c.playtime).toLowerCase() },
         `${c.first_name} ${c.last_name}`);
     $('confirmInput').value = '';
     $('confirmYes').disabled = true;
@@ -1218,68 +1193,42 @@ if (window.BSI18n && BSI18n.onChange) {
 }
 // from the client
 
-let selectorLoading=false;
-$('selectorRetry').addEventListener('click',()=>post('selectorRetry'));
 window.addEventListener('message', (event) => {
     const d = event.data || {};
 
     switch (d.action) {
-        case 'loading':
-            selectorLoading=true;
-            $('root').classList.remove('hidden');
-            $('creator').classList.add('hidden');$('confirm').classList.add('hidden');
-            $('select').classList.remove('hidden');$('dossier').classList.add('hidden');
-            $('selectorLoading').classList.remove('hidden');
-            $('selectorLoadingText').textContent=d.text||'Loading survivors…';
-            $('selectorRetry').classList.toggle('hidden',!String(d.text||'').includes('retry'));
-            $('btnPlay').disabled=true;$('btnNew').disabled=true;$('btnDelete').disabled=true;
-            break;
         case 'setData':
             if (d.characters) S.characters = d.characters;
             if (d.classes)    S.classes = d.classes;
             if (d.appearance) S.appearance = d.appearance;
             if (d.maxSlots)   S.maxSlots = d.maxSlots;
-            if (d.cards)      S.cards = d.cards;
-            if (S.selected >= S.characters.length) S.selected = Math.max(0, S.characters.length - 1);
             renderSlots();
-            if(selectorLoading){$('btnPlay').disabled=true;$('btnNew').disabled=true;$('btnDelete').disabled=true;}
             break;
 
-        case 'selectionOptions':
-            selectorSound=d.sound!==false;selectorReducedMotion=d.reducedMotion===true||matchMedia('(prefers-reduced-motion: reduce)').matches;updateSelectorOptions();break;
         case 'open':
-            selectorLoading=false;$('selectorLoading').classList.add('hidden');
             $('root').classList.remove('hidden');
             $('creator').classList.add('hidden');
             $('btnHands').classList.add('hidden');
-            $('select').classList.remove('hidden');$('selectorOptions').classList.remove('hidden');
+            $('select').classList.remove('hidden');
             $('confirm').classList.add('hidden');
             renderSlots();
+            // Wait until the selection UI has actually been painted.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                fetch(`https://${GetParentResourceName()}/selectionReady`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}'
+                }).catch(() => {});
+            }));
             break;
 
         case 'close':
-            selectorLoading=false;$('selectorLoading').classList.add('hidden');
             if (S.edit) leaveEdit();
-            $('dossier').classList.add('hidden');
             $('root').classList.add('hidden');
             break;
 
         case 'editAppearance':
             enterEdit(d);
-            break;
-
-        case 'portrait':
-            if (d.id && typeof d.url === 'string' && d.url.startsWith('https://nui-img/')) {
-                S.portraits[String(d.id)] = d.url;
-                const index=S.characters.findIndex(c=>String(c.id)===String(d.id));
-                const slot=index>=0?$('slots').children[index]:null;
-                const picture=slot&&slot.querySelector('.slot__pic');
-                if(picture){
-                    const mark=picture.querySelector('.slot__mark');
-                    picture.innerHTML=portraitHtml(S.characters[index]);
-                    if(mark)picture.appendChild(mark);
-                }
-            }
             break;
     }
 });
@@ -1301,7 +1250,7 @@ let dragging = false;
 let lastX = 0;
 
 function overPanel(target) {
-    return !!target.closest('.panel, .cam, .modal, .dossier');
+    return !!target.closest('.panel, .cam, .modal');
 }
 
 document.addEventListener('mousedown', (e) => {
@@ -1330,17 +1279,30 @@ document.addEventListener('wheel', (e) => {
 }, { passive: true });
 
 document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) post('azOpenPauseMenu');
+        return;
+    }
     // Never steal keys while someone is typing a name.
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
-    const picking = !selectorLoading && !$('select').classList.contains('hidden') && $('confirm').classList.contains('hidden') && !$('root').classList.contains('hidden');
-    if (picking) {
-        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.preventDefault(); return selectSlot(Math.max(0, S.selected - 1)); }
-        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.preventDefault(); return selectSlot(Math.min(S.characters.length - 1, S.selected + 1)); }
-        if (e.key === 'Enter' && !$('btnPlay').disabled) { e.preventDefault(); return $('btnPlay').click(); }
-        if ((e.key === 'n' || e.key === 'N') && !$('btnNew').disabled) return openCreator();
-        if (e.key === 'Delete' && !$('btnDelete').disabled) return $('btnDelete').click();
-    }
-    if (!$('confirm').classList.contains('hidden') && e.key === 'Escape') { $('confirm').classList.add('hidden'); return; }
     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft')  rotate(-ROTATE_STEP);
     if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') rotate(ROTATE_STEP);
+});
+
+// Admin-only preset action: server validates the catalog and ACE permission again.
+document.addEventListener('click', async (ev) => {
+    if (!ev.target.closest('#azSaveDefault') || !S.draft || !S.cfg?.canSaveDefaultOutfit) return;
+    const button = ev.target.closest('#azSaveDefault');
+    button.disabled = true;
+    const r = await post('saveDefaultOutfit', { gender: S.draft.gender, outfit: outfitChoices() });
+    if (r?.ok) {
+        S.cfg.defaultOutfits = S.cfg.defaultOutfits || {};
+        S.cfg.defaultOutfits[S.draft.gender] = outfitChoices();
+        button.textContent = 'Standard-Outfit gespeichert';
+    } else {
+        button.textContent = r?.error || 'Speichern fehlgeschlagen';
+        button.disabled = false;
+    }
 });

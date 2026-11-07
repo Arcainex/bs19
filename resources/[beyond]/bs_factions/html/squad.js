@@ -44,7 +44,7 @@ function render() {
     if (!d.ok) {
         body = `<section><h2>${t('sq.signal_lost')}</h2><p>${esc(d.error || t('sq.no_service'))}</p></section>`;
     } else if (!sq) {
-        body = `<div>${invCard}<section style="--i:1"><h2>${t('sq.form')}</h2><p>${t('sq.up_to', { n: d.maxSize || 5 })}</p>
+        body = `<div>${invCard}<section style="--i:1"><h2>${t('sq.form')}</h2><p>${t('sq.up_to', { n: d.maxSize || 9 })}</p>
             <div class="sq-row"><input id="sqNew" maxlength="24" placeholder="${t('sq.name_ph')}"><button class="go" data-a="create">${t('sq.create')}</button></div></section></div>
             <div><section style="--i:2"><h2>${t('sq.notes')}</h2><p>${t('sq.notes_text')}</p></section></div>`;
     } else {
@@ -54,13 +54,10 @@ function render() {
             <div class="sq-row"><button class="bad" data-a="leave" data-confirm>${t('sq.leave')}</button>${sq.isLeader ? `<button class="bad" data-a="disband" data-confirm>${t('sq.disband')}</button>` : ''}</div></section>`;
         let right = '';
         if (sq.isLeader) {
-            const near = S.near.length ? S.near.map((p, i) => `<div class="sq-m is-on" style="--i:${i}"><i class="sq-dot"></i><div><div class="sq-name">${esc(p.name)}</div><div class="sq-meta">${p.level ? t('sq.lv') + ' ' + esc(p.level) + ' · ' : ''}${p.dist} M</div></div><div class="sq-acts"><button class="sm go" data-a="invite" data-t="${p.src}">${t('sq.invite')}</button></div></div>`).join('')
-                : `<div class="sq-empty">${t('sq.none_near')}</div>`;
             const dr = S.draft || sq.ranks.map((r) => ({ id: r.id, label: r.label }));
             S.draft = dr;
-            right = `<section style="--i:1"><h2>${t('sq.recruit')} <small><button class="sm" data-a="scan">${t('sq.scan')}</button></small></h2>${near}</section>
-                <section style="--i:2"><h2>${t('sq.squad_name')}</h2><div class="sq-row"><input id="sqRename" maxlength="24" value="${esc(sq.name)}"><button data-a="rename">${t('sq.save')}</button></div></section>
-                <section style="--i:3"><h2>${t('sq.ranks')} <small>${t('sq.ranks_hint', { n: sq.maxRanks })}</small></h2>
+            right = `<section style="--i:1"><h2>${t('sq.squad_name')}</h2><div class="sq-row"><input id="sqRename" maxlength="24" value="${esc(sq.name)}"><button data-a="rename">${t('sq.save')}</button></div></section>
+                <section style="--i:2"><h2>${t('sq.ranks')} <small>${t('sq.ranks_hint', { n: sq.maxRanks })}</small></h2>
                 ${dr.map((r, i) => `<div class="sq-row"><input data-rk="${i}" maxlength="20" value="${esc(r.label)}"><button class="sm" data-a="rup" data-i="${i}">▲</button><button class="sm" data-a="rdown" data-i="${i}">▼</button>${dr.length > 1 ? `<button class="sm bad" data-a="rdel" data-i="${i}">✕</button>` : ''}</div>`).join('')}
                 <div class="sq-row">${dr.length < sq.maxRanks ? `<button data-a="radd">${t('sq.add_rank')}</button>` : ''}<button class="go" data-a="rsave">${t('sq.save_ranks')}</button></div></section>`;
         } else {

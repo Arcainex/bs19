@@ -1,4 +1,4 @@
--- bs_medical - going down instead of dying.
+-- bs_medical - going down instead of dying. GTA kills at health 100 (its floor), so we watch health and catch the player just above it. While down you keep camera and voice, can shout (walkers hear it) and spend one bandage for 90 more seconds. The server owns the clock.
 
 local S = Medical.Settings
 
@@ -7,7 +7,7 @@ local Downed = {
     until_     = 0,      -- game timer ms when the bleedout ends
     stabilised = false,
     lastShout  = 0,
-    -- A 'medical:down' request is in flight. `active` is only true once the server answers
+    -- A 'medical:down' request is in flight. `active` is only true once the server answers, so this stops the watchdog firing a second request in the gap.
     requesting = false,
     -- Give-up hold: when the key went down (0 = not held), and whether the request is in flight.
     holdFrom   = 0,
@@ -19,14 +19,14 @@ local Downed = {
     selfFrom   = 0,
 }
 
--- Set by cl_carry.lua (same Lua state) while this player is dragged or carried: the pose is not re-forced and
+-- Set by cl_carry.lua (same Lua state) while this player is dragged or carried: the pose is not re-forced and the clock runs at Medical.Carry.bleedoutRate.
 Medical.BeingCarried = false
 
--- Is a panel on screen?: the staff menu works while downed
+-- Is a panel on screen? The staff menu works while downed, but this file keeps running underneath it (downed and death HUD, input blocking), which wrecks it. Anything that opens over the screen sets this so those are skipped.
 local PanelsOpen = {}
 
 local function anyPanelOpen()
-    -- A panel that closed without saying so (death drops NUI focus) must not hide the downed HUD forever: no focus
+    -- A panel that closed without saying so (death drops NUI focus) must not hide the downed HUD forever: no focus means nothing is open.
     if next(PanelsOpen) == nil then return false end
     if not IsNuiFocused() then PanelsOpen = {} return false end
     return true
@@ -48,6 +48,29 @@ local function notify(kind, message, duration, title)
     TriggerEvent('bs:ui:notify', {
         type = kind, message = message, duration = duration, title = title,
     })
+end
+
+-- Force-clear any weapon that can survive the downed/give-up transition on the local ped.
+-- Death wipes the inventory server-side, so after give-up the player must always wake unarmed.
+local function forceDeathDisarm()
+    local ped = PlayerPedId()
+    if not ped or ped == 0 then return end
+    SetCurrentPedWeapon(ped, `WEAPON_UNARMED`, true)
+    SetPedCanSwitchWeapon(ped, false)
+    RemoveAllPedWeapons(ped, true)
+    SetCurrentPedWeapon(ped, `WEAPON_UNARMED`, true)
+end
+
+local function keepDeathDisarmed(ms)
+    local untilAt = GetGameTimer() + (ms or 2500)
+    CreateThread(function()
+        while GetGameTimer() < untilAt do
+            forceDeathDisarm()
+            Wait(100)
+        end
+        local ped = PlayerPedId()
+        if ped and ped ~= 0 then SetPedCanSwitchWeapon(ped, true) end
+    end)
 end
 
 local function playAnim(anim, flag)
@@ -94,7 +117,9 @@ local function inAvoidZone(x, y)
     return false
 end
 
---- Random open ground 500-1000 m from `from`.
+--- Random open ground 500-1000 m from `from`. The ped is parked (frozen,
+--- invisible) over each candidate so its collision streams in before we
+--- probe. Returns x, y, z or nil.
 local function findRespawnSpot(ped, from)
     if not from then return nil end
     local minD, maxD = R.minDistance or 500.0, R.maxDistance or 1000.0
@@ -243,7 +268,7 @@ local function leaveDowned(revived)
     DetachEntity(PlayerPedId(), true, false)
     SetPedCanRagdoll(PlayerPedId(), true)
 
-    -- Same cleanup as a respawn, in place.
+    -- Same cleanup as a respawn, in place. A revive also opens a short grace window so the watchdog does not read a stale ~105 as 'down again'.
     local hp = revived and reviveHealthFor(PlayerPedId()) or nil
     if revived then Downed.graceUntil = GetGameTimer() + 8000 end
     local ped = standUp(hp)
@@ -265,7 +290,8 @@ local function leaveDowned(revived)
     end
 end
 
--- The watchdog: one cheap loop that only acts on the frame you would have died.
+-- The watchdog
+-- One cheap loop that only acts on the frame you would have died.
 
 CreateThread(function()
     while true do
@@ -296,7 +322,7 @@ end)
 
 -- While you are down
 
--- The bleedout clock and the two available actions, drawn as bare text with a shadow.
+-- The bleedout clock and the two available actions, drawn as bare text with a shadow. Declared above the loop that calls it: a `local function` used before its declaration compiles to a global lookup and is nil at runtime.
 local HELP = Medical.Help or {}
 local SR = Medical.SelfRevive or {}
 local lastHelp = 0
@@ -378,7 +404,7 @@ local function drawCountdown(left)
     DrawText(0.5, 0.852)
 end
 
--- Giving up is a held key with a bar, since it is irreversible (permanent death and inventory wipe).
+-- Giving up is a held key with a bar, since it is irreversible (permanent death and inventory wipe). Held for 2.5 seconds so it cannot be hit by accident, and the bar is visible so the player can let go.
 local GIVE_UP_HOLD_MS = 2500
 
 local function drawGiveUpProgress(fraction, label)
@@ -523,13 +549,11 @@ CreateThread(function()
             end
 
             -- Give up and die now. Held, never tapped (see GIVE_UP_HOLD_MS). Disarmed while a panel is open.
-            -- Keep the game from using X for its own things (crouch, cancel) while we count the hold.
-            DisableControlAction(0, 73, true)
             if Downed.givingUp or Downed.flat or anyPanelOpen() then
                 Downed.holdFrom = 0
             elseif IsControlPressed(0, 73) or IsDisabledControlPressed(0, 73)
-                or (Downed.holdFrom > 0 and GetGameTimer() - (Downed.holdSeen or 0) < 600) then   -- X, held
-                -- X is also a vehicle/emote key, so another script can disable it for a frame or two.
+                or (Downed.holdFrom > 0 and GetGameTimer() - (Downed.holdSeen or 0) < 250) then   -- X, held
+                -- X is also a vehicle/emote key, so another script can disable it for a frame or two. Read the disabled state too and forgive short gaps, or the bar restarts from zero.
                 if IsControlPressed(0, 73) or IsDisabledControlPressed(0, 73) then Downed.holdSeen = GetGameTimer() end
                 if Downed.holdFrom == 0 then Downed.holdFrom = GetGameTimer() end
 
@@ -540,6 +564,11 @@ CreateThread(function()
                     Downed.holdFrom = 0
                     Downed.givingUp = true
                     CreateThread(function()
+                        -- Clear the held weapon BEFORE asking the server to wipe/respawn.
+                        -- This is deliberately tied to the give-up action itself so no stale
+                        -- weapon state can survive until the respawn event.
+                        forceDeathDisarm()
+                        keepDeathDisarmed(3500)
                         local result = BSB.Await('medical:giveUp', 8000)
                         -- On success the server sends bs:medical:died and the handler at the bottom of this file takes over.
                         if not (result and result.ok) then
@@ -559,7 +588,8 @@ CreateThread(function()
     end
 end)
 
--- The hard death, when the catch above is skipped Fall damage, drowning
+-- The hard death, when the catch above is skipped
+-- Fall damage, drowning, an explosion or one big hit can clear the 1-106 window in one tick, so the ped is dead before the 120ms watchdog sees it alive and `enterDowned` never runs. This polls IsEntityDead instead of the health window and handles it.
 
 local HardDead = {
     active  = false,
@@ -599,7 +629,8 @@ local function drawHardDeath()
     DrawText(0.5, 0.80)
 end
 
--- PvP deaths go down first.
+-- PvP deaths go down first. A player's bullet usually exceeds the catch window in one tick, so the hard-death path ran. When the killer was another player and Medical.PvP.downFirst is on, the body is picked up where it lies, pinned at 105 and handed to the downed state. Returns true if it took the death.
+-- Fall tracking for hardDeathFallHeight: last Z the ped stood on the ground.
 local lastGroundZ = nil
 CreateThread(function()
     while true do
@@ -618,7 +649,7 @@ local FALL_HASH   = GetHashKey('WEAPON_FALL')
 local DROWN_HASH  = GetHashKey('WEAPON_DROWNING')
 local DROWNV_HASH = GetHashKey('WEAPON_DROWNING_IN_VEHICLE')
 
--- Should this death skip the downed state? Explosions, drowning and long falls (configurable).
+-- Should this death skip the downed state? Explosions, drowning and long falls (configurable). Everything else, zombies included, goes down.
 local function isHardCause(ped)
     local cause = GetPedCauseOfDeath(ped)
     if S.hardDeathOnDrown ~= false and (cause == DROWN_HASH or cause == DROWNV_HASH or IsPedSwimmingUnderWater(ped)) then
@@ -710,10 +741,10 @@ CreateThread(function()
         if HardDead.active then
             Wait(0)
 
-            -- Do not paint the death text over an open staff menu.
+            -- Do not paint the death text over an open staff menu. The E handler below stays live regardless, since being unable to respawn is the worst outcome here.
             if not anyPanelOpen() and not HardDead.pending then drawHardDeath() end
 
-            -- One press, one request, and the answer is believed.
+            -- One press, one request, and the answer is believed. There is an in-flight guard (extra presses queued requests the server's five second cooldown refused), and `result.ok` is checked so a refusal is shown instead of ignored.
             if IsControlJustPressed(0, 38) and not HardDead.pending and HardDead.waitLeft() <= 0 then -- E
                 HardDead.pending = true
                 CreateThread(function()
@@ -722,7 +753,7 @@ CreateThread(function()
                     if not (result and result.ok) then
                         -- Still dead, prompt still up, press still available.
                         HardDead.pending = false
-                        -- The server attaches a reason to every refusal, so a missing one means no answer arrived within eight seconds.
+                        -- The server attaches a reason to every refusal, so a missing one means no answer arrived within eight seconds. Say that instead of a generic 'try again'.
                         return notify('warn',
                             (result and result.error)
                             or L('med.no_answer_from_the_server_press_e_ag'),
@@ -742,14 +773,14 @@ end)
 
 -- Server-driven transitions
 
--- The one revive, received from any state. leaveDowned returns early when not downed
+-- The one revive, received from any state. leaveDowned returns early when not downed, so a staff REVIVE on a player who died outright was dropped. This handles all three states, since the client is the only side that knows which it is in.
 RegisterNetEvent('bs:medical:revived', function()
     if Downed.active then
         leaveDowned(true)
         return
     end
 
-    -- Dead on the ground, with or without the respawn prompt: stand up in place first, then drop the prompt
+    -- Dead on the ground, with or without the respawn prompt: stand up in place first, then drop the prompt, so the watchdog never re-arms.
     HardDead.active = true
     Downed.graceUntil = GetGameTimer() + 8000
     standUp(reviveHealthFor(PlayerPedId()))
@@ -760,6 +791,11 @@ end)
 
 -- The clock ran out. The server has already moved us and reset our needs.
 RegisterNetEvent('bs:medical:died', function(point, from)
+    -- A give-up/bleedout is a full death with inventory wipe. Clear weapons again here
+    -- and keep clearing briefly across resurrection, because FiveM can recreate the ped
+    -- weapon state during NetworkResurrectLocalPlayer.
+    forceDeathDisarm()
+    keepDeathDisarmed(5000)
     -- Hold the hard-death watchdog off while we move, or it catches the ped mid-fade.
     HardDead.active = true
     HardDead.pending = true
@@ -769,6 +805,8 @@ RegisterNetEvent('bs:medical:died', function(point, from)
     Downed.givingUp = false
     Downed.selfFrom = 0
     wakeUp(point, from)
+    forceDeathDisarm()
+    keepDeathDisarmed(2000)
     leaveHardDeath()
 end)
 
@@ -835,9 +873,4 @@ exports('IsDowned', function() return Downed.active end)
 exports('TimeLeft', function()
     if not Downed.active then return 0 end
     return math.max(0, (Downed.until_ - GetGameTimer()) / 1000)
-end)
-
-RegisterNetEvent('bs:medical:linkRestore',function(status,seconds)
-    if status=='downed'then enterDowned(seconds)
-    else leaveDowned(false);SetEntityHealth(PlayerPedId(),0);enterHardDeath()end
 end)

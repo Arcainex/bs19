@@ -163,3 +163,30 @@ RegisterCommand('dryfire', function()
     TriggerEvent('bs:ui:notify', { type = 'info', duration = 9000,
         message = table.concat(lines, '\n') })
 end, false)
+
+-- Inventory/death cleanup must also clear this file's private restore cache.
+-- cl_main.lua has its own weapon cache, but `lastArmed` above is local to
+-- cl_dryfire.lua. Without resetting it, the dry-fire watchdog can re-create a
+-- weapon after bs_inventory has wiped the ped during give-up/respawn.
+AddEventHandler('bs:weapons:forgetAll', function()
+    lastArmed = nil
+    restores = 0
+    restoreWindow = 0
+end)
+
+AddEventHandler('bs:weapons:forget', function(weaponHash)
+    if lastArmed and tonumber(weaponHash) == tonumber(lastArmed) then
+        lastArmed = nil
+        restores = 0
+        restoreWindow = 0
+    end
+end)
+
+-- Clear the restore cache as soon as the medical death transition starts too.
+-- This closes the small gap between pressing give-up and the server-side
+-- inventory wipe reaching the client.
+RegisterNetEvent('bs:medical:died', function()
+    lastArmed = nil
+    restores = 0
+    restoreWindow = 0
+end)

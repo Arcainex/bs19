@@ -35,6 +35,7 @@ client_scripts {
     'client/cl_unstick.lua',
     'client/cl_teleport.lua',   -- shared safe teleport (export SafeTeleport)
     'client/cl_streaming.lua',  -- focus watchdog + /refreshtextures
+    'client/cl_idlecamera.lua', -- disable GTA idle/cinematic camera after inactivity
 }
 
 server_scripts {
@@ -45,7 +46,6 @@ server_scripts {
     'server/sv_identity.lua',
     'server/sv_player.lua',
     'server/sv_characters.lua',
-    'server/sv_survivor_link.lua',
     'server/sv_needs.lua',
     'server/sv_outfit.lua',
     'server/sv_rewards.lua',

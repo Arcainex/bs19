@@ -1,0 +1,20 @@
+Alpha-Z Tester F4 – Helligkeits-Fix V2
+
+Ursache/Verdacht: Der dunkle color-scheme auf der NUI-Wurzelseite
+kann einen undurchsichtigen schwarzen Browser-Hintergrund erzeugen.
+Das Menü selbst bleibt im schwarzen/grünen Alpha-Z-Stil.
+
+Änderungen: html/body explizit transparent, color-scheme normal.
+Die Spawn- und Rechteprüfung bleiben unverändert.
+
+Installation:
+1. Server stoppen.
+2. Bestehenden alpha_z_tester-Ordner sichern.
+3. Neuen alpha_z_tester-Ordner aus diesem ZIP übernehmen.
+4. Server starten.
+5. Hell/Dunkel im Charaktermenü und Spiel prüfen, dann F4 öffnen/schließen.
+
+Wichtig: Den früheren Helligkeitspatch für bs_world/bs_multichar brauchst
+du für dieses Problem nicht. Falls du ihn bereits installiert hast,
+bitte die ursprünglichen Versionen dieser beiden Resources wiederherstellen,
+damit die gewünschten Welt-/Wettereffekte nicht unnötig verändert bleiben.

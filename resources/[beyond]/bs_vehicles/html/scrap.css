@@ -1,12 +1,12 @@
 .scrap { position: absolute; left: 50%; bottom: 12vh; transform: translateX(-50%); width: 460px; padding: 14px 16px;
     background: linear-gradient(180deg, #1b1a17 0%, var(--plate, #151412) 70%, #0f0e0c 100%);
-    border: 1px solid rgba(216, 210, 194, 0.12); border-top: 3px solid var(--accent, #e08c46);
+    border: 1px solid rgba(216, 210, 194, 0.12); border-top: 3px solid var(--accent, #728c42);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); font-family: var(--font, monospace); color: var(--text, #f0ebdd); }
 .sc-head { display: flex; justify-content: space-between; font-size: 15px; letter-spacing: 2px; font-weight: bold; }
 .sc-meta { font-size: 11px; color: var(--muted, #a8a293); margin: 4px 0 10px; }
 .sc-parts { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
 .sc-parts li { font-size: 11px; padding: 4px 6px; border: 1px solid rgba(216, 210, 194, 0.12); color: var(--muted, #a8a293); }
-.sc-parts li.active { border-color: var(--accent, #e08c46); color: var(--text, #f0ebdd); }
+.sc-parts li.active { border-color: var(--accent, #728c42); color: var(--text, #f0ebdd); }
 .sc-parts li.perfect, .sc-parts li.good { border-color: var(--good, #7fd4a2); color: var(--good, #7fd4a2); }
 .sc-parts li.miss, .sc-parts li.timeout { border-color: var(--danger, #b4574a); color: var(--danger, #b4574a); }
 .sc-parts li.ruined { text-decoration: line-through; }

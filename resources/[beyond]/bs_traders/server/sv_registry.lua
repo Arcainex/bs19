@@ -1,4 +1,10 @@
--- bs_traders - merge of config and database. Config is the starting layout, the database is what runs.
+-- bs_traders - merge of config and database. Config is the starting layout,
+-- the database is what runs. Other files ask this for an NPC or mission rather
+-- than reading Traders.Traders / Traders.Missions.
+-- An override is a JSON blob keyed by id holding only changed fields; present
+-- fields win, absent ones fall back to config. An id with an override but no
+-- config entry is a debug-menu-created NPC/mission, and deleting its row
+-- deletes it. For config ids, 'reset to default' just deletes the override row.
 
 Registry = {}
 
@@ -28,7 +34,8 @@ CreateThread(loadOverrides)
 
 -- Effective NPC
 
--- Coordinate priority: override x/y/z, then the config entry's `zone` + `offset` (via Traders.ZoneCoords)
+-- Coordinate priority: override x/y/z, then the config entry's `zone` + `offset`
+-- (via Traders.ZoneCoords), then an absolute `coords` on the config entry.
 local function resolveCoords(base, override)
     if override and override.x and override.y and override.z then
         return vector3(override.x, override.y, override.z)
@@ -47,7 +54,8 @@ local function pick(ov, base, key, default)
     return default
 end
 
--- Effective NPC by id, or nil if missing or deleted. `disabled` entries are still returned
+-- Effective NPC by id, or nil if missing or deleted. `disabled` entries are
+-- still returned (the debug menu needs them); spawners must check `.disabled`.
 function Registry.EffectiveNpc(id)
     local base = Traders.Traders[id]
     local ov = npcOverrides[id]
@@ -84,7 +92,7 @@ function Registry.EffectiveNpc(id)
 
         disabled = ov and ov.disabled or false,
 
-        -- Management fields. Each falls back override to config to default.
+        -- Management fields. Each falls back override -> config -> default.
         faction      = pick(ov, base, 'faction', ''),            -- '' = neutral
         safezone     = pick(ov, base, 'safezone', base and base.zone or ''),
         categories   = pick(ov, base, 'categories', nil),        -- nil = defaults
@@ -97,7 +105,8 @@ function Registry.EffectiveNpc(id)
         blipSprite   = tonumber(pick(ov, base, 'blipSprite', 52)) or 52,
         blipColor    = tonumber(pick(ov, base, 'blipColor', 2)) or 2,
         notes        = pick(ov, base, 'notes', ''),
-        -- True once an override exists.
+        -- True once an override exists. The debug UI uses it to show 'reset to default'
+        -- where a config default exists and 'delete' where it does not.
         hasConfig = base ~= nil,
     }
 end
@@ -130,7 +139,8 @@ function Registry.EffectiveMission(id)
     }
 end
 
--- Every known id, config or override. Disabled/soft-deleted entries are included.
+-- Every known id, config or override. Disabled/soft-deleted entries are
+-- included on purpose.
 function Registry.AllNpcIds()
     local seen, out = {}, {}
     for id in pairs(Traders.Traders) do if not seen[id] then seen[id] = true; out[#out + 1] = id end end
@@ -147,7 +157,8 @@ end
 
 -- Writing
 
--- Merges `patch` into the id's override (other keys kept) and saves it. Returns the effective NPC.
+-- Merges `patch` into the id's override (other keys kept) and saves it.
+-- Returns the effective NPC.
 function Registry.SetNpcOverride(id, patch)
     local merged = npcOverrides[id] or {}
     for k, v in pairs(patch) do merged[k] = v end
@@ -161,7 +172,8 @@ function Registry.SetNpcOverride(id, patch)
     return Registry.EffectiveNpc(id)
 end
 
--- Deletes the id's override. With a config entry this resets to default; without one the NPC is gone.
+-- Deletes the id's override. With a config entry this resets to default;
+-- without one the NPC is gone.
 function Registry.ResetNpc(id)
     npcOverrides[id] = nil
     exports.oxmysql:execute_async('DELETE FROM `bs_npc_overrides` WHERE `npc_id` = ?', { id })

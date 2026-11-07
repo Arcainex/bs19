@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_economy ATM check.
+-- BeyondSurvival - bs_economy ATM check. The server hears an explosion and asks this client if a cash machine was there; only the client can see it, since ATMs are map geometry.
 
 local A = Economy.ATM or { enabled = false }
 
@@ -58,7 +58,7 @@ RegisterNetEvent('bs:atm:blast', function(x, y, z)
             SetEntityAsMissionEntity(object, true, true)
             BreakEntityGlass(object, coords.x, coords.y, coords.z, 1.0, 0.0, 0.0, 0.0, 100.0, true)
 
-            -- SetEntityAsMissionEntity takes a script resource slot (pool of 256).
+            -- SetEntityAsMissionEntity takes a script resource slot (pool of 256). Map props are never deleted, so the slot is handed back explicitly.
             SetEntityAsNoLongerNeeded(object)
         end
 

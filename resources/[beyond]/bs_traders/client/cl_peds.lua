@@ -1,15 +1,19 @@
 -- bs_traders - spawns and culls NPC peds, and registers each with bs_interactions while it exists.
+-- The list comes from the server (`npcs:list` BSB callback), which merges config with live debug-menu overrides, so repositioned or disabled NPCs update without a restart.
+-- Spawn radius 60m, despawn 80m on purpose (hysteresis), so standing at the boundary does not flicker the ped.
 
 local spawned = {}    -- [npcId] = { entity = handle }
 local npcList = {}     -- [npcId] = { id, label, role, model, scenario, heading, coords }
 local listReady = false
 
--- Spawn queue instead of one CreateThread per NPC: concurrent RequestModel/CreatePed calls for the same model
+-- Spawn queue instead of one CreateThread per NPC: concurrent RequestModel/CreatePed calls for the same model hash caused native-side crashes (EXCEPTION_ACCESS_VIOLATION) when several NPCs came into range at once.
 local spawnQueue = {}      -- array of { npcId, npc }
 local queuedIds = {}        -- [npcId] = true, so the same NPC is never queued twice
 local queueRunning = false
 
+--------------------------------------------------------------------------------
 -- Fetching the live list
+--------------------------------------------------------------------------------
 
 -- Map blips, one per listed trader that has `blip` set. Rebuilt on every fetch.
 local blips = {}
@@ -54,9 +58,11 @@ end
 
 CreateThread(fetchList)
 
+--------------------------------------------------------------------------------
 -- Spawn / despawn
+--------------------------------------------------------------------------------
 
--- Registration lives in one place because it happens from two: on ped spawn and when bs_interactions restarts
+-- Registration lives in one place because it happens from two: on ped spawn and when bs_interactions restarts (see onClientResourceStart at the bottom). Both must build the same option list.
 local function registerWithInteractions(npcId, npc, ped)
     local options = {}
 
@@ -119,7 +125,7 @@ local function spawnOne(npcId, npc)
 
     local model = joaat(npc.model)
 
-    -- Reject a model hash CreatePed cannot use: `npc.model` is free-typed in the debug menu
+    -- Reject a model hash CreatePed cannot use: `npc.model` is free-typed in the debug menu (cl_debug.lua showPreview validates the same way). Prints once and skips that NPC.
     if not IsModelValid(model) or not IsModelAPed(model) then
         print(('^1[bs_traders]^7 "%s" is not a valid ped model - skipping %s')
             :format(tostring(npc.model), tostring(npcId)))
@@ -135,13 +141,35 @@ local function spawnOne(npcId, npc)
     end
     if not HasModelLoaded(model) then return end
 
-    -- The list may have been reloaded while the model was loading (debug save, resource restart).
+    -- The list may have been reloaded while the model was loading (debug save, resource restart). Bail instead of spawning something stale.
     if spawned[npcId] or npcList[npcId] ~= npc then
         SetModelAsNoLongerNeeded(model)
         return
     end
 
-    local ped = CreatePed(4, model, npc.coords.x, npc.coords.y, npc.coords.z - 1.0,
+    -- Load collision around the configured position and resolve the real ground height
+    -- before the ped is frozen. Spawning at z - 1.0 made service/trader NPCs sink into
+    -- the pavement on uneven ground or when the configured Z was already ground-level.
+    RequestCollisionAtCoord(npc.coords.x, npc.coords.y, npc.coords.z)
+    local collisionWait = 0
+    while not HasCollisionLoadedAroundEntity(PlayerPedId()) and collisionWait < 1500 do
+        RequestCollisionAtCoord(npc.coords.x, npc.coords.y, npc.coords.z)
+        Wait(50)
+        collisionWait = collisionWait + 50
+    end
+
+    local spawnZ = npc.coords.z
+    local foundGround, groundZ = GetGroundZFor_3dCoord(
+        npc.coords.x, npc.coords.y, npc.coords.z + 10.0, false
+    )
+    if not foundGround then
+        foundGround, groundZ = GetGroundZFor_3dCoord(
+            npc.coords.x, npc.coords.y, npc.coords.z + 50.0, false
+        )
+    end
+    if foundGround then spawnZ = groundZ end
+
+    local ped = CreatePed(4, model, npc.coords.x, npc.coords.y, spawnZ,
         npc.heading or 0.0, false, true)
 
     if not DoesEntityExist(ped) then
@@ -149,14 +177,14 @@ local function spawnOne(npcId, npc)
         return
     end
 
-    -- Everything from here to registration runs inside one pcall
+    -- Everything from here to registration runs inside one pcall; on any error the half-built ped is deleted instead of being left in the world without its safety flags.
     local ok, err = pcall(function()
 
-    -- Set bsProtected first: the sweep in bs_world/client/cl_population.lua deletes every non-player ped that has
+    -- Set bsProtected first: the sweep in bs_world/client/cl_population.lua deletes every non-player ped that has neither `bsProtected` nor `bsZombie`, which made traders vanish. bs_multichar tags its preview ped the same way.
     local pedState = Entity(ped).state
     if pedState then pedState:set('bsProtected', true, false) end
 
-    -- Safety flags are applied before the ground snap.
+    -- Safety flags are applied before the ground snap. PlaceEntityOnGroundProperly is not available as a global in this build; an error there would leave a created ped visible but not invincible, frozen or registered with bs_interactions.
     SetEntityInvincible(ped, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     SetPedCanRagdoll(ped, false)
@@ -164,11 +192,12 @@ local function spawnOne(npcId, npc)
     SetPedCanBeTargetted(ped, false)     -- not a combat target for anything
     SetEntityAsMissionEntity(ped, true, true)
 
-    -- Ground-snap is guarded: not every runtime exposes this native as a global
+    -- Final native ground placement after CreatePed corrects the model capsule/foot offset.
+    -- The explicit GetGroundZ above remains the fallback if this native is unavailable.
     local groundSnap = rawget(_G, 'PlaceEntityOnGroundProperly')
     if type(groundSnap) == 'function' then pcall(groundSnap, ped) end
 
-    -- Scenarios are off by default (Traders.Settings.useScenarios, see config_traders.lua).
+    -- Scenarios are off by default (Traders.Settings.useScenarios, see config_traders.lua). They drive the ped/task code that was crashing, so they stay disabled.
     if Traders.Settings.useScenarios and npc.scenario then
         TaskStartScenarioInPlace(ped, npc.scenario, 0, true)
         Wait(0)
@@ -205,7 +234,8 @@ local function spawnOne(npcId, npc)
     end
 end
 
---- Drains spawnQueue one NPC at a time.
+--- Drains spawnQueue one NPC at a time. Never more than one of these running
+--- (guarded by queueRunning) - that is the whole point of the queue.
 local function runQueue()
     if queueRunning then return end
     queueRunning = true
@@ -214,7 +244,8 @@ local function runQueue()
         local job = table.remove(spawnQueue, 1)
         queuedIds[job.npcId] = nil
 
-        -- Still wanted?: it may have gone out of range, been disabled, or been deleted entirely while it sat in the queue.
+        -- Still wanted? It may have gone out of range, been disabled, or
+        -- been deleted entirely while it sat in the queue.
         if not spawned[job.npcId] and npcList[job.npcId] == job.npc and not job.npc.disabled then
             spawnOne(job.npcId, job.npc)
         end
@@ -260,12 +291,12 @@ CreateThread(function()
     while true do
         Wait(1000)
 
-        -- Wait until the player is actually loaded, not just until the list is fetched.
+        -- Wait until the player is actually loaded, not just until the list is fetched. Before that PlayerPedId() can sit at the default spawn position, which can spawn a trader for one tick and despawn it the next.
         if listReady and exports.bs_core:IsLoaded() then
             local ped = PlayerPedId()
             local pos = GetEntityCoords(ped)
 
-            -- Horizontal distance, not 3D (same as nearNpc() on the server).
+            -- Horizontal distance, not 3D (same as nearNpc() on the server). Config Z can differ from the ground-snapped Z by a few metres, which caused false despawns.
             for npcId, npc in pairs(npcList) do
                 local horizontal = #(vector2(pos.x, pos.y) - vector2(npc.coords.x, npc.coords.y))
                 local vertical = math.abs(pos.z - npc.coords.z)
@@ -280,7 +311,8 @@ CreateThread(function()
                 end
             end
 
-            -- An id present in `spawned` but no longer in npcList at all (deleted, not merely disabled) has to be culled here too.
+            -- An id present in `spawned` but no longer in npcList at all
+            -- (deleted, not merely disabled) has to be culled here too.
             for npcId in pairs(spawned) do
                 if not npcList[npcId] then despawnOne(npcId, 'no longer in npcList') end
             end
@@ -288,14 +320,16 @@ CreateThread(function()
     end
 end)
 
--- Broadcast by the debug menu after save/reset/create/delete so live edits show up for nearby players without a restart.
+-- Broadcast by the debug menu after save/reset/create/delete so live edits show up for nearby players without a restart. Drops everything and refetches: the NPC list is small, and it keeps one code path deciding what is on screen.
 RegisterNetEvent('bs:traders:reload', function()
     despawnAll('bs:traders:reload received')
     listReady = false
     fetchList()
 end)
 
---- bs_interactions wraps every triggered option in one payload table rather than passing `args` on its own - see
+--- bs_interactions wraps every triggered option in one payload table rather
+--- than passing `args` on its own - see Target.Run in cl_target.lua - so the
+--- npcId set as `args` above arrives as payload.args, not as a bare argument.
 RegisterNetEvent('bs:traders:talk', function(payload)
     OpenNpcMenu(payload and payload.args)   -- defined in cl_main.lua, same resource
 end)
@@ -306,7 +340,7 @@ AddEventHandler('onResourceStop', function(resource)
     despawnAll()
 end)
 
--- bs_interactions restart: its Registry.entities table is rebuilt empty
+-- bs_interactions restart: its Registry.entities table is rebuilt empty, leaving trader peds with no ALT prompt. bs_interactions is not a hard dependency of this resource, so re-register here. Re-adding an already registered entity is harmless.
 AddEventHandler('onClientResourceStart', function(resource)
     -- bs_operations too: quest NPCs spawned before it started miss the Operations option
     if resource ~= 'bs_interactions' and resource ~= 'bs_operations' then return end

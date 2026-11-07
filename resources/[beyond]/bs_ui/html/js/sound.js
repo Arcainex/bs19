@@ -1,10 +1,11 @@
 // bs - 3D sound engine in the NUI page.
+// GTA cannot easily play custom .ogg files (needs dat54/.awc authoring, and replacing vanilla banks is unreliable), so audio is played from the browser with Web Audio instead.
 
 (() => {
     const RES = (typeof GetParentResourceName === 'function')
         ? GetParentResourceName() : 'bs_ui';
 
-    // Tunables, overridable from Lua (config_ui.lua to UI.Audio to 'audiocfg').
+    // Tunables, overridable from Lua (config_ui.lua -> UI.Audio -> 'audiocfg'). These defaults match the config and are only used if Lua has not pushed values yet (e.g. after a resource restart).
     const CFG = {
         panningModel:   'HRTF',
         distanceModel:  'inverse',
@@ -18,7 +19,7 @@
         listenerSmooth: 0.0,     /* 0 = snap. See updateListener(). */
     };
 
-    // Audio context: created lazily and resumed on every use: a context built before user interaction can start
+    // Audio context. Created lazily and resumed on every use: a context built before user interaction can start suspended in some CEF builds and play nothing.
     let ctx = null;
 
     function context() {
@@ -62,7 +63,7 @@
         console.log(`[bs_ui/sound] ${msg}`);
     }
 
-    // Buffer cache: each file is fetched and decoded once, on first use (no preloading).
+    // Buffer cache: each file is fetched and decoded once, on first use (no preloading). A failed load is cached as null so a typo does not become a fetch storm.
     const buffers = new Map();   /* file -> AudioBuffer | null */
     const pending = new Map();   /* file -> Promise */
 
@@ -118,7 +119,7 @@
         return job;
     }
 
-    // The listener follows the camera, not the ped, so sounds stay on the correct side of the screen in third person.
+    // The listener follows the camera, not the ped, so sounds stay on the correct side of the screen in third person. Supports both the AudioParam API (positionX/forwardX...) and the legacy setPosition/setOrientation.
     let listenerMode = null;    /* 'param' | 'legacy' | 'none' */
 
     function listenerModeFor(l) {
@@ -145,7 +146,7 @@
         const mode = listenerModeFor(l);
         if (mode === 'none') return;
 
-        // Axes: GTA is Z-up, Web Audio is Y-up.
+        // Axes: GTA is Z-up, Web Audio is Y-up. Instead of remapping, both listener and panners get raw game coordinates and the game's up vector. Web Audio only uses relative geometry, so this stays consistent and keeps handedness correct.
         const px = m.x || 0, py = m.y || 0, pz = m.z || 0;
         const fx = m.fx || 0, fy = m.fy || 1, fz = m.fz || 0;
         const ux = m.ux || 0, uy = m.uy || 0, uz = m.uz || 1;
@@ -169,7 +170,8 @@
         }
     }
 
-    // Live sources by id: a world sound may carry an id (for zombies, the walker id) so everything one creature
+    // Live sources by id. A world sound may carry an id (for zombies, the walker id) so everything one creature says moves and stops together.
+    // Race: loading is async, so a stop can arrive before the source starts. A per-id epoch counter is bumped on every stop and checked after loading.
     const live = new Map();     /* id -> Set of voice records */
     const epochs = new Map();   /* id -> counter, bumped on every stop */
 
@@ -178,7 +180,7 @@
 
     function voiceCount() { return worldVoices; }
 
-    // Farthest-first eviction: when the cap is reached, a closer sound replaces a distant one.
+    // Farthest-first eviction: when the cap is reached, a closer sound replaces a distant one. Lua does this too, but the page guards itself.
     function evictFarthest(thanDistance) {
         let worst = null, worstD = -1;
         for (const set of live.values()) {
@@ -199,7 +201,7 @@
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
-    // Stopping with a ramp: a hard stop mid-waveform clicks, and a death should fade rather than cut.
+    // Stopping with a ramp: a hard stop mid-waveform clicks, and a death should fade rather than cut. Every stop is a gain ramp followed by a real stop scheduled just after it ends.
     function fade(v, ms) {
         if (!v || v.stopping) return;
         v.stopping = true;
@@ -230,14 +232,14 @@
         const set = live.get(id);
         if (!set) return;
         for (const v of set) fade(v, ms);
-        // Do not delete the set here. onended removes each voice when it really finishes
+        // Do not delete the set here. onended removes each voice when it really finishes, which keeps the voice counter right during the ramp.
     }
 
     function stopAll(ms) {
         for (const id of Array.from(live.keys())) stopId(id, ms);
     }
 
-    // Moving a playing sound: lua sends a position for any id it thinks is still making noise
+    // Moving a playing sound. Lua sends a position for any id it thinks is still making noise; if nothing is playing under that id this is a no-op. The panner position is ramped over a short window instead of snapped, where AudioParams are available.
     function moveId(id, x, y, z, overMs) {
         if (id === null || id === undefined) return;
         const set = live.get(String(id));
@@ -285,7 +287,7 @@
         p.rolloffFactor = Math.max(0.0, opts.rolloffFactor || CFG.rolloffFactor);
         p.maxDistance   = Math.max(1.0, opts.maxDistance || CFG.maxDistance);
 
-        // Omnidirectional: a cone would make zombies facing away quieter, which is noise rather than information.
+        // Omnidirectional: a cone would make zombies facing away quieter, which is noise rather than information. A 360 inner angle disables the cone maths.
         p.coneInnerAngle = CFG.coneInnerAngle;
         p.coneOuterAngle = 360;
         p.coneOuterGain  = 1.0;
@@ -312,7 +314,7 @@
         const file = d.file;
         if (!file) return;
 
-        // A world sound carries coordinates; a UI sound does not and is not spatialised.
+        // A world sound carries coordinates; a UI sound does not and is not spatialised. This test is the whole 2D/3D split (PlaySound2D sends no pos).
         const spatial = !!(d.pos && typeof d.pos.x === 'number');
         const id = (d.id !== undefined && d.id !== null && d.id !== '')
             ? String(d.id) : (d.tag ? String(d.tag) : null);
@@ -386,7 +388,7 @@
                         set.delete(v);
                         if (set.size === 0) {
                             live.delete(id);
-                            // Tell Lua the emitter has gone quiet so it can stop sending position updates
+                            // Tell Lua the emitter has gone quiet so it can stop sending position updates, instead of polling every walker or guessing clip lengths.
                             notifyEnded(id);
                         }
                     }
@@ -415,7 +417,7 @@
         } catch (e) { /* not inside NUI */ }
     }
 
-    // Messages from Lua. `sound` and `soundstop` keep their old names and payloads
+    // Messages from Lua. `sound` and `soundstop` keep their old names and payloads, so older senders (a tag, a pan, no pos) still work as 2D sounds.
     window.addEventListener('message', (event) => {
         const d = event.data || {};
         switch (d.action) {

@@ -1,4 +1,4 @@
--- bs_inventory - opens the inventory, relays drag-and-drop moves to the server and hosts the Settings panel.
+-- bs_inventory - opens the inventory, relays drag-and-drop moves to the server and hosts the Settings panel. The client holds no authority; it renders what the server last sent.
 
 local open = false
 local opening = false
@@ -7,27 +7,21 @@ local tradeState = nil
 local tradeOnly = false
 local openToken = 0
 local portraitReady = false
+local cashTargeting = false
+local cashTargetAmount = 0
+local cashHoverTarget = nil
+local identityTargeting = false
+local identityHoverTarget = nil
+local identityCardReceived = false
+local identityPhotoCaptureBusy = false
+local identityPhotoCaptureResult = nil
 local closeInventory
-BSInvSubject=nil
-function BSInvSubjectPed()
-    if not BSInvSubject then return PlayerPedId()end
-    local net=BSInvSubject.net
-    return NetworkDoesNetworkIdExist(net)and NetworkGetEntityFromNetworkId(net)or 0
-end
-local registerNui=RegisterNUICallback
-local companionCallbacks={close=true,inventoryReady=true,move=true}
-local function RegisterNUICallback(name,handler)
-    registerNui(name,function(data,cb)
-        if BSInvSubject and not companionCallbacks[name]then
-            return cb({ok=false,error='This is your companion equipment. Use trade to exchange items.'})
-        end
-        handler(data,cb)
-    end)
-end
 
 local function send(p) SendNUIMessage(p) end
 
--- Item names and descriptions in the player's language: locale keys item.<name> and item.<name>.desc
+-- Item names and descriptions in the player's language: locale keys item.<name> and
+-- item.<name>.desc, with the config label as the English fallback.
+local foodLiveLabels = {}
 local function itemText(name, suffix, fallback)
     local key = 'item.' .. tostring(name) .. (suffix or '')
     local text = L(key)
@@ -36,6 +30,8 @@ local function itemText(name, suffix, fallback)
 end
 
 function ItemLabel(name)
+    -- F10 food labels must win over static locale strings after a live edit.
+    if foodLiveLabels and foodLiveLabels[name] then return foodLiveLabels[name] end
     local def = Items.Definitions[name]
     return itemText(name, nil, def and def.label or tostring(name))
 end
@@ -48,6 +44,30 @@ end
 exports('ItemLabel', ItemLabel)
 exports('ItemDescription', ItemDescription)
 
+-- Food definitions created/edited in F10 are sent by the server, not hardcoded here.
+local foodSynced = false
+RegisterNetEvent('bs:inventory:foodDef', function(id, def, edited)
+    if type(id) ~= 'string' or type(def) ~= 'table' then return end
+    Items.Definitions[id] = def
+    foodLiveLabels[id] = edited and def.label or nil
+end)
+RegisterNetEvent('bs:inventory:foodRemoved', function(id)
+    if type(id) ~= 'string' then return end
+    Items.Definitions[id] = nil
+    foodLiveLabels[id] = nil
+end)
+RegisterNetEvent('bs:inventory:foodSyncDone', function()
+    foodSynced = true
+end)
+CreateThread(function()
+    -- Initial server inventory/DB sync may take a few seconds after a cold start.
+    for attempt = 1, 8 do
+        Wait(attempt == 1 and 1600 or 3000)
+        if foodSynced then break end
+        TriggerServerEvent('bs:inventory:foodSync')
+    end
+end)
+
 local function setFocus(on)
     SetNuiFocus(on, on)
     SetNuiFocusKeepInput(false)
@@ -56,6 +76,7 @@ end
 -- Opening
 
 -- Preferences owned by other resources, shown in the Settings tab next to bs_ui's HUD values.
+-- Each one reads and writes through that resource's export, so its chat command stays in sync.
 local function started(res) return GetResourceState(res) == 'started' end
 
 -- Container labels sent as 'loc:<key>' are resolved in the player's language here.
@@ -82,26 +103,6 @@ local extraSettings = {
         get = function() if started('bs_chat') then return exports.bs_chat:GetDisplaySettings().chatBgOpacity end end,
         set = function(v) exports.bs_chat:ApplyDisplaySettings({ chatBgOpacity = tonumber(v) }) end,
     },
-    zombieNoiseHud = {
-        get = function() if started('bs_zombies') then return exports.bs_zombies:GetFxOptions().zombieNoiseHud end end,
-        set = function(v) if started('bs_zombies') then exports.bs_zombies:SetFxOption('zombieNoiseHud', v == true) end end,
-    },
-    zombieImpactFx = {
-        get = function() if started('bs_zombies') then return exports.bs_zombies:GetFxOptions().zombieImpactFx end end,
-        set = function(v) if started('bs_zombies') then exports.bs_zombies:SetFxOption('zombieImpactFx', v == true) end end,
-    },
-    zombieImpactVolume = {
-        get = function() if started('bs_zombies') then return exports.bs_zombies:GetFxOptions().zombieImpactVolume end end,
-        set = function(v) if started('bs_zombies') then exports.bs_zombies:SetFxOption('zombieImpactVolume', tonumber(v) or 0.7) end end,
-    },
-    zombieNoiseRadius = {
-        get = function() if started('bs_zombies') then return exports.bs_zombies:GetFxOptions().zombieNoiseRadius end end,
-        set = function(v) if started('bs_zombies') then exports.bs_zombies:SetFxOption('zombieNoiseRadius', v == true) end end,
-    },
-    uiSafeMargin = {
-        get = function() if started('bs_ui') then return exports.bs_ui:GetUiSafeMargin() end end,
-        set = function(v) if started('bs_ui') then exports.bs_ui:SetUiSafeMargin(v) end end,
-    },
     uiScale = {
         get = function() if started('bs_ui') then return exports.bs_ui:GetUiScale() end end,
         set = function(v) exports.bs_ui:SetUiScale(tonumber(v) or 0) end,
@@ -121,10 +122,6 @@ local extraSettings = {
     damageNumbers = {
         get = function() if started('bs_zombies') then return exports.bs_zombies:DamageNumbersShown() end end,
         set = function(v) exports.bs_zombies:SetDamageNumbersShown(v == true) end,
-    },
-    buildMenu = {
-        get = function() if started('bs_building') then return exports.bs_building:GetMenuStyle() end end,
-        set = function(v) if started('bs_building') then exports.bs_building:SetMenuStyle(v) end end,
     },
     carHud = {
         get = function() if started('bs_vehicles') then return exports.bs_vehicles:GetDashHudSettings().on end end,
@@ -166,15 +163,6 @@ local extraSettings = {
         get = function() if started('bs_radio') then local ok, r = pcall(function() return exports.bs_radio:GetVolume() end); if ok then return r end end end,
         set = function(v) if started('bs_radio') then pcall(function() exports.bs_radio:SetVolume(tonumber(v)) end) end end,
     },
-    fpsEnabled = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsEnabled end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsEnabled',v)end },
-    fpsFov = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsFov end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsFov',v)end },
-    fpsBob = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsBob end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsBob',v)end },
-    fpsCrosshair = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsCrosshair end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsCrosshair',v)end },
-    fpsSide = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsSide end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsSide',v)end },
-    fpsForward = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsForward end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsForward',v)end },
-    fpsHeight = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsHeight end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsHeight',v)end },
-    fpsAimZoom = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsAimZoom end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsAimZoom',v)end },
-    fpsAvailable = { get=function()return exports[GetCurrentResourceName()]:GetFirstPersonSettings().fpsAvailable end, set=function(v)exports[GetCurrentResourceName()]:SetFirstPersonSetting('fpsAvailable',v)end },
     camSmooth = {
         get = function() return exports[GetCurrentResourceName()]:GetCameraSettings().camSmooth end,
         set = function(v) exports[GetCurrentResourceName()]:SetCameraSetting('camSmooth', v) end,
@@ -215,7 +203,10 @@ local extraSettings = {
 local function collectSettings()
     local out = {}
     if started('bs_ui') then
-        for key, value in pairs(exports.bs_ui:GetHudSettings() or {}) do out[key] = value end
+        local okHud, hudSettings = pcall(function() return exports.bs_ui:GetHudSettings() end)
+        if okHud and type(hudSettings) == 'table' then
+            for key, value in pairs(hudSettings) do out[key] = value end
+        end
     end
     for key, handler in pairs(extraSettings) do
         local ok, value = pcall(handler.get)
@@ -227,7 +218,7 @@ local function collectSettings()
 end
 
 --- @param tab string|nil  'carry' (default) or 'settings'
-local function openInventory(tab,subjectResult)
+local function openInventory(tab)
     if open or opening then return end
     if not exports.bs_core:IsLoaded() then return end
     if IsPedDeadOrDying(PlayerPedId(), true) then return end
@@ -235,7 +226,9 @@ local function openInventory(tab,subjectResult)
     opening = true
     local data = BSB.Await('inventory:open', 8000)
     opening = false
-    if not data or not data.ok then return end
+    if not data or not data.ok then
+        return
+    end
 
     open = true
     tradeOnly = tab == 'trade'
@@ -243,14 +236,8 @@ local function openInventory(tab,subjectResult)
     portraitReady = false
     local token = openToken
     state.player = data.player
-    BSInvSubject=subjectResult and subjectResult.subject or nil
-    if BSInvSubject then
-        data.player=subjectResult.container
-        state.container=subjectResult.container
-    end
-    if BSInvBody and BSInvBody.SetSource then BSInvBody.SetSource(BSInvSubject and BSInvSubjectPed()or nil)end
 
-    -- Game-side blur: a NUI page cannot blur the world behind it.
+    -- Game-side blur: a NUI page cannot blur the world behind it. Not GTA's global screen blur, which also blurs the player ped; the portrait camera's depth of field keeps the ped sharp.
     TriggerScreenblurFadeOut(0)
 
     -- Start the portrait only after the browser confirms it painted, so a failed NUI init cannot strand the player in a blank camera.
@@ -260,8 +247,11 @@ local function openInventory(tab,subjectResult)
     send({
         action = 'open',
         tab = tab or 'carry',
-        companionView = BSInvSubject~=nil,
         player = data.player,
+        cash = (function()
+            local ok, d = pcall(function() return exports.bs_core:GetData() end)
+            return (ok and type(d) == 'table' and d.accounts and tonumber(d.accounts.cash)) or 0
+        end)(),
         trade = tradeState,
         grid = data.grid,
         settings = collectSettings(),
@@ -272,7 +262,7 @@ local function openInventory(tab,subjectResult)
             return ok and v or nil
         end)(),
 
-        -- Screen-filter presets, sent as data. bs_ui owns the list (UI.Filters) so a new preset shows up here and in
+        -- Screen-filter presets, sent as data. bs_ui owns the list (UI.Filters) so a new preset shows up here and in the cinematic camera picker.
         filters = (GetResourceState('bs_ui') == 'started')
             and (function()
                 local ok, list = pcall(function() return exports.bs_ui:FilterPresets() end)
@@ -283,7 +273,6 @@ local function openInventory(tab,subjectResult)
 
         -- Stats panel: a snapshot taken on open, not a live feed. Health and armour come from the ped since the engine owns them.
         stats = (function()
-            if BSInvSubject then return BSInvSubject.stats end
             local ok, d = pcall(function() return exports.bs_core:GetData() end)
             if not ok or type(d) ~= 'table' then return nil end
 
@@ -303,15 +292,14 @@ local function openInventory(tab,subjectResult)
         end)(),
 
         -- Character sheet: levels plus the modifiers they give (e.g. "hunger 18% slower").
+        -- Carry weight comes from the class, sent as the difference from baseline (+10kg).
         levels = (function()
-            if BSInvSubject then return BSInvSubject.levels end
             if GetResourceState('bs_skills') ~= 'started' then return nil end
             local ok, v = pcall(function() return exports.bs_skills:GetLevels() end)
             return ok and v or nil
         end)(),
 
         effects = (function()
-            if BSInvSubject then return BSInvSubject.effects end
             local out = {}
 
             if GetResourceState('bs_skills') == 'started' then
@@ -331,7 +319,6 @@ local function openInventory(tab,subjectResult)
 
         -- Read from bs_skills, not its config file: this resource does not load config_skills.lua (Skills would be nil here).
         trees = (function()
-            if BSInvSubject then return BSInvSubject.trees end
             if GetResourceState('bs_skills') ~= 'started' then return nil end
             local ok, v = pcall(function() return exports.bs_skills:GetTrees() end)
             return ok and v or nil
@@ -339,8 +326,8 @@ local function openInventory(tab,subjectResult)
     })
     setFocus(true)
     TriggerEvent('bs:ui:opened', 'inventory')
-    if not BSInvSubject and GetResourceState('bs_boosters') == 'started' then TriggerServerEvent('bs:boosters:request') end
-    if not BSInvSubject and GetResourceState('bs_gadgets') == 'started' then TriggerServerEvent('bs:gadgets:request') end
+    if GetResourceState('bs_boosters') == 'started' then TriggerServerEvent('bs:boosters:request') end
+    if GetResourceState('bs_gadgets') == 'started' then TriggerServerEvent('bs:gadgets:request') end
     CreateThread(function()
         Wait(4000)
         if open and openToken == token and not portraitReady then
@@ -376,8 +363,6 @@ closeInventory = function()
     if GetResourceState('bs_ui') == 'started' then
         pcall(function() exports.bs_ui:SetMinimap(false) end)
     end
-    BSInvSubject=nil
-    if BSInvBody and BSInvBody.SetSource then BSInvBody.SetSource(nil)end
     TriggerEvent('bs:ui:closed', 'inventory')
 end
 
@@ -389,7 +374,7 @@ RegisterNUICallback('inventoryReady', function(data, cb)
             CreateThread(function()
                 -- snapshots first (behind the page's cover), then the portrait camera
                 local function startCam()
-                    if open and openToken == token and BSInvPedCam then pcall(BSInvPedCam.Start,BSInvSubject and BSInvSubjectPed()or nil) end
+                    if open and openToken == token and BSInvPedCam then pcall(BSInvPedCam.Start) end
                 end
                 if BSInvBody then
                     pcall(BSInvBody.Snapshot)
@@ -534,7 +519,6 @@ end)
 -- Server state
 
 -- Weapons that come from items. Only these are policed, so weapons handed out by other systems stay.
-local drawnSerial, blockAfterDeath
 local ITEM_WEAPONS
 local function itemWeapons()
     if ITEM_WEAPONS then return ITEM_WEAPONS end
@@ -546,7 +530,8 @@ local function itemWeapons()
     return ITEM_WEAPONS
 end
 
--- An item weapon the bag no longer holds (died, traded, dropped, sold) must leave the ped too
+-- An item weapon the bag no longer holds (died, traded, dropped, sold) must leave the ped too,
+-- otherwise J or the hotbar can still pull it out.
 local function dropGhostWeapons(player)
     if type(player) ~= 'table' or type(player.slots) ~= 'table' then return end
     local held = {}
@@ -560,15 +545,15 @@ local function dropGhostWeapons(player)
 
     -- The bar is the slots right after the grid. A weapon in hand that just left the bar goes away too.
     local barFrom = tonumber(player.gridSlots) or 0
-    local barTo = barFrom + 5
-    local onBar,barSerials = {},{}
+    local barTo = barFrom + 6
+    local onBar = {}
     for slot, entry in pairs(player.slots) do
         local n = tonumber(slot)
         local def = entry and entry.item and Items.Definitions[entry.item]
         local w = def and def.data and def.data.weapon
-        if n and n > barFrom and n <= barTo and type(w) == 'string' then onBar[GetHashKey(w)] = true;if entry.serial then barSerials[entry.serial]=true end end
+        if n and n > barFrom and n <= barTo and type(w) == 'string' then onBar[GetHashKey(w)] = true end
     end
-    if current and itemWeapons()[current] and (not onBar[current] or (drawnSerial and not barSerials[drawnSerial])) then
+    if LastBar and current and LastBar[current] and not onBar[current] and itemWeapons()[current] then
         SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true)
         RemoveWeaponFromPed(ped, current)
         TriggerEvent('bs:weapons:forget', current)
@@ -576,7 +561,7 @@ local function dropGhostWeapons(player)
     LastBar = onBar
 
     for hash in pairs(itemWeapons()) do
-        if (blockAfterDeath or not onBar[hash] or not held[hash]) and HasPedGotWeapon(ped, hash, false) then
+        if not held[hash] and HasPedGotWeapon(ped, hash, false) then
             if current == hash then SetCurrentPedWeapon(ped, GetHashKey('WEAPON_UNARMED'), true) end
             RemoveWeaponFromPed(ped, hash)
             TriggerEvent('bs:weapons:forget', hash)
@@ -584,14 +569,13 @@ local function dropGhostWeapons(player)
     end
 end
 
-local function clearHeldAfterDeath()
-    blockAfterDeath=true;drawnSerial=nil
-    SetCurrentPedWeapon(PlayerPedId(),GetHashKey('WEAPON_UNARMED'),true)
-    for hash in pairs(itemWeapons()) do RemoveWeaponFromPed(PlayerPedId(),hash) end
-    TriggerEvent('bs:weapons:forgetAll')
-end
-RegisterNetEvent('bs:medical:died',clearHeldAfterDeath)
-AddEventHandler('bs:hook:player:unloaded',clearHeldAfterDeath)
+-- Keep the virtual cash item in sync while the inventory is open.
+-- bs_core already owns the money; this only mirrors its current cash balance in the NUI.
+AddEventHandler('bs:hook:player:money', function(account, balance)
+    if account == 'cash' and open then
+        send({ action = 'cash', cash = tonumber(balance) or 0 })
+    end
+end)
 
 RegisterNetEvent('bs:inventory:state', function(payload)
     state.player = payload.player
@@ -599,12 +583,11 @@ RegisterNetEvent('bs:inventory:state', function(payload)
     dropGhostWeapons(payload.player)
     TriggerEvent('bs:weapons:bagChanged')
     if open then
-        if BSInvSubject and not payload.container then closeInventory();return end
         send({
             action = 'update',
-            player = BSInvSubject and payload.container or payload.player,
+            player = payload.player,
             -- false, not nil: nil is dropped from the message and the panel would keep showing a closed container.
-            container = not BSInvSubject and payload.container or false,
+            container = payload.container or false,
             containerLabel = ctLabel(payload.containerLabel),
         })
     end
@@ -618,7 +601,9 @@ RegisterNetEvent('bs:inventory:heal', function(amount)
     SetEntityHealth(ped, math.min(max, GetEntityHealth(ped) + pts))
 end)
 
--- Use animations: the server only sends which kind (see animKind in sv_main.lua)
+-- Use animations. The server only sends which kind (see animKind in sv_main.lua); the client picks and plays it.
+-- dict/clip plays an animation; scenario plays a base-game scenario (no dict request, always exists).
+-- Bandaging reuses WORLD_HUMAN_CLIPBOARD for now; swap in a closer dict/clip if you want.
 local USE_ANIM = {
     eat   = { dict = 'mp_player_inteat@burger', clip = 'mp_player_int_eat_burger', time = 2500 },
     drink = { scenario = 'WORLD_HUMAN_DRINKING', time = 2000 },
@@ -665,18 +650,17 @@ end)
 
 local ThrowSkipUntil = 0
 
-RegisterNetEvent('bs:inventory:equipWeapon', function(weapon, ammo, serial)
-    drawnSerial=serial;blockAfterDeath=false
+RegisterNetEvent('bs:inventory:equipWeapon', function(weapon, ammo)
     ThrowSkipUntil = GetGameTimer() + 1500
     local ped = PlayerPedId()
     local hash = type(weapon) == 'number' and weapon or GetHashKey(weapon)
     local rounds = math.floor(tonumber(ammo) or 0)
 
-    -- Set, not add: give the weapon with 0 ammo, then SetPedAmmo the exact count.
+    -- Set, not add: give the weapon with 0 ammo, then SetPedAmmo the exact count. GiveWeaponToPed's ammo argument is unreliable when the ped already has the weapon.
     GiveWeaponToPed(ped, hash, 0, false, true)
     SetPedAmmo(ped, hash, rounds)
 
-    -- Chamber what fits: SetPedAmmo sets the total, not what is in the magazine, so load the clip from that total.
+    -- Chamber what fits: SetPedAmmo sets the total, not what is in the magazine, so load the clip from that total. No rounds are created; the rest stays as reserve.
     local maxClip = GetMaxAmmoInClip(ped, hash, 0) or 0
     if maxClip > 0 and rounds > 0 then
         SetAmmoInClip(ped, hash, math.min(rounds, maxClip))
@@ -720,7 +704,7 @@ CreateThread(function()
     end
 end)
 
--- Loading a box of rounds: the server already took the box and issued a token
+-- Loading a box of rounds. The server already took the box and issued a token; if the held weapon does not take it, the token goes back and the box is refunded.
 RegisterNetEvent('bs:inventory:loadAmmo', function(token, ammoFor, rounds)
     local ped = PlayerPedId()
     local _, held = GetCurrentPedWeapon(ped, true)
@@ -794,11 +778,6 @@ RegisterNUICallback('gadgetSet', function(data, cb)
 end)
 
 RegisterNUICallback('move', function(data, cb)
-    if BSInvSubject then
-        local sides={player='container',pack='linkPack',vest='linkVest'}
-        if not data.from or not data.to or not sides[data.from.inv]or not sides[data.to.inv]then return cb({ok=false})end
-        data.from.inv=sides[data.from.inv];data.to.inv=sides[data.to.inv]
-    end
     CreateThread(function()
         cb(BSB.Await('inventory:move', 8000, data.from, data.to, data.amount) or { ok = false })
     end)
@@ -842,6 +821,432 @@ RegisterNUICallback('give', function(data, cb)
     CreateThread(function()
         cb(BSB.Await('inventory:give', 8000, data.slot, data.amount, data.target) or { ok = false })
     end)
+end)
+
+-- Cash target mode ------------------------------------------------------------
+-- Amount is chosen in the inventory first. Then the bag closes and only the NUI
+-- mouse cursor stays active. A nearby player's head is selected from its projected
+-- screen position; the hovered player gets a small world-space circle above the head.
+local function stopCashTargeting()
+    cashTargeting = false
+    cashTargetAmount = 0
+    cashHoverTarget = nil
+    send({ action = 'cashTargetMode', enabled = false })
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+end
+
+local function cashTargetUnderCursor()
+    local cx, cy = GetNuiCursorPosition()
+    local sw, sh = GetActiveScreenResolution()
+    if not sw or sw <= 0 or not sh or sh <= 0 then return nil end
+
+    local me = PlayerPedId()
+    local myPos = GetEntityCoords(me)
+    local best, bestScore = nil, math.huge
+
+    -- The WHOLE visible character is a mouse target. We project several fixed
+    -- points along the ped (feet -> torso -> head area) and build a padded
+    -- screen-space rectangle around them. No tiny head-point click is needed.
+    for _, player in ipairs(GetActivePlayers()) do
+        if player ~= PlayerId() then
+            local ped = GetPlayerPed(player)
+            if DoesEntityExist(ped) and not IsPedDeadOrDying(ped, true) then
+                local pos = GetEntityCoords(ped)
+                if #(pos - myPos) <= 3.5 then
+                    local minX, minY, maxX, maxY = nil, nil, nil, nil
+                    local visiblePoints = 0
+                    local heights = { 0.05, 0.45, 0.90, 1.30, 1.70 }
+                    for _, zOff in ipairs(heights) do
+                        local visible, sx, sy = GetScreenCoordFromWorldCoord(pos.x, pos.y, pos.z + zOff)
+                        if visible then
+                            local px, py = sx * sw, sy * sh
+                            minX = minX and math.min(minX, px) or px
+                            maxX = maxX and math.max(maxX, px) or px
+                            minY = minY and math.min(minY, py) or py
+                            maxY = maxY and math.max(maxY, py) or py
+                            visiblePoints = visiblePoints + 1
+                        end
+                    end
+
+                    if visiblePoints >= 2 then
+                        -- Width is derived from projected character height, with sensible
+                        -- limits so arms/shoulders are comfortably clickable at close range.
+                        local h = math.max(80.0, maxY - minY)
+                        local halfW = math.max(32.0, math.min(90.0, h * 0.30))
+                        local padY = math.max(12.0, math.min(28.0, h * 0.08))
+                        local centerX = (minX + maxX) * 0.5
+                        local left, right = centerX - halfW, centerX + halfW
+                        local top, bottom = minY - padY, maxY + padY
+
+                        if cx >= left and cx <= right and cy >= top and cy <= bottom then
+                            local midX, midY = centerX, (top + bottom) * 0.5
+                            local dx, dy = cx - midX, cy - midY
+                            local score = dx * dx + dy * dy
+                            if score < bestScore then
+                                bestScore = score
+                                best = { source = GetPlayerServerId(player), ped = ped }
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+RegisterNUICallback('beginCashTarget', function(data, cb)
+    local amount = math.floor(tonumber(data and data.amount) or 0)
+    local ok, d = pcall(function() return exports.bs_core:GetData() end)
+    local balance = (ok and type(d) == 'table' and d.accounts and tonumber(d.accounts.cash)) or 0
+    if amount < 1 or amount > balance then
+        cb({ ok = false, error = 'Ungültiger Bargeldbetrag.' })
+        return
+    end
+
+    cashTargetAmount = amount
+    -- Close the actual inventory/camera first, then reactivate NUI only as a transparent cursor layer.
+    closeInventory()
+    cashTargeting = true
+    cashHoverTarget = nil
+    send({ action = 'cashTargetMode', enabled = true })
+    SetNuiFocus(true, true)
+    SetNuiFocusKeepInput(false)
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('cashTargetClick', function(_, cb)
+    if not cashTargeting then cb({ ok = false }); return end
+    local target = cashHoverTarget
+    if not target or not target.source then
+        cb({ ok = false, error = 'Kein Spieler anvisiert.' })
+        return
+    end
+
+    local amount = cashTargetAmount
+    local targetSrc = target.source
+    stopCashTargeting()
+    CreateThread(function()
+        local result = BSB.Await('inventory:giveCash', 8000, amount, targetSrc) or { ok = false }
+        if not result.ok then
+            TriggerEvent('bs:ui:notify', { type = 'error', message = result.error or 'Bargeld konnte nicht weitergegeben werden.' })
+        end
+    end)
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('cashTargetCancel', function(_, cb)
+    if cashTargeting then stopCashTargeting() end
+    cb({ ok = true })
+end)
+
+CreateThread(function()
+    while true do
+        if cashTargeting then
+            Wait(0)
+            cashHoverTarget = cashTargetUnderCursor()
+            if cashHoverTarget and cashHoverTarget.ped and DoesEntityExist(cashHoverTarget.ped) then
+                -- Bright HOLLOW GREEN ring above the character. The circle is billboarded
+                -- toward the camera, so it stays a real circle on screen instead of collapsing
+                -- into a thin/black horizontal line. Its centre uses the ped origin + fixed Z,
+                -- therefore head/neck animation does not drag the marker around.
+                local pos = GetEntityCoords(cashHoverTarget.ped)
+                local center = vector3(pos.x, pos.y, pos.z + 1.98)
+                local cam = GetGameplayCamCoord()
+                local toCam = cam - center
+                local len = math.sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z)
+                if len > 0.001 then
+                    local forward = vector3(toCam.x / len, toCam.y / len, toCam.z / len)
+                    local worldUp = vector3(0.0, 0.0, 1.0)
+                    local right = vector3(forward.y, -forward.x, 0.0)
+                    local rlen = math.sqrt(right.x * right.x + right.y * right.y)
+                    if rlen > 0.001 then right = vector3(right.x / rlen, right.y / rlen, 0.0) end
+                    local up = vector3(
+                        right.y * forward.z - right.z * forward.y,
+                        right.z * forward.x - right.x * forward.z,
+                        right.x * forward.y - right.y * forward.x
+                    )
+                    local radius, segments = 0.145, 40
+                    -- Three close outlines make the green ring clearly visible without filling it.
+                    for _, rr in ipairs({ radius - 0.008, radius, radius + 0.008 }) do
+                        for i = 0, segments - 1 do
+                            local a1 = (i / segments) * math.pi * 2.0
+                            local a2 = ((i + 1) / segments) * math.pi * 2.0
+                            local p1 = center + right * (math.cos(a1) * rr) + up * (math.sin(a1) * rr)
+                            local p2 = center + right * (math.cos(a2) * rr) + up * (math.sin(a2) * rr)
+                            DrawLine(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, 0, 255, 70, 255)
+                        end
+                    end
+                end
+            end
+        else
+            Wait(250)
+        end
+    end
+end)
+
+-- Short hand-over animation used for both sides of a successful cash transfer.
+RegisterNetEvent('bs:inventory:cashHandoverAnim', function()
+    local ped = PlayerPedId()
+    if IsPedDeadOrDying(ped, true) or IsPedInAnyVehicle(ped, false) then return end
+
+    local dict = 'mp_common'
+    RequestAnimDict(dict)
+    local timeout = GetGameTimer() + 2000
+    while not HasAnimDictLoaded(dict) and GetGameTimer() < timeout do Wait(0) end
+    if not HasAnimDictLoaded(dict) then return end
+
+    TaskPlayAnim(ped, dict, 'givetake1_a', 8.0, -8.0, 1400, 48, 0.0, false, false, false)
+    RemoveAnimDict(dict)
+end)
+
+-- Permanent ID photo ---------------------------------------------------------
+-- The headshot is made from a local clone of the player ped so the real player
+-- never visibly loses clothing/accessories. On the clone we remove:
+--   prop 0 = hat/helmet
+--   prop 1 = glasses
+--   component 1 = mask
+-- The resulting image is converted by NUI to a PNG data URL and saved server-side.
+local function captureIdentityPhoto()
+    if identityPhotoCaptureBusy then
+        local timeout = GetGameTimer() + 7000
+        while identityPhotoCaptureBusy and GetGameTimer() < timeout do Wait(50) end
+        return type(identityPhotoCaptureResult) == 'string' and identityPhotoCaptureResult or nil
+    end
+
+    identityPhotoCaptureBusy = true
+    identityPhotoCaptureResult = nil
+
+    local sourcePed = PlayerPedId()
+    if not sourcePed or sourcePed == 0 or not DoesEntityExist(sourcePed) then
+        identityPhotoCaptureBusy = false
+        return nil
+    end
+
+    -- Use a non-networked clone so the player's visible appearance never flickers.
+    local photoPed = ClonePed(sourcePed, false, false, true)
+    local usingClone = photoPed and photoPed ~= 0 and DoesEntityExist(photoPed)
+
+    -- Fallback state only used if cloning is unavailable.
+    local restore = nil
+    if not usingClone then
+        photoPed = sourcePed
+        restore = {
+            hat = GetPedPropIndex(sourcePed, 0),
+            hatTex = GetPedPropTextureIndex(sourcePed, 0),
+            glasses = GetPedPropIndex(sourcePed, 1),
+            glassesTex = GetPedPropTextureIndex(sourcePed, 1),
+            mask = GetPedDrawableVariation(sourcePed, 1),
+            maskTex = GetPedTextureVariation(sourcePed, 1),
+            maskPalette = GetPedPaletteVariation(sourcePed, 1),
+        }
+    else
+        local c = GetEntityCoords(sourcePed)
+        SetEntityCoordsNoOffset(photoPed, c.x, c.y, c.z - 50.0, false, false, false)
+        SetEntityCollision(photoPed, false, false)
+        FreezeEntityPosition(photoPed, true)
+    end
+
+    -- Passport photo: no hat, no glasses and no mask.
+    ClearPedProp(photoPed, 0)
+    ClearPedProp(photoPed, 1)
+    SetPedComponentVariation(photoPed, 1, 0, 0, 0)
+    Wait(100)
+
+    local handle = 0
+    if RegisterPedheadshotTransparent then
+        handle = RegisterPedheadshotTransparent(photoPed)
+    end
+    if not handle or handle == 0 then
+        handle = RegisterPedheadshot(photoPed)
+    end
+
+    local readyUntil = GetGameTimer() + 5000
+    while handle and handle ~= 0
+        and (not IsPedheadshotReady(handle) or not IsPedheadshotValid(handle))
+        and GetGameTimer() < readyUntil do
+        Wait(50)
+    end
+
+    if handle and handle ~= 0 and IsPedheadshotReady(handle) and IsPedheadshotValid(handle) then
+        local txd = GetPedheadshotTxdString(handle)
+        if txd and txd ~= '' then
+            identityPhotoCaptureResult = nil
+            send({
+                action = 'captureIdentityPhoto',
+                url = ('https://nui-img/%s/%s?v=%d'):format(txd, txd, GetGameTimer())
+            })
+
+            local captureUntil = GetGameTimer() + 6000
+            while identityPhotoCaptureResult == nil and GetGameTimer() < captureUntil do
+                Wait(50)
+            end
+        end
+    end
+
+    if handle and handle ~= 0 then
+        UnregisterPedheadshot(handle)
+    end
+
+    if usingClone then
+        DeleteEntity(photoPed)
+    elseif restore then
+        SetPedComponentVariation(sourcePed, 1, restore.mask, restore.maskTex, restore.maskPalette)
+        if restore.hat and restore.hat >= 0 then
+            SetPedPropIndex(sourcePed, 0, restore.hat, math.max(restore.hatTex or 0, 0), true)
+        else
+            ClearPedProp(sourcePed, 0)
+        end
+        if restore.glasses and restore.glasses >= 0 then
+            SetPedPropIndex(sourcePed, 1, restore.glasses, math.max(restore.glassesTex or 0, 0), true)
+        else
+            ClearPedProp(sourcePed, 1)
+        end
+    end
+
+    local result = type(identityPhotoCaptureResult) == 'string' and identityPhotoCaptureResult or nil
+    identityPhotoCaptureBusy = false
+    identityPhotoCaptureResult = result
+    return result
+end
+
+RegisterNUICallback('identityPhotoCaptured', function(data, cb)
+    local value = data and data.dataUrl
+    if data and data.ok == true and type(value) == 'string' and value:sub(1, 11) == 'data:image/' then
+        identityPhotoCaptureResult = value
+    else
+        identityPhotoCaptureResult = false
+    end
+    cb({ ok = true })
+end)
+
+local function ensureIdentityPhoto(card)
+    if card and type(card.photo) == 'string' and card.photo ~= '' then
+        return card.photo
+    end
+
+    local photo = captureIdentityPhoto()
+    if not photo then return nil end
+
+    local saved = BSB.Await('inventory:identitySavePhoto', 12000, photo) or { ok = false }
+    if saved.ok then
+        local finalPhoto = saved.photo or photo
+        if card then card.photo = finalPhoto end
+        return finalPhoto
+    end
+    return nil
+end
+
+RegisterNetEvent('bs:inventory:ensureIdentityPhoto', function()
+    CreateThread(function()
+        -- Allow creator/spawn appearance to settle before taking the permanent photo.
+        Wait(1500)
+        local result = BSB.Await('inventory:identitySelf', 6000) or { ok = false }
+        if result.ok and result.card and not result.card.photo then
+            ensureIdentityPhoto(result.card)
+        end
+    end)
+end)
+
+-- Permanent personalausweis ---------------------------------------------------
+-- It is virtual/fixed to the character, so death, dropping and inventory moves can never remove it.
+RegisterNUICallback('identitySelf', function(_, cb)
+    identityCardReceived = false
+    CreateThread(function()
+        local result = BSB.Await('inventory:identitySelf', 6000) or { ok = false }
+        if result.ok and result.card then
+            if not result.card.photo then ensureIdentityPhoto(result.card) end
+            send({ action = 'showIdentityCard', card = result.card })
+        end
+        cb(result)
+    end)
+end)
+
+local function stopIdentityTargeting()
+    identityTargeting = false
+    identityHoverTarget = nil
+    send({ action = 'identityTargetMode', enabled = false })
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+end
+
+RegisterNUICallback('beginIdentityTarget', function(_, cb)
+    closeInventory()
+    identityTargeting = true
+    identityHoverTarget = nil
+    send({ action = 'identityTargetMode', enabled = true })
+    SetNuiFocus(true, true)
+    SetNuiFocusKeepInput(false)
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('identityTargetClick', function(_, cb)
+    if not identityTargeting then cb({ ok = false }); return end
+    local target = identityHoverTarget
+    if not target or not target.source then cb({ ok = false, error = 'Kein Spieler anvisiert.' }); return end
+    local targetSrc = target.source
+    stopIdentityTargeting()
+    CreateThread(function()
+        local own = BSB.Await('inventory:identitySelf', 6000) or { ok = false }
+        if own.ok and own.card and not own.card.photo then
+            ensureIdentityPhoto(own.card)
+        end
+        local result = BSB.Await('inventory:identityShow', 8000, targetSrc) or { ok = false }
+        if not result.ok then TriggerEvent('bs:ui:notify', { type='error', message=result.error or 'Ausweis konnte nicht gezeigt werden.' }) end
+    end)
+    cb({ ok = true })
+end)
+
+RegisterNUICallback('identityTargetCancel', function(_, cb)
+    if identityTargeting then stopIdentityTargeting() end
+    cb({ ok = true })
+end)
+
+RegisterNetEvent('bs:inventory:showIdentityCard', function(card)
+    identityCardReceived = true
+    send({ action = 'showIdentityCard', card = card, received = true })
+    SetNuiFocus(true, true)
+    SetNuiFocusKeepInput(false)
+end)
+
+RegisterNUICallback('identityCardClosed', function(_, cb)
+    -- A received card must ALWAYS release NUI focus, independent of any stale
+    -- inventory state. This prevents the recipient being left with only a cursor.
+    if identityCardReceived then
+        identityCardReceived = false
+        SetNuiFocusKeepInput(false)
+        SetNuiFocus(false, false)
+        CreateThread(function()
+            Wait(0)
+            SetNuiFocusKeepInput(false)
+            SetNuiFocus(false, false)
+        end)
+    elseif open then
+        -- Own card: return directly to the still-open inventory.
+        SetNuiFocus(true, true)
+        SetNuiFocusKeepInput(false)
+    else
+        SetNuiFocusKeepInput(false)
+        SetNuiFocus(false, false)
+    end
+    cb({ ok = true })
+end)
+
+CreateThread(function()
+    while true do
+        if identityTargeting then
+            Wait(0)
+            identityHoverTarget = cashTargetUnderCursor()
+            if identityHoverTarget and identityHoverTarget.ped and DoesEntityExist(identityHoverTarget.ped) then
+                local pos = GetEntityCoords(identityHoverTarget.ped)
+                -- clear green marker above the selected whole-character target
+                DrawMarker(28, pos.x, pos.y, pos.z + 2.05, 0.0,0.0,0.0, 0.0,0.0,0.0, 0.18,0.18,0.18, 0,255,70,220, false,true,2,false,nil,nil,false)
+            end
+        else
+            Wait(250)
+        end
+    end
 end)
 
 RegisterNUICallback('nearbyPlayers', function(_, cb)
@@ -894,7 +1299,7 @@ local function applySettings(patch)
         end
     end
     if next(hud) and GetResourceState('bs_ui') == 'started' then
-        exports.bs_ui:ApplyHudSettings(hud, true)
+        pcall(function() exports.bs_ui:ApplyHudSettings(hud, true) end)
     end
 end
 
@@ -940,28 +1345,6 @@ local function openPackResult(result)
     send({ action = 'update', container = result.container, containerLabel = ctLabel(result.label) })
 end
 
--- Survivor Link hands over an already opened companion inventory.
-AddEventHandler('bs:inventory:showContainer', function(result)
-    if result and result.ok and result.subject then
-        if open then state.container=nil;closeInventory()end
-        openInventory('carry',result)
-    else openPackResult(result)end
-end)
-CreateThread(function()
-    while true do
-        Wait(500)
-        if open and BSInvSubject then
-            local ped=BSInvSubjectPed();local me=PlayerPedId()
-            if ped==0 or not DoesEntityExist(ped)or #(GetEntityCoords(ped)-GetEntityCoords(me))>3.5 then closeInventory()
-            else
-                BSInvSubject.stats.health=math.max(0,GetEntityHealth(ped)-100)
-                BSInvSubject.stats.armour=GetPedArmour(ped)
-                send({action='subjectStats',stats=BSInvSubject.stats,levels=BSInvSubject.levels})
-            end
-        end
-    end
-end)
-
 AddEventHandler('bs:inventory:dot:openPack', function(payload)
     local id = payload and payload.args and payload.args.id
     if not id then return end
@@ -995,7 +1378,8 @@ CreateThread(function()
     })
 end)
 
--- One menu at a time: every menu raises 'bs:ui:opened' with its own name and closes itself when it hears
+-- One menu at a time: every menu raises 'bs:ui:opened' with its own name and closes itself when it hears another name, so two NUI pages never hold focus together.
+-- CountLocal: how many of an item the last server push says we carry (used by the weapon wheel). A mirror only; the server still checks.
 exports('CountLocal', function(item)
     local total = 0
     for _, entry in pairs((state.player and state.player.slots) or {}) do
@@ -1012,8 +1396,9 @@ AddEventHandler('bs:ui:requestClose', function(who)
     if who ~= 'inventory' and open then closeInventory() end
 end)
 
--- /refreshui hard reset. closeInventory() bails out if the open flag has drifted from the NUI state
+-- /refreshui hard reset. closeInventory() bails out if the open flag has drifted from the NUI state, so panic ignores the flag: force the NUI closed, give focus back, clear screen effects and forget the open container.
 AddEventHandler('bs:ui:panic', function()
+    if cashTargeting then stopCashTargeting() end
     open = false
     state.container = nil
     send({ action = 'close' })
@@ -1024,21 +1409,22 @@ AddEventHandler('bs:ui:panic', function()
     end
 end)
 
-AddEventHandler('bs:hook:player:unloaded', closeInventory)
+AddEventHandler('bs:hook:player:unloaded', function()
+    if cashTargeting then stopCashTargeting() end
+    closeInventory()
+end)
 
 -- Dying with the bag open would leave the panel holding focus over the death screen.
 CreateThread(function()
     while true do
         Wait(500)
-        if IsPedDeadOrDying(PlayerPedId(), true) then
-            clearHeldAfterDeath()
-            if open then closeInventory() end
-        elseif state.player then dropGhostWeapons(state.player) end
+        if open and IsPedDeadOrDying(PlayerPedId(), true) then closeInventory() end
     end
 end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
+    if cashTargeting then stopCashTargeting() end
     -- Anything counting open menus (hotbar, chat) must hear we are gone.
     if open then TriggerEvent('bs:ui:closed', 'inventory') end
     SetNuiFocus(false, false)
@@ -1048,7 +1434,7 @@ AddEventHandler('onResourceStop', function(resource)
     if BSInvBody then pcall(BSInvBody.Stop) end
 end)
 
--- Ped half of a wipe (see Inv.Wipe in server/sv_main.lua): emptying the rows leaves items already given to the
+-- Ped half of a wipe (see Inv.Wipe in server/sv_main.lua): emptying the rows leaves items already given to the ped, so clear those too. Also tells bs_weapons to drop its fitted-attachment cache.
 RegisterNetEvent('bs:inventory:wiped', function()
     local ped = PlayerPedId()
     if DoesEntityExist(ped) then
@@ -1060,48 +1446,3 @@ end)
 
 -- /hidehud from bs_ui: hide this page (hotbar, dash, mission tracker) too.
 AddEventHandler('bs:inventory:hideAll', function(state) SendNUIMessage({ action = 'bsHideAll', hidden = state == true }) end)
-
-
-RegisterNUICallback('inspectWeapon', function(data, cb)
-    CreateThread(function()
-        if GetResourceState('bs_weapons') ~= 'started' then return cb({ ok = false }) end
-        local result = BSB.Await('inventory:use', 8000, data.slot)
-        cb(result or { ok = false })
-        if result and result.ok then
-            closeInventory()
-            -- Equip and callback responses share a connection; allow the ped a frame to draw.
-            Wait(150)
-            TriggerEvent('bs:weapons:inspect')
-        end
-    end)
-end)
-
-RegisterNUICallback('radioSlot',function(data,cb)
-    if type(data) ~= 'table' then return cb({ok=false}) end
-    cb(BSB.Await('inventory:radioSlot',8000,data.slot) or {ok=false,error='Radio equipment did not respond.'})
-end)
-
--- Vicinity uses the same authoritative pickup paths as world interactions.
-RegisterNUICallback('vicinity', function(_,cb)
-    CreateThread(function()
-        if not open then cb({ok=false,items={}});return end
-        local result=BSB.Await('inventory:vicinity',6000) or {ok=false,items={}}
-        if result.ok and GetResourceState('bs_interactions')=='started' then
-            local ground=BSB.Await('scavenge:vicinity',6000)
-            if ground and ground.ok then for _,item in ipairs(ground.items or {}) do result.items[#result.items+1]=item end end
-            table.sort(result.items,function(a,b)return a.distance<b.distance end)
-        end
-        cb(result)
-    end)
-end)
-RegisterNUICallback('vicinityTake', function(data,cb)
-    CreateThread(function()
-        if not open then cb({ok=false});return end
-        if data.kind=='ground' then
-            local begin=BSB.Await('scavenge:begin',6000,data.id,true)
-            if not begin or not begin.ok then cb(begin or {ok=false});return end
-            if not exports.bs_interactions:RunSearch('Collecting supplies',1200,{pose='kneel'}) then cb({ok=false,error='Cancelled'});return end
-            cb(BSB.Await('scavenge:take',8000,data.id) or {ok=false})
-        else cb(BSB.Await('inventory:pickup',8000,data.id) or {ok=false}) end
-    end)
-end)

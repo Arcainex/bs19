@@ -343,14 +343,8 @@ local function setChase(entry, on)
         rate = entry.def.shambleRate
     end
 
-    -- Networked+ pace is selected by the server, never by a local menu.
-    local customPace = Zombies.Mode == 'networked_plus' and entry.pace
-    if customPace then
-        local rates = { walk=1.0, jog=1.35, run=1.75, sprint=2.2 }
-        rate = rates[customPace] or 1.0
-    end
     -- The ceiling, see Settings.maxMoveRate
-    if not customPace and S.maxMoveRate and rate and rate > S.maxMoveRate then
+    if S.maxMoveRate and rate and rate > S.maxMoveRate then
         rate = S.maxMoveRate
     end
     -- Difficulty speed, capped by Difficulty.speedCeiling.
@@ -360,7 +354,7 @@ local function setChase(entry, on)
     entry.moveRate = rate
     -- Drunk walkers: no move-rate override at all unless the F1 drunk speed option is on.
     local g0 = entry.gait
-    if rate and (customPace or not (type(g0) == 'string' and g0:find('drunk', 1, true)) or (zf ~= 1.0 and ZDiff.SpeedOnDrunk())) then
+    if rate and (not (type(g0) == 'string' and g0:find('drunk', 1, true)) or (zf ~= 1.0 and ZDiff.SpeedOnDrunk())) then
         SetPedMoveRateOverride(entry.ped, rate)
     end
 
@@ -399,18 +393,12 @@ local function blockedBetween(ped, a, x, y, z)
     return hit == 1 or hit == true
 end
 
-local function paceBlend(ped)
-    if Zombies.Mode ~= 'networked_plus' then return 1.0 end
-    local id = Zed.owned and Zed.owned[ped]
-    local e = id and Zed.live and Zed.live[id]
-    return ({walk=1.0,jog=1.5,run=2.0,sprint=3.0})[e and e.pace] or 1.0
-end
 local function walkTo(ped, x, y, z, timeout, slide)
     local a = GetEntityCoords(ped)
     if (Zombies.Settings or {}).contourObstacles ~= false and blockedBetween(ped, a, x, y, z) then
-        TaskFollowNavMeshToCoord(ped, x, y, z or a.z, paceBlend(ped), (timeout and timeout > 0) and timeout or 8000, slide or 1.0, false, 0.0)
+        TaskFollowNavMeshToCoord(ped, x, y, z or a.z, 1.0, (timeout and timeout > 0) and timeout or 8000, slide or 1.0, false, 0.0)
     else
-        TaskGoStraightToCoord(ped, x, y, z or a.z, paceBlend(ped), timeout or -1, 0.0, slide or 0.5)
+        TaskGoStraightToCoord(ped, x, y, z or a.z, 1.0, timeout or -1, 0.0, slide or 0.5)
     end
 end
 
@@ -861,13 +849,9 @@ local function serverTarget(entry, now)
     if not okS or not st then return nil end
     local who = st.zTarget
     if type(who) ~= 'number' then return nil end
-    local ped
-    if who<0 then ped=NetworkGetEntityFromNetworkId(-who)
-    else
-        local pl=GetPlayerFromServerId(who)
-        if not pl or pl==-1 then return nil end
-        ped=GetPlayerPed(pl)
-    end
+    local pl = GetPlayerFromServerId(who)
+    if not pl or pl == -1 then return nil end
+    local ped = GetPlayerPed(pl)
     if not ped or ped == 0 or not DoesEntityExist(ped) or IsEntityDead(ped) then return nil end
     if st.zTgtWhy == 'sight' and not HasEntityClearLosToEntity(entry.ped, ped, 17) then
         local key = entry.id .. ':' .. who
@@ -915,7 +899,7 @@ local function goHunt(entry, target)
         entry.chasingSince = now
         -- Speed 1.0 = walk, 2.0 = run (move-blend ratio, not a multiplier).
     if pedOk(entry.ped) and DoesEntityExist(target) then
-        TaskGoToEntity(entry.ped, target, -1, 0.8, paceBlend(entry.ped), 0.0, 0)
+        TaskGoToEntity(entry.ped, target, -1, 0.8, 1.0, 0.0, 0)
     end
     end
 
@@ -1017,8 +1001,6 @@ CreateThread(function()
             if IsEntityDead(entry.ped) or entry.dying then goto nextZombie end
             -- Down but not dead: let it lie there instead of chasing while it cannot stand.
             if IsPedRagdoll(entry.ped) then goto nextZombie end
-            -- Mid takedown: the clip owns the body
-            if (entry.takedownUntil or 0) > now then goto nextZombie end
 
             -- Voice runs on every client, hosted or not.
             if now >= entry.nextSound then
@@ -1083,9 +1065,7 @@ CreateThread(function()
                     want = entry.def.drawnRate or want
                 end
 
-                local customPace = Zombies.Mode == 'networked_plus' and entry.pace
-                if customPace then want = ({walk=1.0,jog=1.35,run=1.75,sprint=2.2})[customPace] or 1.0 end
-                if not customPace and S.maxMoveRate and want and want > S.maxMoveRate then
+                if S.maxMoveRate and want and want > S.maxMoveRate then
                     want = S.maxMoveRate
                 end
                 local zf = ZDiff.Local('speed')
@@ -1093,14 +1073,14 @@ CreateThread(function()
 
                 -- Drunk gaits carry their own speed; a move-rate override pushes the ped onto generic locomotion
                 local g = entry.gait or Zombies.Anims.shamble
-                if want and (customPace or not (type(g) == 'string' and g:find('drunk', 1, true)) or (zf ~= 1.0 and ZDiff.SpeedOnDrunk())) then
+                if want and (not (type(g) == 'string' and g:find('drunk', 1, true)) or (zf ~= 1.0 and ZDiff.SpeedOnDrunk())) then
                     pcall(SetPedMoveRateOverride, entry.ped, want)
                     entry.moveRate = want
                 end
 
                 -- SetPedMaxMoveBlendRatio caps what the ped can do (1 walk, 2 run, 3 sprint), which keeps walkers from running
-                if customPace or not (type(g) == 'string' and g:find('drunk', 1, true)) then
-                    pcall(SetPedMaxMoveBlendRatio, entry.ped, customPace and paceBlend(entry.ped) or entry.def.maxBlend or 1.0)
+                if not (type(g) == 'string' and g:find('drunk', 1, true)) then
+                    pcall(SetPedMaxMoveBlendRatio, entry.ped, entry.def.maxBlend or 1.0)
                 end
 
                 -- No climbing/vaulting/ladders, ever. Re-applied here since task changes can reset it.

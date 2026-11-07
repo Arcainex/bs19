@@ -41,13 +41,13 @@ end
 -- Health for a new walker at x,y.
 function ZDiff.Health(base, x, y)
     base = tonumber(base) or 200
-    return math.max(1, math.floor(base * ZDiff.Scale('health', ZDiff.ProgressAt(x, y)) * ZDiff.Region('health', x, y) + 0.5))
+    return math.max(1, math.floor(base * ZDiff.Scale('health', ZDiff.ProgressAt(x, y)) + 0.5))
 end
 
 -- Horde / wave size near x,y.
 function ZDiff.HordeSize(n, x, y)
     n = tonumber(n) or 0
-    return math.max(n > 0 and 1 or 0, math.floor(n * ZDiff.Scale('horde', ZDiff.ProgressAt(x, y)) * ZDiff.Region('horde', x, y) + 0.5))
+    return math.max(n > 0 and 1 or 0, math.floor(n * ZDiff.Scale('horde', ZDiff.ProgressAt(x, y)) + 0.5))
 end
 
 -- Density factor for the networked caps (players spread out, so the server-wide average is used).
@@ -67,16 +67,6 @@ end
 
 exports('HordeSizeScale', function(n, x, y) return ZDiff.HordeSize(n, x, y) end)
 
--- Stronger walkers in an area: SetRegion(id, { x, y, radius, health, damage, speed, horde }) or SetRegion(id, nil).
-exports('SetRegion', function(id, r)
-    if type(id) ~= 'string' then return false end
-    if type(r) ~= 'table' or not tonumber(r.x) or not tonumber(r.y) then ZDiff.Regions[id] = nil; return true end
-    local rad = tonumber(r.radius) or 300.0
-    ZDiff.Regions[id] = { x = r.x + 0.0, y = r.y + 0.0, r2 = rad * rad,
-        health = tonumber(r.health) or 1.0, damage = tonumber(r.damage) or 1.0, speed = tonumber(r.speed) or 1.0, horde = tonumber(r.horde) or 1.0 }
-    return true
-end)
-
 -- Per-player damage and speed factors, pushed as a replicated state bag.
 local sent = {}
 CreateThread(function()
@@ -88,8 +78,8 @@ CreateThread(function()
             if ped and ped ~= 0 then
                 local c = GetEntityCoords(ped)
                 local t = ZDiff.ProgressAt(c.x, c.y)
-                local d = math.floor(ZDiff.Scale('damage', t) * ZDiff.Region('damage', c.x, c.y) * 1000 + 0.5) / 1000
-                local sp = math.floor(ZDiff.Scale('speed', t) * ZDiff.Region('speed', c.x, c.y) * 1000 + 0.5) / 1000
+                local d = math.floor(ZDiff.Scale('damage', t) * 1000 + 0.5) / 1000
+                local sp = math.floor(ZDiff.Scale('speed', t) * 1000 + 0.5) / 1000
                 local o = sent[src]
                 if not o or o.d ~= d or o.s ~= sp then
                     sent[src] = { d = d, s = sp }

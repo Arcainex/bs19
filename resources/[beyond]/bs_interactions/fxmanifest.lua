@@ -10,25 +10,23 @@ version '0.2.0'
 shared_scripts {
     '@bs_core/shared/sh_bridge.lua',
     '@bs_core/shared/sh_services.lua',
-    -- BS.Util.ModelOf is used by the scan.
+    -- BS.Util.ModelOf is used by the scan. A resource that calls into BS.Util
+    -- must ship sh_util itself: every resource gets its own Lua state, so an
     -- @-prefixed shared script is a per-resource include and not a global.
     -- bs_factions had exactly this bug with BS.Log and it presented as a nil
     -- global at runtime with nothing wrong at load time.
     '@bs_core/shared/sh_util.lua',
     'config/config.lua',
     'config/config_containers.lua',
-    'config/config_loot.lua',
 }
 
 client_scripts {
     'client/cl_target.lua',
     'client/cl_registry.lua',
     'client/cl_search.lua',
-    'client/cl_ground_models.lua',
-    'client/cl_loot.lua',
 }
 
-server_scripts { 'server/sv_main.lua', 'server/sv_ground_stock.lua', 'server/sv_loot.lua' }
+server_scripts { 'server/sv_main.lua' }
 
 ui_page 'html/index.html'
 

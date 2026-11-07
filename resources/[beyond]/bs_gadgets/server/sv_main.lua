@@ -1,9 +1,10 @@
--- Server authority for gadgets: loadout, item use, cooldowns, limits, turret hits, beacon heals, decoy noise
+-- Server authority for gadgets: loadout, item use, cooldowns, limits, turret hits,
+-- beacon heals, decoy noise, PvP damage to gadgets and cleanup. Nothing here ever targets a player.
 
-local lastUse = {}    -- src to ms of last accepted use
-local pending = {}    -- src to { item, token, at } between "use" and "deploy"
-local active = {}     -- src to { [kind] = rec }
-local pingAt = {}     -- src to ms
+local lastUse = {}    -- src -> ms of last accepted use
+local pending = {}    -- src -> { item, token, at } between "use" and "deploy"
+local active = {}     -- src -> { [kind] = rec }
+local pingAt = {}     -- src -> ms
 
 -- Gadget name in a player's language, config label as fallback.
 local function gname(src, t, kind)
@@ -38,6 +39,7 @@ local function cdCut(src)
 end
 
 -- The loadout lives in bs_inventory now (items sit in off-grid slots).
+-- Old metadata loadouts are moved over once: carried items leave the grid.
 local function migrate(src)
     local raw = exports.bs_core:GetPlayerMeta(src, Gadgets.MetaKey, nil)
     if type(raw) ~= 'table' or next(raw) == nil then return false end
@@ -55,7 +57,7 @@ local function migrate(src)
     return true
 end
 
--- index to { item, amount } or false
+-- index -> { item, amount } or false
 local function slots(src)
     local out = {}
     if not inv() then return out end
@@ -179,7 +181,7 @@ local function endAll(src, reason)
     active[src] = nil
 end
 
--- loadout
+----------------------------------------------------------------- loadout
 
 RegisterNetEvent('bs:gadgets:request', function()
     local src = source
@@ -202,7 +204,7 @@ RegisterNetEvent('bs:gadgets:setSlot', function(index, item)
     push(src)
 end)
 
--- use flow.
+---------------------------------------------------------------- use flow
 -- 1. use: checks only, nothing spent. 2. client aims/places. 3. deploy: item spent.
 
 local function alive(src)
@@ -225,6 +227,13 @@ RegisterNetEvent('bs:gadgets:use', function(index)
     local t = Gadgets.Types[item]
     if t.enabled == false then notify(src, Lp(src, 'gad.not_yet'), 'error'); return end  -- shield parked
     if not alive(src) then return end
+    -- Parachutes work automatically when they occupy either gadget slot.
+    -- They must never enter the deploy/take flow: keep the inventory item.
+    if t.kind == 'parachute' then
+        notify(src, 'Fallschirm ausgeruestet. Beim Springen normal oeffnen.')
+        push(src)
+        return
+    end
 
     if active[src] and active[src][t.kind] then
         -- pressing the key again on a running drone/turret: nothing, the client handles recall
@@ -365,7 +374,8 @@ RegisterNetEvent('bs:gadgets:shieldStow', function(hp, why)
     end
 end)
 
--- Battery left after a flight.
+-- Battery left after a flight. Client says how long it flew; the server
+-- never lets that be less than the real time since launch (minus a little lag).
 local function droneLeft(rec, flown)
     local real = (GetGameTimer() - rec.startAt) / 1000
     flown = tonumber(flown) or real
@@ -415,9 +425,10 @@ RegisterNetEvent('bs:gadgets:ended', function(kind, reason, flown)
     push(src)
 end)
 
--- charging: client asks every Charge.tickMs; server checks the source and adds % by real time.
+------------------------------------------------------------- charging
+-- Client asks every Charge.tickMs; server checks the source and adds % by real time.
 
-local chargeAt = {}   -- src to ms of last accepted tick
+local chargeAt = {}   -- src -> ms of last accepted tick
 
 local function nearRunningVehicle(ped, range)
     local veh = GetVehiclePedIsIn(ped, false)
@@ -468,7 +479,7 @@ end)
 
 RegisterNetEvent('bs:gadgets:chargeStop', function() chargeAt[source] = nil end)
 
--- turret
+----------------------------------------------------------------- turret
 
 RegisterNetEvent('bs:gadgets:turretShot', function(walkerId, tx, ty, tz, mx, my, mz)
     local src = source
@@ -519,7 +530,7 @@ RegisterNetEvent('bs:gadgets:pickup', function()
     end
 end)
 
--- drone
+------------------------------------------------------------------ drone
 
 RegisterNetEvent('bs:gadgets:ping', function(x, y, z)
     local src = source
@@ -538,7 +549,10 @@ RegisterNetEvent('bs:gadgets:ping', function(x, y, z)
     end
 end)
 
--- pvp: other players can break placed gadgets and flying drones. Never inside safe zones.
+------------------------------------------------------------------- pvp
+-- Other players can break placed gadgets and flying drones. Their hits are
+-- cancelled on the way to the owner and applied here instead, so the owner's
+-- client never double counts. Never inside safe zones.
 
 local P = Gadgets.PvP or {}
 local HP = { turret = true, decoy = true, medic = true, drone = true }
@@ -569,7 +583,7 @@ local function inSafeZone(pos)
     return false
 end
 
--- netId to owner, kind, rec
+-- netId -> owner, kind, rec
 local function gadgetByNet(netId)
     netId = math.tointeger(tonumber(netId))
     if not netId then return nil end
@@ -620,6 +634,7 @@ AddEventHandler('weaponDamageEvent', function(sender, data)
     for _, netId in ipairs(ids) do
         local owner, kind, rec = gadgetByNet(netId)
         if owner then
+            -- the server decides, the owner never sees the raw hit
             CancelEvent()
             if owner ~= src then
                 local ped = GetPlayerPed(src)
@@ -661,7 +676,7 @@ AddEventHandler('explosionEvent', function(sender, ev)
     end
 end)
 
--- lifecycle
+------------------------------------------------------------- lifecycle
 
 -- Expiry, death and a HUD refresh, once a second.
 CreateThread(function()
@@ -697,11 +712,4 @@ AddEventHandler('onResourceStop', function(res)
     for src in pairs(active) do
         for _, rec in pairs(active[src]) do wipeEntities(rec) end
     end
-end)
-
-AddEventHandler('bs:hook:player:unloaded',function(p)
-    if not p then return end
-    local src=p.source
-    endAll(src,'character changed')
-    lastUse[src],pending[src],pingAt[src],chargeAt[src]=nil,nil,nil,nil
 end)

@@ -1,23 +1,13 @@
-// bs_building NUI: build menus (wheel, bar, catalogue), placement hint, keypad, inspect, generator, pour game, vending, staff panel.
+// bs_building NUI: build wheel, placement hint, code keypad, inspect card, staff bases panel.
 const RES = (typeof GetParentResourceName === 'function') ? GetParentResourceName() : 'bs_building';
 const $ = (id) => document.getElementById(id);
 const post = (name, body) => fetch(`https://${RES}/${name}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).then(r => r.json()).catch(() => ({}));
 const tr = (k, v, fb) => (typeof t === 'function' ? t(k, Object.assign({ fallback: fb !== undefined ? fb : k }, v || {})) : (fb || k));
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const show = (id, on) => $(id).classList.toggle('hidden', !on);
-const visible = (id) => !$(id).classList.contains('hidden');
-
-function costHtml(costs, free) {
-    if (free) return `<li><span>${esc(tr('ui.free_build', null, 'Free build (admin)'))}</span><b></b></li>`;
-    return (costs || []).map(c => `<li class="${c.have < c.need ? 'short' : ''}"><span>${esc(c.label)}</span><b>${c.have}/${c.need}</b></li>`).join('');
-}
-function tierChip(el, label) {
-    el.textContent = label || '';
-    el.classList.toggle('hidden', !label);
-}
 
 // ---------------------------------------------------------------- wheel
-const W = { data: null, cats: [], cat: null };
+const W = { data: null, cats: [], cat: null, page: 0, pageItems: [], pageHover: null };
+const PAGE_SIZE = 8;
 const NS = 'http://www.w3.org/2000/svg';
 
 function arc(r0, r1, a0, a1) {
@@ -27,18 +17,17 @@ function arc(r0, r1, a0, a1) {
     return `M${x0},${y0} A${r1},${r1} 0 ${big} 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 ${big} 0 ${x3},${y3} Z`;
 }
 
-function hub(title, blurb, costs, foot, tier, free) {
+function hub(title, blurb, costs, foot) {
     $('hubTitle').textContent = title || '';
     $('hubBlurb').textContent = blurb || '';
-    $('hubCost').innerHTML = costs ? costHtml(costs, free) : '';
+    $('hubCost').innerHTML = (costs || []).map(c => `<li class="${c.have < c.need ? 'short' : ''}"><span>${esc(c.label)}</span><b>${c.have}/${c.need}</b></li>`).join('');
     $('hubFoot').textContent = foot || '';
-    tierChip($('hubTier'), tier);
 }
 
-function baseFoot(d) {
-    d = d || W.data;
+function baseFoot() {
+    const d = W.data;
     if (!d) return '';
-    const parts = [tr('ui.pieces', { n: d.built, max: d.max }, `${d.built}/${d.max} pieces`)];
+    const parts = [tr('ui.pieces', { n: d.built, max: d.max }, `${d.built}/${d.max} Bauteile`)];
     if (d.mode === 'claim') {
         if (!d.hasFlag) parts.push(tr('ui.no_flag', null, 'no flag yet'));
         else if (!d.inClaim) parts.push(tr('ui.outside', null, 'outside your claim'));
@@ -48,12 +37,13 @@ function baseFoot(d) {
 }
 
 function drawRing(items, onPick, onHover) {
+    W.pageItems = items; W.pageHover = onHover;
     const svg = $('ring');
     svg.innerHTML = '';
     const n = Math.max(items.length, 1);
     const step = (Math.PI * 2) / n;
     items.forEach((it, i) => {
-        const a0 = -Math.PI / 2 + i * step + 0.012, a1 = a0 + step - 0.024;
+        const a0 = -Math.PI / 2 - step / 2 + i * step + 0.012, a1 = a0 + step - 0.024;
         const g = document.createElementNS(NS, 'g');
         g.setAttribute('class', 'seg' + (it.poor ? ' poor' : ''));
         const path = document.createElementNS(NS, 'path');
@@ -62,7 +52,29 @@ function drawRing(items, onPick, onHover) {
         const mid = (a0 + a1) / 2;
         const tx = document.createElementNS(NS, 'text');
         tx.setAttribute('x', Math.cos(mid) * 150); tx.setAttribute('y', Math.sin(mid) * 150);
-        tx.textContent = it.label.length > 16 ? it.label.slice(0, 15) + '.' : it.label;
+        // A narrow radial segment can only fit a *short* label. Use compact
+        // German labels here and keep the FULL text in the searchable browser.
+        const fullLabel = String(it.label || '');
+        let compact = fullLabel
+            .replace('Fundamente & Böden', 'Böden')
+            .replace('Geländer & Kanten', 'Geländer')
+            .replace('Stützen & Pfeiler', 'Stützen')
+            .replace('Wände & Ecken', 'Wände')
+            .replace('Fensterwände', 'Fenster')
+            .replace('Türen & Durchgänge', 'Türen')
+            .replace('Fundamente & Böden', 'Böden')
+            .replace('Treppen & Geländer', 'Treppen')
+            .replace('Dächer & Decken', 'Dächer')
+            .replace('Details & Rohre', 'Details')
+            .replace(/^Fensterwand /, 'Fenster ')
+            .replace(/^Wandecke /, 'Ecke ')
+            .replace(/^Treppe geschlossen/, 'Treppe zu')
+            .replace(/^Treppe offen/, 'Treppe auf')
+            .replace(/^Hohes /, 'H. ');
+        const limit = n <= 3 ? 17 : (n <= 5 ? 14 : 11);
+        const label = compact.length > limit ? compact.slice(0, limit - 1).trimEnd() + '…' : compact;
+        tx.textContent = label;
+        tx.style.fontSize = n <= 3 ? '13px' : (n <= 5 ? '11.5px' : '10.5px');
         g.appendChild(tx);
         if (it.sub) {
             const s = document.createElementNS(NS, 'text');
@@ -75,114 +87,146 @@ function drawRing(items, onPick, onHover) {
         g.addEventListener('click', () => onPick(it));
         svg.appendChild(g);
     });
+    updatePager();
 }
 
-function showCats() {
-    W.cat = null;
-    const items = W.cats.map(c => {
-        const list = W.data.pieces.filter(p => p.cat === c.id);
-        return { id: c.id, label: tr('cat.' + c.id, null, c.id), sub: `${list.length}`, list };
-    }).filter(c => c.list.length > 0);
-    drawRing(items, (c) => showPieces(c.id), (c) => hub(c.label, tr('cat.' + c.id + '.d', null, ''), null, baseFoot()));
-    hub(tr('ui.build', null, 'Build'), tr('ui.pick_cat', null, 'Pick a category'), null, baseFoot());
+function updatePager() {
+    const prev = $('wheelPrev'), next = $('wheelNext'), info = $('wheelPage');
+    if (!prev || !next || !info) return;
+    const total = W.pageItems.length;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    // Pager always remains visible: a back arrow must not disappear on page one.
+    prev.classList.remove('hidden'); next.classList.remove('hidden'); info.classList.remove('hidden');
+    prev.disabled = W.page <= 0; next.disabled = W.page >= pages - 1;
+    info.textContent = `${W.page + 1} / ${pages}`;
 }
 
-function pieceNote(p) {
-    if (p.construction ? p.construction === 'direct' : W.data && W.data.instant) return p.snap ? tr('ui.note_snap', null, 'Snaps to your other pieces. Pays on place.') : tr('ui.note_free', null, 'Place it anywhere. Pays on place.');
-    return tr('ui.frame_note', null, 'Places a frame. Deposit, then hammer.');
+function drawPaged(items, onPick, onHover) {
+    W.pageItems = items; W.pageHover = onHover;
+    const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+    W.page = Math.max(0, Math.min(W.page, pages - 1));
+    const start = W.page * PAGE_SIZE;
+    drawRing(items.slice(start, start + PAGE_SIZE), onPick, onHover);
+    // drawRing only sees the visible slice, so restore the full list for pager calculations.
+    W.pageItems = items; updatePager();
 }
 
-function showPieces(cat) {
-    W.cat = cat;
-    const free = W.data.freeBuild;
-    const items = W.data.pieces.filter(p => p.cat === cat).map(p => Object.assign({}, p, { poor: (p.construction !== 'blueprint' && !p.afford) || !!p.blocked, sub: p.blocked ? tr('ui.blocked', null, 'blocked') : (p.tierLabel || (p.afford ? '' : tr('ui.short', null, 'short'))) }));
-    drawRing(items, (p) => { if (p.blocked) { hub(p.label, p.blocked, p.costs, '', p.tierLabel, free); return; } post('wheelPick', { id: p.id }); closeWheel(); },
-        (p) => hub(p.label, p.blocked || p.blurb, p.costs, pieceNote(p), p.tierLabel, free));
-    hub(tr('cat.' + cat, null, cat), tr('ui.pick_piece', null, 'Pick a piece'), null, baseFoot());
+function redrawPage() {
+    if (W.cat) showPieces(W.cat, true); else showCats(true);
 }
 
-function closeWheel() { show('wheel', false); }
+// V19: F2-Gruppierung ist reine UI-Ansicht. Die originalen IDs, F10-Kategorien,
+// Crafting-/Bett-/Kisten-/Claim-Callbacks und gespeicherten Props bleiben unveraendert.
+// Ein Bauteil kann nicht aus seiner echten F10/Server-Kategorie migriert werden,
+// nur weil es im Radialmenue zusammen mit passenden Teilen angezeigt wird.
+const AZ_FIRST_PAGE = [
+    {id:'az_utility',  label:'Utility',             sources:['utility']},
+    {id:'az_floors',   label:'Fundamente & Böden',  sources:['kenney_boeden']},
+    {id:'az_walls',    label:'Wände',                sources:['kenney_waende','kenney_fenster']},
+    {id:'az_doors',    label:'Türen & Tore',         sources:['kenney_tueren','openings']},
+    {id:'az_stairs',   label:'Treppen & Geländer',  sources:['kenney_treppen','kenney_gelaender']},
+    {id:'az_roofs',    label:'Dächer & Decken',     sources:['kenney_daecher']},
+    {id:'az_defense',  label:'Verteidigung',         sources:['defense','kenney_barrikaden']},
+    {id:'az_claim',    label:'Claim',                sources:['claim']}
+];
+function wheelGroups(rawCats, pieces) {
+    const actual = new Map(rawCats.map(c=>[c.id,c]));
+    const assigned = new Set();
+    const primary = AZ_FIRST_PAGE.map(g=>{
+        const sources=g.sources.filter(s=>actual.has(s));
+        sources.forEach(s=>assigned.add(s));
+        return {...g,sources};
+    }).filter(g=>g.sources.some(s=>pieces.some(p=>p.cat===s)));
+    const extra = rawCats.filter(c=>!assigned.has(c.id) && pieces.some(p=>p.cat===c.id))
+        .map(c=>({id:c.id,label:c.label||c.id,sources:[c.id]}))
+        .sort((a,b)=>a.label.localeCompare(b.label,'de'));
+    return [...primary,...extra];
+}
+function wheelPieces(cat) {
+    const group=W.cats.find(c=>c.id===cat);
+    if(!group || !W.data || !Array.isArray(W.data.pieces))return [];
+    const sources=new Set(group.sources);
+    return W.data.pieces.filter(p=>sources.has(p.cat));
+}
+
+function itemDisabled(p){ return !!(p.blocked || p.modelAvailable === false); }
+function pickItem(p){
+    if(itemDisabled(p)) { hub(p.label, p.modelAvailable === false ? 'Modell fehlt – bs_building_assets prüfen' : p.blocked, p.costs, ''); return; }
+    post('wheelPick', {id:p.id}); closeWheel();
+}
+function buildBrowser(){
+    const input=$('wheelSearch'),list=$('wheelList'),panel=$('wheelBrowser');
+    if(!W.data || !W.cat){ panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    const category=W.cats.find(c=>c.id===W.cat);
+    $('wheelBrowserTitle').textContent=category?.label || 'BAUTEILE';
+    const q=input.value.toLocaleLowerCase('de-DE').trim();
+    const matches=wheelPieces(W.cat).filter(p=>!q || `${p.label} ${p.id}`.toLocaleLowerCase('de-DE').includes(q));
+    $('wheelBrowserCount').textContent=`${matches.length} von ${wheelPieces(W.cat).length}`;
+    list.replaceChildren();
+    for(const p of matches){
+        const btn=document.createElement('button');btn.type='button';btn.className='wheel-browser-item';
+        if(itemDisabled(p))btn.classList.add('unavailable');
+        const name=document.createElement('strong');name.textContent=p.label;
+        const desc=document.createElement('span');desc.textContent=p.modelAvailable===false?'MODELL FEHLT':p.blocked?'GESPERRT':`${p.size?.[0]||'?'} × ${p.size?.[1]||'?'} × ${p.size?.[2]||'?'} m`;
+        btn.append(name,desc);btn.onmouseenter=()=>{ hub(p.label,p.blurb,p.costs,'Klick: Bauteil auswählen');window.AZPreview?.select(p); };
+        btn.onfocus=()=>window.AZPreview?.select(p);
+        btn.onclick=()=>pickItem(p);list.append(btn);
+    }
+    if(!matches.length){const el=document.createElement('p');el.className='wheel-browser-empty';el.textContent='Keine passenden Bauteile';list.append(el);}
+}
+function showCats(keepPage){
+    W.cat=null;
+    window.AZPreview?.select(null);
+    $('wheelSearch').value='';
+    if(!keepPage)W.page=0;
+    // Reihenfolge = Bauablauf, feste acht Positionen auf Seite 1.
+    // Kein Auto-Fokus, keine automatisch ausgewaehlte Kategorie.
+    const items=W.cats.map(c=>{
+        const list=wheelPieces(c.id);
+        return {id:c.id,label:c.label,sub:`${list.length} Teile`,list};
+    }).filter(c=>c.list.length>0);
+    drawPaged(items,c=>showPieces(c.id),c=>hub(c.label,`${c.list.length} Bauteile`,null,baseFoot()));
+    hub('ALPHA-Z', 'Kategorie im Radialmenü auswählen',null,baseFoot());
+    buildBrowser();
+}
+function showPieces(cat,keepPage){
+    W.cat=cat;
+    if(!keepPage){W.page=0;$('wheelSearch').value='';}
+    const items=wheelPieces(cat).map(p=>Object.assign({},p,{
+        poor:!p.afford || itemDisabled(p),sub:itemDisabled(p)?'NICHT VERFÜGBAR':(p.afford?'':'MATERIAL FEHLT')
+    }));
+    drawPaged(items,pickItem,p=>{
+        hub(p.label,p.modelAvailable===false?'Modell nicht gefunden':(p.blocked||p.blurb),p.costs,
+            p.modelAvailable===false?'Server-Resource prüfen':'Radialmenü oder Liste links');
+        window.AZPreview?.select(p);
+    });
+    hub(W.cats.find(c=>c.id===cat)?.label||cat,'Bauteil wählen · alternativ links suchen',null,baseFoot());
+    buildBrowser();
+}
+$('wheelSearch').addEventListener('input',()=>buildBrowser());
+$('wheelPrev').addEventListener('click', () => { if (W.page > 0) { W.page--; redrawPage(); } });
+$('wheelNext').addEventListener('click', () => { const pages = Math.ceil(W.pageItems.length / PAGE_SIZE); if (W.page < pages - 1) { W.page++; redrawPage(); } });
+
+function closeWheel() { $('wheel').classList.add('hidden'); $('wheelBrowser').classList.add('hidden'); window.AZPreview?.close(); }
 
 document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    if (visible('wheel')) {
+    // In the active build preview, right-click behaves like ESC: return to F2.
+    // Never override the collision confirmation dialog.
+    if (!$('survivalOverlay').classList.contains('hidden')) {
+        if ($('survivalCollision').classList.contains('hidden')) post('placementAction', {action:'cancel'});
+        return;
+    }
+    if (!$('wheel').classList.contains('hidden')) {
         if (W.cat) showCats(); else { closeWheel(); post('wheelClose'); }
     }
 });
 
-// ---------------------------------------------------------------- bottom bar (no focus, the game sends the arrows)
-const B = { data: null, cats: [], cat: null, idx: 1 };
-function barCats(data) {
-    return (B.catsCfg || []).map(c => ({ id: c.id, list: data.pieces.filter(p => p.cat === c.id) })).filter(c => c.list.length > 0);
-}
-function barRender() {
-    const d = B.data;
-    if (!d) return;
-    B.cats = barCats(d);
-    const cat = B.cats.find(c => c.id === B.cat) || B.cats[0];
-    if (!cat) return;
-    $('barCats').innerHTML = B.cats.map(c => `<span class="${c.id === cat.id ? 'on' : ''}">${esc(tr('cat.' + c.id, null, c.id))}</span>`).join('');
-    const sel = Math.max(1, Math.min(B.idx, cat.list.length));
-    $('barItems').innerHTML = cat.list.map((p, i) => `<div class="bi${i + 1 === sel ? ' on' : ''}${((p.construction !== 'blueprint' && !p.afford) || p.blocked) ? ' poor' : ''}">
-        <div class="bi-name">${esc(p.label)}</div><div class="bi-detail">${i + 1} / ${cat.list.length} · ${p.construction === 'blueprint' ? 'Material plan' : 'Direct placement'}</div>${p.blurb ? `<p class="bi-detail">${esc(p.blurb)}</p>` : ''}
-        ${p.tierLabel ? `<div class="tier-chip">${esc(p.tierLabel)}</div>` : ''}
-        <ul class="cost">${p.blocked ? `<li class="short"><span>${esc(p.blocked)}</span><b></b></li>` : costHtml(p.costs, d.freeBuild)}</ul></div>`).join('');
-    const on = $('barItems').querySelector('.bi.on');
-    if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
-}
-
-// ---------------------------------------------------------------- catalogue
-const C = { data: null, cats: [], tab: 'all', sel: null };
-function catRender() {
-    const d = C.data;
-    if (!d) return;
-    const q = ($('catSearch').value || '').trim().toLowerCase();
-    const present = C.cats.filter(c => d.pieces.some(p => p.cat === c.id));
-    $('catTabs').innerHTML = [`<span data-tab="all" class="${C.tab === 'all' ? 'on' : ''}">${esc(tr('ui.all', null, 'All'))}</span>`]
-        .concat(present.map(c => `<span data-tab="${c.id}" class="${C.tab === c.id ? 'on' : ''}">${esc(tr('cat.' + c.id, null, c.id))}</span>`)).join('');
-    $('catTabs').querySelectorAll('[data-tab]').forEach(el => el.onclick = () => { C.tab = el.dataset.tab; catRender(); });
-    const list = d.pieces.filter(p => (C.tab === 'all' || p.cat === C.tab) && (!q || (p.label + ' ' + (p.blurb || '') + ' ' + tr('cat.' + p.cat, null, p.cat)).toLowerCase().includes(q)));
-    $('catCount').textContent = baseFoot(d);
-    $('catList').innerHTML = list.map(p => `<div class="ci${C.sel === p.id ? ' on' : ''}${((p.construction !== 'blueprint' && !p.afford) || p.blocked) ? ' poor' : ''}" data-id="${esc(p.id)}">
-        <div class="ci-top"><b>${esc(p.label)}</b>${p.tierLabel ? `<span class="tier-chip">${esc(p.tierLabel)}</span>` : ''}</div>
-        <div class="ci-cost">${(p.costs || []).map(c => `<span class="${c.have < c.need && !d.freeBuild ? 'short' : ''}">${esc(c.label)} ${c.have}/${c.need}</span>`).join('')}</div></div>`).join('')
-        || `<p class="muted" style="padding:14px">${esc(tr('ui.no_match', null, 'Nothing matches.'))}</p>`;
-    $('catList').querySelectorAll('.ci').forEach(el => {
-        el.onmouseenter = () => catSelect(el.dataset.id, false);
-        el.onclick = () => catSelect(el.dataset.id, true);
-        el.ondblclick = () => catPlace(el.dataset.id);
-    });
-}
-function catSelect(id, sticky) {
-    const p = C.data.pieces.find(x => x.id === id);
-    if (!p) return;
-    if (sticky) { C.sel = id; $('catList').querySelectorAll('.ci').forEach(el => el.classList.toggle('on', el.dataset.id === id)); }
-    else if (C.sel && C.sel !== id) return;
-    post('catHover', { id });
-    show('catInfo', true);
-    $('ciCat').textContent = tr('cat.' + p.cat, null, p.cat).toUpperCase();
-    $('ciName').textContent = p.label;
-    $('ciTier').innerHTML = (p.tiers || []).map(t => `<span class="tier-chip${t.id === p.tier ? '' : ' dim'}" title="${esc(t.name)}">${esc(t.label)}</span>`).join(p.tiers && p.tiers.length > 1 ? '<i>&rsaquo;</i>' : '');
-    $('ciBlurb').textContent = p.blocked || p.blurb || '';
-    $('ciHp').textContent = p.hp || '-';
-    $('ciCost').innerHTML = costHtml(p.costs, C.data.freeBuild);
-    $('ciNote').textContent = pieceNote(p);
-    $('ciPlace').disabled = !!p.blocked;
-    $('ciPlace').onclick = () => catPlace(id);
-}
-function catPlace(id) {
-    const p = C.data && C.data.pieces.find(x => x.id === id);
-    if (!p || p.blocked) return;
-    show('cat', false);
-    post('catPick', { id });
-}
-$('catSearch').addEventListener('input', () => catRender());
-$('catClose').onclick = () => { show('cat', false); post('menuClose'); };
-
 // ---------------------------------------------------------------- keypad
 let code = '';
 function kpShow() { $('kpDisplay').textContent = (code + '____').slice(0, 4).replace(/\d/g, '*'); }
-function kpDone(v) { show('keypad', false); post('keypad', { code: v }); }
+function kpDone(v) { $('keypad').classList.add('hidden'); post('keypad', { code: v }); }
 (function buildKeys() {
     const g = $('kpGrid');
     [1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '<'].forEach(k => {
@@ -201,37 +245,11 @@ function kpDone(v) { show('keypad', false); post('keypad', { code: v }); }
     $('kpOk').onclick = () => kpDone(code);
 })();
 
-// ---------------------------------------------------------------- hint
-function key(k, label) { return `<span><b>${k}</b> <i>${esc(label)}</i></span>`; }
-function hintRender(s) {
-    if (!s) { show('hint', false); return; }
-    show('hint', true);
-    $('hintTitle').textContent = s.label;
-    tierChip($('hintTier'), s.tier);
-    $('hintState').textContent = s.valid ? (s.snapped ? tr('ui.snapped', null, 'Snapped - good spot') : tr('ui.ok_here', null, 'Good spot')) : (s.reason || '');
-    $('hintState').classList.toggle('bad', !s.valid);
-    $('hintCost').innerHTML = costHtml(s.costs, s.free);
-    const on = s.snap ? tr('ui.on', null, 'ON') : tr('ui.off', null, 'OFF');
-    const keys = [key('LMB', tr('ui.k_place', null, 'place')), key('WHEEL', tr('ui.k_rotate', null, 'rotate'))];
-    if (s.snaps) keys.push(key('SHIFT', `${tr('ui.k_snap', null, 'snap')} ${on}`));
-    else {
-        keys.push(key('SHIFT', `${tr('ui.k_surface', null, 'surface')} ${on}`));
-        keys.push(key('PGUP/PGDN', `${tr('ui.k_height', null, 'height')} ${s.lift > 0 ? '+' : ''}${s.lift}cm`));
-        keys.push(key(s.bar ? 'NUM 4/6/8/5' : '&larr;&rarr;&uarr;&darr;', tr('ui.k_nudge', null, 'nudge')));
-        keys.push(key('ALT', tr('ui.k_fine', null, 'fine')));
-        keys.push(key('R', tr('ui.k_reset', null, 'reset')));
-    }
-    keys.push(key('RMB', tr('ui.k_cancel', null, 'cancel')));
-    $('hintKeys').innerHTML = keys.join('');
-    $('hint').classList.toggle('raised', !!s.bar);
-}
-
 // ---------------------------------------------------------------- inspect
 let inspectTimer = null;
 function inspect(m) {
     const p = m.piece;
     $('inTitle').textContent = m.label;
-    tierChip($('inTier'), m.tierLabel);
     $('inBar').style.width = Math.max(0, Math.min(100, (p.hp / p.mhp) * 100)) + '%';
     let body = `<div>${tr('ui.health', null, 'Health')}: <b>${p.hp}/${p.mhp}</b></div>`;
     if (!p.b) {
@@ -242,122 +260,13 @@ function inspect(m) {
     else if (p.lm === 'none') body += `<div>${tr('ui.lock_none', null, 'Unlocked')}</div>`;
     else if (p.lk) body += `<div>${tr('ui.locked', null, 'Code locked')}</div>`;
     if (p.fuel !== undefined && p.fuel !== null) body += `<div>${tr('ui.fuel', null, 'Fuel')}: <b>${Math.floor(p.fuel)}</b> ${p.on ? tr('ui.running', null, '(running)') : ''}</div>`;
-    const pw = m.power;
-    if (pw && pw.gen) body += `<div>${tr('ui.load', null, 'Load')}: <b>${pw.used}/${pw.out}</b></div>`;
-    if (pw && pw.need !== undefined) body += `<div>${tr('ui.power', null, 'Power')}: <b class="${pw.pw ? 'ok' : 'no'}">${pw.pw ? tr('ui.powered', null, 'powered') : tr('ui.no_power', null, 'no power')}</b>${pw.lit ? '' : ' (' + tr('ui.switched_off', null, 'switched off') + ')'}</div>`;
-    if (pw && pw.node) body += `<div>${tr('ui.power', null, 'Power')}: <b class="${pw.pw ? 'ok' : 'no'}">${pw.pw ? tr('ui.powered', null, 'powered') : tr('ui.no_power', null, 'no power')}</b> - ${tr('ui.wires', { n: pw.wires }, pw.wires + ' wires')}</div>`;
     if (m.water) body += `<div>${tr('ui.water', null, 'Water')}: <b>${Math.floor(m.water)}</b></div>`;
-    if (p.ab) {
-        const h = Math.max(0, Math.round((p.ab - Date.now() / 1000) / 3600));
-        body += `<div style="color:var(--danger)">${tr('ui.abandoned', { h }, `Abandoned - gone in ${h} h`)}</div>`;
-    } else if (p.decay) body += `<div style="color:var(--danger)">${tr('ui.decaying', null, 'Decaying - nobody has visited')}</div>`;
+    if (p.decay) body += `<div style="color:var(--danger)">${tr('ui.decaying', null, 'Decaying - nobody has visited')}</div>`;
     $('inBody').innerHTML = body;
-    show('inspect', true);
+    $('inspect').classList.remove('hidden');
     clearTimeout(inspectTimer);
-    inspectTimer = setTimeout(() => show('inspect', false), 7000);
+    inspectTimer = setTimeout(() => $('inspect').classList.add('hidden'), 6000);
 }
-
-// ---------------------------------------------------------------- generator
-const G = { data: null };
-function genMsg(text, ok) { $('gnMsg').textContent = text || ''; $('gnMsg').classList.toggle('ok', !!ok); }
-function genRender() {
-    const d = G.data;
-    $('gnTitle').textContent = d.label;
-    const st = d.running ? tr('ui.gen_running', null, 'RUNNING') : (d.mode === 'battery' ? tr('ui.gen_battery', null, 'ON BATTERY') : tr('ui.gen_stopped', null, 'STOPPED'));
-    $('gnState').textContent = st;
-    $('gnState').classList.toggle('good', !!d.running);
-    $('gnFuelTxt').textContent = `${d.fuel}/${d.tank}`;
-    $('gnFuel').style.width = Math.min(100, d.fuel / Math.max(1, d.tank) * 100) + '%';
-    $('gnBurn').textContent = tr('ui.gen_burn', { n: d.fuelHour, out: d.output }, `Burns up to ${d.fuelHour}/h, gives ${d.output} power`);
-    $('gnLoadTxt').textContent = `${d.used}/${d.out}`;
-    $('gnLoad').style.width = (d.out > 0 ? Math.min(100, d.used / d.out * 100) : 0) + '%';
-    $('gnMode').textContent = d.mode === 'battery' ? tr('ui.gen_on_bat', null, 'Engine off, batteries carry the load') : (d.out === 0 ? tr('ui.gen_no_out', null, 'Nothing is getting power') : '');
-    const slots = [];
-    // jerrycan slot
-    slots.push(`<div class="gs${d.res > 0 ? ' full' : ''}"><div class="gs-ico">&#9981;</div><div class="gs-name">${esc(tr('ui.gen_can', null, 'Jerrycan'))}</div>
-        <div class="gs-val">${d.res}/${d.resCap}</div>
-        <div class="gs-btns"><button data-a="reserve" ${d.held > 0 && d.res < d.resCap ? '' : 'disabled'}>${esc(tr('ui.gen_store', null, 'STORE'))}</button>
-        <button data-a="reserveTake" ${d.res > 0 ? '' : 'disabled'}>${esc(tr('ui.gen_take', null, 'TAKE'))}</button></div>
-        <div class="gs-note">${esc(tr('ui.gen_auto', null, 'Tops the tank up by itself'))}</div></div>`);
-    (d.bats || []).forEach((b, i) => {
-        if (b) slots.push(`<div class="gs full"><div class="gs-ico">&#128267;</div><div class="gs-name">${esc(tr('ui.gen_bat', null, 'Battery'))}</div>
-            <div class="gs-val">${b.charge}%</div><div class="gs-btns"><button data-a="batOut" data-s="${i + 1}">${esc(tr('ui.gen_take', null, 'TAKE'))}</button></div></div>`);
-        else slots.push(`<div class="gs"><div class="gs-ico dim">&#128267;</div><div class="gs-name">${esc(tr('ui.gen_bat_empty', null, 'Empty slot'))}</div>
-            <div class="gs-val">-</div><div class="gs-btns"><button data-a="batIn" ${d.batteries > 0 ? '' : 'disabled'}>${esc(tr('ui.gen_insert', null, 'INSERT'))}</button></div></div>`);
-    });
-    $('gnSlots').innerHTML = slots.join('');
-    $('gnSlots').querySelectorAll('[data-a]').forEach(b => b.onclick = async () => genApply(await post('genAct', { action: b.dataset.a, slot: Number(b.dataset.s) || null })));
-    $('gnToggle').textContent = d.on ? tr('ui.gen_stop', null, 'STOP') : tr('ui.gen_start', null, 'START');
-    $('gnToggle').classList.toggle('bad', !!d.on);
-    $('gnToggle').classList.toggle('go', !d.on);
-    $('gnRefuel').disabled = d.held <= 0 || d.fuel >= d.tank;
-}
-function genApply(r) {
-    if (r && r.ok) { G.data = r; genRender(); genMsg(''); }
-    else genMsg((r && r.error) || tr('build.err.failed', null, 'That did not work.'));
-}
-$('gnToggle').onclick = async () => genApply(await post('genAct', { action: 'toggle' }));
-$('gnRefuel').onclick = () => { show('gen', false); post('genRefuel'); };
-$('gnClose').onclick = () => { show('gen', false); post('genClose'); };
-
-// ---------------------------------------------------------------- pour game
-const PG = { on: false, round: 0, rounds: 4, scores: [], pos: 0, dir: 1, speed: 0.9, zone: [40, 60], raf: 0, last: 0 };
-function pourZone() {
-    const w = 22 - PG.round * 3;
-    const a = 10 + Math.random() * (80 - w);
-    PG.zone = [a, a + w];
-    $('pourZone').style.left = a + '%';
-    $('pourZone').style.width = w + '%';
-}
-function pourDots() {
-    $('pourDots').innerHTML = Array.from({ length: PG.rounds }, (_, i) => {
-        const s = PG.scores[i];
-        return `<span class="${s === undefined ? '' : (s > 0.6 ? 'good' : (s > 0 ? 'meh' : 'bad'))}"></span>`;
-    }).join('');
-}
-function pourTick(ts) {
-    if (!PG.on) return;
-    const dt = PG.last ? Math.min(50, ts - PG.last) : 16;
-    PG.last = ts;
-    PG.pos += PG.dir * PG.speed * dt / 10;
-    if (PG.pos >= 100) { PG.pos = 100; PG.dir = -1; }
-    if (PG.pos <= 0) { PG.pos = 0; PG.dir = 1; }
-    $('pourNeedle').style.left = PG.pos + '%';
-    PG.raf = requestAnimationFrame(pourTick);
-}
-function pourHit() {
-    if (!PG.on) return;
-    const [a, b] = PG.zone;
-    const mid = (a + b) / 2, half = (b - a) / 2;
-    const s = PG.pos >= a && PG.pos <= b ? Math.max(0.35, 1 - Math.abs(PG.pos - mid) / half * 0.65) : 0;
-    PG.scores.push(s);
-    PG.round++;
-    pourDots();
-    try { const snd = splash.cloneNode(); snd.volume = s > 0 ? 0.35 : 0.2; snd.play(); } catch (e) {}
-    if (PG.round >= PG.rounds) return pourEnd();
-    PG.speed += 0.25;
-    pourZone();
-}
-function pourEnd() {
-    PG.on = false;
-    cancelAnimationFrame(PG.raf);
-    const score = PG.scores.length ? PG.scores.reduce((x, y) => x + y, 0) / PG.rounds : 0;
-    setTimeout(() => { show('pour', false); post('pourDone', { score }); }, 350);
-}
-function pourStart(rounds) {
-    Object.assign(PG, { on: true, round: 0, rounds: rounds || 4, scores: [], pos: 0, dir: 1, speed: 0.9, last: 0 });
-    pourZone(); pourDots();
-    show('pour', true);
-    PG.raf = requestAnimationFrame(pourTick);
-    clearTimeout(PG.timer);
-    PG.timer = setTimeout(() => { if (PG.on) { while (PG.scores.length < PG.rounds) PG.scores.push(0); pourEnd(); } }, 15000);
-}
-document.addEventListener('keydown', (e) => {
-    if (!PG.on) return;
-    if (e.code === 'Space' || e.key === 'e' || e.key === 'E' || e.key === 'Enter') { e.preventDefault(); pourHit(); }
-    if (e.key === 'Escape') { while (PG.scores.length < PG.rounds) PG.scores.push(0); pourEnd(); }
-});
-$('pour').addEventListener('mousedown', () => pourHit());
 
 // ---------------------------------------------------------------- admin
 const A = { data: null, fac: null };
@@ -410,7 +319,7 @@ async function adminBase(fac) {
     });
     $('adDetail').querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => act('deletePiece', Number(btn.dataset.del)));
 }
-$('adClose').onclick = () => { show('admin', false); post('adminClose'); };
+$('adClose').onclick = () => { $('admin').classList.add('hidden'); post('adminClose'); };
 
 // ---------------------------------------------------------------- vending
 const V = { data: null };
@@ -419,41 +328,28 @@ function vendRender() {
     const d = V.data;
     $('vdTitle').textContent = tr('piece.vending_crate', null, 'Vending crate');
     $('vdCash').textContent = tr('ui.vend_cash', { amount: d.cash }, `Your cash: ${d.cash}`);
-    show('vdOwner', !!d.owner);
+    $('vdOwner').classList.toggle('hidden', !d.owner);
     if (d.owner) $('vdCollect').textContent = tr('ui.vend_collect', { amount: d.balance || 0 }, `COLLECT ${d.balance || 0}`);
     const rows = (d.items || []).map(it => {
         const left = tr('ui.vend_left', { n: it.amount }, `${it.amount} left`);
         if (d.owner) {
-            if (!it.sellable) {
-                return `<div class="vd-row off"><div class="nm">${esc(it.label)}<small>${left} - ${esc(tr('build.err.vend_items', null, 'Only stackable items can be sold here.'))}</small></div></div>`;
-            }
-            return `<div class="vd-row"><div class="nm">${esc(it.label)}<small>${left}${it.price > 0 ? '' : ' - ' + esc(tr('ui.vend_not_listed', null, 'not for sale'))}</small></div>
-                <button class="step" data-step="-10" data-item="${esc(it.item)}">-</button>
-                <input type="text" inputmode="numeric" maxlength="8" value="${it.price}" data-item="${esc(it.item)}">
-                <button class="step" data-step="10" data-item="${esc(it.item)}">+</button>
-                <button class="go" data-set="${esc(it.item)}">${tr('ui.vend_set', null, 'SET')}</button></div>`;
+            return `<div class="vd-row${it.sellable ? '' : ' off'}"><div class="nm">${esc(it.label)}<small>${left}</small></div>
+                <span class="muted">${tr('ui.vend_price', null, 'Price')}</span>
+                <input type="number" min="0" max="${d.maxPrice}" value="${it.price}" data-item="${esc(it.item)}" ${it.sellable ? '' : 'disabled'}>
+                <button data-set="${esc(it.item)}" ${it.sellable ? '' : 'disabled'}>${tr('ui.vend_set', null, 'SET')}</button></div>`;
         }
         return `<div class="vd-row"><div class="nm">${esc(it.label)}<small>${left}</small></div><span class="pr">$${it.price}</span>
-            <input type="text" inputmode="numeric" maxlength="4" value="1" data-item="${esc(it.item)}">
+            <input type="number" min="1" max="${it.amount}" value="1" data-item="${esc(it.item)}">
             <button class="go" data-buy="${esc(it.item)}">${tr('ui.vend_buy', null, 'BUY')}</button></div>`;
     }).join('');
-    $('vdList').innerHTML = rows || `<p class="muted" style="padding:14px 16px">${d.owner ? tr('ui.vend_empty_owner', null, 'Empty. Press STOCK and put items in, then open the crate again to set prices.') : tr('ui.vend_empty', null, 'Nothing for sale.')}</p>`;
+    $('vdList').innerHTML = rows || `<p class="muted" style="padding:14px 16px">${tr('ui.vend_empty', null, 'Nothing for sale.')}</p>`;
     const inputOf = (item) => [...$('vdList').querySelectorAll('input')].find(i => i.dataset.item === item);
-    const num = (el, def) => { const n = Math.floor(Number(String(el.value).replace(/[^0-9]/g, ''))); return Number.isFinite(n) ? n : def; };
-    $('vdList').querySelectorAll('input').forEach(inp => {
-        inp.addEventListener('input', () => { inp.value = inp.value.replace(/[^0-9]/g, ''); });
-        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = $('vdList').querySelector(`[data-set="${CSS.escape(inp.dataset.item)}"],[data-buy="${CSS.escape(inp.dataset.item)}"]`); if (b) b.click(); } });
-    });
-    $('vdList').querySelectorAll('[data-step]').forEach(btn => btn.onclick = () => {
-        const inp = inputOf(btn.dataset.item);
-        inp.value = Math.max(0, Math.min(d.maxPrice || 100000, num(inp, 0) + Number(btn.dataset.step)));
-    });
     $('vdList').querySelectorAll('[data-buy]').forEach(btn => btn.onclick = async () => {
-        const qty = Math.max(1, num(inputOf(btn.dataset.buy), 1));
+        const qty = Math.max(1, Math.floor(Number(inputOf(btn.dataset.buy).value) || 1));
         vendApply(await post('vendBuy', { item: btn.dataset.buy, qty }));
     });
     $('vdList').querySelectorAll('[data-set]').forEach(btn => btn.onclick = async () => {
-        const price = Math.max(0, num(inputOf(btn.dataset.set), 0));
+        const price = Math.max(0, Math.floor(Number(inputOf(btn.dataset.set).value) || 0));
         vendApply(await post('vendPrice', { item: btn.dataset.set, price }), true);
     });
 }
@@ -461,128 +357,120 @@ function vendApply(r, saved) {
     if (r && r.ok) { V.data = r; vendRender(); vendMsg(saved ? tr('build.vend_price_set', null, 'Price saved.') : '', true); }
     else vendMsg((r && r.error) || tr('build.err.failed', null, 'That did not work.'));
 }
-function vendClose() { show('vend', false); post('vendClose'); }
+function vendClose() { $('vend').classList.add('hidden'); post('vendClose'); }
 $('vdClose').onclick = vendClose;
-$('vdStock').onclick = () => { show('vend', false); post('vendStock'); };
+$('vdStock').onclick = () => { $('vend').classList.add('hidden'); post('vendStock'); };
 $('vdCollect').onclick = async () => vendApply(await post('vendCollect'));
 
-// ---------------------------------------------------------------- sound
-const hammer = new Audio('hammer.wav');
-const splash = new Audio('pour.ogg');
-// Generator hum: one looping source per running generator, volume and pan set by the game
-const Hum = { ctx: null, buf: null, loading: false, nodes: {} };
-async function humBuf() {
-    if (Hum.buf || Hum.loading) return Hum.buf;
-    Hum.loading = true;
-    try {
-        Hum.ctx = Hum.ctx || new (window.AudioContext || window.webkitAudioContext)();
-        const data = await fetch('gen_loop.ogg').then(r => r.arrayBuffer());
-        Hum.buf = await Hum.ctx.decodeAudioData(data);
-    } catch (e) { Hum.buf = null; }
-    Hum.loading = false;
-    return Hum.buf;
-}
-async function humSet(list) {
-    const buf = await humBuf();
-    if (!buf) return;
-    if (Hum.ctx.state === 'suspended') Hum.ctx.resume();
-    const now = Hum.ctx.currentTime;
-    const keep = {};
-    (list || []).forEach(h => {
-        keep[h.id] = true;
-        let n = Hum.nodes[h.id];
-        if (!n) {
-            const src = Hum.ctx.createBufferSource();
-            src.buffer = buf; src.loop = true;
-            src.playbackRate.value = 0.94 + Math.random() * 0.12;
-            const gain = Hum.ctx.createGain(); gain.gain.value = 0;
-            const pan = Hum.ctx.createStereoPanner ? Hum.ctx.createStereoPanner() : null;
-            src.connect(gain);
-            if (pan) { gain.connect(pan); pan.connect(Hum.ctx.destination); } else gain.connect(Hum.ctx.destination);
-            src.start(0, Math.random() * buf.duration);
-            n = Hum.nodes[h.id] = { src, gain, pan };
-        }
-        n.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, h.vol)) * 0.55, now, 0.15);
-        if (n.pan) n.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, h.pan)), now, 0.1);
-    });
-    Object.keys(Hum.nodes).forEach(id => {
-        if (keep[id]) return;
-        const n = Hum.nodes[id];
-        n.gain.gain.setTargetAtTime(0, now, 0.2);
-        setTimeout(() => { try { n.src.stop(); } catch (e) {} }, 900);
-        delete Hum.nodes[id];
-    });
-}
-
+// ---------------------------------------------------------------- F2 survival placement overlay (does not touch F10)
+const survivalHeightCall = async (op, fine=false) => { const r = await post('placementHeight', {op, fine}); if (r && Number.isFinite(Number(r.height))) $('survivalHeightValue').textContent = `${Number(r.height)>=0?'+':''}${Number(r.height).toFixed(2).replace('.', ',')} m`; };
+window.addEventListener('keydown', (e) => {
+    if ($('survivalOverlay').classList.contains('hidden')) return;
+    if (!$('survivalCollision').classList.contains('hidden')) { if(e.key==='Escape'){e.preventDefault();post('placementCollisionDecision',{accept:false});} return; }
+    if (e.repeat) return;
+    const key = e.key.toLowerCase();
+    if (['+','=','add','-','subtract','numpadadd','numpadsubtract'].includes(key) && !$('survivalHeight').classList.contains('hidden')) { e.preventDefault(); survivalHeightCall(['+','=','add','numpadadd'].includes(key)?'up':'down', e.shiftKey && key !== '+'); return; }
+    if (key === 'delete' || key === 'del') { e.preventDefault(); post('placementAction', {action:'reset'}); return; }
+    if (key === 'alt') { e.preventDefault(); post('placementAction', {action:'walk'}); return; }
+    const actions = {escape:'cancel', r:'rotate', e:'place', enter:'place', x:'magnet'};
+    if (actions[key]) { e.preventDefault(); post('placementAction', {action:actions[key]}); }
+});
+// Wheel rotation is delivered through the focused NUI, not disabled GTA controls.
+window.addEventListener('wheel', (e) => {
+    if ($('survivalOverlay').classList.contains('hidden')) return;
+    if (e.target.closest('#survivalHeight')) return;
+    e.preventDefault();
+    post('placementAction', {action:'wheel', delta:e.deltaY < 0 ? 1 : -1, fine:e.shiftKey});
+}, {passive:false});
+// Clicking the F2 snapping row uses the exact same action as the X key.
+$('survivalSnapRow').setAttribute('role', 'button');
+$('survivalSnapRow').setAttribute('tabindex', '0');
+$('survivalSnapRow').addEventListener('click', () => {
+    if (!$('survivalOverlay').classList.contains('hidden')) post('placementAction', {action:'magnet'});
+});
+$('survivalSnapRow').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('survivalSnapRow').click(); }
+});
 // ---------------------------------------------------------------- messages
+const hammer = new Audio('hammer.wav');
 window.addEventListener('message', (e) => {
     const m = e.data || {};
     switch (m.action) {
+        case 'placementCollisionPrompt':
+            if (m.visible) $('survivalCollisionText').textContent = m.text || 'Hier steht möglicherweise bereits etwas. Trotzdem platzieren?';
+            $('survivalCollision').classList.toggle('hidden', !m.visible);
+            break;
+        case 'survivalOverlay':
+            $('survivalOverlay').classList.toggle('hidden', !m.visible);
+            if (m.visible) {
+                $('survivalName').textContent = m.label || 'Bauteil';
+                $('survivalHeight').classList.remove('hidden');
+                $('survivalHeightRange').textContent = m.foundation ? '−1,00 bis +2,00 m' : '−0,50 bis +0,50 m';
+            }
+            break;
+        case 'survivalState':
+            $('survivalStatus').textContent = m.snapped ? '● ANSCHLUSS GEFUNDEN' : '● FREIE PLATZIERUNG';
+            $('survivalStatus').classList.toggle('is-snapped', !!m.snapped);
+            $('survivalHeight').classList.remove('is-locked');
+            $('survivalHeightValue').textContent = `${m.height >= 0 ? '+' : ''}${Number(m.height || 0).toFixed(2).replace('.', ',')} m`;
+            $('survivalSnapValue').textContent = m.magnet ? 'EIN' : 'AUS';
+            $('survivalWalkValue').textContent = m.walking ? 'EIN' : 'AUS';
+            $('survivalSnapRow').classList.toggle('is-active', !!m.magnet);
+            $('survivalWalkRow').classList.toggle('is-active', !!m.walking);
+            $('survivalMode').textContent = m.walking ? 'BEWEGUNGSMODUS AKTIV' : 'BAUMODUS AKTIV';
+            $('survivalMode').classList.toggle('is-walking', !!m.walking);
+
+            break;
         case 'wheel':
-            W.data = m.data; W.cats = m.cats || [];
-            show('wheel', true);
+            W.data = m.data; W.cats = wheelGroups(m.cats || [], (m.data && m.data.pieces) || []);
+            $('wheel').classList.remove('hidden');
+            window.AZPreview?.open();
             showCats();
             break;
         case 'wheelClose': closeWheel(); break;
-        case 'catalogue':
-            C.data = m.data; C.cats = m.cats || []; C.tab = 'all'; C.sel = null;
-            $('catSearch').value = '';
-            show('catInfo', false);
-            show('cat', true);
-            catRender();
-            setTimeout(() => $('catSearch').focus(), 50);
+        case 'hint':
+            if (!m.state) { $('hint').classList.add('hidden'); break; }
+            $('hint').classList.remove('hidden');
+            $('hintTitle').textContent = m.state.label;
+            $('hintState').textContent = m.state.valid ? tr('ui.ok_here', null, 'Good spot') : (m.state.reason || '');
+            $('hintState').classList.toggle('bad', !m.state.valid);
+            $('hintSnap').textContent = m.state.snap ? tr('ui.on', null, 'ON') : tr('ui.off', null, 'OFF');
+            if (m.state.free) $('hintCost').innerHTML = `<li><span>${esc(tr('ui.free_build', null, 'Free build (admin)'))}</span><b></b></li>`;
+            else $('hintCost').innerHTML = (m.state.costs || []).map(c => `<li class="${c.have < c.need ? 'short' : ''}"><span>${esc(c.label)}</span><b>${c.have}/${c.need}</b></li>`).join('');
             break;
-        case 'previewSelection': C.sel=null; C.tab='all'; $('catSearch').value=''; catRender(); if(m.id) catSelect(m.id,true); break;
-        case 'barScale': document.documentElement.style.setProperty('--build-bar-size',String(m.value)); break;
-        case 'bar':
-            document.documentElement.style.setProperty('--build-bar-size',String(m.barScale || 1));
-            B.data = m.data; B.catsCfg = m.cats || []; B.cat = m.cat; B.idx = m.idx || 1;
-            show('bar', true);
-            barRender();
-            break;
-        case 'barSel': B.cat = m.cat; B.idx = m.idx || 1; barRender(); break;
-        case 'barData': B.data = m.data; B.cat = m.cat; B.idx = m.idx || 1; barRender(); break;
-        case 'menuClose': closeWheel(); show('bar', false); show('cat', false); break;
-        case 'hint': hintRender(m.state); break;
         case 'keypad':
             code = ''; kpShow();
-            show('keypad', true);
+            $('keypad').classList.remove('hidden');
             break;
         case 'inspect': inspect(m); break;
-        case 'gen': G.data = m.data; genMsg(''); show('gen', true); genRender(); break;
-        case 'genClose': show('gen', false); break;
-        case 'pour': pourStart(m.rounds); break;
         case 'admin':
             A.data = m.data; A.fac = null;
             $('adDetail').innerHTML = '';
-            show('admin', true);
+            $('admin').classList.remove('hidden');
             adminRender();
             break;
-        case 'adminHide': show('admin', false); break;
+        case 'adminHide': $('admin').classList.add('hidden'); break;
         case 'vend':
             V.data = m.data; vendMsg('');
-            show('vend', true);
+            $('vend').classList.remove('hidden');
             vendRender();
             break;
-        case 'vendClose': show('vend', false); break;
+        case 'vendClose': $('vend').classList.add('hidden'); break;
         case 'sound':
             try { const s = hammer.cloneNode(); s.volume = m.volume || 0.5; s.play(); } catch (err) {}
             break;
-        case 'hum': humSet(m.list); break;
     }
 });
 
 document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || PG.on) return;
-    if (visible('wheel')) { closeWheel(); post('wheelClose'); }
-    if (visible('cat')) { show('cat', false); post('menuClose'); }
-    if (visible('keypad')) kpDone(false);
-    if (visible('admin')) { show('admin', false); post('adminClose'); }
-    if (visible('vend')) vendClose();
-    if (visible('gen')) { show('gen', false); post('genClose'); }
+    if (e.key !== 'Escape') return;
+    if (!$('wheel').classList.contains('hidden')) { closeWheel(); post('wheelClose'); }
+    if (!$('keypad').classList.contains('hidden')) kpDone(false);
+    if (!$('admin').classList.contains('hidden')) { $('admin').classList.add('hidden'); post('adminClose'); }
+    if (!$('vend').classList.contains('hidden')) vendClose();
 });
 document.addEventListener('keydown', (e) => {
-    if (!visible('keypad')) return;
+    if ($('keypad').classList.contains('hidden')) return;
     if (/^\d$/.test(e.key) && code.length < 4) { code += e.key; kpShow(); }
     if (e.key === 'Backspace') { code = code.slice(0, -1); kpShow(); }
     if (e.key === 'Enter') kpDone(code);
@@ -591,4 +479,5 @@ document.addEventListener('keydown', (e) => {
 // Drag / resize the staff base panel.
 if (window.BSWindow) BSWindow.make(document.getElementById('admin'), { id: 'bs_building_admin', handle: '#admin header', minW: 560, minH: 360 });
 
-$('previewReturn').onclick = () => post('previewReturn', {});
+$('survivalCollisionCancel').onclick = () => post('placementCollisionDecision', {accept:false});
+$('survivalCollisionAccept').onclick = () => post('placementCollisionDecision', {accept:true});

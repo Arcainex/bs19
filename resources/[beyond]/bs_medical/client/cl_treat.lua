@@ -1,4 +1,7 @@
--- bs_medical - reviving downed players. Hold the interaction dot on a downed player to treat wounds.
+-- bs_medical - reviving downed players.
+-- Hold the interaction dot on a downed player to treat wounds. Takes 12
+-- seconds, costs a medkit, fails if either player moves. The Field medic perk
+-- shortens it. The server checks distance, medkit and downed state.
 
 local S = Medical.Settings
 local treating = false
@@ -46,7 +49,9 @@ end
 
 -- The revive itself
 
--- The busy flag covers the whole attempt, including network round trips, and is cleared on every exit.
+-- The busy flag covers the whole attempt, including network round trips, and is
+-- cleared on every exit. Otherwise a second press re-runs the function, or an
+-- error leaves it latched and revive silently does nothing.
 local function runRevive(targetPed)
     if treating then return end
     treating = true
@@ -75,7 +80,8 @@ local function runRevive(targetPed)
         TaskPlayAnim(me, anim.dict, anim.clip, 3.0, 3.0, duration, 1, 0.0, false, false, false)
     end
 
-    -- pcall'd because the bar lives in another resource; a raise here would leave `treating` latched (see above).
+    -- pcall'd because the bar lives in another resource; a raise here would leave
+    -- `treating` latched (see above).
     local completed = true
     if GetResourceState('bs_interactions') == 'started' then
         local ok, result = pcall(function()
@@ -112,7 +118,8 @@ local function runRevive(targetPed)
     })
 end
 
--- A bandage on someone else buys time. Shares the busy flag with the revive so only one action runs at a time.
+-- A bandage on someone else buys time. Shares the busy flag with the revive so
+-- only one action runs at a time.
 local function runStabilise(targetPed)
     if treating then return end
     treating = true
@@ -135,7 +142,9 @@ end
 CreateThread(function()
     while GetResourceState('bs_interactions') ~= 'started' do Wait(1000) end
 
-    -- Data, not closures: functions do not survive being passed to another resource.
+    -- Data, not closures: functions do not survive being passed to another
+    -- resource. The condition is a filter table (a player ped, not a walker, with
+    -- bsDowned set) and the action is an event name handled below.
     local filters = {
         playerPed      = true,
         stateFalse     = 'bsZombie',
@@ -171,7 +180,8 @@ CreateThread(function()
     print('^2[BeyondSurvival]^7 (medical) treatment registered on the dot')
 end)
 
--- The flag is per body, not per session: death, unload or resource restart end an attempt without its code finishing.
+-- The flag is per body, not per session: death, unload or resource restart end
+-- an attempt without its code finishing.
 AddEventHandler('bs:hook:player:unloaded', function() treating = false end)
 
 AddEventHandler('bs:medical:dot:revive', function(payload)

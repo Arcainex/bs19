@@ -189,15 +189,8 @@ CreateThread(function()
 
                 if onScreen then
                     -- Server max health (difficulty scales it), then the type default.
-                    -- Networked walkers: the server's own hp and max hp ride on the entity (zHp / zMhp), so the bar never
-                    -- shows a stale or default value. Otherwise the last value the server streamed.
-                    local bagHp, bagMax
-                    if entry.net then
-                        local okB, st = pcall(function() return Entity(entry.ped).state end)
-                        if okB and st then bagHp, bagMax = tonumber(st.zHp), tonumber(st.zMhp) end
-                    end
-                    local max = bagMax or (entry.rec and tonumber(entry.rec.mhp)) or (entry.def and entry.def.health) or 100
-                    local hp = bagHp or entry.hp or max
+                    local max = (entry.rec and tonumber(entry.rec.mhp)) or (entry.def and entry.def.health) or 100
+                    local hp = entry.hp or max
                     local frac = max > 0 and (hp / max) or 0.0
 
                     -- The last second of the linger fades out.
@@ -240,7 +233,7 @@ CreateThread(function()
                                     0.30 * scale, textAlpha, 216, 210, 194)
                             end
                             if H.showNumbers then
-                                drawLabel(('%d / %d'):format(math.max(0, math.floor(hp)), math.floor(max)),
+                                drawLabel(('%d / %d'):format(math.max(0, math.floor(hp)), max),
                                     sx, sy + 0.006 * scale, 0.24 * scale, textAlpha,
                                     rgb[1], rgb[2], rgb[3])
                             end

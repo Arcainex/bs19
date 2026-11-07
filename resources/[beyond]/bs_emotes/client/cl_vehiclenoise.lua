@@ -20,8 +20,8 @@ local MOVING    = 5.0
 local REV_RPM   = 0.45
 
 -- Loud vehicles are picked by GetVehicleClass, not model, so add-ons are covered.
--- 8 motorcycles, 9 off-road, 14 boats, 15 helicopters (own kind), 16 planes,
--- 17 service, 18 emergency, 19 military, 20 commercial
+--   8 motorcycles, 9 off-road, 14 boats, 15 helicopters (own kind), 16 planes,
+--   17 service, 18 emergency, 19 military, 20 commercial
 -- Everything else is `engine`. Class 13 (bicycles) makes no engine noise.
 local LOUD_CLASSES = {
     [8] = true, [9] = true, [14] = true, [17] = true,
@@ -96,7 +96,8 @@ end)
 
 -- The horn
 
--- 86 is INPUT_VEH_HORN: isControlPressed: holding the horn keeps drawing walkers.
+-- 86 is INPUT_VEH_HORN. IsControlPressed on purpose: holding the horn keeps
+-- drawing walkers. The cooldown limits the event rate.
 CreateThread(function()
     while true do
         Wait(150)

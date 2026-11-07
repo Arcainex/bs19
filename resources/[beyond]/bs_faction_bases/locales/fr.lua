@@ -66,10 +66,4 @@ return {
     ['fb.sentence_lifted'] = 'Ta peine a été levée.',
     ['fb.released_early'] = 'Tu as été libéré plus tôt.',
     ['fb.sentence_served'] = 'Peine purgée. Tu es libre.',
-    ['fb.i_remove_decay'] = 'Retirer le drapeau (la base se dégrade)',
-    ['fb.i_remove_all'] = 'Retirer le drapeau et la base',
-    ['fb.remove_decay_ask'] = 'Appuie encore pour retirer le drapeau. {n} éléments vont tomber en ruine en {h} h, {pct} % de leurs matériaux vont dans une caisse de récupération ici.',
-    ['fb.remove_all_ask'] = 'Appuie encore pour retirer le drapeau ET démonter {n} éléments tout de suite. {pct} % des matériaux et tout ce qui était stocké vont dans une caisse de récupération ici.',
-    ['fb.removed_decay'] = 'Drapeau retiré. La base est abandonnée et va tomber en ruine.',
-    ['fb.removed_all'] = 'Drapeau retiré. {n} éléments démontés, regarde la caisse de récupération.',
 }

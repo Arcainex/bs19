@@ -1,6 +1,8 @@
--- bs_traders - server side.
+-- bs_traders - server side. All transactions and mission decisions are made here; the client only asks and nothing it says about prices, stock or kills is trusted.
+-- NPC and mission definitions come from Registry (sv_registry.lua) so /traderdebug edits apply live.
 
 -- Admin check shared by every editor callback below. Editing is admin only (teleportAces / bs_admin).
+-- Ace list is in Traders.Settings.teleportAces (config_traders.lua).
 local function isAdmin(src)
     for _, ace in ipairs(Traders.Settings.teleportAces or {}) do
         if IsPlayerAceAllowed(src, ace) then return true end
@@ -27,7 +29,8 @@ end
 
 -- Per-player transaction lock
 
--- Per-source lock held for the whole callback.
+-- Per-source lock held for the whole callback. Callbacks check balance/stock, then yield (DB write, inventory call), so two rapid calls (double-click, spam) could both pass the same checks.
+-- A second call while one is in flight returns 'busy'. pcall around the body guarantees the lock is released on error.
 local txLock = {}
 
 local function withTxLock(src, fn)
@@ -88,7 +91,8 @@ local function buyEntry(npc, item)
     end
 end
 
--- Money goes through bs_core's plain-data exports
+-- Money goes through bs_core's plain-data exports, never methods on exports.bs_core:GetPlayer(): the export returns a serialised copy, so metatables and functions are gone (player:GetMoney is nil and throws).
+-- A throw inside a bridge callback reaches the client as nil, which shows up as a timeout. There is no GetMoney export, so reads use GetPlayerSummary (accounts.cash).
 local function cashOf(src)
     local ok, summary = pcall(function() return exports.bs_core:GetPlayerSummary(src) end)
     if not ok or type(summary) ~= 'table' then return 0 end
@@ -193,7 +197,7 @@ local function rankDiscountPct(src, npc)
     return math.max(0, math.min(50, per * math.max(0, count - idx)))
 end
 
--- Price paid by the player: trader multiplier, then skill and rank discounts.
+-- Price paid by the player: trader multiplier, then skill and rank discounts. Outsiders at a faction trader pay the surcharge, no discounts.
 local function unitPrice(src, npc, base)
     local mult = tonumber(npc.priceMult) or 1.0
     local price = math.max(1, math.floor(base * mult + 0.5))
@@ -205,7 +209,7 @@ local function unitPrice(src, npc, base)
     return discounted(price, pct)
 end
 
--- Price breakdown for the shop UI: base (after trader multiplier)
+-- Price breakdown for the shop UI: base (after trader multiplier), member price (with discounts) and outsider price (with surcharge).
 local function priceInfo(src, npc, base)
     local mult = tonumber(npc.priceMult) or 1.0
     local price = math.max(1, math.floor(base * mult + 0.5))
@@ -244,7 +248,9 @@ local function categoriesOf(npc)
     return out
 end
 
--- True if a player is close enough to `npcId` to trade.
+-- True if a player is close enough to `npcId` to trade. Checked server-side against the server's own ped coords; staff editing via /traderdebug get a longer leash (see npcs:debug:save).
+-- Horizontal distance with a separate, looser Z tolerance: the client ground-snaps the visible ped, so the configured Z can be off by a few metres.
+-- On failure it prints the npc, the player position and the npc position to help debug.
 local function nearNpc(src, npc)
     if not FlagNpcAllowed(src, npc.id) then return false end -- safezone flag NPCs: that faction only
     if denyReason(src, npc, true) then return false end
@@ -269,11 +275,11 @@ local function nearNpc(src, npc)
     return ok
 end
 
--- Shared with sv_wardrobe.lua (same Lua state): the npc reach check and the transaction lock are published as
+-- Shared with sv_wardrobe.lua (same Lua state): the npc reach check and the transaction lock are published as globals so there is one copy.
 NearNpc = nearNpc
 WithTxLock = withTxLock
 
--- Seconds left before `missionId` can be accepted again, or 0.
+-- Seconds left before `missionId` can be accepted again, or 0. Elapsed time is computed in the query with TIMESTAMPDIFF, since oxmysql returns TIMESTAMP columns as formatted strings and parsing them needs a timezone assumption.
 local function cooldownRemaining(charId, def)
     if not def then return 0 end
 
@@ -291,7 +297,7 @@ end
 
 -- Spawn list - public, every client needs it to place peds
 
--- Only enabled NPCs and only the fields a client needs to spawn one; prices and stock stay server-side.
+-- Only enabled NPCs and only the fields a client needs to spawn one; prices and stock stay server-side. Re-requested by every client on 'bs:traders:reload'.
 BSB.RegisterCallback('traders:list', function(src)
     local out = {}
     for _, id in ipairs(Registry.AllNpcIds()) do
@@ -315,7 +321,7 @@ end)
 
 -- Debug: reports which of the three checks rejected (no npc, disabled, too far) instead of one silent { ok = false }.
 BSB.RegisterCallback('traders:open', function(src, npcId)
-    -- Guarded: a throw here reaches the client as a bare nil (looks like a timeout).
+    -- Guarded: a throw here reaches the client as a bare nil (looks like a timeout). Registry.EffectiveNpc touches ZoneCoords and the override table and could throw too.
     local resolved, npc = pcall(Registry.EffectiveNpc, npcId)
     if not resolved then
         print(('^1[bs_traders]^7 traders:open(%s) threw in Registry.EffectiveNpc: %s')
@@ -346,7 +352,8 @@ BSB.RegisterCallback('traders:open', function(src, npcId)
                 math.abs(pos.z - npc.coords.z)) }
     end
 
-    -- Payload build is in its own pcall and the error text is sent back.
+    -- Payload build is in its own pcall and the error text is sent back. A handler that throws is answered with nil by sh_bridge.lua, which the client sees as "timeout".
+    -- Unguarded candidates: Stock.Get and exports.bs_inventory:CountItem.
     local built, payloadOrErr = pcall(function()
 
     local charId = charIdOf(src)
@@ -361,14 +368,13 @@ BSB.RegisterCallback('traders:open', function(src, npcId)
 
     if npcHasRole(npc, 'trader') then
         local sells = {}
-        -- Use a label string, not the ItemBlurb table ({ label, rounds }), or the UI shows "[object Object]".
+        -- Use a label string, not the ItemBlurb table ({ label, rounds }), or the UI shows "[object Object]". Resolved here so the UI does not need to know another resource's export shape; falls back to the item id.
         local cats = categoriesOf(npc)
         for _, e in ipairs(npc.sells) do
             local stock = Stock.Get(npcId, e.item)
             local okBlurb, blurb = pcall(function() return exports.bs_inventory:ItemBlurb(e.item, src) end)
             local info = (okBlurb and type(blurb) == 'table') and blurb or nil
             local locked = not rankOk(src, npc, e)
-            local definition=exports.bs_inventory:GetItem(e.item)
             sells[#sells + 1] = {
                 item = e.item, price = type(e.price) == 'number' and unitPrice(src, npc, e.price) or e.price,
                 info = type(e.price) == 'number' and priceInfo(src, npc, e.price) or nil,
@@ -377,7 +383,6 @@ BSB.RegisterCallback('traders:open', function(src, npcId)
                 stock = stock,   -- nil = unlimited; the UI reads that as such
                 label = (info and info.label) or e.item,
                 rounds = info and info.rounds or nil,
-                configurable=definition and definition.stack==1 and definition.data and definition.data.weapon~=nil or nil,
             }
         end
 
@@ -474,7 +479,7 @@ BSB.RegisterCallback('traders:buy', function(src, npcId, item, qty)
         local entry = sellEntry(npc, item)
         if not entry then return { ok = false, reason = Lp(src, 'trd.e_not_sold') } end
 
-        -- Price comes from Registry, but reject zero or negative prices (e.g. a staff typo via /traderdebug) so a buy
+        -- Price comes from Registry, but reject zero or negative prices (e.g. a staff typo via /traderdebug) so a buy can never pay the player.
         if type(entry.price) ~= 'number' or entry.price <= 0 then
             return { ok = false, reason = Lp(src, 'trd.e_not_sold') }
         end
@@ -493,7 +498,7 @@ BSB.RegisterCallback('traders:buy', function(src, npcId, item, qty)
             return { ok = false, reason = Lp(src, 'trd.e_stock') }
         end
 
-        -- GiveItem can fill some stacks and refuse the rest, and there is no "will it fit" check.
+        -- GiveItem can fill some stacks and refuse the rest, and there is no "will it fit" check. Count before and after and take back exactly what went in on refusal.
         local before = exports.bs_inventory:CountItem(src, item)
         local given, label = exports.bs_inventory:GiveItem(src, item, qty)
         if not given then
@@ -505,7 +510,7 @@ BSB.RegisterCallback('traders:buy', function(src, npcId, item, qty)
             return { ok = false, reason = Lp(src, 'trd.e_space') }
         end
 
-        -- RemoveMoney is checked: it is the last step and returns false if the player cannot pay.
+        -- RemoveMoney is checked: it is the last step and returns false if the player cannot pay. If it declines, the items and stock go back.
         if not exports.bs_core:RemoveMoney(src, 'cash', cost, 'npc_buy_' .. npcId) then
             exports.bs_inventory:RemoveItem(src, item, qty)
             local shelf = Stock.Get(npcId, item)
@@ -547,7 +552,7 @@ BSB.RegisterCallback('traders:sell', function(src, npcId, item, qty)
             return { ok = false, reason = Lp(src, 'trd.e_on_hand') }
         end
 
-        -- Take the items first: removeItem only succeeds for the full amount, so there is nothing to unwind
+        -- Take the items first. RemoveItem only succeeds for the full amount, so there is nothing to unwind, and payment only happens after the items are gone.
         if not exports.bs_inventory:RemoveItem(src, item, qty) then
             return { ok = false, reason = Lp(src, 'trd.e_on_hand') }
         end
@@ -563,7 +568,8 @@ BSB.RegisterCallback('traders:sell', function(src, npcId, item, qty)
     end)
 end)
 
--- On-screen objective tracker.
+-- On-screen objective tracker. This is the server half: the authoritative list of active missions and progress, pushed to the client on every change.
+-- GATHER counts are read live from the local inventory on the client (see cl_main.lua).
 
 local function itemLabel(item, src)
     if not item then return nil end
@@ -603,7 +609,7 @@ end
 
 -- Missions
 
--- Offered by this NPC if it is in npc.missions (what the menu is built from)
+-- Offered by this NPC if it is in npc.missions (what the menu is built from); def.giver is only a fallback. /traderdebug writes npc.missions but not giver, so checking giver alone refused missions that were on display.
 local function npcOffers(npc, missionId)
     for _, id in ipairs(npc.missions or {}) do
         if id == missionId then return true end
@@ -717,7 +723,7 @@ BSB.RegisterCallback('traders:missionTurnIn', function(src, npcId, missionId)
         if def.kind == 'kill' then
             if active.progress < def.target then return { ok = false, reason = Lp(src, 'trd.e_not_done') } end
         else
-            -- GATHER: check and consume here in one place
+            -- GATHER: check and consume here in one place, so the items cannot be spent elsewhere between a menu check and the turn-in. txLock covers two rapid turn-ins.
             if exports.bs_inventory:CountItem(src, def.item) < def.target then
                 return { ok = false, reason = Lp(src, 'trd.e_not_done') }
             end
@@ -736,7 +742,7 @@ BSB.RegisterCallback('traders:missionTurnIn', function(src, npcId, missionId)
             'INSERT INTO `bs_npc_mission_log` (`character_id`, `mission_id`) VALUES (?, ?)',
             { charId, missionId })
 
-        -- Same fix as the trade paths (see cashOf()).
+        -- Same fix as the trade paths (see cashOf()). Rewards use the plain-data exports; a throw after consuming items would have lost the items and the mission with no reward.
         local reward = def.reward or {}
         if reward.xp    and reward.xp    > 0 then
             exports.bs_core:AddXP(src, reward.xp, 'npc_mission_' .. missionId)
@@ -755,7 +761,7 @@ end)
 
 -- Kill-mission progress
 
--- Fed by bs_core's reward pipeline (sv_rewards.lua)
+-- Fed by bs_core's reward pipeline (sv_rewards.lua), which fires this per zombie kill with the actionId a mission's `filter` lists. No hook into bs_zombies needed.
 AddEventHandler('bs:hook:player:action', function(player, actionId)
     if not player or not player.source then return end
     local entry = State[player.source]
@@ -785,7 +791,7 @@ end)
 
 -- Trader editor (/traderdebug, F10, 'bs:traders:openEditor')
 
--- Every write is gated on isAdmin(src) again, in case the ace was lost mid-session or the callback was forged.
+-- Every write is gated on isAdmin(src) again, in case the ace was lost mid-session or the callback was forged. Writes are logged to bs_guard_log.
 
 BSB.RegisterCallback('traders:debug:list', function(src)
     if not isAdmin(src) then return { ok = false, reason = 'no permission' } end
@@ -809,6 +815,7 @@ local function isNum(v) return type(v) == 'number' and v == v and v > -1e9 and v
 local function isInt(v) return isNum(v) and v == math.floor(v) end
 
 -- Validates and cleans an editor patch. Returns clean patch, errors.
+-- An error is { field, key, vars, row } where key is a ui.v_* locale key.
 local function cleanNpcPatch(npcId, p)
     local out, errs = {}, {}
     local function err(field, key, vars, row) errs[#errs + 1] = { field = field, key = key, vars = vars, row = row } end
@@ -964,7 +971,7 @@ BSB.RegisterCallback('traders:debug:saveNpc', function(src, npcId, patch)
     return { ok = true, npc = npc }
 end)
 
--- Duplicate an NPC: copies the effective npc (config plus live overrides) into a new id at the caller's feet.
+-- Duplicate an NPC: copies the effective npc (config plus live overrides) into a new id at the caller's feet. It is a full override, and trade lists are deep-copied so edits never leak between the two.
 local function deepCopy(v)
     if type(v) ~= 'table' then return v end
     local out = {}
@@ -1058,7 +1065,7 @@ BSB.RegisterCallback('traders:debug:here', function(src)
              heading = GetEntityHeading(ped) }
 end)
 
--- Reverse of npcs:debug:here: take the caller to this NPC.
+-- Reverse of npcs:debug:here: take the caller to this NPC. Needs isAdmin(), not isStaff() (see `teleportAces` in config_traders.lua). Coordinates come from Registry.EffectiveNpc, never the client.
 BSB.RegisterCallback('traders:debug:teleport', function(src, npcId)
     if not isAdmin(src) then return { ok = false, reason = 'admins only' } end
 
@@ -1081,7 +1088,8 @@ AddEventHandler('bs:hook:player:loaded', function(player)
     end)
 end)
 
--- Rehydrate everyone already in the world.
+-- Rehydrate everyone already in the world. State[src] was only filled by the bs:hook:player:loaded handler, so restarting bs_traders left State empty and hid the Contracts tab (charId nil).
+-- Rebuild it with GetPlayers() + GetPlayerSummary (charId is plain data).
 AddEventHandler('onResourceStart', function(resource)
     if resource ~= GetCurrentResourceName() then return end
 
@@ -1177,80 +1185,4 @@ exports('NpcInfo', function(npcId)
         end
     end
     return { x = c.x, y = c.y, z = c.z, faction = fid, quest = npcHasRole(npc, 'quest') }
-end)
-
--- A configured purchase is one new weapon, with new parts from this trader's shelf.
-local bundleCounter=0
-local function bundleSerial(src)
-    bundleCounter=bundleCounter+1
-    return ('%x-%x-%x-%x'):format(os.time(),src,bundleCounter,math.random(0,0x7fffffff))
-end
-local function weaponOffer(src,npcId,item,selection)
-    local ped=GetPlayerPed(src)
-    if not ped or ped==0 or GetEntityHealth(ped)<=0 or GetPlayerRoutingBucket(src)~=0 then return nil,'Trader unavailable' end
-    local npc=Registry.EffectiveNpc(npcId)
-    if not npc or npc.disabled or not npcHasRole(npc,'trader') or not nearNpc(src,npc) then return nil,'Trader unavailable' end
-    local reason,vars=denyReason(src,npc,true)
-    if reason then return nil,Lp(src,reason,vars) end
-    local entry=sellEntry(npc,item)
-    local def=type(item)=='string' and exports.bs_inventory:GetItem(item)
-    local weapon=def and def.data and def.data.weapon
-    if not entry or not weapon or def.stack~=1 or not rankOk(src,npc,entry) or type(entry.price)~='number' or entry.price<=0 then return nil,'Weapon unavailable' end
-    local ok,compatible=pcall(function() return exports.bs_weapons:AttachmentsFor(weapon) end)
-    if not ok then return nil,'Weapon configuration unavailable' end
-    local options,byId={},{}
-    for _,att in ipairs(compatible or {}) do
-        local part=sellEntry(npc,att.item)
-        if part and rankOk(src,npc,part) and type(part.price)=='number' and part.price>0 then
-            local option={id=att.id,item=att.item,label=att.label,slot=att.slot,price=unitPrice(src,npc,part.price),stock=Stock.Get(npcId,att.item)}
-            byId[att.id]=option;options[#options+1]=option
-        end
-    end
-    if type(selection)~='table' or #selection>8 then return nil,'Invalid attachment selection' end
-    local price=unitPrice(src,npc,entry.price)
-    local parts,slots,lines={}, {}, {{item=item,amount=1}}
-    for _,id in ipairs(selection) do
-        local att=type(id)=='string' and byId[id]
-        if not att or slots[att.slot] then return nil,'Choose one compatible part per mount' end
-        slots[att.slot]=true;parts[#parts+1]=att;price=price+att.price;lines[#lines+1]={item=att.item,amount=1}
-    end
-    for _,line in ipairs(lines) do local remaining=Stock.Get(npcId,line.item);if remaining~=nil and remaining<line.amount then return nil,'Selected equipment is out of stock' end end
-    return {price=price,options=options,parts=parts,lines=lines,item=item,weapon=weapon}
-end
-BSB.RegisterCallback('traders:weaponQuote',function(src,npcId,item,selection)
-    local offer,why=weaponOffer(src,npcId,item,selection or {})
-    if not offer then return {ok=false,reason=why} end
-    return {ok=true,price=offer.price,options=offer.options}
-end)
-BSB.RegisterCallback('traders:weaponBuy',function(src,npcId,item,selection,expectedPrice)
-    return withTxLock(src,function()
-        local offer,why=weaponOffer(src,npcId,item,selection)
-        if not offer then return {ok=false,reason=why} end
-        if offer.price~=expectedPrice then return {ok=false,reason='Price changed; review your configuration again'} end
-        local reserved={}
-        local function restoreStock() for _,line in ipairs(reserved) do if Stock.Get(npcId,line.item)~=nil then Stock.Take(npcId,line.item,-line.amount) end end end
-        for _,line in ipairs(offer.lines) do
-            if not Stock.Take(npcId,line.item,line.amount) then restoreStock();return {ok=false,reason='Out of stock'} end
-            reserved[#reserved+1]=line
-        end
-        local meta={serial=bundleSerial(src),attachments={},attachmentInstances={}}
-        for _,att in ipairs(offer.parts) do
-            local serial=bundleSerial(src)
-            meta.attachments[att.slot]=att.id
-            meta.attachmentInstances[att.slot]={serial=serial,item=att.item,metadata={serial=serial},durability=100}
-        end
-        if not exports.bs_core:RemoveMoney(src,'cash',offer.price,'npc_weapon_bundle_'..npcId) then restoreStock();return {ok=false,reason='Not enough cash'} end
-        local ok,given=pcall(function()return exports.bs_inventory:GiveAll(src,item,1,meta)end)
-        if not ok then
-            print(('[bs_traders] configured purchase requires review src=%s serial=%s price=%s'):format(src,meta.serial,offer.price))
-            return {ok=false,reason='Purchase needs staff review; do not retry this order'}
-        end
-        if not given then
-            local refunded=exports.bs_core:AddMoney(src,'cash',offer.price,'npc_weapon_bundle_refund_'..npcId)
-            restoreStock()
-            if refunded==false then print(('[bs_traders] bundle refund requires review src=%s serial=%s price=%s'):format(src,meta.serial,offer.price));return {ok=false,reason='Refund needs staff review'} end
-            return {ok=false,reason='No room for this weapon; payment returned'}
-        end
-        return {ok=true,cash=cashOf(src),serial=meta.serial,price=offer.price}
-    end)
 end)

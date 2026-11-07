@@ -12,13 +12,13 @@ Config.Classes = {
             maxHealth       = 200,
             armorCap        = 100,
             staminaMult     = 1.00,
-            carryWeight     = 45.0,
+            carryWeight     = 50.0,
             meleeDamageMult = 1.00,
             hungerRate      = 0.85,
             thirstRate      = 0.85,
         },
         startingSkills = { survival = 1 },
-        -- Origin is only a class: stats and starting skills, not a look.
+        -- Origin is only a class: stats and starting skills, not a look. Clothing is appearance, chosen at the wardrobe NPC and saved with the character; it never arrives in the bag. The items below are supplies.
         startingItems  = {
             { item = 'bandage', amount = 2 },
             { item = 'water_bottle', amount = 1 },
@@ -35,7 +35,7 @@ Config.Classes = {
             maxHealth       = 175,
             armorCap        = 75,
             staminaMult     = 1.25,
-            carryWeight     = 35.0,
+            carryWeight     = 50.0,
             meleeDamageMult = 1.30,
             hungerRate      = 1.10,
             thirstRate      = 1.10,
@@ -57,7 +57,7 @@ Config.Classes = {
             maxHealth       = 180,
             armorCap        = 90,
             staminaMult     = 1.00,
-            carryWeight     = 40.0,
+            carryWeight     = 50.0,
             meleeDamageMult = 0.90,
             hungerRate      = 0.95,
             thirstRate      = 0.95,
@@ -79,11 +79,11 @@ Config.Classes = {
             maxHealth       = 190,
             armorCap        = 110,
             staminaMult     = 0.90,
-            carryWeight     = 55.0,
+            carryWeight     = 50.0,
             meleeDamageMult = 1.05,
             hungerRate      = 1.00,
             thirstRate      = 1.00,
-            -- Added onto bs_vehicles' tempFixSuccessChance (see vehicles:tempfix in bs_vehicles/server/sv_main.lua).
+            -- Added onto bs_vehicles' tempFixSuccessChance (see vehicles:tempfix in bs_vehicles/server/sv_main.lua). Engineer is the closest fit to a mechanic; any class added later for that should carry this stat.
             tempFixBonus    = 0.20,
         },
         startingSkills = { crafting = 2 },
@@ -93,7 +93,8 @@ Config.Classes = {
         },
     },
 
-    -- Mechanic: close to the Engineer but not the same.
+    -- Mechanic: close to the Engineer but not the same. Engineers build (fortifications, crafted gear); Mechanics keep things running (vehicles, temporary fixes) and are lighter on their feet.
+    -- Both get an easier needle game when jump-starting a dead fuel pump (Vehicles.Pumps.jump.classes).
     mechanic = {
         label       = 'Mechanic',
         description = 'Keeps things running. Better with vehicles, and can coax power out of a dead forecourt.',
@@ -103,7 +104,7 @@ Config.Classes = {
             maxHealth       = 180,
             armorCap        = 95,
             staminaMult     = 1.00,
-            carryWeight     = 48.0,
+            carryWeight     = 50.0,
             meleeDamageMult = 1.00,
             hungerRate      = 1.00,
             thirstRate      = 1.00,

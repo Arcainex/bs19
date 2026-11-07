@@ -254,11 +254,4 @@ return {
     ['fac.cmd.rep_usage'] = 'Использование: /setfactionrep <serverId> <число>',
     ['fac.cmd.rep_nofaction'] = 'Этот игрок не состоит во фракции.',
     ['fac.cmd.rep_set'] = 'Репутация установлена: {n}.',
-    -- faction emblems and identity
-    ['fac.emblem_no_perm'] = 'Менять эмблему может только лидер или звания с правом «Эмблема».',
-    ['fac.emblem_wait'] = 'Подожди пару секунд перед повторным сохранением.',
-    ['fac.banner_added'] = 'Знамя установлено: {faction}.',
-    ['fac.banner_none_near'] = 'В радиусе 6 м нет установленных знамён.',
-    ['fac.banner_removed'] = 'Знамя убрано.',
-    ['fac.banner_list'] = 'Знамёна: {list}',
 }

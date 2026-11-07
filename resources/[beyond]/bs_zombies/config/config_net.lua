@@ -7,7 +7,7 @@ Zombies.Mode = Zombies.Mode or 'networked'
 
 -- One mode for server and clients
 do
-    local function valid(m) return m == 'networked' or m == 'networked_plus' or m == 'legacy' end
+    local function valid(m) return m == 'networked' or m == 'legacy' end
     if IsDuplicityVersion() then
         if GetResourceState('bs_config') == 'started' then
             local ok, p = pcall(function() return exports.bs_config:GetPayload() end)
@@ -56,10 +56,6 @@ Zombies.Net = {
 
     -- Lifetime
     corpseSeconds   = 300,
-    -- After a server kill the ped's owner must confirm it died. Unconfirmed after deathConfirmMs: every client
-    -- is told to kill or drop it; still unconfirmed deathReplaceMs later: the entity is deleted.
-    deathConfirmMs  = 1500,
-    deathReplaceMs  = 2500,
     corpseRetention = {
         minSeconds = 45,
         lootedSeconds = 60,
@@ -69,7 +65,7 @@ Zombies.Net = {
         playersAtMinimum = 32,
     },
     orphanSweepMs   = 10000,  -- sweep for bsZombie peds the registry does not know
-    replaceOnUnexpectedDelete = false, -- unused: a walker whose ped vanished is removed, never re-created under the same id
+    replaceOnUnexpectedDelete = true,  -- re-create a ped deleted without a server reason (if a player is near)
 
     -- Background simulation density while networked. Sim.population.target is multiplied by this at load.
     simDensityScale = 0.35,
@@ -97,7 +93,7 @@ Zombies.Net = {
 }
 
 -- Applied once at load, networked mode only. Needs config_sim.lua loaded first (fxmanifest order).
-if (Zombies.Mode == 'networked' or Zombies.Mode == 'networked_plus') and Sim and Sim.population then
+if Zombies.Mode == 'networked' and Sim and Sim.population then
     local k = tonumber(Zombies.Net.simDensityScale) or 1.0
     if k > 0 and k ~= 1.0 then
         if type(Sim.population.target) == 'number' then
@@ -108,8 +104,3 @@ if (Zombies.Mode == 'networked' or Zombies.Mode == 'networked_plus') and Sim and
         end
     end
 end
-
--- Networked+ uses an opt-in weighted population. Empty regions means anywhere.
-Zombies.Archetypes = {
-    { id='drunk_walker', label='Drunk walker', models={}, gait='move_m@drunk@verydrunk', speed='walk', weight=100, regions={} },
-}

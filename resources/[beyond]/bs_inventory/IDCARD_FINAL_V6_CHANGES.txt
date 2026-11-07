@@ -1,0 +1,7 @@
+ID card v6 changes:
+- personal values moved fully into bright field
+- values constrained in width for readability
+- signature moved left and lower
+- DOB now formats numeric timestamps / parseable dates as DD.MM.YYYY
+- number fallback supports citizenid/citizenId
+- stylesheet cache key bumped to idcard-final-v6

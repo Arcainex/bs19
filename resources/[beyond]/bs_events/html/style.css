@@ -1,12 +1,12 @@
 :root {
   --bg: rgba(18, 14, 10, 0.92);
   --edge: #6b3a1c;
-  --rust: #d6783a;
+  --rust: #728c42;
   --blood: #b3261e;
   --ash: #cfc6b8;
   --dim: #8c8272;
 }
-html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; font-family: 'Courier New', monospace; }
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; font-family:'Segoe UI Variable','Segoe UI',Arial,sans-serif; }
 .hidden { display: none !important; }
 #radio {
   position: absolute; top: calc(9vh / var(--ui-scale, 1)); left: 50%; transform: translateX(-50%);
@@ -27,7 +27,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; f
 .head { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 2px; color: var(--dim); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blood); animation: blink 1s steps(2) infinite; }
 .kind { margin-left: auto; color: var(--rust); }
-.title { margin-top: 8px; font-size: 20px; font-weight: bold; letter-spacing: 3px; color: var(--rust); text-shadow: 0 0 6px rgba(214,120,58,.5); }
+.title { margin-top: 8px; font-size: 20px; font-weight: bold; letter-spacing: 3px; color: var(--rust); text-shadow: 0 0 6px rgba(114,140,66,.5); }
 .body { margin-top: 6px; font-size: 14px; line-height: 1.45; min-height: 40px; white-space: pre-wrap; }
 .body::after { content: '_'; animation: blink .7s steps(2) infinite; }
 .grid { margin-top: 6px; font-size: 12px; color: var(--dim); letter-spacing: 1px; }

@@ -17,7 +17,7 @@ Config.Character = {
     confirmDeleteByName = true,
 }
 
--- Appearance schema: the creator UI is generated from it and the server validates against it
+-- Appearance schema. The creator UI is generated from it and the server validates against it, so adding a slider here exposes a new option.
 Config.Appearance = {
     { key = 'motherIndex',   label = 'Mother',        type = 'index',  min = 0, max = 45, default = 0 },
     { key = 'fatherIndex',   label = 'Father',        type = 'index',  min = 0, max = 45, default = 0 },

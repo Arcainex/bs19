@@ -3,13 +3,23 @@
 
 Multichar = {}
 
-Multichar.Scene = {
-    -- The lineup shell: the enclosed interior under the map (402.88, -996.45, -99.0), also used by BigDaddy-CharacterManager. Always loaded, enclosed, empty. It is pitch dark under the world blackout, hence Multichar.Scene.lights.
-    -- Entered in two steps (z = 30 first so the column caches, then dropped). z is -99.0 not -98.5 because the preview ped is frozen and would hover half a metre up.
-    ped     = { x = 402.88, y = -996.45, z = -99.0, h = 180.0 },
+-- Alpha-Z: einziger Erstspawn für NEU erstellte Charaktere.
+-- Die Charaktervorschau nutzt weiterhin Multichar.Scene (unverändert).
+Multichar.FirstSpawn = {
+    x = 1741.80,
+    y = 3274.91,
+    z = 41.14,
+    h = 326.4,
+    radius = 10.0,
+}
 
-    -- The cache-in point directly above the shell.
-    precache = { x = 402.88, y = -996.45, z = 30.0 },
+Multichar.Scene = {
+    -- Exact in-game /coords position on the rock; preserve custom-map collision height.
+    -- Heading is the measured in-game player orientation.
+    ped     = { x = 1528.94, y = 3199.54, z = 41.60, h = 98.72 },
+
+    -- Precache the outdoor scene before moving the hidden player to the preview spot.
+    precache = { x = 1528.94, y = 3199.54, z = 52.0 },
 
     -- Camera framing. A ped's origin is at its feet and an adult is ~1.8m, so every z is measured up from the ground.
     -- offset.x slides the camera and look-at target sideways together (parallel shift, no angle) so the character sits clear of the survivor list on the left. Negative x puts the ped right of centre.
@@ -25,23 +35,27 @@ Multichar.Scene = {
     zoomMin     = 0.75,
     zoomMax     = 2.2,
 
-    -- Max camera distance from the ped.
-    maxCamDistance = 3.4,
+    -- Max camera distance from the ped. The camera sits focus.offset.y * zoom metres south of the ped and the room has walls: FULL at max zoom needs 6.05m, through the south wall. 3.4m is safely short of it. Raise it if the stage moves somewhere roomier; /camdebug prints the distance used.
+    maxCamDistance = 5.5,
 
-    -- Mood while choosing: local only - does not touch the server's weather.
-    weather = 'OVERCAST',
-    hour    = 21,
-    minute  = 40,
+    -- Mood while choosing. Local only - does not touch the server's weather.
+    -- Underground there is no sky to speak of, but the clock still drives the
+    -- ambient tone, and a dead hour reads better than noon.
+    -- Nur fuer den Vorschau-Bildschirm; Weltwetter und Weltzeit laufen unbeeinflusst weiter.
+    weather = 'FOGGY',
+    hour    = 12,
+    minute  = 30,
+    weatherLock = { enabled = true, tickMs = 100 },
 
-    -- Lights: the world blackout kills every map light, but the lineup shell has no daylight.
+    -- Lights: the world blackout kills every map light, but the lineup shell has no daylight. These are local lights around the stage only; bs_world leaves its blackout off while the scene is up.
     lights  = {
         enabled = true,
         -- Key light, in front and above: the direction the camera looks from.
-        key     = { x = 0.0,  y = -2.2, z = 1.9, r = 240, g = 232, b = 214, range = 6.5, intensity = 3.0 },
+        key     = { x = 0.0, y = 0.0, z = 1.75, r = 248, g = 243, b = 229, range = 6.0, intensity = 3.4 },
         -- Cold rim from behind, so the silhouette separates from the dark.
-        rim     = { x = 1.5,  y = 1.9,  z = 1.7, r = 120, g = 145, b = 180, range = 5.0, intensity = 1.6 },
+        rim     = { x = 1.3, y = 1.2, z = 1.65, r = 163, g = 188, b = 202, range = 4.5, intensity = 1.4 },
         -- Warm bounce off the floor.
-        bounce  = { x = 0.0,  y = -0.7, z = 0.15, r = 205, g = 155, b = 110, range = 3.4, intensity = 1.0 },
+        bounce  = { x = 0.0, y = 0.0, z = 0.25, r = 211, g = 190, b = 155, range = 3.3, intensity = 1.1 },
     },
 
     fadeIn  = 600,
@@ -49,14 +63,20 @@ Multichar.Scene = {
 }
 
 Multichar.Settings = {
-    --- Camera angles the UI can jump to. y is metres back, z is a fraction of the measured body height
+    -- Camera angles the UI can jump to.
+    --- y is metres back, z is a fraction of the measured body height, and
+    --- x is a fraction of the visible half-width. See the note on
+    --- Multichar.Scene.cam above for where each distance comes from.
     focus = {
         -- z is a fraction of the measured body, 0 at the soles and 1 at the crown (taken from bones, see bodySpan() in cl_scene.lua).
+        -- Distances and fov: see Multichar.Scene.cam above. Long lens close by fits in the room.
 
         -- head to toe, with headroom: 2.57m of subject, centred at mid-body
         full = { offset = { x = -0.27, y = 2.75, z = 0.50 }, look = { x = 0.0, y = 0.0, z = 0.50 }, fov = 50.0 },
         -- waist to just over the head: 1.53m, centred at the sternum
         body = { offset = { x = -0.27, y = 1.90, z = 0.74 }, look = { x = 0.0, y = 0.0, z = 0.74 }, fov = 44.0 },
+        -- Legs and boots only; cam and look stay on the lower half.
+        legs = { offset = { x = -0.27, y = 1.32, z = 0.27 }, look = { x = 0.0, y = 0.0, z = 0.27 }, fov = 43.0 },
         -- head and shoulders: 0.67m, centred on the face
         face = { offset = { x = -0.27, y = 1.10, z = 0.92 }, look = { x = 0.0, y = 0.0, z = 0.92 }, fov = 34.0 },
     },
@@ -66,7 +86,9 @@ Multichar.Settings = {
     showLastWeapon = true,
 }
 
+--------------------------------------------------------------------------------
 -- Character creator rework
+--------------------------------------------------------------------------------
 
 -- F1 setting: show the CLOTHING step. Off = the step is hidden and the default outfit is used.
 Multichar.Creator = {
@@ -83,55 +105,54 @@ Multichar.Identity = {
     occupations = { 'unemployed', 'mechanic', 'nurse', 'teacher', 'soldier', 'farmer', 'police', 'cook', 'driver', 'student', 'office', 'builder' },
 }
 
--- Starting kit: one melee weapon and up to maxGoodies basic extras. item is a bs_inventory item name
+-- Starting kit: hunting knife is automatic, players choose only extras.
+-- Item amounts below are the amount granted when that extra is selected.
 Multichar.Kit = {
     enabled    = true,
-    maxGoodies = 5,
-    melee = {
-        { id = 'knife',    item = 'hunting_knife' },
-        { id = 'bat',      item = 'reinforced_bat' },
-        { id = 'crowbar',  item = 'crowbar' },
-        { id = 'machete',  item = 'machete' },
-        { id = 'hatchet',  item = 'hatchet' },
-    },
+    maxGoodies = 2,
+    -- No player-selectable weapons. The server always grants exactly one hunting_knife.
+    melee = {},
     goodies = {
-        { id = 'water',      item = 'water_bottle', amount = 5 },
-        { id = 'canned',     item = 'canned_food',  amount = 5 },
-        { id = 'bandage',    item = 'bandage',      amount = 2 },
-        { id = 'painkiller', item = 'painkillers',  amount = 1 },
-        { id = 'antiseptic', item = 'antiseptic',   amount = 1 },
-        { id = 'repair',     item = 'repair_kit',   amount = 1 },
+        { id = 'food',       item = 'canned_food',  amount = 3 },
+        { id = 'water',      item = 'water_bottle', amount = 3 },
+        { id = 'bandage',    item = 'bandage',      amount = 3 },
         { id = 'flashlight', item = 'flashlight',   amount = 1 },
-        { id = 'lockpick',   item = 'lockpick',     amount = 1 },
         { id = 'matches',    item = 'matches',      amount = 1 },
-        { id = 'rags',       item = 'rags',         amount = 3 },
+        { id = 'lockpick',   item = 'lockpick',     amount = 3 },
+        { id = 'medkit',     item = 'medkit',       amount = 1 },
+        { id = 'gasmask',    item = 'gas_mask',     amount = 1, label = 'Gasmaske' },
+        { id = 'smallpack',  item = 'pack_small',    amount = 1, label = 'Kleiner Rucksack' },
     },
 }
 
--- Clothing slots in the creator: top, legs, shoes and gloves/arms only.
-local function R(a, b) local t = {} for i = a, b do t[#t + 1] = i end return t end
-local function cat(...) local t = {} for _, l in ipairs({ ... }) do for _, v in ipairs(l) do t[#t + 1] = v end end return t end
-
+-- Creator uses the same valid collection slots as bs_clothing, not a fixed GTA list.
+-- CFX client natives enumerate GTA, DLC and installed addon collections.
+-- Component 5 (bags/backpacks) intentionally excluded; also no armour component 9.
 Multichar.Clothes = {
-    maxTexture = 24,
-    armsRange  = { 0, 40 },
-    -- [topDrawable] = arms drawable. Arms must match the top's cut: the top id itself is wrong for most tops and leaves holes in the upper body.
-    armsFor    = {
-        male = {
-            [0] = 0, [1] = 0, [2] = 2, [3] = 14, [4] = 14, [5] = 5, [6] = 14, [7] = 14, [8] = 8, [9] = 0, [10] = 14,
-            [11] = 15, [12] = 12, [13] = 11, [14] = 12, [16] = 0, [17] = 5, [18] = 0, [19] = 14, [20] = 14, [21] = 15,
-            [22] = 0, [23] = 14, [24] = 14, [25] = 15, [26] = 11, [27] = 14, [28] = 14, [29] = 14, [30] = 14,
-        },
-        female = {
-            [0] = 0, [1] = 5, [2] = 2, [3] = 3, [4] = 4, [5] = 4, [6] = 5, [7] = 5, [8] = 5, [9] = 0, [10] = 5,
-            [11] = 4, [12] = 12, [13] = 15, [14] = 14, [16] = 15, [17] = 0, [18] = 15, [19] = 0, [20] = 5, [21] = 0,
-            [22] = 4, [23] = 4, [24] = 5, [25] = 5, [26] = 12, [27] = 0, [28] = 15, [29] = 9, [30] = 2,
-        },
+    maxTexture = 255,
+    armsFor = {
+        male = { [0]=0, [1]=0, [2]=2, [3]=14, [4]=14, [5]=5, [6]=14, [7]=14, [8]=8, [9]=0, [10]=14 },
+        female = { [0]=0, [1]=5, [2]=2, [3]=3, [4]=4, [5]=4, [6]=5, [7]=5, [8]=5, [9]=0, [10]=5 },
     },
-    -- kind: c = component, p = prop. none per sex; props use -1.
-    top        = { c = 11, male = cat(R(0, 14), R(16, 30)), female = cat(R(0, 14), R(16, 30)) },
-    legs       = { c = 4,  male = cat(R(0, 10), { 12, 13, 14 }), female = cat(R(0, 10), { 12, 13, 14 }) },
-    shoes      = { c = 6,  male = { 1, 5, 6, 10, 12, 24, 25, 27 }, female = { 1, 2, 5, 6, 9, 10, 24, 25 } },
+    -- category, component / prop, reasonable preview default
+    mask       = { c = 1, default = 0 },
+    top        = { c = 11, default = 0 },
+    undershirt = { c = 8, default = 15 },
+    arms       = { c = 3, default = 0 },
+    legs       = { c = 4, default = 0 },
+    shoes      = { c = 6, default = 1 },
+    accessory  = { c = 7, default = 0 },
+    hat        = { p = 0, default = -1 },
+    glasses    = { p = 1, default = -1 },
+    ears       = { p = 2, default = -1 },
+    watch      = { p = 6, default = -1 },
+    bracelet   = { p = 7, default = -1 },
+    -- these are collection fragments, not numeric drawable indices
+    -- Gulag cloth 5 replaces a vanilla asset, so there is no independent collection to hide.
+    excludedCollections = {
+        'siycclothes2', 'mp_f_siycclothes2', 'navyaus',
+        'opforclothing', 'deadlands',
+    },
 }
 
 -- Starting look per sex (applied when the creator opens and on every sex switch). Merged over bs_core's Config.DefaultLook.
@@ -167,23 +188,4 @@ Multichar.Roll = {
         beard = { chance = 0.0 },
         lipstick = { chance = 0.0, styles = { 0 }, colors = { 5 } },
     },
-}
-
-
--- Selection scenery is client-local and lives in its own server routing bucket.
-Multichar.Selection = {
-    preset = 'grapeseed', weather = 'CLEAR', hour = 16, minute = 0,
-    lineup = true, arrival = false, arrivalMs = 1400,
-    sound = true, reducedMotion = false,
-    -- Screen grade while choosing: 'crisp' (no grade), 'cinematic' (light filmic contrast) or 'legacy' (the old soft haze).
-    grade = 'crisp',
-    -- Slow ease-in and a few centimetres of drift on the camera. Players can still turn motion off on the screen.
-    cameraMotion = true,
-    presets = {
-        grapeseed = { label='Grapeseed main street', ped={x=1666.28,y=4861.68,z=42.06,h=185.0}, cameraHeading=5.0, outdoor=true, props={} },
-        motel = { label='Abandoned motel', ped={x=966.0,y=-207.0,z=73.0,h=150.0}, cameraHeading=330.0, outdoor=true, props={} },
-        lineup = { label='Original lineup room', ped={x=402.88,y=-996.45,z=-99.0,h=180.0}, cameraHeading=0.0, outdoor=false, props={} },
-    },
-    factions = {},
-    props = {},
 }

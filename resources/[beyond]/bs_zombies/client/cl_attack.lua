@@ -21,38 +21,6 @@ local Swing = {
     stage    = 'idle',  -- where it got to, for the stranded message
 }
 
--- Getting up (ragdoll, get-up clip, a fighting knockdown, takedown): no swings or reaching until it has
--- been back on its feet for recoverMs. cl_execute also pushes recoverUntil on fighting staggers.
-local function recovering(entry, now)
-    local ped = entry.ped
-    if not ped or not DoesEntityExist(ped) then return true end
-    if IsPedRagdoll(ped) or IsPedGettingUp(ped) or IsPedFalling(ped) or (entry.takedownUntil or 0) > now then
-        entry.recoverUntil = math.max(entry.recoverUntil or 0, now + ((A and A.recoverMs) or 600))
-        return true
-    end
-    return now < (entry.recoverUntil or 0)
-end
-Zombies.Recovering = recovering
-
--- Keeps recoverUntil fresh for walkers near us, so the stand-up is seen even out of swing range
-CreateThread(function()
-    while true do
-        local wait = 400
-        if Zed and Zed.live then
-            local at = GetEntityCoords(PlayerPedId())
-            local now = GetGameTimer()
-            for _, entry in pairs(Zed.live) do
-                local ped = entry.ped
-                if not entry.dying and ped and DoesEntityExist(ped) and #(GetEntityCoords(ped) - at) < 12.0 then
-                    wait = 100
-                    if recovering(entry, now) and entry.reaching then Zombies.SetReaching(entry, false) end
-                end
-            end
-        end
-        Wait(wait)
-    end
-end)
-
 -- Godmode lives in bs_admin and works through the engine's damage pipeline
 local function isGodmode()
     if GetResourceState('bs_admin') ~= 'started' then return false end
@@ -151,7 +119,6 @@ end
 -- Arms-out silhouette layered over the shamble
 function Zombies.SetReaching(entry, on)
     if not R.enabled or not entry.reacher then return end
-    if on and recovering(entry, GetGameTimer()) then on = false end
     if entry.reaching == on then return end
 
     local ped = entry.ped
@@ -244,8 +211,15 @@ function Zombies.TryStrike(entry)
     -- Zombie godmode, not plain godmode
     if isZombieGodmoded() then return false end
 
-    -- Walkers on the ground, or still getting up, do not attack
-    if recovering(entry, now) then return false end
+    -- Alpha-Z: zombies cannot attack while they are on the ground, falling,
+    -- ragdolled or in the process of standing back up.
+    if IsPedRagdoll(entry.ped)
+        or IsPedFalling(entry.ped)
+        or IsPedGettingUp(entry.ped)
+        or GetEntityHeightAboveGround(entry.ped) < 0.35
+    then
+        return false
+    end
 
     -- Already on the floor bleeding out? Being chewed on adds nothing.
     if GetResourceState('bs_medical') == 'started' then
@@ -257,12 +231,6 @@ function Zombies.TryStrike(entry)
         return false
     end
 
-    -- Freeflow hooks: only a few walkers take turns on you (cl_fight_hooks.lua)
-    local C = Zombies.Combat
-    local hooks = C and C.enabled and Zombies.CombatTokenFull ~= nil
-    if hooks and Zombies.CombatTokenFull(entry.id, now) then return false end
-    local lead = hooks and math.max(0, C.windupLeadMs or 0) or 0
-
     Crumb('grab', 'start id=%s', tostring(entry.id))
     -- Each grab gets its own token and deadline
     entry.nextAttack = now + (A.cooldown or 1400)
@@ -270,7 +238,7 @@ function Zombies.TryStrike(entry)
     Swing.active   = true
     Swing.id       = entry.id
     Swing.stage    = 'windup'
-    Swing.deadline = now + lead + (A.windup or 420) + (A.swingTime or 1100)
+    Swing.deadline = now + (A.windup or 420) + (A.swingTime or 1100)
                          + (A.strandedGraceMs or 2500)
 
     local token = Swing.token
@@ -284,12 +252,7 @@ function Zombies.TryStrike(entry)
         SetEntityHeading(entry.ped, GetHeadingFromVector_2d(pAt.x - zAt.x, pAt.y - zAt.y))
     end
 
-    if hooks then
-        Zombies.CombatTakeToken(entry.id, now + lead + (A.swingTime or 1100))
-        -- Tells bs_fighting a hit is coming, and in how many ms (counter window)
-        if C.windupEvent ~= false then TriggerEvent('bs:z:windup', entry.id, lead + (A.windup or 420)) end
-    end
-    if lead <= 0 then playSwing(entry.ped) end
+    playSwing(entry.ped)
 
     -- Everyone else sees the same walker swing at the same moment.
     entry.state = 'grab'
@@ -307,14 +270,6 @@ function Zombies.TryStrike(entry)
         -- Body runs under pcall and the release happens afterwards no matter what
         local ok, err = pcall(function()
 
-        -- Telegraph first; a walker staggered meanwhile (counter) never swings
-        local countered = false
-        if lead > 0 then
-            Wait(lead)
-            countered = Zombies.IsStaggered ~= nil and Zombies.IsStaggered(entry.id)
-            if not countered then playSwing(entry.ped) end
-        end
-
         -- The windup makes the attack avoidable
         local dodgedAtStart = false
         if GetResourceState('bs_skills') == 'started' then
@@ -325,8 +280,7 @@ function Zombies.TryStrike(entry)
         Swing.stage = 'claw'
 
         local me = PlayerPedId()
-        if hooks and Zombies.IsStaggered and Zombies.IsStaggered(entry.id) then countered = true end
-        local connected = not countered and
+        local connected =
             DoesEntityExist(entry.ped)
             and not IsEntityDead(entry.ped)
             and not IsPedDeadOrDying(me, true)
@@ -339,12 +293,24 @@ function Zombies.TryStrike(entry)
             end
         end
 
+        -- Re-check at impact time. A zombie can be knocked down after starting its swing.
+        if connected and (
+            IsPedRagdoll(entry.ped)
+            or IsPedFalling(entry.ped)
+            or IsPedGettingUp(entry.ped)
+            or GetEntityHeightAboveGround(entry.ped) < 0.35
+        ) then
+            connected = false
+            Crumb('grab', 'cancelled id=%s (zombie on ground)', tostring(entry.id))
+        end
+
         if connected then
             -- Damage is local (the engine owns health); infection is the server's call and is the lasting part
             local sealed = Zombies.PlayerProtectedInVehicle and Zombies.PlayerProtectedInVehicle()
             if not isGodmode() and not sealed then
                 -- Worn armour reduces the bite
-                local bite = (A.biteDamage or 12) * ZDiff.Local('damage')
+                local def = Zombies.Types[entry.typeId] or Zombies.Types.walker
+                local bite = (tonumber(def.damage) or A.biteDamage or 12) * ZDiff.Local('damage')
                 local stopped = 0.0
 
                 if GetResourceState('bs_inventory') == 'started' then

@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_emotes actions: hands up and whistling.
+-- BeyondSurvival - bs_emotes actions: hands up and whistling. Both are upper-body animations (flag 49) so you can still walk and look around.
 
 Actions = { handsUp = false, whistling = false }
 
@@ -25,7 +25,9 @@ local function busy()
     return false
 end
 
+--------------------------------------------------------------------------------
 -- Hands up
+--------------------------------------------------------------------------------
 
 function Actions.SetHandsUp(state)
     local ped = PlayerPedId()
@@ -45,12 +47,12 @@ function Actions.SetHandsUp(state)
     return true
 end
 
-RegisterCommand('bs_handsup', function()
+RegisterCommand('bs_handsup_h', function()
     if LocalPlayer.state.bsDrone then return end -- flying the drone
     if busy() then return end
     Actions.SetHandsUp(not Actions.handsUp)
 end, false)
-RegisterKeyMapping('bs_handsup', L('emote.key_handsup'), 'keyboard', Emotes.Keys.handsUp)
+RegisterKeyMapping('bs_handsup_h', L('emote.key_handsup'), 'keyboard', Emotes.Keys.handsUp)
 
 -- Keep the pose alive: any task change (bump, ragdoll) cancels the anim, so re-apply it while hands are up.
 CreateThread(function()
@@ -83,9 +85,13 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Whistle
+--------------------------------------------------------------------------------
 
-RegisterCommand('bs_whistle', function()
+-- Use a new command name so old persisted FiveM key mappings (e.g. H -> bs_whistle)
+-- can no longer trigger whistling together with hands-up.
+RegisterCommand('bs_whistle_action', function()
     if LocalPlayer.state.bsDrone then return end -- flying the drone
     if busy() then return end
     if GetGameTimer() - lastWhistle < (Emotes.Whistle.cooldown or 1500) then return end
@@ -103,7 +109,11 @@ RegisterCommand('bs_whistle', function()
     -- Whistling is noise, and noise is what the dead follow.
     Noise.Make('whistle', GetEntityCoords(ped))
 end, false)
-RegisterKeyMapping('bs_whistle', 'Whistle', 'keyboard', Emotes.Keys.whistle)
+RegisterKeyMapping('bs_whistle_action', 'Whistle', 'keyboard', Emotes.Keys.whistle)
+
+-- Legacy command intentionally does nothing. This neutralises old saved H bindings
+-- from earlier versions without touching the hands-up mapping.
+RegisterCommand('bs_whistle', function() end, false)
 
 AddEventHandler('bs:hook:player:unloaded', function()
     if Actions.handsUp then Actions.SetHandsUp(false) end

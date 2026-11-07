@@ -1,4 +1,6 @@
--- bs_emotes - prone: gTA V has no real prone state
+-- bs_emotes - prone.
+-- GTA V has no real prone state, so this drives the crawl animation set manually with forward/backward movement.
+-- The weapon animation overrides the crawl pose when aiming. config allowAiming decides whether aiming is allowed while down (false forces standing up first).
 
 Prone = { active = false, moving = false }
 
@@ -35,7 +37,7 @@ function Prone.Speed()
     return math.min(scaled, cfg.maxSpeed or 0.6)
 end
 
--- move_crawl has no idle clip (the config idle is the forward crawl, which has root motion), so lying still would drift.
+-- move_crawl has no idle clip (the config idle is the forward crawl, which has root motion), so lying still would drift. The animation is frozen when there is no input; the manual translation below does the actual movement.
 local function playCrawl(clip, speed)
     local ped = PlayerPedId()
 

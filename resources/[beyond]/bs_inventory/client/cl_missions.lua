@@ -22,10 +22,3 @@ RegisterNUICallback('missionClaim', function(data, cb)
     if r and not r.ok and r.error then TriggerEvent('bs:ui:notify', { type = 'warn', message = r.error }) end
     cb(r or { ok = false })
 end)
-
-RegisterNUICallback('missionAccept', function(data, cb)
-    if type(data) ~= 'table' then return cb({ ok = false }) end
-    local result = BSB.Await('inventory:missionAccept', 8000, data.source, data.id)
-    if result and not result.ok and result.error then TriggerEvent('bs:ui:notify', { type = 'warn', message = result.error }) end
-    cb(result or { ok = false })
-end)

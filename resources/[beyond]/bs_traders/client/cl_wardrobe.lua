@@ -1,4 +1,5 @@
 -- bs_traders - the changing room: browsing, previewing and the camera.
+-- Preview sets components on the real player ped (no doll), so the shop snapshots the outfit on open and must restore it on exit.
 
 local shop = {
     open = false,
@@ -10,18 +11,18 @@ local shop = {
     gender = 'male',
     who = { vip = false, level = 0 },
 
-    -- Camera orbit vs turning the ped: orbit moves the camera around the character (drag) so you can see the back
+    -- Camera orbit vs turning the ped: orbit moves the camera around the character (drag) so you can see the back; turning the ped changes which way the character faces (arrow buttons).
     orbit = 0.0,
     zoom = 1.0,
 
-    -- Auto arms: true until the player picks a sleeve by hand in the Arms category.
+    -- Auto arms: true until the player picks a sleeve by hand in the Arms category. While true, changing the top also sets component 3 to match. Once the player chooses, it goes false and the shop stops overriding.
     autoArms = true,
 
     -- Pose being held, or nil for standing. See setPose.
     pose = nil,
 }
 
--- Read by cl_main.lua's pushTracker. Both files share a Lua state, so this is a plain global.
+-- Read by cl_main.lua's pushTracker. Both files share a Lua state, so this is a plain global. Lets the objective tracker hide while this screen is up.
 WardrobeIsOpen = false
 
 local function send(payload) SendNUIMessage(payload) end
@@ -39,7 +40,7 @@ end
 
 local function ped() return PlayerPedId() end
 
--- Which freemode model this is; decides the names shown and what "nothing" resolves to.
+-- Which freemode model this is; decides the names shown and what "nothing" resolves to. Anything not female is treated as male (safer default for addon bodies).
 local function genderOf(p)
     return GetEntityModel(p) == GetHashKey('mp_f_freemode_01') and 'female' or 'male'
 end
@@ -53,7 +54,7 @@ local function enumerate(categories)
         local entry = {
             id = cat.id, label = cat.label, kind = cat.kind,
             index = cat.index, price = cat.price,
-            -- The drawable meaning "nothing" for this category on this model, or nil if there is none.
+            -- The drawable meaning "nothing" for this category on this model, or nil if there is none. The panel only draws a Remove row when this is set.
             bare = Wardrobe.BareFor(cat.id, shop.gender),
         }
 
@@ -71,24 +72,15 @@ local function enumerate(categories)
                 and GetNumberOfPedPropTextureVariations(p, cat.index, entry.current) or 0
         end
 
-        entry.available = {}
-        for drawable = 0, (entry.count or 0) - 1 do
-            local textures = cat.kind == 'component'
-                and GetNumberOfPedTextureVariations(p, cat.index, drawable)
-                or GetNumberOfPedPropTextureVariations(p, cat.index, drawable)
-            if textures and textures > 0 then
-                entry.available[#entry.available + 1] = drawable
-            end
-        end
-
         -- Categories the model has nothing for are hidden, since an empty tab looks broken.
-        if #entry.available > 0 then out[#out + 1] = entry end
+        if (entry.count or 0) > 0 then out[#out + 1] = entry end
     end
 
     return out
 end
 
--- Put one garment on now: arms: a top also sets component 3 while auto arms is on.
+-- Put one garment on now.
+-- Arms: a top also sets component 3 while auto arms is on. There is no native for the correct torso of an arbitrary base-game top, so it uses the same index as the top when that exists (see Clothing.TorsoMap in bs_inventory).
 local function wear(cat, drawable, texture, remove)
     local p = ped()
     texture = math.max(0, math.floor(tonumber(texture) or 0))
@@ -134,9 +126,10 @@ local function wear(cat, drawable, texture, remove)
     end
 end
 
--- Poses: see Wardrobe.Poses in config_wardrobe.lua.
+-- Poses
+-- See Wardrobe.Poses in config_wardrobe.lua. Sleeve clipping shows when the arms are raised, so a static pose would hide the fault the Arms category fixes.
 
--- Resolve a pose's clip once.
+-- Resolve a pose's clip once. DoesAnimDictExist can be true for a dict without the named clip, and TaskPlayAnim on a missing clip fails silently. GetAnimDuration returns 0 for a missing clip, so use that. Same pattern as resolveWorkAnim in cl_main.lua.
 local poseCache = {}
 
 local function resolvePose(pose)
@@ -204,6 +197,7 @@ local function focusPoint(focusId)
 end
 
 -- Place the camera for a body part at the current orbit and zoom.
+-- Everything is computed from the ped's position and heading, so it works anywhere. Orbit rotates the camera offset around the ped; the ped itself is never touched.
 local function aimCamera(focusId, instant)
     if not shop.cam then return end
 
@@ -250,7 +244,7 @@ local function startCamera()
     RenderScriptCams(true, true, 400, true, true)
     aimCamera('full', true)
 
-    -- Idle camera: the engine starts a slow camera drift after a few seconds of standing still and overrides scripted cams.
+    -- Idle camera: the engine starts a slow camera drift after a few seconds of standing still and overrides scripted cams. InvalidateIdleCam must be called every frame to hold it off.
     CreateThread(function()
         while shop.cam do
             Wait(0)
@@ -270,6 +264,7 @@ end
 -- Opening and closing
 
 -- Restore the original outfit.
+-- BS.Outfit.Apply takes (ped, outfit); it needs the ped because bs_multichar also uses it for the preview ped. Always pass both arguments.
 local function restore()
     if shop.snapshot then
         pcall(function() exports.bs_core:ApplyOutfit(PlayerPedId(), shop.snapshot) end)
@@ -293,7 +288,7 @@ local function close(keep)
     TriggerEvent('bs:ui:closed', 'wardrobe')
     nudgeTracker()
 
-    -- Persist only what was paid for. bs_core's outfit layer saves the ped to character metadata
+    -- Persist only what was paid for. bs_core's outfit layer saves the ped to character metadata, so pushing after a purchase keeps the clothes across relogs, and skipping it on cancel stops its 60-second autosave from saving a browsing session.
     if keep then TriggerEvent('bs:outfit:push') end
 
     shop.npcId = nil
@@ -305,7 +300,7 @@ function OpenWardrobe(npcId)
 
     local result = BSB.Await('wardrobe:open', 5000, npcId)
     if not result or not result.ok then
-        -- Mirror of the hand-off in cl_main.lua.
+        -- Mirror of the hand-off in cl_main.lua. If a stale option sends a non-clothing npc here, the server says so, so fall through to the menu that npc actually has.
         local reason = result and result.reason or ''
         if reason:find('does not sell clothes') and OpenNpcMenu then
             return OpenNpcMenu(npcId)
@@ -322,7 +317,7 @@ function OpenWardrobe(npcId)
     shop.pose = nil
     shop.who = { vip = result.vip, level = result.level }
 
-    -- The server's gender decides what the shop charges and stores; the ped's model decides what is on screen.
+    -- The server's gender decides what the shop charges and stores; the ped's model decides what is on screen. If they disagree the model wins here so names and bare drawables match the mesh.
     shop.gender = genderOf(ped())
 
     -- Snapshot before anything is previewed. Everything depends on this.
@@ -348,7 +343,7 @@ function OpenWardrobe(npcId)
         categories = cats,
     })
 
-    -- Nothing is taken from the player until the panel confirms it is on screen.
+    -- Nothing is taken from the player until the panel confirms it is on screen. Freezing the ped and taking NUI focus first could leave a player stuck if the page failed to load, so wait for the NUI handshake.
     local waited = 0
     while not shop.ready and waited < 2500 do
         Wait(50)
@@ -405,18 +400,6 @@ RegisterNUICallback('wardrobeWear', function(data, cb)
     local cat = Wardrobe.ByCategory[data and data.category]
     if not cat then return cb({ ok = false }) end
 
-    if not shop.open then return cb({ ok = false }) end
-    local drawable = math.floor(tonumber(data.drawable) or -1)
-    if not data.remove then
-        local count = cat.kind == 'component'
-            and GetNumberOfPedDrawableVariations(ped(), cat.index)
-            or GetNumberOfPedPropDrawableVariations(ped(), cat.index)
-        local textures = drawable >= 0 and drawable < count and (cat.kind == 'component'
-            and GetNumberOfPedTextureVariations(ped(), cat.index, drawable)
-            or GetNumberOfPedPropTextureVariations(ped(), cat.index, drawable)) or 0
-        if textures <= 0 then return cb({ ok = false, error = 'This garment is unavailable' }) end
-        data.texture = math.min(math.max(0, math.floor(tonumber(data.texture) or 0)), textures - 1)
-    end
     wear(cat, data.drawable, data.texture, data.remove)
 
     -- Return what the ped actually has so the panel's counters follow the clamping. If the top moved the arms too, the arms row is updated as well.
@@ -467,7 +450,7 @@ RegisterNUICallback('wardrobeTurn', function(data, cb)
     cb({ ok = true })
 end)
 
--- Hold a pose to judge the arms. `pose` nil (or the id already held) stands the ped up again
+-- Hold a pose to judge the arms. `pose` nil (or the id already held) stands the ped up again, since the panel buttons act as a toggle group.
 RegisterNUICallback('wardrobePose', function(data, cb)
     local wanted = data and data.pose
     if wanted == shop.pose then wanted = nil end
@@ -508,7 +491,7 @@ end)
 
 -- Outfits
 
--- Wearing a saved outfit is local and free.
+-- Wearing a saved outfit is local and free. The server refuses to save outfits containing unowned items (wardrobe:outfitSave), so every garment is already paid for and the diff is empty; the usual Confirm still happens server-side.
 RegisterNUICallback('wardrobeOutfitWear', function(data, cb)
     local parts = data and data.parts
     if type(parts) ~= 'table' then return cb({ ok = false }) end
@@ -546,21 +529,21 @@ end)
 
 -- Money while the shop is open
 
--- Cash is read once in wardrobe:open, so a balance change while in the shop left Confirm disabled on a stale value.
+-- Cash is read once in wardrobe:open, so a balance change while in the shop left Confirm disabled on a stale value. The panel now gets a refreshed figure while open.
 RegisterNetEvent('bs:player:money', function(account, balance)
     if not shop.open then return end
     if account ~= 'cash' then return end
     send({ action = 'wardrobe', state = 'cash', cash = tonumber(balance) or 0 })
 end)
 
--- Raised by the dot option cl_peds registers on clothing peds. bs_interactions wraps option args in one payload
+-- Raised by the dot option cl_peds registers on clothing peds. bs_interactions wraps option args in one payload table (see Target.Run), so the npc id arrives as payload.args.
 RegisterNetEvent('bs:traders:wardrobe', function(payload)
     OpenWardrobe(payload and payload.args)
 end)
 
 -- Safety
 
--- Every way a fitting can end without a decision restores the old clothes
+-- Every way a fitting can end without a decision restores the old clothes, so a player who dies in the shop is not revived in something they never bought.
 AddEventHandler('bs:ui:opened', function(what)
     if what ~= 'wardrobe' and shop.open then close(false) end
 end)
@@ -586,7 +569,7 @@ CreateThread(function()
     end
 end)
 
--- Escape hatch that does not depend on the UI: a plain chat command that restores the player from any state
+-- Escape hatch that does not depend on the UI: a plain chat command that restores the player from any state this resource can leave them in (no NUI, focus or page needed).
 RegisterCommand('unstick', function()
     local p = ped()
 
@@ -606,7 +589,7 @@ end, false)
 TriggerEvent('chat:addSuggestion', '/unstick',
     'Release the camera, the freeze and the mouse if a menu leaves you stuck')
 
--- Panel-only test: opens the wardrobe UI with a small fake payload and no server calls
+-- Panel-only test: opens the wardrobe UI with a small fake payload and no server calls (no npc, nothing can be bought or saved). Separates a broken page from a broken open sequence. Otherwise a real session (snapshot, camera, focus).
 RegisterCommand('wardrobetest', function()
     if shop.open then return say('Already open.') end
 

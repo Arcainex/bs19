@@ -1,13 +1,13 @@
 -- bs_interactions - container state and loot rolls.
+-- A container is identified by its rounded world coordinates, so it is stable across restarts and the same for everyone. Loot is rolled server-side: the client only says which container it searched; the server checks the cooldown and rolls the table.
 
 local searched = {}     -- [key] = os.time() when it was emptied
 local inFlight = {}     -- [key] = source, while a search is running
-local tickets = {}
 local checkedAt = {}    -- [key] = os.time() when containers:check last succeeded
 
 local function typeDef(typeId) return Containers.Types[typeId] end
 
--- `key` ("x.x:y.y:z.z") is built client-side from the targeted entity
+-- `key` ("x.x:y.y:z.z") is built client-side from the targeted entity, so the server treats it as a claim: the claimed position must be near the calling player when the search starts and again when it is collected, and loot needs a minimum time after the check.
 local CONTAINER_PROXIMITY = 4.0 -- matches cl_search.lua's searchOption distance (2.4) plus movement slack
 
 local function parseKey(key)
@@ -22,14 +22,14 @@ local function nearKey(src, key)
     if not x then return false end
 
     local ped = GetPlayerPed(src)
-    if not ped or ped == 0 or GetEntityHealth(ped)<=0 then return false end
+    if not ped or ped == 0 then return false end
 
     local at = GetEntityCoords(ped)
     local dx, dy, dz = at.x - x, at.y - y, at.z - z
     return (dx * dx + dy * dy + dz * dz) <= (CONTAINER_PROXIMITY * CONTAINER_PROXIMITY)
 end
 
--- Ownership check: is the boot at this key somebody's own car?
+-- Ownership check: is the boot at this key somebody's own car? The client hides the option, but the server enforces it. The vehicle is found by position, its plate read here, and bs_vehicles asked who owns it. Wrapped in pcall; on error it falls back to allowed, since blocking every boot is worse.
 local function bootIsOwned(key)
     if GetResourceState('bs_vehicles') ~= 'started' then return false end
 
@@ -70,7 +70,7 @@ local function cooldownLeft(typeId, key)
     return left > 0 and left or 0
 end
 
--- Sweep old entries so `searched` and `checkedAt` do not grow forever.
+-- Sweep old entries so `searched` and `checkedAt` do not grow forever. Uses the longest respawn window of any container type: an entry older than that is past its own cooldown whatever its type. `checkedAt` also covers checks never followed by a loot.
 local MAX_RESPAWN = Containers.Settings.defaultRespawn or 1800
 for _, def in pairs(Containers.Types) do
     if def.respawn and def.respawn > MAX_RESPAWN then MAX_RESPAWN = def.respawn end
@@ -92,7 +92,7 @@ CreateThread(function()
     end
 end)
 
--- Rolls a loot table from bs_economy's config, server-side so the table never reaches a player.
+-- Rolls a loot table from bs_economy's config, server-side so the table never reaches a player. The Scavenger perk buys extra draws, checked per search.
 local function lootBonus(src)
     if GetResourceState('bs_skills') ~= 'started' then return 0 end
     local ok, value = pcall(function() return exports.bs_skills:LootBonus(src) end)
@@ -106,51 +106,35 @@ local function dropKeep(src)
     return (ok and type(value) == 'number') and value or 1.0
 end
 
-local function lootPreset()
-    local id=BSConfigGet and BSConfigGet('Scavenge.difficulty',Scavenge.difficulty)or Scavenge.difficulty
-    return Scavenge.presets[id]or Scavenge.presets.medium
-end
-local function itemWeight(entry,preset)
-    local definition=exports.bs_inventory:GetItem(entry.item)
-    if not definition then return 0 end
-    local data=definition.data or {}
-    local firearm=type(data.spawnRounds)=='number'and not data.throwable
-    local multiplier=firearm and preset.firearms or (definition.category=='attachment'or entry.item=='gun_parts')and preset.parts or definition.category=='ammo'and preset.ammo or 1
-    return math.max(0,tonumber(entry.weight)or 0)*multiplier
-end
-local function rollLoot(tableId, src, single)
+local function rollLoot(tableId, src)
     local tbl = exports.bs_economy:GetLootTable(tableId)
     if not tbl then return {} end
-    local preset=lootPreset()
-    local keep = single and 1 or dropKeep(src)
+    local keep = dropKeep(src)
 
     local rolls = math.random(tbl.rolls and tbl.rolls.min or 0, tbl.rolls and tbl.rolls.max or 1)
-        + (single and 0 or lootBonus(src))
+        + lootBonus(src)
     -- bs_config loot multipliers
     local lootMult = BSConfigGet and tonumber(BSConfigGet('Global.lootMultiplier', 1.0)) or 1.0
     local rollMult = BSConfigGet and tonumber(BSConfigGet('Global.lootRollsMultiplier', 1.0)) or 1.0
-    rollMult=rollMult*preset.rolls
     if rollMult ~= 1.0 then rolls = math.floor(rolls * rollMult + math.random()) end
-    if single then rolls=1 end
-    rolls=math.max(0,math.min(32,rolls))
+    -- A single searched world object may yield at most three weighted loot results.
+    -- Chances, weights and amounts stay unchanged; only extra perk/config rolls are capped.
+    rolls = math.min(3, math.max(0, rolls))
     local out = {}
 
     for _ = 1, rolls do
         local total = 0
-        for _, entry in ipairs(tbl.entries or {}) do total = total + itemWeight(entry,preset) end
+        for _, entry in ipairs(tbl.entries or {}) do total = total + (entry.weight or 0) end
         if total <= 0 then break end
 
         local pick, acc = math.random() * total, 0
         for _, entry in ipairs(tbl.entries) do
-            acc = acc + itemWeight(entry,preset)
+            acc = acc + (entry.weight or 0)
             if pick <= acc then
                 local min, max = entry.amount and entry.amount[1] or 1, entry.amount and entry.amount[2] or 1
                 if keep >= 1.0 or math.random() < keep then
                     local amt = math.random(min, max)
-                    if preset.amount~=1 then amt=math.max(1,math.floor(amt*preset.amount+math.random()))end
                     if lootMult ~= 1.0 then amt = math.max(1, math.floor(amt * lootMult + math.random())) end
-                    local definition=exports.bs_inventory:GetItem(entry.item)
-                    if definition and definition.data and definition.data.weapon then amt=1 end
                     out[#out + 1] = { item = entry.item, amount = amt }
                 end
                 break
@@ -161,9 +145,8 @@ local function rollLoot(tableId, src, single)
     return out
 end
 
-Containers.RollLoot=rollLoot
 
-BSB.RegisterCallback('containers:check', function(src, typeId, key, model)
+BSB.RegisterCallback('containers:check', function(src, typeId, key)
     local player = exports.bs_core:GetPlayer(src)
     if not player then return { ok = false, error = Lp(src, 'search.no_character') } end
 
@@ -172,22 +155,33 @@ BSB.RegisterCallback('containers:check', function(src, typeId, key, model)
     if type(key) ~= 'string' or #key > 64 then return { ok = false, error = 'bad container' } end
     if not nearKey(src, key) then return { ok = false, error = Lp(src, 'search.too_far') } end
 
+    if def.requiredWeapon then
+        local ped = GetPlayerPed(src)
+        if ped == 0 or GetSelectedPedWeapon(ped) ~= GetHashKey(def.requiredWeapon) then
+            return { ok = false, error = def.requiredWeaponError or 'Benötigtes Werkzeug muss in der Hand sein.' }
+        end
+    end
+
+    if def.requiredItem then
+        local ok, count = pcall(function()
+            return exports.bs_inventory:CountItem(src, def.requiredItem)
+        end)
+        if not ok or (tonumber(count) or 0) < 1 then
+            return { ok = false, error = def.requiredItemError or 'Benötigtes Werkzeug fehlt im Inventar.' }
+        end
+    end
+
     if typeId == 'car_boot' and bootIsOwned(key) then
         return { ok = false, error = Lp(src, 'search.owned') }
     end
 
-    if inFlight[key] and tickets[key] and GetGameTimer()>tickets[key].expires then inFlight[key]=nil;tickets[key]=nil end
     if inFlight[key] then return { ok = false, error = Lp(src, 'search.busy') } end
 
     local left = cooldownLeft(typeId, key)
     if left > 0 then
-        return { ok = false, error = Lp(src, 'search.cooldown', { min = math.ceil(left / 60) }) }
+        return { ok = false, error = 'Vor kurzem durchsucht' }
     end
 
-    if Containers.ResolveLoot then def=Containers.ResolveLoot(def,key,model) end
-    if not def then return {ok=false,error='No searchable furniture here'} end
-    for other,holder in pairs(inFlight) do if holder==src then inFlight[other]=nil;tickets[other]=nil end end
-    tickets[key]={typeId=typeId,bucket=GetPlayerRoutingBucket(src),def=def,ready=GetGameTimer()+math.max(0,(def.time or 4000)-250),expires=GetGameTimer()+math.max(30000,(def.time or 4000)+15000)}
     inFlight[key] = src
     checkedAt[key] = os.time()
     return { ok = true, time = def.time }
@@ -200,15 +194,29 @@ BSB.RegisterCallback('containers:loot', function(src, typeId, key)
     -- Only the player who reserved this container may collect from it.
     if inFlight[key] ~= src then return { ok = false, error = Lp(src, 'search.interrupted') } end
     inFlight[key] = nil
-    local ticket=tickets[key];tickets[key]=nil
-    if not ticket or ticket.typeId~=typeId or ticket.bucket~=GetPlayerRoutingBucket(src) or GetGameTimer()>ticket.expires or GetGameTimer()<ticket.ready then return {ok=false,error='Search expired'} end
 
-    local def = ticket.def
+    local def = typeDef(typeId)
     if not def then return { ok = false, error = 'unknown container' } end
-    if cooldownLeft(typeId, key) > 0 then return { ok = false, error = Lp(src, 'search.emptied') } end
+    if cooldownLeft(typeId, key) > 0 then return { ok = false, error = 'Vor kurzem durchsucht' } end
     if not nearKey(src, key) then return { ok = false, error = Lp(src, 'search.too_far') } end
 
-    -- The client plays a def.time ms search animation between check and loot
+    if def.requiredWeapon then
+        local ped = GetPlayerPed(src)
+        if ped == 0 or GetSelectedPedWeapon(ped) ~= GetHashKey(def.requiredWeapon) then
+            return { ok = false, error = def.requiredWeaponError or 'Benötigtes Werkzeug muss in der Hand sein.' }
+        end
+    end
+
+    if def.requiredItem then
+        local ok, count = pcall(function()
+            return exports.bs_inventory:CountItem(src, def.requiredItem)
+        end)
+        if not ok or (tonumber(count) or 0) < 1 then
+            return { ok = false, error = def.requiredItemError or 'Benötigtes Werkzeug fehlt im Inventar.' }
+        end
+    end
+
+    -- The client plays a def.time ms search animation between check and loot; require most of that to have passed so a direct loot call cannot skip it.
     local minWait = math.max(0, ((def.time or 0) / 1000) - 1.5)
     if not checkedAt[key] or (os.time() - checkedAt[key]) < minWait then
         return { ok = false, error = Lp(src, 'search.too_soon') }
@@ -219,15 +227,32 @@ BSB.RegisterCallback('containers:loot', function(src, typeId, key)
 
     local rolled = rollLoot(def.lootTable, src)
     local given = {}
+    local inventoryFull = false
 
     for _, entry in ipairs(rolled) do
-        local ok, label = exports.bs_inventory:GiveItem(src, entry.item, entry.amount)
+        local ok, label = exports.bs_inventory:GiveItemSilent(src, entry.item, entry.amount)
         if ok then
             given[#given + 1] = { item = entry.item, amount = entry.amount, label = label }
+        elseif label == 'too heavy' or label == 'no room' then
+            inventoryFull = true
         end
     end
 
-    -- Diesel in the barrel: not a loot-table entry
+    -- Sync once after all weighted loot has been inserted. Previously GiveItem pushed
+    -- the full inventory once per roll, delaying the callback/loot notification.
+    if #rolled > 0 then exports.bs_inventory:Refresh(src) end
+
+    -- Small cash finds are separate from weighted item rolls, just like barrel diesel is separate from item loot.
+    -- This keeps the original weighted loot algorithm untouched.
+    local cash = 0
+    if def.cash and math.random() <= (tonumber(def.cash.chance) or 0) then
+        local lo = math.max(0, math.floor(tonumber(def.cash.min) or 0))
+        local hi = math.max(lo, math.floor(tonumber(def.cash.max) or lo))
+        cash = (hi > lo) and math.random(lo, hi) or lo
+        if cash > 0 then exports.bs_core:AddMoney(src, 'cash', cash, 'container_loot') end
+    end
+
+    -- Diesel in the barrel. Not a loot-table entry, since diesel is a quantity poured into a container you brought (jerrycan or empty bottle). The roll happens with or without a can and the barrel is marked searched either way.
     local diesel = nil
 
     if def.diesel and Containers.Diesel then
@@ -251,13 +276,13 @@ BSB.RegisterCallback('containers:loot', function(src, typeId, key)
     end
 
     -- Searching is a survival skill; doing it teaches you to do it faster.
-    if #given > 0 or (diesel and diesel.stored > 0) then
+    if #given > 0 or cash > 0 or (diesel and diesel.stored > 0) then
         exports.bs_core:AwardAction(src, 'resource_gathered')
     end
 
     BS_LogSearch(src, player, typeId, key, given)
     TriggerEvent('bs:tutorial:event', src, 'loot', typeId)
-    return { ok = true, items = given, diesel = diesel }
+    return { ok = true, items = given, diesel = diesel, cash = cash, inventoryFull = inventoryFull }
 end)
 
 function BS_LogSearch(src, player, typeId, key, given)
@@ -271,7 +296,7 @@ end
 AddEventHandler('playerDropped', function()
     local src = source
     for key, holder in pairs(inFlight) do
-        if holder == src then inFlight[key] = nil;tickets[key]=nil end
+        if holder == src then inFlight[key] = nil end
     end
 end)
 
@@ -290,6 +315,8 @@ end)
 exports.bs_core:RegisterModule('interactions', { side = 'server', version = '0.2.0' })
 
 -- /targetdebug - prop identification overlay (cl_target.lua).
+-- Registered server-side because only the server can test an ACE ('bs.admin', 'bs.superadmin' also accepted). State lives on the client and starts off.
+-- RegisterCommand silently replaces a same-named handler, so keep this name unique.
 local targetDebug = {}      -- [src] = true while that player's overlay is on
 
 RegisterCommand('targetdebug', function(src)
@@ -309,9 +336,4 @@ end, false)
 -- Ids are reused, so a fresh join must not inherit the last holder's state.
 AddEventHandler('playerDropped', function()
     targetDebug[source] = nil
-end)
-
-RegisterNetEvent('bs:containers:cancel',function(key)
-    local src=source
-    if inFlight[key]==src then inFlight[key]=nil;tickets[key]=nil;checkedAt[key]=nil end
 end)

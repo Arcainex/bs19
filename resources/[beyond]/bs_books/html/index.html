@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="index.css">
+  <title>BeyondSurvival · Fundstücke</title>
+</head>
+<body>
+  <main id="reader" hidden aria-label="Buch lesen">
+    <div class="book-wrap">
+      <div class="book-top"><span class="stamp">BEYONDSURVIVAL // ARCHIV</span><button id="close" aria-label="Buch schließen" title="Schließen (Esc)">✕</button></div>
+      <div class="book" id="book">
+        <div class="book__edge book__edge--left"></div>
+        <section id="spread" aria-label="Aufgeschlagenes Buch">
+          <div class="page page--left"><div class="page__paper"><img id="left" alt="Linke Buchseite"><div id="leftContent" class="dynamic-page" hidden></div></div></div>
+          <div class="page page--right"><div class="page__paper"><img id="right" alt="Rechte Buchseite"><div id="rightContent" class="dynamic-page" hidden></div></div></div>
+          <div class="book__gutter" aria-hidden="true"></div>
+        </section>
+        <div class="book__edge book__edge--right"></div>
+      </div>
+      <footer><button id="prev" aria-label="Vorherige Seiten">← ZURÜCK</button><div class="book-meta"><span id="title">UNBEKANNTES BUCH</span><span id="counter">–</span></div><button id="next" aria-label="Nächste Seiten">WEITER →</button></footer>
+      <div class="hint">← → BLÄTTERN &nbsp;·&nbsp; ESC SCHLIESSEN</div>
+    </div>
+  </main>
+  <script src="index.js"></script>
+</body>
+</html>

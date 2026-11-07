@@ -5,9 +5,11 @@ local ctx = { kind = 'hand' }        -- what the craft tab shows: hand | station
 local zones = {}                      -- [id] = true
 local stationAnim = nil
 
-local function notify(kind, msg) TriggerEvent('bs:ui:notify', { type = kind, message = msg }) end
+local function notify(kind, msg, itemImage) TriggerEvent('bs:ui:notify', { type = kind, message = msg, itemImage = itemImage }) end
 
+--------------------------------------------------------------------------------
 -- Animations with a hand prop
+--------------------------------------------------------------------------------
 
 local function loadDict(dict)
     if not DoesAnimDictExist(dict) then return false end
@@ -51,7 +53,9 @@ function CraftPlayAnim(anims, prop, flag)
     return false
 end
 
+--------------------------------------------------------------------------------
 -- The craft tab
+--------------------------------------------------------------------------------
 
 local function openTab(kind, id)
     if exports.bs_inventory:IsOpen() then
@@ -107,7 +111,7 @@ end)
 RegisterNUICallback('farm', function(d, cb)
     CreateThread(function()
         local r = BSB.Await('crafting:farm', 8000, ctx.id, d.action, d.arg)
-        if r and r.ok and r.items then for _, it in ipairs(r.items) do notify('success', ('+%d %s'):format(it.amount, it.label)) end end
+        if r and r.ok and r.items then for _, it in ipairs(r.items) do notify('success', ('+%d %s'):format(it.amount, it.label), it.item) end end
         cb(r or { ok = false })
     end)
 end)
@@ -124,11 +128,13 @@ RegisterNUICallback('dismantle', function(d, cb)
         local f = BSB.Await('crafting:dismantleFinish', 8000)
         if not f or not f.ok then return notify('warn', (f and f.error) or L('failed')) end
         if #(f.items or {}) == 0 then return notify('info', L('nothing_useful')) end
-        for _, it in ipairs(f.items) do notify('success', ('+%d %s'):format(it.amount, it.label)); Wait(120) end
+        for _, it in ipairs(f.items) do notify('success', ('+%d %s'):format(it.amount, it.label), it.item); Wait(120) end
     end)
 end)
 
+--------------------------------------------------------------------------------
 -- Hand queue feedback: bar and a light animation while you walk
+--------------------------------------------------------------------------------
 
 local handShown = nil
 CreateThread(function()
@@ -155,7 +161,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Station zones
+--------------------------------------------------------------------------------
 
 RegisterNetEvent('bs:crafting:openStation', function(payload)
     local a = payload and payload.args

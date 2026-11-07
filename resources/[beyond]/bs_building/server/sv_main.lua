@@ -7,7 +7,6 @@ local function err(src, key, vars) return { ok = false, error = Lp(src, key, var
 local function notify(src, kind, key, vars)
     TriggerClientEvent('bs:ui:notify', src, { type = kind, message = Lp(src, key, vars), duration = 5000 })
 end
-Building.Err, Building.NotifyKey = err, notify
 
 local function pedPos(src)
     local ped = GetPlayerPed(src)
@@ -23,7 +22,6 @@ local function take(src, item, n) local ok, r = pcall(function() return exports.
 local function give(src, item, n) pcall(function() exports.bs_inventory:GiveItem(src, item, n) end) end
 local function charOf(src) local p = player(src); return p and p.charId or nil end
 local function claimMode() return S.buildMode == 'claim' end
-Building.PedPos, Building.Count, Building.Give, Building.IsAdmin = pedPos, count, give, isAdmin
 
 function Building.FactionOf(src)
     local ok, f = pcall(function() return exports.bs_factions:GetFactionSummary(tonumber(src)) end)
@@ -37,7 +35,6 @@ local function can(src, perm)
     if ok and r ~= nil then return r == true end
     return perm == 'build'
 end
-Building.Can = can
 
 local function sanctioned(src)
     if GetResourceState('bs_faction_bases') ~= 'started' then return false end
@@ -55,15 +52,13 @@ local function flags(fac)
     end
     return out
 end
-Building.Flags = flags
 
 local function flat(a, b) local dx, dy = a.x - b.x, a.y - b.y; return math.sqrt(dx * dx + dy * dy) end
-Building.Flat = flat
 
 -- Whose claim covers this point, if any. list = flags(nil) when the caller already has it.
 function Building.ClaimAt(at, list)
     for _, f in ipairs(list or flags(nil)) do
-        if f.status ~= 'removed' and flat(at, f) <= (tonumber(f.radius) or S.flagRadius) then return f end
+        if f.status ~= 'removed' and flat(at, f) <= S.flagRadius then return f end
     end
     return nil
 end
@@ -106,33 +101,25 @@ function Building.RaidOpen()
     return h >= a or h < b
 end
 
--- Support: structure pieces need a piece of a supporting kind close by (F1 needSupport).
--- The client snaps them exactly; the server only checks there is something to hold them.
-local function supportOk(pieceId, at, ignoreId)
-    local d = P[pieceId]
-    if not d then return false end
-    if not S.needSupport then return true end
-    local sup = d.support
-    if type(sup) ~= 'table' then return true end
-    local want = {}
-    for _, k in ipairs(sup) do want[k] = true end
-    local reach = math.max(4.5, math.max(d.size[1], d.size[2]) * 0.75 + 3.0)
-    for _, o in ipairs(Store.near(at.x, at.y, at.z, reach)) do
-        local od = P[o.piece]
-        if o.id ~= ignoreId and o.built and od and (want[od.snap or ''] or want[o.piece]) and o.z <= at.z + 0.6 then return true end
-    end
-    return false
-end
-Building.Supported = function(r, ignoreId) return supportOk(r.piece, r, ignoreId) end
+local function sizeOf(d) return math.max(d.size[1], d.size[2], d.size[3]) end
 
-function Building.NewData(pieceId, tier)
+-- No stability: pieces stand anywhere. Only attachments (door, window, hatch) need their slot.
+function Building.Supported(r, ignoreId)
+    local d = P[r.piece]
+    if not d then return false end
+    if d.attach then
+        for _, o in ipairs(Store.near(r.x, r.y, r.z, 1.2)) do
+            if o.id ~= r.id and o.id ~= ignoreId and o.piece == d.attach then return true end
+        end
+        return false
+    end
+    return true
+end
+
+function Building.NewData(pieceId)
     local d = P[pieceId]
-    local data = {}
-    if d and (d.lock or d.door) then data.lock = 'faction' end
-    if d and d.tiers then data.tier = Building.TierOfData(d, tier) end
-    if d and d.light then data.lit = true end
-    if d and d.salvage then data.salvage = true end
-    return data
+    if d and (d.lock or d.door) then return { lock = 'faction' } end
+    return {}
 end
 
 local Pending = {}   -- [src] = { kind, id, readyAt }
@@ -146,7 +133,6 @@ local function finishTimed(src, kind, id)
     local p = Pending[src]; Pending[src] = nil
     return p and p.kind == kind and p.id == id and GetGameTimer() >= p.readyAt
 end
-Building.StartTimed, Building.FinishTimed, Building.Pending = startTimed, finishTimed, Pending
 
 local function near(src, r, max)
     local at = pedPos(src)
@@ -171,7 +157,7 @@ local function manager(src, r)
     if r.owner ~= nil then return isOwner(src, r) end
     return crew(src, r, 'build')
 end
-Building.IsOwner, Building.Member, Building.Manager, Building.CharOf, Building.Crew = isOwner, member, manager, charOf, crew
+Building.IsOwner, Building.Member, Building.Manager, Building.CharOf = isOwner, member, manager, charOf
 Building.Near = function(src, r, max) return near(src, r, max) end
 
 -- Raid alert to everyone online in the defending faction, at most once a minute per base.
@@ -248,47 +234,15 @@ Building.RaidHit = raidHit
 
 -- Catalogue and placing
 
--- A plan keeps its quoted materials even when staff change tomorrow's prices.
-local function directBuild(d)
-    local mode = S.constructionMode or 'mixed'
-    if mode == 'direct' then return true end
-    if mode == 'blueprint' then return false end
-    return d.construction ~= 'blueprint' and d.cat ~= 'structure'
-end
-Building.DirectBuild = directBuild
-
--- Real cost of a piece (at a tier) after the F1 cost scale. Always at least 1 of each.
-local function costOf(d, tier)
+-- Real cost of a piece after the F1 cost scale. Always at least 1 of each.
+local function costOf(d)
     local out, k = {}, tonumber(S.costScale) or 1.0
-    local sp = Building.Spec(d, tier)
-    local base = (sp and sp.cost) or d.cost or {}
-    local id
-    for key, def in pairs(P) do if def == d then id = key; break end end
-    local overrides = type(S.costOverrides) == 'table' and S.costOverrides[id]
-    local selected = type(overrides) == 'table' and overrides[tier or 'base']
-    if type(selected) == 'table' then
-        local custom, valid = {}, true
-        for item, amount in pairs(selected) do
-            if type(item) ~= 'string' or not item:match('^[%w_]+$') or type(amount) ~= 'number'
-                or amount ~= amount or amount < 1 or amount > 100000 or amount % 1 ~= 0 then
-                valid = false; break
-            end
-            custom[#custom + 1] = { item = item, amount = amount }
-        end
-        if valid and #custom > 0 and #custom <= 32 then
-            table.sort(custom, function(a,b) return a.item < b.item end)
-            base = custom
-        end
-    end
-    for _, c in ipairs(base) do
+    for _, c in ipairs(d.cost or {}) do
         out[#out + 1] = { item = c.item, amount = math.max(1, math.ceil(c.amount * k)) }
     end
     return out
 end
 Building.CostOf = costOf
-local function planCost(r)
-    return r.data and r.data.buildCost or costOf(P[r.piece], Store.tier(r))
-end
 
 local function itemLabel(src, item)
     local ok, label = pcall(function() return exports.bs_inventory:ItemLabel(item, src) end)
@@ -298,17 +252,6 @@ local function itemLabel(src, item)
     return label
 end
 Building.ItemLabel = itemLabel
-
--- "Plywood wall" for a wall at wood tier; falls back to the plain piece name
-local function pieceLabel(src, id, tier)
-    if tier then
-        local k = ('piece.%s.%s'):format(id, tier)
-        local s = Lp(src, k)
-        if s ~= k then return s end
-    end
-    return Lp(src, 'piece.' .. id)
-end
-Building.PieceLabel = pieceLabel
 
 -- Storage boxes and crafting stations of your faction within storageRadius
 local function storages(src)
@@ -334,7 +277,6 @@ local function storages(src)
     end
     return out
 end
-Building.Storages = storages
 
 local function cCount(cid, item)
     local ok, n = pcall(function() return exports.bs_inventory:ContainerCount(cid, item) end)
@@ -366,16 +308,55 @@ end
 
 -- Admins with free build on (F10) or the F1 switch place finished pieces at no cost.
 Building.FreeBuild = Building.FreeBuild or {}
+Building.FreeBuildAll = Building.FreeBuildAll or false
+Building.FreeBuildGrants = Building.FreeBuildGrants or {}
+-- Persistent admin settings: license identifiers, never temporary server IDs.
+local freeBuildFile = 'data/free_build_settings.json'
+local function loadFreeBuildSettings()
+    local raw = LoadResourceFile(GetCurrentResourceName(), freeBuildFile)
+    if not raw or raw == '' then return end
+    local ok, saved = pcall(json.decode, raw)
+    if not ok or type(saved) ~= 'table' then
+        print('[bs_building] WARNING: free_build_settings.json is invalid; settings not loaded')
+        return
+    end
+    Building.FreeBuildPersonal = type(saved.personal) == 'table' and saved.personal or {}
+    Building.FreeBuildGrants = type(saved.grants) == 'table' and saved.grants or {}
+    Building.FreeBuildAll = saved.all == true
+end
+Building.FreeBuildPersonal = Building.FreeBuildPersonal or {}
+function Building.SaveFreeBuildSettings()
+    local encoded = json.encode({
+        personal = Building.FreeBuildPersonal,
+        grants = Building.FreeBuildGrants,
+        all = Building.FreeBuildAll == true,
+    })
+    if not SaveResourceFile(GetCurrentResourceName(), freeBuildFile, encoded, -1) then
+        print('[bs_building] ERROR: could not save persistent free-build settings')
+        return false
+    end
+    return true
+end
+loadFreeBuildSettings()
+local function freeBuildIdentifier(src)
+    for _, identifier in ipairs(GetPlayerIdentifiers(src)) do
+        if identifier:sub(1, 8) == "license:" then return identifier end
+    end
+    return nil
+end
+Building.FreeBuildIdentifier = freeBuildIdentifier
 local function freeBuild(src)
-    if not isAdmin(src) then return false end
-    return S.freeBuildAdmins == true or Building.FreeBuild[src] == true
+    if Building.FreeBuildAll == true then return true end
+    if Building.FreeBuild[src] == true then return true end
+    local identifier = freeBuildIdentifier(src)
+    if identifier and (Building.FreeBuildGrants[identifier] or (isAdmin(src) and Building.FreeBuildPersonal[identifier])) then return true end
+    return isAdmin(src) and S.freeBuildAdmins == true
 end
 AddEventHandler('playerDropped', function() Building.FreeBuild[source] = nil end)
-Building.IsFree = freeBuild
 
-local function costList(src, d, have, srcs, tier)
+local function costList(src, d, have, srcs)
     local out = {}
-    for _, c in ipairs(costOf(d, tier)) do
+    for _, c in ipairs(costOf(d)) do
         out[#out + 1] = { item = c.item, need = c.amount, have = have and haveTotal(src, c.item, srcs) or nil, label = itemLabel(src, c.item) }
     end
     return out
@@ -392,24 +373,90 @@ local function missingError(src, list, dep)
     return { ok = false, error = Lp(src, 'build.err.missing', { list = table.concat(parts, ', ') }) }
 end
 
--- Pays a cost list from bag and nearby storage. All or nothing: a short pay is put back.
-local function pay(src, list, srcs)
-    for _, c in ipairs(list) do if (c.have or 0) < c.need then return false end end
-    local taken = {}
-    for _, c in ipairs(list) do
-        local got = takeAny(src, c.item, c.need, srcs)
-        taken[#taken + 1] = { item = c.item, n = got }
-        if got < c.need then
-            for _, t in ipairs(taken) do if t.n > 0 then give(src, t.item, t.n) end end
-            return false
-        end
+-- FIX13: Collision must test occupied *volume*, not just whether two
+-- placement anchors are within 45cm. A T1 foundation occupies z..z+0.30,
+-- while a prop standing on its upper face starts about 0.32m above it.
+-- The former radius-only check falsely rejected that perfectly valid layout.
+local PLACEMENT_SEAM = 0.025  -- small GTA/F10 Z/mesh rounding tolerance (metres)
+
+local function pieceSize(def)
+    local size = def and def.size or {}
+    return math.max(0.01, tonumber(size[1]) or 1.0),
+           math.max(0.01, tonumber(size[2]) or 1.0),
+           math.max(0.01, tonumber(size[3]) or 1.0)
+end
+
+local function footprintsIntersect(a, aw, ad, ah, b, bw, bd, bh)
+    -- SAT for two rotated XY rectangles. Unlike radius tests this respects
+    -- rectangular furniture and the heading stored for each placed piece.
+    local ar, br = math.rad(ah or 0), math.rad(bh or 0)
+    local au = {math.cos(ar), math.sin(ar)}
+    local av = {-au[2], au[1]}
+    local bu = {math.cos(br), math.sin(br)}
+    local bv = {-bu[2], bu[1]}
+    local dx, dy = b.x - a.x, b.y - a.y
+    for _, axis in ipairs({au, av, bu, bv}) do
+        local separation = math.abs(dx * axis[1] + dy * axis[2])
+        local extentA = aw * 0.5 * math.abs(au[1]*axis[1] + au[2]*axis[2])
+                      + ad * 0.5 * math.abs(av[1]*axis[1] + av[2]*axis[2])
+        local extentB = bw * 0.5 * math.abs(bu[1]*axis[1] + bu[2]*axis[2])
+                      + bd * 0.5 * math.abs(bv[1]*axis[1] + bv[2]*axis[2])
+        if separation >= extentA + extentB - PLACEMENT_SEAM then return false end
     end
     return true
 end
 
-local function canPlaceHere(src, pieceId, at, opts)
+local function volumesIntersect(at, d, other, otherDef, heading)
+    local w, depth, height = pieceSize(d)
+    local ow, od, oh = pieceSize(otherDef)
+    -- Touching a *top surface* is not a collision: ground props, furniture,
+    -- walls at their snap socket and subsequent floor levels all need this.
+    if at.z >= other.z + oh - PLACEMENT_SEAM or
+       other.z >= at.z + height - PLACEMENT_SEAM then return false end
+    return footprintsIntersect(at, w, depth, heading, other, ow, od, other.h)
+end
+
+local function placementCandidates(at, d)
+    -- Broad phase only: Store.near is indexed by grid, but its exact-distance
+    -- filter must be wider than 0.45m to catch *large* overlapping props.
+    local w, depth, height = pieceSize(d)
+    local selfRadius = math.sqrt(w*w + depth*depth) * 0.5
+    local otherRadius, otherHeight = 0.0, 0.0
+    for _, def in pairs(P) do
+        local dw, dd, dh = pieceSize(def)
+        otherRadius = math.max(otherRadius, math.sqrt(dw*dw + dd*dd)*0.5)
+        otherHeight = math.max(otherHeight, dh)
+    end
+    local xy = selfRadius + otherRadius
+    local range = math.sqrt(xy*xy + math.max(height, otherHeight)^2) + 0.1
+    return Store.near(at.x, at.y, at.z, range)
+end
+
+local function placementOccupied(pieceId, at, heading)
     local d = P[pieceId]
-    if not d or d.hidden then return 'build.err.unknown' end
+    local structural = d.cat == 'structure'
+    for _, other in ipairs(placementCandidates(at, d)) do
+        local od = P[other.piece]
+        if od then
+            local attached = (d.attach == other.piece or od.attach == pieceId)
+                         and Store.dist(at, other) <= 1.2
+            if not attached then
+                -- Keep the established socket/edge allowance for structural
+                -- elements. FIX13 only replaces their old close-point test
+                -- with a vertical contact check. Do not break V19 snapping.
+                local nearbyEnough = not structural or Store.dist(at, other) <= 0.45
+                if nearbyEnough and volumesIntersect(at, d, other, od, heading) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function canPlaceHere(src, pieceId, at, allowConfirmedOverlap)
+    local d = P[pieceId]
+    if not d or d.disabled then return 'build.err.unknown' end
     local fac = factionOf(src)
     if d.flag then
         if not fac then return 'build.err.no_faction' end
@@ -428,7 +475,6 @@ local function canPlaceHere(src, pieceId, at, opts)
     end
     if fac and sanctioned(src) then return 'build.err.no_perm' end
     if d.vending and not S.vendingEnabled then return 'build.err.vending_off' end
-    if d.node and not S.wiresEnabled then return 'build.err.wires_off' end
     local zoneErr = Building.ZoneError(at)
     if zoneErr then return zoneErr end
     local claim = Building.ClaimAt(at)
@@ -448,17 +494,16 @@ local function canPlaceHere(src, pieceId, at, opts)
         for _, r in pairs(Store.pieces) do if r.owner == me and r.piece == pieceId then n = n + 1 end end
         if n >= d.limit then return 'build.err.limit' end
     end
-    -- Same kind on the same spot. Doors share the spot of their door frame.
-    for _, o in ipairs(Store.near(at.x, at.y, at.z, 0.35)) do
-        local od = P[o.piece]
-        local pair = (d.snap == 'door' and od and od.snap == 'doorway') or (od and od.snap == 'door' and d.snap == 'doorway')
-        if not pair and (o.piece == pieceId or (od and d.snap and od.snap == d.snap)) then return 'build.err.occupied' end
+    -- Only actual occupied *volume* blocks. A foundation/deck below a prop
+    -- remains valid support even when their anchor coordinates are close.
+    -- FIX14: a player may deliberately confirm an overlap.
+    -- Flags, permissions, claims, materials, supports and attachment rules
+    -- remain checked; only occupancy changes after explicit consent.
+    if placementOccupied(pieceId, at, at.h) and not (allowConfirmedOverlap and not d.flag) then
+        return 'build.err.occupied'
     end
-    if not supportOk(pieceId, at) then return d.snap == 'door' and 'build.err.attach' or 'build.err.support' end
-    if opts and opts.cost and directBuild(d) and not freeBuild(src) then
-        local list = costList(src, d, true, storages(src), Building.BaseTier(d))
-        for _, c in ipairs(list) do if c.have < c.need then return 'build.err.materials', list end end
-    end
+    local probe = { id = -1, piece = pieceId, x = at.x, y = at.y, z = at.z }
+    if not Building.Supported(probe) then return d.attach and 'build.err.attach' or 'build.err.support' end
     return nil
 end
 Building.InSafeZone = inSafeZone
@@ -473,37 +518,30 @@ BSB.RegisterCallback('build:catalogue', function(src)
     local vanilla = isVanillaFac(fac)
     local inSafe = claim ~= nil and claim.kind == 'safezone' and claim.factionId == fac
     local me = charOf(src)
+    local visibleCategories = {}
+    local catalogueCategories = Building.StudioCategoryList and Building.StudioCategoryList() or Building.Categories
+    for _, cat in ipairs(catalogueCategories) do visibleCategories[cat.id] = true end
     for id, d in pairs(P) do
         local hide = (vanilla and d.flag == 'safezone') or (d.flag and not fac) or (d.vending and not S.vendingEnabled)
-            or (d.node and not S.wiresEnabled)
-        if not d.hidden and not hide then
-            local tier = Building.BaseTier(d)
-            local costs = costList(src, d, true, srcs, tier)
+        if visibleCategories[d.cat] and not d.hidden and not d.disabled and not hide then
+            local costs = costList(src, d, true, srcs)
             local afford = true
             for _, c in ipairs(costs) do if c.have < c.need and not free then afford = false end end
             local blocked = inSafe and (d.storage or d.station) and Lp(src, 'build.err.safezone_storage') or nil
-            local tiers = {}
-            for _, t in ipairs(Building.TierList(d)) do tiers[#tiers + 1] = { id = t, label = Lp(src, 'tier.' .. t), name = pieceLabel(src, id, t), hp = d.tiers[t].health } end
-            local sp = Building.Spec(d, tier)
-            list[#list + 1] = { id = id, cat = d.cat, label = pieceLabel(src, id, tier), blurb = Lp(src, 'piece.' .. id .. '.d'),
-                                costs = costs, canBuild = blocked == nil, blocked = blocked, afford = afford, size = d.size,
-                                tier = tier, tierLabel = tier and Lp(src, 'tier.' .. tier) or nil, tiers = tiers,
-                                construction = directBuild(d) and 'direct' or 'blueprint', hp = sp and sp.health or d.health, snap = d.snap ~= nil }
+            list[#list + 1] = { id = id, cat = d.cat, label = d.label or Lp(src, 'piece.' .. id), blurb = Lp(src, 'piece.' .. id .. '.d'),
+                                costs = costs, canBuild = blocked == nil, blocked = blocked, afford = afford, size = d.size }
         end
     end
     table.sort(list, function(a, b) return a.label < b.label end)
     local cm = claimMode()
     return {
-        ok = true, pieces = list, faction = fac, charId = me, mode = cm and 'claim' or 'anywhere',
+        ok = true, pieces = list, categories = catalogueCategories, faction = fac, charId = me, mode = cm and 'claim' or 'anywhere',
         canBuild = (cm and fac ~= nil and can(src, 'build')) or (not cm and me ~= nil),
         inClaim = claim ~= nil and claim.factionId == fac, hasFlag = fac ~= nil and #flags(fac) > 0,
         built = cm and (fac and Store.countFaction(fac) or 0) or Store.countOwner(me),
         max = cm and S.pieceCap or (tonumber(S.playerPieceCap) or 150),
         raids = S.raidsEnabled == true, raidOpen = Building.RaidOpen(),
         raidWindow = ('%02d:00-%02d:00'):format(S.raidStartHour, S.raidEndHour), freeBuild = free,
-        instant = S.instantBuild == true, wires = S.wiresEnabled == true, needSupport = S.needSupport == true,
-        powerRadius = S.powerRadius, poleRadius = S.poleRadius, wireMax = S.wireMaxLength,
-        sound = S.generatorSound == true, soundRange = S.generatorSoundRange,
     }
 end)
 
@@ -511,46 +549,18 @@ end)
 BSB.RegisterCallback('build:costs', function(src, pieceId)
     local d = P[pieceId]
     if not d then return { ok = false } end
-    return { ok = true, costs = costList(src, d, true, storages(src), Building.BaseTier(d)), free = freeBuild(src), instant = directBuild(d) }
+    return { ok = true, costs = costList(src, d, true, storages(src)), free = freeBuild(src) }
 end)
 
-BSB.RegisterCallback('build:check', function(src, pieceId, at)
+local function safeBuildCheck(src, pieceId, at)
     if type(at) ~= 'table' then return { ok = false } end
-    local e, list = canPlaceHere(src, pieceId, { x = tonumber(at.x) or 0, y = tonumber(at.y) or 0, z = tonumber(at.z) or 0 }, { cost = true })
-    local msg = e and Lp(src, e) or nil
-    if list then msg = missingError(src, list).error end
-    return { ok = e == nil, error = msg, code = e }
-end)
-
--- A finished piece. Used by instant build and free build.
-local function insertBuilt(src, pieceId, pos, h, fac, charId, how)
-    local d = P[pieceId]
-    local tier = Building.BaseTier(d)
-    local data = Building.NewData(pieceId, tier)
-    data.buildCost = costOf(d, tier)
-    local dep = {}
-    for _, c in ipairs(costOf(d, tier)) do dep[c.item] = c.amount end
-    local hp = Building.Spec(d, tier).health or d.health or 500
-    local id = exports.oxmysql:insert_async(
-        'INSERT INTO `bs_build_pieces` (`piece`,`faction_id`,`owner_char`,`x`,`y`,`z`,`h`,`health`,`built`,`deposited`,`data`) VALUES (?,?,?,?,?,?,?,?,1,?,?)',
-        { pieceId, fac, charId, pos.x, pos.y, pos.z, h, hp, json.encode(dep), json.encode(data) })
-    if not id then return nil end
-    local r = { id = id, piece = pieceId, fac = fac, owner = charId, x = pos.x, y = pos.y, z = pos.z, h = h,
-                health = hp, built = true, dep = dep, data = data, placedAt = os.time() }
-    Store.add(r)
-    if src and GetResourceState('bs_skills') == 'started' then
-        local ok, has = pcall(function() return exports.bs_skills:HasPerk(src, 'fortifier') end)
-        if ok and has then r.data.fort = true; Store.save(r, true) end
-    end
-    r.health = Store.maxHp(r)
-    Store.push(r)
-    Store.log(src, how or 'place', ('%s #%d'):format(pieceId, id), pos)
-    Building.PowerDirty()
-    return r
+    local e = canPlaceHere(src, pieceId, { x = tonumber(at.x) or 0, y = tonumber(at.y) or 0, z = tonumber(at.z) or 0, h = tonumber(at.h) or 0 })
+    return { ok = e == nil, error = e and Lp(src, e) or nil,
+        code = e, overrideAllowed = (e == 'build.err.occupied' and P[pieceId] ~= nil
+            and not P[pieceId].flag) }
 end
-Building.InsertBuilt = insertBuilt
 
-BSB.RegisterCallback('build:place', function(src, pieceId, at)
+local function safeBuildPlace(src, pieceId, at)
     if not S.enabled or not Store.ready then return err(src, 'build.err.disabled') end
     if dead(src) or type(at) ~= 'table' or type(pieceId) ~= 'string' then return { ok = false } end
     local pos = { x = tonumber(at.x), y = tonumber(at.y), z = tonumber(at.z) }
@@ -561,7 +571,11 @@ BSB.RegisterCallback('build:place', function(src, pieceId, at)
         Store.flag(src, 'far', ('place %s %.1fm away'):format(pieceId, me and Store.dist(me, pos) or -1))
         return err(src, 'build.err.far')
     end
-    local e, list = canPlaceHere(src, pieceId, pos)
+    pos.h = h -- use the actual piece rotation for the collision check
+    -- Confirmation is an explicit one-shot placement request, NOT an admin
+    -- bypass: canPlaceHere still enforces every other safety and access rule.
+    local confirmedOverlap = at.confirmOverlap == true
+    local e = canPlaceHere(src, pieceId, pos, confirmedOverlap)
     if e then return err(src, e) end
     local d = P[pieceId]
     local free = freeBuild(src)
@@ -589,47 +603,58 @@ BSB.RegisterCallback('build:place', function(src, pieceId, at)
     local p = player(src)
     local fac = factionOf(src)
     if free then
-        local r = insertBuilt(src, pieceId, pos, h, fac, p and p.charId, 'admin')
+        local r = Building.PlaceFinished(src, pieceId, pos, h, fac, p and p.charId)
         if not r then return err(src, 'build.err.failed') end
-        return { ok = true, id = r.id, built = true, swing = S.placeHammerMs }
+        return { ok = true, id = r.id, built = true }
     end
-    if directBuild(d) then
-        local srcs = storages(src)
-        local costs = costList(src, d, true, srcs, Building.BaseTier(d))
-        if not pay(src, costs, srcs) then return missingError(src, costs) end
-        local r = insertBuilt(src, pieceId, pos, h, fac, p and p.charId)
-        if not r then
-            for _, c in ipairs(costs) do give(src, c.item, c.need) end
-            return err(src, 'build.err.failed')
-        end
-        pcall(function() exports.bs_core:AwardAction(src, 'item_crafted') end)
-        return { ok = true, id = r.id, built = true, swing = S.placeHammerMs }
-    end
-    local data = Building.NewData(pieceId, Building.BaseTier(d))
-    data.buildCost = costOf(d, Building.BaseTier(d))
-    local hp0 = math.floor((Building.Spec(d, data.tier).health or d.health or 500) * 0.1)
+    local data = Building.NewData(pieceId)
     local id = exports.oxmysql:insert_async(
         'INSERT INTO `bs_build_pieces` (`piece`,`faction_id`,`owner_char`,`x`,`y`,`z`,`h`,`health`,`built`,`deposited`,`data`) VALUES (?,?,?,?,?,?,?,?,0,?,?)',
-        { pieceId, fac, p and p.charId, pos.x, pos.y, pos.z, h, hp0, '{}', json.encode(data) })
+        { pieceId, fac, p and p.charId, pos.x, pos.y, pos.z, h, math.floor(d.health * 0.1), '{}', json.encode(data) })
     if not id then return err(src, 'build.err.failed') end
     local r = { id = id, piece = pieceId, fac = fac, owner = p and p.charId, x = pos.x, y = pos.y, z = pos.z, h = h,
-                health = hp0, built = false, dep = {}, data = data, placedAt = os.time() }
+                health = math.floor(d.health * 0.1), built = false, dep = {}, data = data, placedAt = os.time() }
     Store.add(r)
     Store.push(r)
     Store.log(src, 'place', ('%s #%d'):format(pieceId, id), pos)
     return { ok = true, id = id }
+end
+
+-- V16: Im Falle einer Lua-Ausnahme quittiert der Bau-Server die Anfrage
+-- mit einer nachvollziehbaren Fehlermeldung anstatt mit einem stillen Timeout.
+-- Keine automatischen Wiederholungen: ein Timeout koennte bereits gebaut haben.
+local function protectedBuild(name, fn, src, pieceId, at)
+    local ok, result = pcall(fn, src, pieceId, at)
+    if not ok then
+        local message=tostring(result)
+        print(('[ALPHA-Z Bauen] %s FEHLER bei %s: %s'):format(name,tostring(pieceId),message))
+        TriggerClientEvent('bs:building:diagnostic', src, name, message, 'error')
+        return {ok=false,error='Bau-Serverfehler ('..name..'). Siehe Serverkonsole.',code='server_exception'}
+    end
+    if type(result)~='table' then
+        print(('[ALPHA-Z Bauen] %s ungueltige Antwort %s'):format(name,tostring(result)))
+        return {ok=false,error='Ungueltige Serverantwort ('..name..')',code='invalid_response'}
+    end
+    return result
+end
+
+BSB.RegisterCallback('build:check', function(src, pieceId, at)
+    return protectedBuild('build:check', safeBuildCheck, src, pieceId, at)
+end)
+BSB.RegisterCallback('build:place', function(src, pieceId, at)
+    return protectedBuild('build:place', safeBuildPlace, src, pieceId, at)
 end)
 
 -- Put materials into a frame. Takes what you have, up to what is missing.
 BSB.RegisterCallback('build:deposit', function(src, id)
     local r = Store.pieces[tonumber(id)]
-    if dead(src) or not r or r.built then return { ok = false } end
+    if not r or r.built then return { ok = false } end
     if not crew(src, r, 'build') then return err(src, 'build.err.no_perm') end
     if not near(src, r, 5.0) then return err(src, 'build.err.far') end
     local d = P[r.piece]
     local srcs = storages(src)
     local moved = 0
-    for _, c in ipairs(planCost(r)) do
+    for _, c in ipairs(costOf(d)) do
         local missing = c.amount - (r.dep[c.item] or 0)
         if missing > 0 then
             local n = takeAny(src, c.item, missing, srcs)
@@ -641,7 +666,7 @@ BSB.RegisterCallback('build:deposit', function(src, id)
     end
     -- What is still short after this deposit.
     local short = {}
-    for _, c in ipairs(planCost(r)) do
+    for _, c in ipairs(costOf(d)) do
         if (r.dep[c.item] or 0) < c.amount then short[#short + 1] = { item = c.item, need = c.amount, have = 0, label = itemLabel(src, c.item) } end
     end
     if moved == 0 then return missingError(src, short, r.dep) end
@@ -653,7 +678,7 @@ BSB.RegisterCallback('build:deposit', function(src, id)
 end)
 
 local function complete(r)
-    for _, c in ipairs(planCost(r)) do
+    for _, c in ipairs(costOf(P[r.piece])) do
         if (r.dep[c.item] or 0) < c.amount then return false end
     end
     return true
@@ -679,9 +704,8 @@ BSB.RegisterCallback('build:hammerDone', function(src, id)
     id = tonumber(id)
     local r = Store.pieces[id]
     local p = Pending[src]
-    if dead(src) or not r or not p or p.id ~= id then Pending[src] = nil; return { ok = false } end
+    if not r or not p or p.id ~= id then return { ok = false } end
     local kind = p.kind
-    if not crew(src, r, 'build') or count(src, S.hammerItem) < 1 then Pending[src] = nil; return err(src, 'build.err.no_perm') end
     if not finishTimed(src, kind, id) then return err(src, 'build.err.too_quick') end
     if not near(src, r, 5.0) then return err(src, 'build.err.far') end
     if kind == 'finish' then
@@ -694,7 +718,6 @@ BSB.RegisterCallback('build:hammerDone', function(src, id)
         end
         Store.save(r, true)
         Store.push(r)
-        Building.PowerDirty()
         pcall(function() exports.bs_core:AwardAction(src, 'item_crafted') end)
         return { ok = true, built = true }
     elseif kind == 'repair' then
@@ -702,7 +725,7 @@ BSB.RegisterCallback('build:hammerDone', function(src, id)
         local missing = 1 - r.health / Store.maxHp(r)
         local srcs = storages(src)
         local need = {}
-        for _, c in ipairs(costOf(P[r.piece], Store.tier(r))) do
+        for _, c in ipairs(costOf(P[r.piece])) do
             local n = math.ceil(c.amount * S.repairCostPct / 100 * missing)
             if n > 0 then need[#need + 1] = { item = c.item, need = n, have = haveTotal(src, c.item, srcs), label = itemLabel(src, c.item) } end
         end
@@ -716,58 +739,23 @@ BSB.RegisterCallback('build:hammerDone', function(src, id)
         Store.save(r, true)
         Store.push(r)
         return { ok = true, repaired = true }
-    elseif kind == 'upgrade' then
-        local d = P[r.piece]
-        local nextT = Building.NextTier(d, Store.tier(r))
-        if not r.built or not nextT then return { ok = false } end
-        local free = freeBuild(src)
-        if not free then
-            local srcs = storages(src)
-            local list = costList(src, d, true, srcs, nextT)
-            if not pay(src, list, srcs) then return missingError(src, list) end
-        end
-        local pct = math.max(0.0, math.min(1.0, r.health / Store.maxHp(r)))
-        r.data.tier = nextT
-        r.dep = {}
-        r.data.buildCost = costOf(d, nextT)
-        for _, c in ipairs(r.data.buildCost) do r.dep[c.item] = c.amount end
-        -- missing HP carries over as a share, so an upgrade is not a free repair
-        r.health = math.max(1, Store.maxHp(r) * math.max(pct, 0.5))
-        Store.save(r, true)
-        Store.push(r)
-        Store.log(src, 'upgrade', ('%s #%d to %s%s'):format(r.piece, r.id, nextT, free and ' (free build)' or ''), r)
-        return { ok = true, upgraded = true, tier = nextT, label = pieceLabel(src, r.piece, nextT) }
     end
     return { ok = false }
 end)
 
--- Upgrade a piece one tier (wood > scrap metal > concrete). Hammer, materials, timed.
-BSB.RegisterCallback('build:upgradeInfo', function(src, id)
+-- Preflight for demolition: reject missing tools/permissions before any client animation.
+-- The actual demolish callback repeats these checks to remain authoritative.
+BSB.RegisterCallback('build:demolishCheck', function(src, id)
     local r = Store.pieces[tonumber(id)]
-    if not r or not r.built then return { ok = false } end
+    if not r then return { ok = false } end
+    if not crew(src, r, 'demolish') then return err(src, 'build.err.no_perm') end
     local d = P[r.piece]
-    local nextT = Building.NextTier(d, Store.tier(r))
-    if not nextT then return err(src, 'build.err.max_tier') end
-    return { ok = true, tier = nextT, tierLabel = Lp(src, 'tier.' .. nextT), label = pieceLabel(src, r.piece, nextT),
-             costs = costList(src, d, true, storages(src), nextT), free = freeBuild(src), hp = d.tiers[nextT].health }
-end)
-
-BSB.RegisterCallback('build:upgradeStart', function(src, id)
-    local r = Store.pieces[tonumber(id)]
-    if not r or not r.built then return { ok = false } end
-    if not crew(src, r, 'build') then return err(src, 'build.err.no_perm') end
-    if count(src, S.hammerItem) < 1 and not freeBuild(src) then return err(src, 'build.err.hammer') end
+    if d and d.vending and r.owner ~= nil and not isOwner(src, r) then return err(src, 'build.err.no_perm') end
+    if count(src, S.hammerItem) < 1 then return err(src, 'build.err.hammer') end
     if not near(src, r, 5.0) then return err(src, 'build.err.far') end
-    if r.lastHit and os.time() - r.lastHit < 30 then return err(src, 'build.err.recent_damage') end
-    if r.data and r.data.ab then return err(src, 'build.err.abandoned') end
-    local d = P[r.piece]
-    local nextT = Building.NextTier(d, Store.tier(r))
-    if not nextT then return err(src, 'build.err.max_tier') end
-    if not freeBuild(src) then
-        local list = costList(src, d, true, storages(src), nextT)
-        for _, c in ipairs(list) do if c.have < c.need then return missingError(src, list) end end
-    end
-    return startTimed(src, 'upgrade', r.id, tonumber(S.upgradeMs) or 5000)
+    if r.lastHit and os.time() - r.lastHit < 60 then return err(src, 'build.err.recent_damage') end
+    if d and d.storage and exports.bs_inventory:ContainerHasItems('build:' .. r.id) then return err(src, 'build.err.not_empty') end
+    return { ok = true }
 end)
 
 -- Demolish: full refund for 10 minutes after placing, then half. Frames give back what went in.
@@ -778,20 +766,17 @@ BSB.RegisterCallback('build:demolish', function(src, id)
     local d = P[r.piece]
     -- a crate's takings go to whoever picks it up, so only its owner may
     if d and d.vending and r.owner ~= nil and not isOwner(src, r) then return err(src, 'build.err.no_perm') end
-    if count(src, S.hammerItem) < 1 and not freeBuild(src) then return err(src, 'build.err.hammer') end
+    if count(src, S.hammerItem) < 1 then return err(src, 'build.err.hammer') end
     if not near(src, r, 5.0) then return err(src, 'build.err.far') end
     if r.lastHit and os.time() - r.lastHit < 60 then return err(src, 'build.err.recent_damage') end
     local frac = (os.time() - (r.placedAt or 0) <= S.fullRefundMinutes * 60) and 1.0 or S.lateRefund
-    if d.salvage or (r.data and r.data.ab) then frac = 0 end
     local refund = {}
     if r.built then
-        for _, c in ipairs(planCost(r)) do refund[c.item] = math.floor(c.amount * frac) end
+        for _, c in ipairs(costOf(d)) do refund[c.item] = math.floor(c.amount * frac) end
     else
         for item, n in pairs(r.dep or {}) do refund[item] = n end
     end
     if d.storage and exports.bs_inventory:ContainerHasItems('build:' .. r.id) then return err(src, 'build.err.not_empty') end
-    -- batteries and the jerrycan slot come back with a generator
-    if d.generator then Building.GeneratorEmpty(src, r) end
     local takings = d.vending and math.floor(tonumber(r.data and r.data.bal) or 0) or 0
     Store.remove(r, 'demolish')
     for item, n in pairs(refund) do if n > 0 then give(src, item, n) end end
@@ -925,6 +910,33 @@ BSB.RegisterCallback('build:rubble', function(src, id)
     return { ok = true }
 end)
 
+BSB.RegisterCallback('build:fuel', function(src, id)
+    local r = Store.pieces[tonumber(id)]
+    if not r or not r.built or not P[r.piece].generator then return { ok = false } end
+    if not member(src, r) then return err(src, 'build.err.no_perm') end
+    if not near(src, r, 3.0) then return err(src, 'build.err.far') end
+    local room = 100 - (r.data.fuel or 0)
+    if room <= 0 then return err(src, 'build.err.full') end
+    local got = exports.bs_inventory:PourOut(src, { 'fuel_can', 'empty_bottle' }, room)
+    if (got or 0) <= 0 then return err(src, 'build.err.no_fuel') end
+    r.data.fuel = (r.data.fuel or 0) + got
+    Store.save(r, true)
+    Store.push(r)
+    return { ok = true, fuel = r.data.fuel }
+end)
+
+BSB.RegisterCallback('build:power', function(src, id)
+    local r = Store.pieces[tonumber(id)]
+    if not r or not r.built or not P[r.piece].generator then return { ok = false } end
+    if not member(src, r) then return err(src, 'build.err.no_perm') end
+    if not near(src, r, 3.0) then return err(src, 'build.err.far') end
+    if not r.data.on and (r.data.fuel or 0) <= 0 then return err(src, 'build.err.no_fuel') end
+    r.data.on = not r.data.on
+    Store.save(r)
+    Store.push(r)
+    return { ok = true, on = r.data.on }
+end)
+
 BSB.RegisterCallback('build:water', function(src, id)
     local r = Store.pieces[tonumber(id)]
     if not r or not r.built or not P[r.piece].rain then return { ok = false } end
@@ -940,10 +952,7 @@ end)
 BSB.RegisterCallback('build:info', function(src, id)
     local r = Store.pieces[tonumber(id)]
     if not r then return { ok = false } end
-    local tier = Store.tier(r)
-    return { ok = true, piece = Store.view(r), member = member(src, r), owner = isOwner(src, r), water = r.data.water or 0,
-             label = pieceLabel(src, r.piece, tier), tierLabel = tier and Lp(src, 'tier.' .. tier) or nil,
-             costs = (not r.built and planCost(r) or costOf(P[r.piece], tier)), power = Building.PowerInfo and Building.PowerInfo(r) or nil }
+    return { ok = true, piece = Store.view(r), member = member(src, r), owner = isOwner(src, r), water = r.data.water or 0 }
 end)
 
 -- Beds and respawn
@@ -1072,7 +1081,7 @@ end)
 -- Zombies leave bases alone. Old clients may still send this.
 RegisterNetEvent('bs:building:hit', function() end)
 
--- Loops: visits, decay, rain (generators live in sv_power, abandoned bases in sv_flags)
+-- Loops: visits, decay, generators, rain
 
 local visitSaved = {}
 CreateThread(function()
@@ -1116,10 +1125,8 @@ CreateThread(function()
             for _, r in ipairs(list) do
                 if Store.pieces[r.id] then
                     local d = P[r.piece]
-                    -- Decay: no visit for decayDays. Unknown bases start their clock now. Abandoned pieces have their own clock.
-                    if r.data and r.data.ab then
-                        -- sv_flags handles these
-                    elseif r.fac and not S.decayEnabled then
+                    -- Decay: no visit for decayDays. Unknown bases start their clock now.
+                    if r.fac and not S.decayEnabled then
                         if r.decaying then r.decaying = false; Store.push(r) end
                     elseif r.fac then
                         Store.bases[r.fac] = Store.bases[r.fac] or now
@@ -1132,7 +1139,12 @@ CreateThread(function()
                             Building.Damage(r, Store.maxHp(r) * S.decayDamagePct / 100, 'decay')
                         end
                     end
-                    if Store.pieces[r.id] and raining and d.rain and r.built then
+                    if Store.pieces[r.id] and d.generator and r.data.on then
+                        r.data.fuel = math.max(0, (r.data.fuel or 0) - S.generatorFuelHour / 60)
+                        if r.data.fuel <= 0 then r.data.on = false; Store.push(r) end
+                        Store.save(r)
+                    end
+                    if raining and d.rain and r.built then
                         r.data.water = math.min(200, (r.data.water or 0) + S.rainPerMinute)
                         Store.save(r)
                     end
@@ -1155,7 +1167,7 @@ BSB.RegisterCallback('build:cell', function(src, cx, cy)
         local mx, my = Store.cellOf(at.x, at.y)
         if math.abs(mx - cx) > 2 or math.abs(my - cy) > 2 then return { ok = false } end
     end
-    return { ok = true, list = Store.cellList(cx, cy), wires = Store.cellWires(cx, cy) }
+    return { ok = true, list = Store.cellList(cx, cy) }
 end)
 
 BSB.RegisterCallback('build:defs', function()
@@ -1173,7 +1185,12 @@ local function register(def)
     def.models = def.models or (def.model and { def.model }) or {}
     def.cost = def.cost or {}
     def.owner = GetInvokingResource()
+    -- Keep the pre-studio registration values for live reset.
+    if Building.RememberStudioOriginal then Building.RememberStudioOriginal(id, def) end
     P[id] = def
+    -- Registered station definitions must not replace saved Prop Studio adjustments.
+    if Building.ApplyStudioOverride then Building.ApplyStudioOverride(id) end
+    def = P[id]
     for _, r in ipairs(Store.waiting[id] or {}) do Store.add(r) end
     Store.waiting[id] = nil
     TriggerClientEvent('bs:building:def', -1, id, def)
@@ -1211,11 +1228,7 @@ end)
 exports('Materials', function()
     local out = {}
     for _, d in pairs(P) do
-        local tiers = Building.TierList(d)
-        if #tiers == 0 then tiers = { false } end
-        for _, t in ipairs(tiers) do
-            for _, c in ipairs(costOf(d, t or nil)) do out[c.item] = math.max(out[c.item] or 0, c.amount) end
-        end
+        for _, c in ipairs(costOf(d)) do out[c.item] = math.max(out[c.item] or 0, c.amount) end
     end
     out[S.hammerItem] = 1
     return out
@@ -1233,12 +1246,33 @@ exports('RaidAllowed', function(attacker, target) return Building.RaidOpen() and
 exports('PieceCosts', function()
     local out = {}
     for id, d in pairs(P) do
-        if not d.hidden then out[#out + 1] = { id = id, cat = d.cat, label = L('piece.' .. id), cost = costOf(d, Building.BaseTier(d)) } end
+        if not d.hidden then out[#out + 1] = { id = id, cat = d.cat, label = L('piece.' .. id), cost = costOf(d) } end
     end
     table.sort(out, function(a, b) return a.label < b.label end)
     return out
 end)
-exports('CostOf', function(pieceId) local d = P[pieceId]; return d and costOf(d, Building.BaseTier(d)) or nil end)
+exports('CostOf', function(pieceId) local d = P[pieceId]; return d and costOf(d) or nil end)
 
-exports.bs_core:RegisterModule('building', { side = 'server', version = '3.0.0', ready = true })
+exports.bs_core:RegisterModule('building', { side = 'server', version = '2.0.0', ready = true })
 if BS and BS.Provide then BS.Provide('building', { 'Materials', 'NearStation', 'Count' }) end
+
+-- Battery charging (bs_vehicles): a running, fuelled generator near the player
+exports('RunningGeneratorNear', function(src, radius)
+    local at = pedPos(tonumber(src))
+    if not at then return nil end
+    for _, r in ipairs(Store.near(at.x, at.y, at.z, tonumber(radius) or 4.0)) do
+        local d = P[r.piece]
+        if r.built and d and d.generator and r.data.on and (r.data.fuel or 0) > 0 then return r.id end
+    end
+end)
+
+-- Burns generator fuel for a charge. Switches it off when it runs dry, like the hourly burn.
+exports('UseGeneratorFuel', function(id, amount)
+    local r = Store.pieces[tonumber(id)]
+    if not r or not r.data then return false end
+    r.data.fuel = math.max(0, (r.data.fuel or 0) - (tonumber(amount) or 0))
+    if r.data.fuel <= 0 then r.data.on = false end
+    Store.save(r)
+    Store.push(r)
+    return true
+end)

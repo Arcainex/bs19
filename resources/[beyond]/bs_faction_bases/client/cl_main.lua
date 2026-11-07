@@ -1,9 +1,9 @@
 -- Faction flags on the client: the flag prop, plus blip, edge ring and entering notice for your own faction's flags.
+-- The server only sends safezone flags to their own members, so others never learn where they are.
 local Flags = {}
 local Props = {}
 local Blips = {}
 local Inside = {}
-local Grounded = {}
 local S = FactionBases.Settings
 
 local function notify(kind, msg) TriggerEvent('bs:ui:notify', { type = kind, message = msg, duration = 5000 }) end
@@ -34,34 +34,22 @@ end
 local function spawn(flag)
     remove(flag.id)
     if flag.mine then addBlips(flag) end
-    -- A bare pole when the game has one: bs_factions flies the faction's own cloth from it.
-    local hash
-    for _, m in ipairs(S.flagPoleModels or {}) do if IsModelInCdimage(GetHashKey(m)) then hash = GetHashKey(m); break end end
-    hash = hash or GetHashKey(S.flagModel)
+    local hash = GetHashKey(S.flagModel)
     if not IsModelInCdimage(hash) then return end
     RequestModel(hash)
     local untilAt = GetGameTimer() + 5000
     while not HasModelLoaded(hash) and GetGameTimer() < untilAt do Wait(0) end
     if not HasModelLoaded(hash) then return end
-    -- flag.z is where the pole stands; lift by the model's bottom so the pivot never sinks it
-    local mn = GetModelDimensions(hash)
-    local object = CreateObjectNoOffset(hash, flag.x, flag.y, flag.z - mn.z, false, false, false)
-    if not object or object==0 or not DoesEntityExist(object)then SetModelAsNoLongerNeeded(hash);return end
-    SetEntityAsMissionEntity(object,true,true)
-    SetEntityCollision(object,false,false)
-    Entity(object).state:set('bsProtected',true,false)
-    SetEntityHeading(object, flag.heading or 0.0); FreezeEntityPosition(object, true)
+    local object = CreateObjectNoOffset(hash, flag.x, flag.y, flag.z, false, false, false)
+    SetEntityHeading(object, flag.heading or 0.0); PlaceObjectOnGroundProperly(object); FreezeEntityPosition(object, true)
     SetModelAsNoLongerNeeded(hash)
     Props[flag.id] = object
-    Grounded[flag.id] = nil
     if GetResourceState('bs_interactions') == 'started' then
-        -- bs_interactions hands the option's args to the event
-        local opts = { { label = L('fb.i_status'), icon = 'flag', event = 'bs:factionBases:flagStatus', args = { id = flag.id } } }
+        local opts = { { label = L('fb.i_status'), icon = 'flag', event = 'bs:factionBases:flagStatus', payload = { id = flag.id } } }
         if flag.mine then
-            opts[#opts + 1] = { label = L('fb.i_remove_decay'), icon = 'hand', event = 'bs:factionBases:pickup', args = { id = flag.id, mode = 'decay' } }
-            opts[#opts + 1] = { label = L('fb.i_remove_all'), icon = 'trash', event = 'bs:factionBases:pickup', args = { id = flag.id, mode = 'all' } }
+            opts[#opts + 1] = { label = L('fb.i_pickup'), icon = 'hand', event = 'bs:factionBases:pickup', payload = { id = flag.id } }
         elseif flag.kind == 'outpost' then
-            opts[#opts + 1] = { label = L('fb.i_reclaim'), icon = 'warning', event = 'bs:factionBases:reclaim', args = { id = flag.id } }
+            opts[#opts + 1] = { label = L('fb.i_reclaim'), icon = 'warning', event = 'bs:factionBases:reclaim', payload = { id = flag.id } }
         end
         exports.bs_interactions:AddEntity(object, opts)
     end
@@ -79,15 +67,6 @@ local function sync(list)
 end
 RegisterNetEvent('bs:factionBases:sync', function(list) CreateThread(function() sync(list) end) end)
 
--- For bs_factions banners: where each flag stands and which faction owns it.
-exports('FlagList', function()
-    local out = {}
-    for _, f in ipairs(Flags) do
-        out[#out + 1] = { id = f.id, factionId = f.factionId, entity = Props[f.id], x = f.x, y = f.y, z = f.z, heading = f.heading }
-    end
-    return out
-end)
-
 AddEventHandler('bs:factionBases:flagStatus', function()
     CreateThread(function()
         local r = BSB.Await('factionBases:status', 6000)
@@ -96,57 +75,17 @@ AddEventHandler('bs:factionBases:flagStatus', function()
         end
     end)
 end)
-local function argsOf(data) return (data and data.args) or data or {} end
-
 AddEventHandler('bs:factionBases:reclaim', function(data)
-    local id = argsOf(data).id
     CreateThread(function()
-        local r = BSB.Await('factionBases:reclaim', 8000, id)
+        local r = BSB.Await('factionBases:reclaim', 8000, data.id)
         if r and r.error then notify('warn', r.error) elseif r and r.ok then notify('success', L('fb.reclaim_started')) end
     end)
 end)
--- Leader removes the flag. decay = the base falls apart slowly, all = it comes down now.
--- Either way part of the materials go into a salvage crate at the flag. The first press only explains.
-local confirmAt = {}
 AddEventHandler('bs:factionBases:pickup', function(data)
-    local a = argsOf(data)
-    local id, mode = a.id, a.mode == 'all' and 'all' or 'decay'
-    if not id then return end
     CreateThread(function()
-        local key = id .. mode
-        if not confirmAt[key] or GetGameTimer() > confirmAt[key] then
-            local info = BSB.Await('factionBases:flagPieces', 6000, id)
-            if info and info.error then return notify('warn', info.error) end
-            confirmAt[key] = GetGameTimer() + 8000
-            notify('info', L(mode == 'all' and 'fb.remove_all_ask' or 'fb.remove_decay_ask',
-                { n = info and info.n or 0, pct = info and info.pct or 0, h = info and info.hours or 0 }))
-            return
-        end
-        confirmAt[key] = nil
-        local r = BSB.Await('factionBases:pickupFlag', 8000, id, mode)
-        if r and r.error then notify('warn', r.error)
-        elseif r and r.ok then notify('success', L(mode == 'all' and 'fb.removed_all' or 'fb.removed_decay', { n = r.n or 0 })) end
+        local r = BSB.Await('factionBases:pickupFlag', 8000, data.id)
+        if r and r.error then notify('warn', r.error) elseif r and r.ok then notify('success', L('fb.picked_up')) end
     end)
-end)
-
--- Re-seat flags on the ground once their collision is loaded nearby
-CreateThread(function()
-    while true do
-        Wait(2000)
-        local me = GetEntityCoords(PlayerPedId())
-        for _, flag in ipairs(Flags) do
-            local obj = Props[flag.id]
-            if obj and DoesEntityExist(obj) and not Grounded[flag.id] and #(me - vector3(flag.x, flag.y, flag.z)) < 80.0 then
-                RequestCollisionAtCoord(flag.x, flag.y, flag.z)
-                local ok, gz = GetGroundZFor_3dCoord(flag.x, flag.y, flag.z + 2.0, false)
-                if ok and HasCollisionLoadedAroundEntity(obj)and gz <= flag.z+2.0 and gz >= flag.z-20.0 then
-                    local mn = GetModelDimensions(GetEntityModel(obj))
-                    SetEntityCoordsNoOffset(obj, flag.x, flag.y, gz - mn.z, false, false, false)
-                    Grounded[flag.id] = true
-                end
-            end
-        end
-    end
 end)
 
 local function refresh()

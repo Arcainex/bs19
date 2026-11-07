@@ -1,18 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="nui://bs_ui/html/shared/theme.js?v=20261030target"></script>
     <script src="nui://bs_ui/html/shared/scale.js?v=20261002"></script>
     <meta charset="utf-8" />
     <title>Inventory</title>
-    <!-- Bump v= by hand on every change to style.css/app.js. -->
-    <link rel="stylesheet" href="css/style.css?v=20261101vicinity2" />
-    <link rel="stylesheet" href="css/medical.css?v=20261030target" />
-    <link rel="stylesheet" href="css/craft.css?v=20261030target" />
-    <link rel="stylesheet" href="css/missions.css?v=20261030target" />
-    <link rel="stylesheet" href="css/skills.css?v=20261030target" />
+    <!-- Bump v= by hand on every change to style.css/app.js. FiveM's CEF caches ui_page assets across resource restarts, so players can keep running an old bundle. -->
+    <link rel="stylesheet" href="css/style.css?v=20261105-alpha-z-weapons" />
+    <link rel="stylesheet" href="css/medical.css?v=20261014m2" />
+    <link rel="stylesheet" href="css/craft.css?v=20261015c" />
+    <link rel="stylesheet" href="css/missions.css?v=20261016ml4" />
 </head>
 <body>
+</div>
 <!--
   Layout: one CSS grid (`.layout`) with three columns - character, carried, bag. Nothing inside is positioned against the viewport, so columns cannot drift.
   The character appears twice on purpose: a dark silhouette in the left column anchors the equipment frames, while the live ped is shown large on the right by a scripted camera (see client/cl_pedcam.lua) through the transparent parts of this page.
@@ -25,12 +24,9 @@
         <header class="topbar">
             <nav class="tabs">
                 <button class="tab is-active" data-tab="carry" data-i18n="ui.myself">MYSELF</button>
-                <button class="tab" data-tab="skills" data-i18n="ui.skills">SKILLS</button>
                 <button class="tab" data-tab="craft" data-i18n="ui.craft">CRAFT</button>
                 <button class="tab hidden" data-tab="medical" data-i18n="ui.medical">MEDICAL</button>
-                <button class="tab" data-tab="missions" data-i18n="ui.missions">MISSION LOG</button>
-                <button class="tab" data-tab="settings" data-i18n="ui.settings">SETTINGS</button>
-                <button class="tab" id="btnTrade" data-i18n="ui.trade">TRADE</button>
+                <!-- Missionslog-Reiter im Inventar ausgeblendet; Missionssystem bleibt aktiv. -->
             </nav>
             <span class="topbar__title" data-i18n="ui.inventory">INVENTORY</span>
             <button class="tab tab--close" id="btnClose" data-i18n="ui.close">CLOSE</button>
@@ -39,28 +35,12 @@
         <section class="pane is-active" data-pane="carry">
             <div class="layout">
 
-                <!-- CHARACTER -->
+                <!-- ------------------------------------------ CHARACTER -->
                 <div class="col col--character">
-                    <!-- Character sheet: levels and, more importantly, what they currently do for you (the modifiers). -->
-                    <section class="sheet" id="sheetPanel">
-                        <header class="sheet__head">
-                            <span class="sheet__title" data-i18n="ui.character">CHARACTER</span>
-                            <span class="sheet__points" id="sheetPoints"></span>
-                        </header>
-                        <div class="sheet__body">
-                            <div class="sheet__trees" id="sheetTrees"></div>
-                            <div class="sheet__mods">
-                                <span class="sheet__modhead" data-i18n="ui.modifiers">MODIFIERS</span>
-                                <div id="sheetMods"></div>
-
-                            </div>
-                        </div>
-                    </section>
-
                     <!-- Field medical. The inventory does not dress the player; NPC wardrobes stay cosmetic and this panel is gameplay. -->
                     <section class="fieldmed" id="medicalPanel" aria-label="Field medical assessment">
     <header class="fieldmed__head">
-        <span class="fieldmed__title" data-i18n="ui.field_medical">FIELD MEDICAL</span>
+        <span class="fieldmed__title" id="fieldmedTitle">CHARAKTER</span>
         <span class="fieldmed__state" id="medicalState" data-i18n="ui.assessing">ASSESSING</span>
     </header>
     <div class="fieldmed__body">
@@ -87,12 +67,13 @@
                 <i class="bodycard__corner"></i><i class="bodycard__corner"></i><i class="bodycard__corner"></i><i class="bodycard__corner"></i>
             </div>
             <div class="bodycard__foot">
-                <span class="bodycard__angle" id="bodyAngle" data-i18n="ui.front">FRONT</span>
+                <span class="bodycard__angle" id="bodyAngle" style="display:none"></span>
                 <span class="bodycard__dots" id="bodyDots"><b class="is-on"></b><b></b><b></b><b></b></span>
-                <span class="bodycard__hint" data-i18n="ui.drag_to_turn">&#8596; DRAG TO TURN</span>
+                <span class="bodycard__hint" style="display:none"></span>
             </div>
         </div>
         <div class="fieldmed__side">
+            <div class="alpha-z-carried-weapons" id="alphaZCarriedWeapons" aria-label="Getragene Waffen"></div>
             <div class="fxchips" id="fxChips"></div>
             <div class="fieldmed__readout" id="medicalReadout"></div>
         </div>
@@ -150,9 +131,9 @@
                         </header>
                         <div class="stats__rows" id="statRows"></div>
                     </section>
-                </div>
+</div>
 
-                <!-- CARRIED -->
+                <!-- --------------------------------------------- CARRIED -->
                 <div class="col col--stash">
                     <section class="board">
                         <header class="board__head">
@@ -170,6 +151,18 @@
                                 <button data-filter="other" data-i18n="ui.items">ITEMS</button>
                             </div>
                         </header>
+
+                        <!-- Permanent character items: cash is transferable; the ID card is fixed and can never be moved/dropped. -->
+                        <div class="identityrow">
+                            <div class="cashitem" id="cashItem" aria-label="Bargeld" title="Klicken, um Bargeld an einen Spieler weiterzugeben">
+                                <span class="cashitem__icon"><img src="img/cash.png?v=20261030" alt="" /></span>
+                                <span class="cashitem__name">BARGELD</span>
+                                <strong class="cashitem__amount" id="cashAmount">$0</strong>
+                            </div>
+                            <button class="iditem" id="idItem" type="button" aria-label="Personalausweis" title="Personalausweis">
+                                <span class="iditem__photo"><img src="img/idcard.png?v=20261031-new-id" alt="" /></span><span class="iditem__label">ID-CARD</span>
+                            </button>
+                        </div>
 
                         <div class="grid" id="playerGrid"></div>
                         <div class="invlist hidden" id="playerList"></div>
@@ -196,27 +189,23 @@
                                 </header>
                                 <div class="grid grid--bag" id="vestGrid"></div>
                             </div>
-                            <button class="bagbox__open hidden" id="packOpen" type="button"><span id="packOpenTitle">BACKPACK</span><span id="packOpenWeight"></span><span>OPEN</span></button>
-                            <div class="bagbox bagbox--window hidden" id="packBox">
+                            <div class="bagbox hidden" id="packBox">
                                 <header class="bagbox__head">
                                     <span class="bagbox__title" id="packTitle" data-i18n="ui.backpack">BACKPACK</span>
                                     <select class="bagbox__look" id="packLook" title="Look" data-i18n-attr="title:ui.pack_look"></select>
                                     <button class="bagbox__btn" id="packHide" data-i18n="ui.pack_hide">HIDE</button>
                                     <span class="bagbox__w" id="packWeight"></span>
-                                    <button class="bagbox__btn" id="packClose" type="button" aria-label="Close backpack">CLOSE</button>
                                 </header>
                                 <div class="grid grid--bag" id="packGrid"></div>
                             </div>
                         </div>
                     </section>
 
-                    <!-- BAG -->
-                    <div class="col col--bags">
-<section class="board" id="vicinityBoard">
-<header class="board__head"><h2>VICINITY · 10 M</h2><button class="tab" id="vicinityRefresh">REFRESH</button></header>
-<div id="vicinityItems" class="vicinity-items"></div><p class="vicinity-status" id="vicinityStatus">No loose items nearby.</p>
-</section>
-                    <section class="board board--bag" id="containerBoard">
+                    <!-- Character sheet removed. -->
+
+                    <!-- ------------------------------------------------- BAG -->
+                    <div class="col col--bags" id="lootContainerPanel" style="display:none">
+                    <section class="board board--bag">
                         <header class="board__head">
                             <h2 id="containerTitle" data-i18n="ui.nothing_open">NOTHING OPEN</h2>
                         </header>
@@ -240,8 +229,6 @@
                 <span class="foot__hint" data-i18n="ui.drag_to_any_cell_right_click_for_options">DRAG TO ANY CELL &middot; RIGHT-CLICK FOR OPTIONS &middot; SHIFT-DRAG TO SPLIT</span>
             </footer>
         </section>
-
-        <section class="pane" data-pane="skills"><div id="skillsRoot" class="skillbook"></div></section>
 
         <!-- Crafting, stations and machines. Drawn by js/craft.js, data comes from bs_crafting / bs_recycler. -->
         <section class="pane" data-pane="craft">
@@ -290,18 +277,11 @@
                         <div class="hudprev__id"><span data-i18n="trade.survivor">SURVIVOR</span> <i data-i18n="hudprev.scavenger">SCAVENGER</i></div>
                         <div class="hudprev__row" style="--c:#b4574a;--w:86%"><b data-i18n="hudprev.health">HEALTH</b><span class="hudprev__track"><u></u></span><em>86%</em></div>
                         <div class="hudprev__row" style="--c:#7fd4a2;--w:64%"><b data-i18n="hudprev.stamina">STAMINA</b><span class="hudprev__track"><u></u></span><em>64%</em></div>
-                        <div class="hudprev__row" style="--c:#d99b5b;--w:42%"><b data-i18n="hudprev.hunger">HUNGER</b><span class="hudprev__track"><u></u></span><em>42%</em></div>
+                        <div class="hudprev__row" style="--c:#93ab63;--w:42%"><b data-i18n="hudprev.hunger">HUNGER</b><span class="hudprev__track"><u></u></span><em>42%</em></div>
                         <div class="hudprev__row" style="--c:#5bc8d9;--w:73%"><b data-i18n="hudprev.thirst">THIRST</b><span class="hudprev__track"><u></u></span><em>73%</em></div>
                     </div>
                     <p class="setting__note" data-i18n="st.hud_style_note">Status bars look. Hover to preview. VIP styles need a VIP tier.</p>
                 </div>
-                <div class="setting" data-key="targetStyle"><span class="setting__label">TARGET MENU STYLE</span><div class="seg" data-setting="targetStyle"><button data-value="panel">PANEL</button><button data-value="compact">COMPACT</button><button data-value="bracket">BRACKET</button></div><p class="setting__note">Target options follow your theme. The selected action keeps an opaque background.</p></div>
-<div class="setting" data-key="targetOpacity"><span class="setting__label">TARGET BACKGROUND OPACITY</span><input type="range" data-setting="targetOpacity" min="0.55" max="1" step="0.05"><span class="setting__value" id="val-targetOpacity"></span></div>
-<div class="setting" data-key="targetScale"><span class="setting__label">TARGET MENU SIZE</span><input type="range" data-setting="targetScale" min="0.75" max="1.5" step="0.05"><span class="setting__value" id="val-targetScale"></span></div>
-<div class="setting" data-key="themeAccent"><span class="setting__label">CUSTOM ACCENT</span><input type="color" data-setting="themeAccent" value="#e08c46"><p class="setting__note">Choose the Custom menu palette to use your colours.</p></div>
-<div class="setting" data-key="themeBackground"><span class="setting__label">CUSTOM BACKGROUND</span><input type="color" data-setting="themeBackground" value="#0a0a09"><p class="setting__note">Choose the Custom menu palette to use your colours.</p></div>
-<div class="setting" data-key="themeText"><span class="setting__label">CUSTOM TEXT</span><input type="color" data-setting="themeText" value="#f0ebdd"><p class="setting__note">Choose the Custom menu palette to use your colours.</p></div>
-<div class="setting" data-key="themeMuted"><span class="setting__label">CUSTOM SECONDARY TEXT</span><input type="color" data-setting="themeMuted" value="#a8a293"><p class="setting__note">Choose the Custom menu palette to use your colours.</p></div>
                 <div class="setting setting--wide" data-key="menuPalette">
                     <span class="setting__label" data-i18n="st.menu_palette">MENU COLOURS</span>
                     <div class="seg seg--wrap" data-setting="menuPalette" id="paletteSeg"></div>
@@ -498,7 +478,6 @@
                 </div>
                     </div>
                 </section>
-                <section class="sgroup" data-group="g_firstperson"><h3 class="sgroup__title">First person · Field view</h3><div class="sgroup__grid"><div class="setting"><span class="setting__label">FIELD VIEW PROTOTYPE</span><div class="seg" data-setting="fpsEnabled"><button data-value="true">ON</button><button data-value="false">VANILLA</button></div><p class="setting__note">Requires First-person prototype availability in F1. Switch to first person normally. Lean: [ / ] (rebind in FiveM). Native sights and scopes remain available.</p></div><div class="setting"><span class="setting__label">HIP-FIRE CROSSHAIR</span><div class="seg" data-setting="fpsCrosshair"><button data-value="off">OFF</button><button data-value="dot">DOT</button><button data-value="cross">CROSS</button><button data-value="t">T</button></div></div><div class="setting"><span class="setting__label">FIELD OF VIEW</span><input type="range" min="55" max="100" step="1" data-setting="fpsFov"><span class="setting__value" id="val-fpsFov">70</span><p class="setting__note">On-foot field view only. Vehicles keep their own camera.</p></div><div class="setting"><span class="setting__label">ADDED WALKING MOTION</span><input type="range" min="0" max="100" step="1" data-setting="fpsBob"><span class="setting__value" id="val-fpsBob">15</span><p class="setting__note">Zero removes added motion. GTA head bobbing is controlled in game settings.</p></div><div class="setting"><span class="setting__label">SIGHT ZOOM</span><input type="range" min="100" max="150" step="1" data-setting="fpsAimZoom"><span class="setting__value" id="val-fpsAimZoom">110</span><p class="setting__note">Native magnified scopes retain their normal zoom.</p></div><div class="setting"><span class="setting__label">FRAMING · SIDE</span><input type="range" min="-8" max="8" step="1" data-setting="fpsSide"><span class="setting__value" id="val-fpsSide">0</span><p class="setting__note">Centimetres relative to the class default.</p></div><div class="setting"><span class="setting__label">FRAMING · FORWARD</span><input type="range" min="-8" max="8" step="1" data-setting="fpsForward"><span class="setting__value" id="val-fpsForward">0</span><p class="setting__note">Small camera adjustment; custom clothing may need tuning.</p></div><div class="setting"><span class="setting__label">FRAMING · HEIGHT</span><input type="range" min="-6" max="6" step="1" data-setting="fpsHeight"><span class="setting__value" id="val-fpsHeight">0</span><p class="setting__note">Centimetres relative to the class default.</p></div></div></section>
                 <section class="sgroup" data-group="g_camera">
                     <h3 class="sgroup__title" data-i18n="st.g_camera">Camera</h3>
                     <div class="sgroup__grid">
@@ -578,25 +557,10 @@
                         <button data-value="1">100%</button>
                         <button data-value="1.1">110%</button>
                         <button data-value="1.2">120%</button>
-                        <button data-value="1.5">150%</button>
-                        <button data-value="1.75">175%</button>
-                        <button data-value="2">200%</button>
-                        <button data-value="2.5">250%</button>
                     </div>
                     <p class="setting__note" data-i18n="ui.auto_fits_the_menus_to_your_screen_same">Auto fits the menus to your screen. Same as /uiscale.</p>
                 </div>
-                <div class="setting">
-                    <span class="setting__label">SCREEN SAFE MARGIN</span>
-                    <div class="seg seg--wrap" data-setting="uiSafeMargin">
-                        <button data-value="0">None</button><button data-value="2">2%</button><button data-value="4">4%</button><button data-value="6">6%</button><button data-value="8">8%</button>
-                    </div>
-                    <p class="setting__note">Keep supported menus away from the edges. Auto scale follows your screen height, including 1440p, 4K and ultrawide.</p>
-                </div>
-                <div class="setting"><span class="setting__label">ZOMBIE NOISE METER</span><div class="seg" data-setting="zombieNoiseHud"><button data-value="true">On</button><button data-value="false">Off</button></div><p class="setting__note">Shows the noise sent to zombie hearing. Individual walkers and obstacles can change detection.</p></div>
-                <div class="setting"><span class="setting__label">ZOMBIE IMPACT EFFECTS</span><div class="seg" data-setting="zombieImpactFx"><button data-value="true">On</button><button data-value="false">Off</button></div><p class="setting__note">Blood and impact audio when your shots or melee strikes land on a walker. The server can disable this for everyone.</p></div>
-                <div class="setting"><span class="setting__label">IMPACT VOLUME</span><input type="range" min="0" max="1" step="0.05" data-setting="zombieImpactVolume" /><span class="setting__value" id="val-zombieImpactVolume">0.70</span></div>
-                <div class="setting"><span class="setting__label">NOISE CARRY DISTANCE</span><div class="seg" data-setting="zombieNoiseRadius"><button data-value="true">Show</button><button data-value="false">Hide</button></div></div>
-                <!-- Screen filter buttons are built at runtime from the list bs_ui sends (`filters` in cl_main.lua's open payload) -->
+                <!-- Screen filter buttons are built at runtime from the list bs_ui sends (`filters` in cl_main.lua's open payload), so a preset added to config_ui.lua appears without editing markup here. -->
                 <div class="setting">
                     <span class="setting__label" data-i18n="ui.screen_filter">SCREEN FILTER</span>
                     <div class="seg seg--wrap" data-setting="filter" id="filterSeg"></div>
@@ -714,6 +678,7 @@
             <button class="ctx__slot" data-bind="3">3</button>
             <button class="ctx__slot" data-bind="4">4</button>
             <button class="ctx__slot" data-bind="5">5</button>
+            <button class="ctx__slot" data-bind="6">6</button>
         </div>
     </div>
 
@@ -737,6 +702,17 @@
             </div>
         </div>
     </div>
+    <div id="idMenu" class="modal hidden">
+        <div class="modal__box idmenu__box">
+            <h3>PERSONALAUSWEIS</h3>
+            <div class="idmenu__actions">
+                <button class="btn btn--primary" id="idViewSelf">SELBST ANSEHEN</button>
+                <button class="btn btn--primary" id="idShowPerson">PERSON ZEIGEN</button>
+                <button class="btn" id="idMenuCancel">ABBRECHEN</button>
+            </div>
+        </div>
+    </div>
+
     <section id="tradePanel" class="trade-panel hidden" aria-label="Player trade">
         <header class="trade-panel__head">
             <div><span class="trade-panel__eyebrow" data-i18n="ui.survivor_exchange">SURVIVOR EXCHANGE</span><strong id="tradeTitle" data-i18n="ui.trade">TRADE</strong></div>
@@ -762,18 +738,37 @@
     <div id="tradeNotice" class="trade-notice hidden"></div>
     <div id="tip" class="tip hidden"></div>
 </div>
-<div id="pickupVisual" class="pickup-visual" hidden aria-live="polite"><div id="pickupGrid" class="grid"></div></div>
+
+    <div id="idCardOverlay" class="idcard-overlay hidden">
+        <div class="idcard idcard--sanandreas" aria-label="State of San Andreas identification card">
+            <img class="idcard__background" src="img/idcard_large.png?v=20261031-new-id" alt="" />
+            <div class="idcard__portrait-frame"><img class="idcard__portrait-photo hidden" id="idPortrait" alt="Passfoto" draggable="false" /></div>
+            <div class="idcard__value idcard__name" id="idName">-</div>
+            <div class="idcard__value idcard__dob" id="idDob">-</div>
+            <div class="idcard__value idcard__sex" id="idSex">-</div>
+            <div class="idcard__value idcard__citizen" id="idNumber">-</div>
+            <div class="idcard__value idcard__issue" id="idIssueDate">-</div>
+            <div class="idcard__signature" id="idSignature">-</div>
+            <button class="idcard__close" id="idCardClose" type="button" aria-label="Schließen" title="Schließen">×</button>
+        </div>
+    </div>
+
 <!-- opaque while the body snapshots are taken (the camera moves behind it) -->
-<div id="captureCover" class="capcover hidden"><span data-i18n="ui.preparing_survivor">PREPARING SURVIVOR&hellip;</span></div>
-<script src="nui://bs_ui/html/js/icons.js?v=20261106weapons1"></script>
+<div id="captureCover" class="capcover hidden">
+    <div class="alphaLoad">
+        <div class="alphaLoad__mark"><i></i><i></i><i></i><i></i></div>
+        <div class="alphaLoad__eyebrow">ALPHA-Z // INVENTAR</div>
+        <div class="alphaLoad__title">AUSRÜSTUNG WIRD GELADEN</div>
+        <div class="alphaLoad__bar"><i></i></div>
+        <div class="alphaLoad__status">BESTAND WIRD SYNCHRONISIERT</div>
+    </div>
+</div>
+<script src="nui://bs_ui/html/js/icons.js?v=20261107-phase2-foodicons"></script>
+<script src="js/phone_icon.js?v=20261031-phone-item"></script>
 <script src="nui://bs_ui/html/js/i18n.js?v=20261013a"></script>
-<script src="js/grid_math.js?v=20261026d"></script>
-<script src="js/slots.js?v=20261101pickup"></script>
-<script src="js/app.js?v=20261106packwindow"></script>
-<script src="js/pickups.js?v=20261101pickup"></script>
+<script src="js/app.js?v=20261107-phase2"></script>
 <script src="js/medical.js?v=20261014m2"></script>
 <script src="js/craft.js?v=20261014c2"></script>
 <script src="js/missions.js?v=20261016ml4"></script>
-<script src="js/skills.js?v=20261026d"></script>
 </body>
 </html>

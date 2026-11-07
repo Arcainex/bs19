@@ -6,7 +6,9 @@ local INV = exports.bs_inventory
 
 Craft = {}
 
+--------------------------------------------------------------------------------
 -- Small helpers
+--------------------------------------------------------------------------------
 
 local function now() return os.time() end
 
@@ -85,7 +87,9 @@ function Craft.Roll(list, mult)
     return out
 end
 
+--------------------------------------------------------------------------------
 -- Recipes (config + F1 overrides)
+--------------------------------------------------------------------------------
 
 local OVERRIDE_FILE = 'data/recipes.json'
 local overrides = {}
@@ -110,9 +114,12 @@ function Craft.Recipe(id) return Craft.Recipes()[id] end
 function Craft.Overrides() return overrides end
 
 function Craft.SaveOverrides(tbl)
+    local ok, encoded = pcall(json.encode, tbl or {}, { indent = true })
+    if not ok or not encoded then return false end
+    if not SaveResourceFile(RES, OVERRIDE_FILE, encoded, -1) then return false end
     overrides = tbl or {}
-    SaveResourceFile(RES, OVERRIDE_FILE, json.encode(overrides, { indent = true }), -1)
     TriggerEvent('bs:crafting:recipesChanged')
+    return true
 end
 
 function Craft.TimeFor(src, recipe)
@@ -138,7 +145,9 @@ local function recipeAllowed(src, recipe)
     return true
 end
 
+--------------------------------------------------------------------------------
 -- Stations (bs_building pieces) and their storage
+--------------------------------------------------------------------------------
 
 local St = {}          -- [pieceId] = { type, queue = {}, burn = {} }
 local dbReady = false
@@ -254,7 +263,9 @@ local function takeCost(src, srcs, cost, times)
     return taken
 end
 
+--------------------------------------------------------------------------------
 -- Queues
+--------------------------------------------------------------------------------
 
 local Hand = {}        -- [src] = { jobs }
 local nextJob = 0
@@ -264,7 +275,7 @@ local function payloadJob(j, t, src)
     local r = Craft.Recipe(j.recipe)
     return {
         id = j.id, recipe = j.recipe, item = j.item, amount = j.amount, label = labelOf(j.item, src),
-        category = (itemDef(j.item) or {}).category, dur = j.dur,
+        category = (itemDef(j.item) or {}).category, icon = (itemDef(j.item) or {}).icon or j.item, dur = j.dur,
         left = j.endsAt and math.max(0, j.endsAt - t) or j.dur, running = j.endsAt ~= nil,
         status = j.status, mine = true, station = r and r.station,
     }
@@ -359,7 +370,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Callbacks used by the craft panel (bs_inventory/html/js/craft.js through our client)
+--------------------------------------------------------------------------------
 
 local function recipeList(src, stationType, srcs)
     local out, items = {}, {}
@@ -371,7 +384,7 @@ local function recipeList(src, stationType, srcs)
                 local have = items[c.item] or haveCount(src, srcs, c.item)
                 items[c.item] = have
                 costs[#costs + 1] = { item = c.item, label = labelOf(c.item, src), need = c.amount, have = have,
-                    category = (itemDef(c.item) or {}).category }
+                    category = (itemDef(c.item) or {}).category, icon = (itemDef(c.item) or {}).icon or c.item }
                 if have < c.amount then can = false end
             end
             local ok, why = recipeAllowed(src, r)
@@ -379,7 +392,7 @@ local function recipeList(src, stationType, srcs)
             for _, t in ipairs(r.tool or {}) do tools[#tools + 1] = labelOf(t, src) end
             out[#out + 1] = {
                 id = id, cat = r.cat or 'misc', label = r.label or labelOf(r.result.item, src),
-                item = r.result.item, amount = r.result.amount or 1, category = def.category or 'misc',
+                item = r.result.item, amount = r.result.amount or 1, category = def.category or 'misc', icon = def.icon or r.result.item,
                 costs = costs, time = Craft.TimeFor(src, r), baseTime = r.time, tools = tools,
                 can = can and ok, blocked = (not ok) and Lp(src, why) or nil, explosive = r.explosive or nil,
             }
@@ -418,7 +431,7 @@ BSB.RegisterCallback('crafting:state', function(src, stationId)
         local store = {}
         for _, e in ipairs(INV:ContainerContents(storageId(v.id))) do
             local d = itemDef(e.item) or {}
-            store[#store + 1] = { item = e.item, amount = e.amount, label = labelOf(e.item, src), category = d.category }
+            store[#store + 1] = { item = e.item, amount = e.amount, label = labelOf(e.item, src), category = d.category, icon = d.icon or e.item }
         end
         res.storage = store
         if def.farm then
@@ -551,7 +564,9 @@ BSB.RegisterCallback('crafting:nearStations', function(src)
     return { ok = true, list = out }
 end)
 
+--------------------------------------------------------------------------------
 -- Lifecycle
+--------------------------------------------------------------------------------
 
 -- A station that is torn down gives its queue back to whoever queued it.
 AddEventHandler('bs:building:pieceRemoved', function(id, defId)
@@ -610,7 +625,9 @@ CreateThread(function()
     print(('^2[BeyondSurvival]^7 (crafting) %d station(s) loaded'):format(#rows))
 end)
 
+--------------------------------------------------------------------------------
 -- Exports
+--------------------------------------------------------------------------------
 
 -- Station defs for bs_building's RegisterPlaceable.
 exports('StationDefs', function()
@@ -622,6 +639,25 @@ exports('StationDefs', function()
     return out
 end)
 exports('Recipes', function() return Craft.Recipes() end)
+-- Prevent deletion of an item whose output is still in a craft queue or burn timer.
+exports('ItemInPendingCraft', function(item)
+    if type(item) ~= 'string' then return nil end
+    for _, queue in pairs(Hand) do
+        for _, job in ipairs(queue or {}) do
+            if job.item == item then return 'Hand-Warteschlange' end
+        end
+    end
+    for id, station in pairs(St) do
+        for _, job in ipairs(station.queue or {}) do
+            if job.item == item then return 'Station ' .. tostring(id) end
+        end
+        for _, job in ipairs(station.burn or {}) do
+            if job.item == item or job.burnt == item then return 'Station ' .. tostring(id) end
+        end
+    end
+    return nil
+end)
+
 -- Recipe cost that makes an item, for the recycler (first recipe found, by hand preferred).
 exports('RecipeFor', function(item)
     local best

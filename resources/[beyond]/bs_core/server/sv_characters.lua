@@ -3,12 +3,14 @@
 BS.Characters = {}
 local Ch = BS.Characters
 
--- source to bs_users row, populated during the connection handshake.
+-- source -> bs_users row, populated during the connection handshake.
 local sessions = {}
 
 function BS.GetSession(src) return sessions[src] end
 
+--------------------------------------------------------------------------------
 -- Validation
+--------------------------------------------------------------------------------
 
 local function validateName(value)
     local clean = BS.Util.CleanString(value, Config.Character.nameMaxLength)
@@ -17,7 +19,8 @@ local function validateName(value)
     return clean
 end
 
---- Coerces a submitted appearance table into the configured schema.
+--- Coerces a submitted appearance table into the configured schema. Anything not
+--- described in Config.Appearance is discarded.
 local function sanitizeAppearance(input, gender)
     local out = Config.DefaultAppearance(gender)
     if type(input) ~= 'table' then return out end
@@ -48,7 +51,9 @@ local function validateDob(value)
     return ('%04d-%02d-%02d'):format(y, m, d)
 end
 
+--------------------------------------------------------------------------------
 -- Queries
+--------------------------------------------------------------------------------
 
 function Ch.List(userId)
     local rows = BS.DB.Query([[
@@ -80,7 +85,9 @@ function Ch.Get(charId, userId)
     ]], { charId, userId })
 end
 
+--------------------------------------------------------------------------------
 -- Mutations
+--------------------------------------------------------------------------------
 
 --- Slots for this account: config + bs_vip extra slot (cosmetic convenience).
 local function slotsFor(user)
@@ -117,7 +124,7 @@ local function shapeOutfit(o)
     return clean
 end
 
--- trusted comes only from the CreateCharacterFor export (server resources), never from a client payload: outfit
+-- trusted comes only from the CreateCharacterFor export (server resources), never from a client payload: outfit, loadout (extra starting items), identity (metadata.identity), spawn, pendingFaction.
 --- @return number|nil charId, string|nil error
 function Ch.Create(userId, payload, maxSlots, trusted)
     payload = payload or {}
@@ -182,7 +189,8 @@ function Ch.Create(userId, payload, maxSlots, trusted)
         :format(charId, firstName, lastName, classId))
     BS.Emit('character:created', userId, charId, classId)
 
-    -- Starting inventory is queued as metadata; bs_inventory grants it on first spawn so the core never needs to know about items.
+    -- Starting inventory is queued as metadata; bs_inventory grants it on first spawn so the core never needs to know about items. Unequipped on purpose, see startingItems in config_classes.lua.
+    -- Extra starting items from the creator kit merge into the same queue, so each item is granted once (bs_inventory clears it after the first spawn).
     local loadout = {}
     local index = {}
     for _, list in ipairs({ class.startingItems or {}, type(trusted.loadout) == 'table' and trusted.loadout or {} }) do
@@ -216,7 +224,6 @@ end
 
 --- Soft delete: the row is kept for audit, hidden from the slot list.
 function Ch.Delete(userId, charId)
-    if GetResourceState('bs_survivor_link')=='started'and exports.bs_survivor_link:Reserved(charId)then return false,'character already in use'end
     local char = Ch.Get(charId, userId)
     if not char then return false, 'character not found' end
     BS.DB.Update('UPDATE `bs_characters` SET `deleted_at` = NOW() WHERE `id` = ?', { charId })
@@ -225,16 +232,17 @@ function Ch.Delete(userId, charId)
     return true
 end
 
+--------------------------------------------------------------------------------
 -- Selection / spawn
+--------------------------------------------------------------------------------
 
--- Reserve the charId before the first yield.
+-- Reserve the charId before the first yield. BS.Players is only updated after the async DB read, so two quick select calls for the same charId could both pass the in-use check and create two Player objects for one row.
+-- pendingSelect is an in-memory reservation, checked and set before yielding and always cleared once on exit.
 local pendingSelect = {}
 
-function Ch.Select(src, charId, trusted)
-    if BS.GetPlayer(src) then return false, 'character already in use' end
+function Ch.Select(src, charId)
     local user = sessions[src]
     if not user then return false, 'session not ready' end
-    if not trusted and GetResourceState('bs_survivor_link')=='started'and exports.bs_survivor_link:Reserved(charId)then return false,'character already in use'end
 
     if pendingSelect[charId] then return false, 'character already in use' end
     -- Also covers a character that finished loading and is live right now.
@@ -249,14 +257,12 @@ function Ch.Select(src, charId, trusted)
         if not char then return false, 'character not found' end
 
         -- Re-check after the yield: another select for this charId may have completed meanwhile.
-        if not trusted and GetResourceState('bs_survivor_link')=='started'and exports.bs_survivor_link:Reserved(char.id)then return false,'character already in use'end
         local existingAfter = BS.GetPlayerByCharId(char.id)
         if existingAfter and existingAfter.source ~= src then
             return false, 'character already in use'
         end
 
         local player = BS.CreatePlayer(src, user, char)
-        if trusted and trusted.position then local p=trusted.position;player:SetPosition(p.x,p.y,p.z,p.h or 0)end
 
         if not player.position.x then
             local spawn = Config.Session.defaultSpawn
@@ -265,9 +271,7 @@ function Ch.Select(src, charId, trusted)
 
         BS.DB.Update('UPDATE `bs_characters` SET `last_played` = NOW() WHERE `id` = ?', { char.id })
 
-        local payload=player:GetClientPayload()
-        payload.survivorLinkSwitch=trusted and trusted.survivorLink or false
-        TriggerClientEvent(BS.Events.PlayerLoaded, src, payload)
+        TriggerClientEvent(BS.Events.PlayerLoaded, src, player:GetClientPayload())
         BS.Emit('player:loaded', player)
         BS.Emit('character:selected', player, char.id)
 
@@ -284,7 +288,9 @@ function Ch.Select(src, charId, trusted)
     return result, err
 end
 
+--------------------------------------------------------------------------------
 -- Network surface
+--------------------------------------------------------------------------------
 
 BSB.RegisterCallback('characters:list', function(src)
     local user = sessions[src]
@@ -348,7 +354,8 @@ function Ch.ClearSession(src)
     sessions[src] = nil
 end
 
---- The client reports a completed spawn.
+--- The client reports a completed spawn. Modules that need to hand out starting
+--- gear (bs_inventory) or attach world state listen for the 'player:spawned' hook.
 RegisterNetEvent(BS.Events.CharacterSpawned, function(charId)
     local player = BS.GetPlayer(source)
     if not player or player.charId ~= tonumber(charId) then return end
@@ -397,7 +404,9 @@ exports('SetCharacterOutfit', function(charId, outfit)
     return true
 end)
 
--- Queues clothing items to be equipped on this character's first spawn
+-- Queues clothing items to be equipped on this character's first spawn (consumed once by bs_inventory's 'pendingEquip' handling, same pattern as pendingLoadout in Ch.Create).
+-- Not the same as outfit, which is only a ped appearance snapshot.
+-- Nothing calls this by default; kept as a general tool for admin commands or rewards.
 exports('SetCharacterPendingEquip', function(charId, itemNames)
     charId = tonumber(charId)
     if not charId or type(itemNames) ~= 'table' then return false end
@@ -410,16 +419,19 @@ exports('SetCharacterPendingEquip', function(charId, itemNames)
     BS.DB.Update('UPDATE `bs_characters` SET `metadata` = ? WHERE `id` = ?',
         { BS.Util.Encode(meta), charId })
 
-    -- A freshly created bs_multichar character is not loaded yet, so there is no in-memory player to update.
+    -- A freshly created bs_multichar character is not loaded yet, so there is no in-memory player to update. The row is enough: the spawn hook reads metadata when the character is selected.
 
     return true
 end)
 
+--------------------------------------------------------------------------------
 -- Appearance edit (bs_multichar edit mode, gated by bs_vip). Face/hair only.
+--------------------------------------------------------------------------------
 
 exports('AppearanceSchema', function() return Config.Appearance end)
 
 --- Sets the loaded character's appearance (sanitised) and saves it.
+--- Non-yielding: the save runs on its own thread.
 exports('SetCharacterAppearance', function(src, appearance)
     local player = BS.GetPlayer(tonumber(src))
     if not player then return false end

@@ -66,10 +66,4 @@ return {
     ['fb.sentence_lifted'] = 'Cezan kaldırıldı.',
     ['fb.released_early'] = 'Erken tahliye edildin.',
     ['fb.sentence_served'] = 'Cezan bitti. Özgürsün.',
-    ['fb.i_remove_decay'] = 'Bayrağı kaldır (üs çürür)',
-    ['fb.i_remove_all'] = 'Bayrağı ve üssü kaldır',
-    ['fb.remove_decay_ask'] = 'Bayrağı kaldırmak için tekrar bas. {n} parça {h} saat içinde dağılacak, malzemelerin %{pct} kadarı buradaki hurda sandığına gider.',
-    ['fb.remove_all_ask'] = 'Bayrağı kaldırmak VE {n} parçayı hemen sökmek için tekrar bas. Malzemelerin %{pct} kadarı ve depolanan her şey buradaki hurda sandığına gider.',
-    ['fb.removed_decay'] = 'Bayrak kaldırıldı. Üs terk edildi ve dağılacak.',
-    ['fb.removed_all'] = 'Bayrak kaldırıldı. {n} parça söküldü, hurda sandığına bak.',
 }

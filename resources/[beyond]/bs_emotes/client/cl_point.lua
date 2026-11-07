@@ -1,4 +1,4 @@
--- bs_emotes - finger pointing that follows the camera and lets you keep walking.
+-- bs_emotes - finger pointing that follows the camera and lets you keep walking. Uses the game's pointing move network, fed every frame with pitch, heading, whether the arm is blocked by geometry and first person.
 
 Point = { active = false }
 
@@ -83,7 +83,7 @@ CreateThread(function()
                 goto continue
             end
 
-            -- ClearPedTasks from other scripts kills the move network, so it is restarted.
+            -- ClearPedTasks from other scripts kills the move network, so it is restarted. IsTaskMoveNetworkActive reports false during the network's own transitions, so only rebuild after about a third of a second of continuous absence, otherwise it restarts forever and never applies Heading.
             if not IsTaskMoveNetworkActive(ped) then
                 deadSince = deadSince or GetGameTimer()
 
@@ -96,13 +96,13 @@ CreateThread(function()
                 deadSince = nil
             end
 
-            -- Signals are normalised 0..1.
+            -- Signals are normalised 0..1. The raw heading is also needed in radians for the block test, which must probe where the finger ends up, not straight ahead.
 
             local rawPitch = GetGameplayCamRelativePitch()
             rawPitch = math.max(-70.0, math.min(42.0, rawPitch))
             local pitch = (rawPitch + 70.0) / 112.0
 
-            -- Clamped to a narrower window than the camera: at extreme headings (about +-180) the stock task_mp_pointing
+            -- Clamped to a narrower window than the camera: at extreme headings (about +-180) the stock task_mp_pointing network turns the whole body. The clamp keeps signals inside the arm-only cone.
             local rawHeading = GetGameplayCamRelativeHeading()
             rawHeading = math.max(-95.0, math.min(95.0, rawHeading))
             local heading = (rawHeading + 180.0) / 360.0
@@ -122,6 +122,7 @@ CreateThread(function()
             local _, blocked = GetShapeTestResult(ray)
 
             -- Sent every frame, unconditionally: the frame a blend finishes decides the pose.
+            -- The heading signal is sent inverted (1.0 - heading), like github.com/redoper1/FiveM-Point-finger does for the same stock network.
             SetTaskMoveNetworkSignalFloat(ped, 'Pitch', pitch)
             SetTaskMoveNetworkSignalFloat(ped, 'Heading', 1.0 - heading)
             SetTaskMoveNetworkSignalBool(ped, 'isBlocked', blocked == 1)
@@ -134,7 +135,7 @@ CreateThread(function()
     end
 end)
 
--- Debug command: prints the ped heading, camera heading
+-- Debug command: prints the ped heading, camera heading, the difference given to the move network (rel, signal) and whether the network is live. network=false means no signal is applied; signal stuck at 0.5 while turning the camera means it is computed wrong.
 RegisterCommand('pointdebug', function()
     CreateThread(function()
         local ped = PlayerPedId()

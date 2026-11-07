@@ -1,10 +1,13 @@
 -- bs_scenes - notes are drawn as 3D text where they were written (no entity, prop or collision).
+-- The draw loop only considers notes already filtered to a radius, and draws only those in front of the camera within the fade distance.
 
 local notes = {}        -- [id] = note
 local nearby = {}       -- the small list the draw loop walks
 local writing = false
 
+--------------------------------------------------------------------------------
 -- Getting them
+--------------------------------------------------------------------------------
 
 local function refresh()
     if not exports.bs_core:IsLoaded() then return end
@@ -41,7 +44,13 @@ AddEventHandler('bs:hook:player:spawned', function()
     CreateThread(function() Wait(3000); refresh() end)
 end)
 
--- Which ones are worth drawing.
+--------------------------------------------------------------------------------
+-- Which ones are worth drawing
+--
+-- Rebuilt a few times a second rather than every frame: a note twenty metres
+-- away does not become relevant between one frame and the next, and walking the
+-- whole set at 60fps for that is waste.
+--------------------------------------------------------------------------------
 
 CreateThread(function()
     while true do
@@ -69,7 +78,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Drawing
+--------------------------------------------------------------------------------
 
 local function draw3d(x, y, z, text, colour, alpha)
     local onScreen, sx, sy = World3dToScreen2d(x, y, z)
@@ -104,7 +115,9 @@ CreateThread(function()
                 local kind = Scenes.Kinds[note.kind] or Scenes.Kinds.note
                 local colour = kind.colour or { r = 216, g = 210, b = 194 }
 
-                -- Full strength up close, fading to nothing at the edge of range.
+                -- Full strength up close, fading to nothing at the edge of
+                -- range. A note that pops in at full brightness reads as a UI
+                -- element; one that fades up reads as something you noticed.
                 local alpha = 1.0
                 if note.dist > fade then
                     alpha = 1.0 - ((note.dist - fade) / math.max(0.01, range - fade))
@@ -191,7 +204,10 @@ end
 
 -- Commands
 
---- /note <text> leaves a plain note /warn <text> leaves a warning /safe <text> marks somewhere cleared /supplies
+--- /note <text>          leaves a plain note
+--- /warn <text>          leaves a warning
+--- /safe <text>          marks somewhere cleared
+--- /supplies <text>      marks something worth coming back for
 local function command(kind)
     return function(_, args, raw)
         -- `raw` keeps the spacing as typed; args would collapse it.

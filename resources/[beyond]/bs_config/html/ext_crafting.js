@@ -10,7 +10,7 @@
   const costText = (list) => (list || []).map(c => `${c.item}:${c.amount}`).join(', ');
   const parseCost = (txt) => String(txt || '').split(',').map(x => x.trim()).filter(Boolean).map(x => { const [item, n] = x.split(':'); return { item: item.trim(), amount: Number(n) || 1 }; });
 
-  // recipes
+  // ------------------------------------------------------------ recipes
   function drawRecipes() {
     const list = R.recipes.filter(r => !q || (r.id + ' ' + (r.recipe && r.recipe.result.item) + ' ' + (r.recipe && r.recipe.station || 'hand')).toLowerCase().includes(q));
     const st = (s) => s ? (R.stations.find(x => x.id === s) || { label: s }).label : X('cfg.x.cr.hand', 'Hand');
@@ -61,7 +61,7 @@
     R = res; drawRecipes();
   }
 
-  // recyclers
+  // ------------------------------------------------------------ recyclers
   let P = null;
   function drawRecyclers() {
     main.innerHTML = `<h2 class="cat">${E(X('cfg.x.rc.label', 'Recyclers'))}</h2>
@@ -92,7 +92,7 @@
     P = res; drawRecyclers();
   }
 
-  // input
+  // ------------------------------------------------------------ input
   document.addEventListener('click', async (e) => {
     const r = e.target.closest('[data-xr]'), p = e.target.closest('[data-xp]');
     if (r) {

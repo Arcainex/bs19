@@ -70,7 +70,7 @@ const el = (tag, cls, txt) => {
     if (txt != null) n.textContent = txt;
     return n;
 };
-const fmt = n => (n == null ? '-' : Number(n).toLocaleString(window.BSI18n ? window.BSI18n.lang() : 'en'));
+const fmt = n => (n == null ? '-' : Number(n).toLocaleString('en-GB'));
 const f1  = n => (n == null ? '-' : Number(n).toFixed(1));
 
 // 3. Layers and legend
@@ -129,26 +129,7 @@ function buildLegend() {
         wander: 'drifting', lurk: 'standing still', investigate: 'heard something',
         drawn: 'pulled along', hunt: 'has a player', feed: 'on a corpse',
     });
-    // Cars use the same glyph path as the map, one swatch per state
-    box.appendChild(el('div', 'sub', AT('atlas.lg.cars', 'WORLD CARS')));
-    const carNames = { free: 'free', locked: 'locked', owned: 'owned', occupied: 'occupied', wrecked: 'wrecked' };
-    Object.keys(AtlasMap.CAR_COLOURS).forEach(k => {
-        const row = el('div', 'lgd');
-        const sw = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        sw.setAttribute('viewBox', '0 0 24 24');
-        sw.setAttribute('class', 'lgd__car');
-        const body = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        body.setAttribute('d', AtlasMap.CAR_BODY);
-        body.setAttribute('fill', AtlasMap.CAR_COLOURS[k]);
-        body.setAttribute('stroke', 'rgba(10,16,24,0.9)');
-        body.setAttribute('stroke-width', '1.6');
-        const glass = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        glass.setAttribute('d', AtlasMap.CAR_GLASS);
-        glass.setAttribute('fill', 'rgba(10,16,24,0.78)');
-        sw.append(body, glass);
-        row.append(sw, el('span', null, AT('atlas.cars.' + k, carNames[k])));
-        box.appendChild(row);
-    });
+    section(AT('atlas.lg.cars', 'WORLD CARS'), AtlasMap.CAR_COLOURS, {});
     section(AT('atlas.lg.cell', 'CELL STATE'), AtlasMap.COLOURS.cell, {
         locked: 'staff pinned', cleared: 'farmed, healing', thin: 'under half',
         promoted: 'live individuals', full: 'at baseline', normal: '', empty: '',
@@ -268,7 +249,7 @@ function renderStats(snap) {
     S_('celltick', 'CELLTICK', f1(s.cellTickMs) + 'ms', 'Grid sweep slice cost.');
     S_('regrow', 'REGROW', f1(s.regrowthPerHour) + '/h', 'Per cell per hour, 0 when regrowth is off.');
 
-    $('lastPoll').textContent = AT('atlas.updated', 'updated {t}', { t: new Date().toLocaleTimeString(window.BSI18n ? window.BSI18n.lang() : 'en') });
+    $('lastPoll').textContent = AT('atlas.updated', 'updated {t}', { t: new Date().toLocaleTimeString('en-GB') });
 }
 
 // Sampling is shown visibly. stride > 1 means every Nth cell was sampled
@@ -369,13 +350,13 @@ function renderInspect(r) {
         inds.forEach(a => {
             const row = el('div', 'ind');
             row.title = a.target
-                ? AT('atlas.i.target', 'target: {kind}{src} at {x}, {y}', { kind: AT('atlas.target.' + a.target.kind, a.target.kind), src: a.target.src ? ' #' + a.target.src : '', x: Math.round(a.target.x), y: Math.round(a.target.y) })
+                ? AT('atlas.i.target', 'target: {kind}{src} at {x}, {y}', { kind: a.target.kind, src: a.target.src ? ' #' + a.target.src : '', x: Math.round(a.target.x), y: Math.round(a.target.y) })
                 : I('notarget', 'no target');
             const sw = el('span', 'ind__sw');
             sw.style.background = AtlasMap.COLOURS.agent[a.state] || '#8fa6bd';
             row.append(sw,
                 el('span', 'ind__id', '#' + a.id),
-                el('span', 'ind__st', AT('atlas.s.' + a.state, a.state || '?') + (a.stim ? '/' + AT('atlas.stim.' + a.stim, a.stim) : '')),
+                el('span', 'ind__st', (a.state || '?') + (a.stim ? '/' + a.stim : '')),
                 el('span', 'ind__x', (a.ped ? I('ped', 'PED') + ' ' : '') + AT('atlas.i.drift', 'drift {n}m', { n: Math.round(a.driftFromOrigin || 0) })));
             list.appendChild(row);
         });
@@ -400,7 +381,7 @@ async function editCell(patch, describe) {
 
     const res = await call('zombies:atlas:edit', { cx, cy, patch });
     toast(res, res.ok
-        ? AT('atlas.e.result', 'Cell {cx},{cy} is now n={n} individuals={ind} baseline={base} state={state}{lock}', { cx, cy, n: res.cell.n, ind: res.cell.individuals, base: res.cell.baseline, state: AT('atlas.s.' + res.cell.state, res.cell.state), lock: res.cell.locked ? ' ' + AT('atlas.e.lockflag', 'LOCKED') : '' })
+        ? AT('atlas.e.result', 'Cell {cx},{cy} is now n={n} individuals={ind} baseline={base} state={state}{lock}', { cx, cy, n: res.cell.n, ind: res.cell.individuals, base: res.cell.baseline, state: res.cell.state, lock: res.cell.locked ? ' ' + AT('atlas.e.lockflag', 'LOCKED') : '' })
         : null);
     if (res.ok) inspectCell(cx, cy);   // re-read rather than trusting our patch
 }
@@ -496,8 +477,6 @@ function findBooleans(cfg) {
     return out;
 }
 
-const configLabel = key => AT('atlas.cfgkey.' + key, key);
-
 function getDotted(cfg, key) {
     const parts = key.split('.');
     let n = cfg;
@@ -538,8 +517,7 @@ function renderConfig() {
             else ST.pending[key] = box.checked;
             markDirty();
         });
-        lab.title = key;
-        lab.append(box, el('span', 'cfg__k', configLabel(key)));
+        lab.append(box, el('span', 'cfg__k', key));
         body.appendChild(lab);
     });
 
@@ -550,7 +528,7 @@ function renderConfig() {
         const sec = key.includes('.') ? key.split('.')[0] : 'general';
         if (sec !== section) {
             section = sec;
-            body.appendChild(el('div', 'cfg__sec', AT('atlas.cfgsection.' + sec, sec.toUpperCase())));
+            body.appendChild(el('div', 'cfg__sec', sec.toUpperCase()));
         }
 
         // Lua's { min, max } arrives as a JSON array, but an object is accepted too; failing to read it would make every slider 0..1
@@ -560,8 +538,7 @@ function renderConfig() {
         const cur = Number(getDotted(ST.simConfig, key));
 
         const wrap = el('div', 'cfg');
-        wrap.title = key;
-        wrap.appendChild(el('div', 'cfg__k', configLabel(key)));
+        wrap.appendChild(el('div', 'cfg__k', key));
 
         const row = el('div', 'cfg__rng');
         const sl = document.createElement('input');
@@ -609,7 +586,7 @@ async function applyConfig() {
     if (!keys.length) return;
 
     const yes = await confirmAction(AT('atlas.c.confirm', 'APPLY TO THE LIVE SIMULATION'),
-        keys.map(k => `${configLabel(k)} -> ${patch[k]}`).join('\n') +
+        keys.map(k => `${k} -> ${patch[k]}`).join('\n') +
         '\n\n' + AT('atlas.c.confirm_text', 'These take effect <b>immediately</b> on the running server and are <b>NOT saved</b> - a restart returns every one of them to config_sim.lua.'));
     if (!yes) return;
 
@@ -628,10 +605,10 @@ async function applyConfig() {
     const ak = Object.keys(applied), rk = Object.keys(rejected);
 
     lines.push(ak.length ? AT('atlas.c.applied', 'APPLIED:') : AT('atlas.c.applied_none', 'APPLIED: (nothing)'));
-    ak.forEach(k => lines.push('  ' + configLabel(k) + ' = ' + applied[k]));
+    ak.forEach(k => lines.push('  ' + k + ' = ' + applied[k]));
     if (rk.length) {
         lines.push('', AT('atlas.c.rejected', 'REJECTED / CLAMPED:'));
-        rk.forEach(k => lines.push('  ' + configLabel(k) + ' - ' + rejected[k]));
+        rk.forEach(k => lines.push('  ' + k + ' - ' + rejected[k]));
     }
     lines.push('', AT('atlas.c.persisted', 'persisted = false - none of this survives a restart.'));
     out.textContent = lines.join('\n');
@@ -879,7 +856,7 @@ window.addEventListener('message', ev => {
                 ST.observer = m.observer;
                 AtlasMap.setObserver(m.observer);
                 $('obsState').textContent = AT('atlas.o.refreshed', 'Refreshed at {t} - watching {x}, {y} at {r}m.',
-                    { t: new Date().toLocaleTimeString(window.BSI18n ? window.BSI18n.lang() : 'en'), x: Math.round(m.observer.x), y: Math.round(m.observer.y), r: Math.round(m.observer.radius) });
+                    { t: new Date().toLocaleTimeString('en-GB'), x: Math.round(m.observer.x), y: Math.round(m.observer.y), r: Math.round(m.observer.radius) });
             } else {
                 $('obsState').textContent = AT('atlas.o.refreshfail', 'REFRESH FAILED: {err} - the region will stop being watched when its 300s expires.',
                     { err: (m.res && m.res.error) || AT('atlas.no_answer', 'no answer') });
@@ -984,7 +961,7 @@ function svRender(res) {
         const row = el('div', 'lyr' + (p.removed ? ' is-off' : ''));
         row.title = AT('atlas.sv.click', 'Click to load into the form');
         row.append(el('span', 'lyr__n', `${p.i}. ${p.id}${p.surveyed ? ' *' : ''}`),
-                   el('span', 'lyr__c', `${p.t ? AT('atlas.t.' + p.t, p.t) : ''} d${(p.d || 0).toFixed ? (p.d || 0).toFixed(1) : p.d}`));
+                   el('span', 'lyr__c', `${p.t || ''} d${(p.d || 0).toFixed ? (p.d || 0).toFixed(1) : p.d}`));
         row.addEventListener('click', () => {
             $('svId').value = p.id; $('svD').value = p.d || 0; $('svT').value = p.t || 'town';
             $('svN').value = (p.n || []).join(',');

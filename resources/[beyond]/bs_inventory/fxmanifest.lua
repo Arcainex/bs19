@@ -14,14 +14,11 @@ shared_scripts {
     '@bs_core/shared/sh_util.lua',
     '@bs_core/shared/sh_locale.lua',
     'config/config_items.lua',
-    'config/config_items_custom_attachments.lua',
     'config/config_items_crafting.lua',
     'config/config_items_jobs.lua',
-    'config/config_items_darkzone.lua',
     -- After config_items: it merges garments into Items.Definitions and won't overwrite an existing id.
     'config/config_clothing.lua',
     'config/config_inventory.lua',
-    'config/config_firstperson.lua',
 }
 
 client_scripts {
@@ -29,14 +26,10 @@ client_scripts {
     'client/cl_pedcam.lua',
     'client/cl_bodyrender.lua',   -- BSInvBody, also used by cl_main
     'client/cl_main.lua',
-    'client/cl_pickups.lua',
     'client/cl_equipment.lua',
     'client/cl_drops.lua',
     'client/cl_hotbar.lua',
     'client/cl_missions.lua',
-    'client/cl_skills.lua',
-    'client/cl_fp_viewmodel.lua',
-    'client/cl_firstperson.lua',
     'client/cl_camera.lua',   -- optional smooth camera settings
 }
 server_scripts {
@@ -45,12 +38,7 @@ server_scripts {
     'server/sv_grid.lua',
     'server/sv_items.lua',
     'server/sv_main.lua',
-    'server/sv_pickups.lua',
     'server/sv_trade.lua',
-    'server/sv_survivor_link.lua',
-    'server/sv_weapon_transfer.lua',
-    'server/sv_radio_slot.lua',
-    'server/sv_radio_power.lua',
     'server/sv_hotbar.lua',
     'server/sv_missions.lua',
 }
@@ -59,13 +47,13 @@ ui_page 'html/index.html'
 
 files {
     'html/index.html',
+    'html/img/cash.png',
+    'html/img/idcard.png',
+    'html/img/idcard_large.png',
+    'html/img/phone.png',
     'html/css/style.css',
-    'html/css/skills.css',
-    'html/js/skills.js',
+    'html/js/phone_icon.js',
     'html/js/app.js',
-    'html/js/grid_math.js',
-    'html/js/slots.js',
-    'html/js/pickups.js',
     'html/js/medical.js',
     'html/css/medical.css',
     'html/js/craft.js',
@@ -75,7 +63,7 @@ files {
     'locales/*.lua',
 }
 
-dependencies { 'bs_core', 'oxmysql' }
+dependencies { 'bs_core', 'bs_ui', 'oxmysql' }
 
 -- crash breadcrumbs (bs_core)
 client_script '@bs_core/shared/sh_crumbs.lua'

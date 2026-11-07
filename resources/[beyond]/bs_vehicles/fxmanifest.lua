@@ -58,5 +58,3 @@ files { 'locales/*.lua' }
 -- pump control panel
 ui_page 'html/pump.html'
 files { 'html/pump.html', 'html/pump.css', 'html/pump.js', 'html/scrap.css', 'html/scrap.js' }
-
-files { 'html/inspection.js' }

@@ -254,11 +254,4 @@ return {
     ['fac.cmd.rep_usage'] = 'Usage: /setfactionrep <serverId> <amount>',
     ['fac.cmd.rep_nofaction'] = 'That player is not in a faction.',
     ['fac.cmd.rep_set'] = 'Set to {n} reputation.',
-    -- faction emblems and identity
-    ['fac.emblem_no_perm'] = 'Only the leader or ranks with the Emblem permission can change the emblem.',
-    ['fac.emblem_wait'] = 'Wait a few seconds before saving again.',
-    ['fac.banner_added'] = 'Banner placed for {faction}.',
-    ['fac.banner_none_near'] = 'No placed banner within 6 m.',
-    ['fac.banner_removed'] = 'Banner removed.',
-    ['fac.banner_list'] = 'Banners: {list}',
 }

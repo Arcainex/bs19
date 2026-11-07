@@ -1,4 +1,5 @@
 -- Screen and camera effects while drugs are active. Names/strengths: Drugs.Fx in config.
+-- Strongest active drug owns the main timecycle, the next one adds its subtle "extra" layer.
 
 local Fx = Drugs.Fx
 local layers = {
@@ -6,7 +7,7 @@ local layers = {
     extra = { name = nil, cur = 0.0 },
 }
 local shake = { type = nil, amp = 0.0 }
-local nextPulse = {}   -- key to game timer
+local nextPulse = {}   -- key -> game timer
 local played = {}      -- AnimpostFX names we started, to stop on cleanup
 
 local function setLayer(key, name, v)

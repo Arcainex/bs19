@@ -1,4 +1,6 @@
--- bs_recycler config: fuel-driven machines at fixed world spots. Anyone can load, start or empty one.
+-- bs_recycler config. Fuel-driven machines at fixed world spots. Anyone can load, start or empty one.
+-- Points are kept in the database (bs_recycler_points); Recycler.Points only seeds an empty table.
+-- Settings marked (F1) are live in the F1 console; points and the blacklist have their own F1 pages.
 
 Recycler = {}
 
@@ -24,7 +26,8 @@ Recycler.Settings = {
     drawDistance     = 150.0,
 }
 
--- Per-item scrap table for junk and things with no recipe.
+-- Per-item scrap table for junk and things with no recipe. Amounts are what the machine gives at yieldRate 0.5;
+-- they scale with the rate. `tool` is what hand dismantling needs (screwdriver for electronics, wrench for metal).
 Recycler.Yields = {
     junk_radio     = { tool = 'screwdriver', { item = 'electronics', amount = { 1, 2 } }, { item = 'wires', amount = { 1, 2 } }, { item = 'plastic', amount = { 1, 2 } } },
     junk_battery   = { tool = 'wrench',      { item = 'lead', amount = { 3, 6 } }, { item = 'plastic', amount = { 1, 2 } } },

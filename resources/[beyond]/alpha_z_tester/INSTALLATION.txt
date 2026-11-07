@@ -1,0 +1,38 @@
+ALPHA-Z F4 TESTERMENÜ V3 – WAFFENCARRY, VOLLHEILUNG, NEUE ITEMS
+
+INSTALLATION:
+1. Server stoppen; vorhandene alpha_z_tester und alpha_z_weaponcarry/config.lua sichern.
+2. Den Ordner alpha_z_tester vollständig ersetzen (V2-Helligkeitsfix ist enthalten).
+3. NUR die beiliegende alpha_z_weaponcarry/config.lua in die bestehende
+   Resource alpha_z_weaponcarry übernehmen. Alle anderen WeaponCarry-Dateien,
+   insbesondere positions.json, unverändert lassen.
+4. server.cfg: ensure alpha_z_weaponcarry VOR ensure alpha_z_tester starten.
+5. Die vorhandene ACE `alpha_z.tester` für die Tester-Gruppe beibehalten.
+6. Server neu starten. F4 -> TESTWERKZEUGE -> WAFFENCARRY-EDITOR prüfen.
+
+WAFFENCARRY:
+Tester bekommen über `alpha_z.tester` NUR Editor-Zugriff auf WeaponCarry,
+keine bs.admin- oder bs.superadmin-Rechte. Achtung: Das vorhandene
+WeaponCarry-Positionssystem speichert Einstellungen SERVERWEIT in positions.json.
+Tester-Änderungen dort beeinflussen auch andere Spieler. Vorher Backup machen.
+
+GEGENSTÄNDE:
+Entfernt: Pistole, Karabiner, Pistolenmunition, Gewehrmunition,
+Motor, Getriebe, Batterie, Zündkerze und Bremsbeläge, Benzinkanister.
+Neu: Armbrust (`crossbow`), Barbed Wire Bat (`weapon_poolcue`),
+Handy (`phone`), kleine/mittlere/große Tasche (`pack_small`/`pack_medium`/`pack_large`).
+Übrige Test-Gegenstände bleiben erhalten.
+Armbrust verwendet im aktuellen Inventar die vorhandene Crossbow-Waffendefinition.
+Es wurde keine neue Munitionsart erfunden.
+
+HEILEN:
+Aufruf von bs_medical:ClearConditions auf dem Server, dann
+bs:medical:heal und HP-Wiederherstellung beim lebenden eigenen Ped.
+Behandelt auch Verletzungen und Blutungen. Kein Revive, keine Adminrechte.
+Ohne bs_medical wird der Vorgang mit Fehlermeldung abgebrochen.
+
+HINWEISE:
+* NUI-Hintergrund transparent wie V2 (Dark-Screen-Fix).
+* Serverseitige Whitelists, Cooldowns, Mengenlimits bleiben bestehen.
+* F10-Adminmenü, bs_world, bs_multichar, andere Resources unverändert.
+* Offline auf Lua/JS-Struktur geprüft, nicht auf dem laufenden FiveM-Server.

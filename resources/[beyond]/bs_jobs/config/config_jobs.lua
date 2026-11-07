@@ -1,4 +1,6 @@
--- bs_jobs - faction jobs: no salary: every finished contract pays character XP, skill XP and faction rep.
+-- bs_jobs - faction jobs. No salary: every finished contract pays character XP, skill XP and faction rep.
+-- Settings marked (F1) are live in the F1 console (category Faction Jobs).
+-- Every position below is approximate. Fix them in F1 if a station lands in a wall.
 
 Jobs = {}
 
@@ -71,7 +73,8 @@ Jobs.Defs = {
 Jobs.Vanilla = {
     military  = { 'gunsmith', 'combat_medic', 'patrol', 'logistics', 'mechanic' },
     bikers    = { 'bike_mechanic', 'road_captain', 'fuel_runner', 'scrapper' },
-    civilians = { 'hunter_fisher', 'farmer', 'cook', 'medic', 'water_engineer' },
+    civilians = { 'hunter_fisher', 'farmer', 'cook', 'medic', 'water_engineer', 'mechanic' },
+    mechanic_workshop = { 'hunter_fisher', 'farmer', 'cook', 'medic', 'water_engineer', 'mechanic' },
     rebels    = { 'kidnapper', 'car_thief', 'raider', 'smuggler' },
 }
 Jobs.VanillaFallback = { 'mechanic', 'scavenger', 'medic' }
@@ -96,18 +99,19 @@ Jobs.Stations = {
     bikers_yard       = { faction = 'bikers',    kind = 'yard',     x = 965.0,  y = -198.0, z = 72.6,  h = 60.0 },
     civilians_yard    = { faction = 'civilians', kind = 'yard',     x = -255.0, y = -2040.0, z = 27.7, h = 230.0 },
     civilians_water   = { faction = 'civilians', kind = 'water',    x = -280.0, y = -2060.0, z = 27.7, h = 50.0 },
+    mechanic_workshop_yard = { faction = 'mechanic_workshop', kind = 'yard', x = 1692.19, y = 3282.08, z = 41.14, h = 349.5 },
     rebels_yard       = { faction = 'rebels',    kind = 'yard',     x = 1010.0, y = -322.0, z = 66.8,  h = 150.0 },
     rebels_chop       = { faction = 'rebels',    kind = 'chop',     x = 1030.0, y = -335.0, z = 66.5,  h = 150.0 },
 }
 
 -- Contract templates per job. kind:
--- count = do event amount times (counted from gameplay, e.g. skinning, repairs, zombie kills)
--- nest = kill amount walkers near a nest point
--- deliver = bring items to one of your faction's job stations
--- route = drive through points (convoy needs escort faction mates close by)
--- supply = recover a crate at a drop point and bring it home
--- service = refuel a generator at a power zone (uses a fuel can)
--- smuggle = carry contraband to a drop point, your position leaks every few minutes
+--   count   = do event amount times (counted from gameplay, e.g. skinning, repairs, zombie kills)
+--   nest    = kill amount walkers near a nest point
+--   deliver = bring items to one of your faction's job stations
+--   route   = drive through points (convoy needs escort faction mates close by)
+--   supply  = recover a crate at a drop point and bring it home
+--   service = refuel a generator at a power zone (uses a fuel can)
+--   smuggle = carry contraband to a drop point, your position leaks every few minutes
 -- rep = faction reputation, xp = character XP, sxp = skill XP, fxp = faction level XP.
 Jobs.Contracts = {
     gunsmith = {
@@ -287,7 +291,8 @@ Jobs.Hunting = {
     },
 }
 
--- Gunsmith bench (military only).
+-- Gunsmith bench (military only). Cheaper than the weapon bench and the only place for some gadgets.
+-- event: gunsmith_attach or gunsmith_gadget (what contracts count).
 Jobs.Gunsmith = {
     { id = 'att_suppressor', item = 'att_suppressor', amount = 1, ms = 20000, event = 'gunsmith_attach', cost = { { item = 'metal_pipe', amount = 1 }, { item = 'scrap_metal', amount = 2 } } },
     { id = 'att_scope',      item = 'att_scope',      amount = 1, ms = 20000, event = 'gunsmith_attach', cost = { { item = 'electronics', amount = 1 }, { item = 'scrap_metal', amount = 2 }, { item = 'glue', amount = 1 } } },
@@ -307,5 +312,6 @@ Jobs.Water = { ms = 10000, input = 'dirty_water', inputAmount = 2, output = 'wat
 -- Siphon (Fuel Runner): from parked cars nobody owns. Fills one fuel can.
 Jobs.Siphon = { ms = 12000, tool = 'siphon_hose', can = 'fuel_can', empty = 'empty_bottle', take = 25.0 }
 
--- Chop shop (Car Thief): a car you picked in the last windowMin minutes.
+-- Chop shop (Car Thief): a car you picked in the last windowMin minutes. The owner keeps the car,
+-- the parts come off it and go to you.
 Jobs.Chop = { windowMin = 120, parts = { 'battery', 'sparkplug' }, items = { battery = 'battery', sparkplug = 'spark_plug' }, bonus = { { item = 'scrap_metal', amount = 8 }, { item = 'rubber', amount = 2 } } }

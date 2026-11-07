@@ -199,23 +199,15 @@ RegisterNetEvent('bs:vehicles:spot', function(reqId, x, y, z, h)
     local hi = math.max(lo, math.floor(tonumber(W.fuelMax) or 50))
     local fuel = math.random(lo, hi) + 0.0
 
-    -- Reserve the population slot before the database yields.
-    owed[req.category] = owed[req.category] - 1
-    local reservation = { x, y }
-    taken[#taken + 1] = reservation
-    local ok, id = pcall(function() return exports.oxmysql:insert_async([[
+    local id = exports.oxmysql:insert_async([[
         INSERT INTO `bs_vehicles` (`plate`, `model`, `fuel`, `parts`, `missing`, `position`, `locked`, `world_spawn`, `category`)
         VALUES (?, ?, ?, ?, ?, ?, 0, 1, ?)
     ]], { plate, req.model, fuel, json.encode(parts), json.encode(missing),
-          json.encode({ x = x, y = y, z = z, h = h }), req.category }) end)
-    if not ok or not id then
-        owed[req.category] = (owed[req.category] or 0) + 1
-        for i = #taken, 1, -1 do
-            if taken[i] == reservation then table.remove(taken, i); break end
-        end
-        print(('[bs_vehicles] World vehicle could not be saved: %s'):format(tostring(id)))
-        return
-    end
+          json.encode({ x = x, y = y, z = z, h = h }), req.category })
+    if not id then return end
+
+    owed[req.category] = owed[req.category] - 1
+    taken[#taken + 1] = { x, y }
 end)
 
 local WORLD_SCOPES = {
@@ -485,7 +477,7 @@ exports('GetWorldCars', function()
                 origin = (r.world_spawn == true or tonumber(r.world_spawn) == 1) and 'system' or 'admin',
                 owner = r.owner_character_id, ownerName = r.owner_name,
                 category = r.category, fuel = tonumber(r.fuel) or 0,
-                x = pos.x, y = pos.y, z = pos.z, h = tonumber(pos.h) or 0.0, state = state }
+                x = pos.x, y = pos.y, z = pos.z, state = state }
         end
     end
     return out

@@ -1,4 +1,5 @@
 -- Interface language: per account in bs_users.language, published on the player state bag 'bs_lang'.
+-- An empty value means the player follows the server default (GlobalState.bs_defaultLang).
 
 BS.Locale = {}
 

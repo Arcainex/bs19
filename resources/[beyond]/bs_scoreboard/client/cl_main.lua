@@ -1,4 +1,4 @@
--- BeyondSurvival - bs_scoreboard client. F9 is held, not toggled: it can never stay on screen.
+-- BeyondSurvival - bs_scoreboard client. F9 is held, not toggled: it can never stay on screen. The page is display-only and takes no NUI focus, so it cannot trap the player.
 
 local shown = false
 local fetching = false
@@ -34,7 +34,7 @@ local function hide()
     send({ action = 'close' })
 end
 
--- The key: registerKeyMapping gives the press; the release has to be watched in the thread below
+-- The key. RegisterKeyMapping gives the press; the release has to be watched in the thread below, since a command only fires on the way down.
 
 local wanted = false
 
@@ -55,7 +55,7 @@ end, false)
 RegisterKeyMapping('+' .. Scoreboard.Settings.command, 'Scoreboard',
     'keyboard', Scoreboard.Settings.key)
 
--- Safety net: a +command/-command pair loses its release if the window loses focus (alt-tab with F9 held).
+-- Safety net: a +command/-command pair loses its release if the window loses focus (alt-tab with F9 held). This notices the key is no longer down and closes the board.
 CreateThread(function()
     while true do
         Wait(250)

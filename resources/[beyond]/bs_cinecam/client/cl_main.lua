@@ -4,7 +4,7 @@
 
 local open = false
 
--- Shared with cl_camera.lua so the camera knows the menu is up.
+-- Shared with cl_camera.lua so the camera knows the menu is up. A shared global rather than an event, since the camera loop reads it every frame.
 CineMenu = { open = false }
 local mayUse = nil        -- nil = not asked yet, true/false = server's answer
 
@@ -14,9 +14,11 @@ local function say(text)
     TriggerEvent('chat:addMessage', { args = { '^5[cine]', text } })
 end
 
+--------------------------------------------------------------------------------
 -- Permission
+--------------------------------------------------------------------------------
 
--- Asked once and cached: the real check is on the server
+-- Asked once and cached. The real check is on the server (server/sv_main.lua re-checks before acknowledging anything); the client answer only decides whether to open the menu.
 local function mayFly()
     if not Cine.Settings.requirePermission then return true end
     if mayUse ~= nil then return mayUse end
@@ -26,7 +28,9 @@ local function mayFly()
     return mayUse
 end
 
+--------------------------------------------------------------------------------
 -- Menu
+--------------------------------------------------------------------------------
 
 local function payload()
     return {
@@ -54,11 +58,13 @@ local function openMenu()
     CineMenu.open = true
     send({ action = 'open', data = payload() })
 
-    -- Focus with input kept: SetNuiFocus alone takes the keyboard too and the camera would stop.
+    -- Focus with input kept: SetNuiFocus alone takes the keyboard too and the camera would stop. SetNuiFocusKeepInput lets you fly and tune sliders at the same time.
     SetNuiFocus(true, true)
     SetNuiFocusKeepInput(CineCam.active)
 
-    -- NOT announced as bs:ui:opened when the camera is running: that event closes every other panel and hides the
+    -- Deliberately NOT announced as bs:ui:opened when the camera is running:
+    -- that event closes every other panel and hides the HUD, which is already
+    -- handled, and the camera's own lockout owns the screen at that point.
     if not CineCam.active then TriggerEvent('bs:ui:opened', 'cinecam-menu') end
 end
 
@@ -76,13 +82,16 @@ local function toggleMenu()
     if open then closeMenu() else CreateThread(openMenu) end
 end
 
+--------------------------------------------------------------------------------
 -- Keys
+--------------------------------------------------------------------------------
 
 RegisterCommand(Cine.Settings.openCommand, toggleMenu, false)
 RegisterKeyMapping(Cine.Settings.openCommand,
     L('cine.keymap'), 'keyboard', Cine.Settings.openKey)
 
--- Raw-key path: cinematic mode disables all controls, including key mappings
+-- Raw-key path. Cinematic mode disables all controls, including key mappings, so without this loop nothing could open the menu to leave the camera.
+-- IsRawKeyJustPressed ignores DisableAllControlActions. Only runs while the camera is active, so it never double-fires with the key mapping above.
 CreateThread(function()
     while true do
         if CineCam.active then
@@ -101,7 +110,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- NUI callbacks
+--------------------------------------------------------------------------------
 
 RegisterNUICallback('close', function(_, cb)
     closeMenu()
@@ -114,7 +125,8 @@ RegisterNUICallback('apply', function(data, cb)
     -- Live-apply the ones that are not read fresh every frame.
     if CineCam.active then
         if data and data.patch and data.patch.fov then CineCam.tFov = s.fov end
-        -- Grading is something you judge by looking, so it has to land on the click rather than on the next time the camera is entered.
+        -- Grading is something you judge by looking, so it has to land on the
+        -- click rather than on the next time the camera is entered.
         if CineGrade then CineGrade.Set(s) end
         SetTimeScale(s.timescale)
         CineLock.SetLocked(not s.allowMenuHotkeys)
@@ -196,7 +208,9 @@ RegisterNUICallback('path', function(data, cb)
     cb({ ok = true, path = CinePath.Summary() })
 end)
 
+--------------------------------------------------------------------------------
 -- Live state push, so the menu is not lying while you fly
+--------------------------------------------------------------------------------
 
 CreateThread(function()
     while true do
@@ -217,7 +231,9 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Commands
+--------------------------------------------------------------------------------
 
 --[[ Every one of these answers, always. A silent return on a permission
      failure is indistinguishable from a missing command or a dead resource,
@@ -262,7 +278,9 @@ RegisterCommand('cinediag', function()
         :format(tostring(mayUse), GetResourceState('bs_ui'), GetResourceState('bs_chat')))
 end, false)
 
+--------------------------------------------------------------------------------
 -- Safety
+--------------------------------------------------------------------------------
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
@@ -272,6 +290,7 @@ end)
 
 AddEventHandler('bs:ui:panic', function()
     -- Our own broadcast on entering camera mode - see CineLock.SetLocked.
+    -- Closing the menu here would close it the instant the camera comes on.
     if CineLock.selfPanic then return end
 
     open = false

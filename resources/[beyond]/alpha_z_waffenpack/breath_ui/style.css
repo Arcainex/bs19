@@ -1,0 +1,60 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+    pointer-events: none;
+}
+
+#breathEffect {
+    --breath-progress: 0;
+    position: fixed;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 280ms ease-in-out;
+
+    /*
+      Die freie Mitte wird ueber 6 Sekunden kleiner:
+      Start: dunkler Rand weit aussen.
+      Ende: Rand ist sichtbar weiter nach innen gewachsen,
+      Fadenkreuz/Mitte bleibt trotzdem frei.
+    */
+    background:
+        radial-gradient(
+            ellipse at center,
+            rgba(0,0,0,0) 0%,
+            rgba(0,0,0,0) calc(52% - (var(--breath-progress) * 18%)),
+            rgba(0,0,0,0.10) calc(65% - (var(--breath-progress) * 16%)),
+            rgba(0,0,0,0.34) calc(80% - (var(--breath-progress) * 13%)),
+            rgba(0,0,0,0.68) 100%
+        );
+
+    box-shadow:
+        inset 0 0 calc(7vw + (var(--breath-progress) * 5vw))
+              calc(2vw + (var(--breath-progress) * 2vw)) rgba(0,0,0,.38),
+        inset 0 0 calc(14vw + (var(--breath-progress) * 6vw))
+              calc(4vw + (var(--breath-progress) * 3vw)) rgba(0,0,0,.20);
+}
+
+#breathEffect::after {
+    content: "";
+    position: absolute;
+    inset: -2%;
+    opacity: calc(.45 + (var(--breath-progress) * .25));
+    background:
+        radial-gradient(
+            ellipse at center,
+            rgba(190,190,190,0) 0%,
+            rgba(190,190,190,0) calc(57% - (var(--breath-progress) * 17%)),
+            rgba(145,145,145,.08) calc(73% - (var(--breath-progress) * 14%)),
+            rgba(80,80,80,.20) 100%
+        );
+    filter: blur(calc(15px + (var(--breath-progress) * 8px)));
+}
+
+#breathEffect.active {
+    opacity: 1;
+}

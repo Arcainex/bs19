@@ -1,16 +1,20 @@
--- bs_skills - dodge: sHIFT + W W / S S / A A / D D dodges forward / backward / left / right.
+-- bs_skills - dodge.
+-- SHIFT + W W / S S / A A / D D dodges forward / backward / left / right.
 
--- Declarations first: a local used above its declaration compiles to a global lookup (nil at runtime)
+-- Declarations first: a local used above its declaration compiles to a global lookup (nil at runtime),
+-- so everything the functions here call each other with is declared up top.
 
 local cfg                                     -- Skills.Dodge, read once below
 local dodging      = false                    -- the one piece of state
 local lastDodgeAt  = 0
 local lastTapKey   = nil
 local lastTapAt    = 0
--- Heading is taken at the first tap: movement is camera-relative
+-- Heading is taken at the first tap: movement is camera-relative, so the first D tap already turns the
+-- ped toward camera-right and the ped's right has moved by the second tap.
 local lastTapHeading = nil
 
--- Keep a short heading history (20 samples, last second).
+-- Keep a short heading history (20 samples, last second). The input loop sleeps 150 ms while Shift is up,
+-- so the combo is noticed late; the history gives the heading from just before the first tap.
 local headingHistory = {}
 CreateThread(function()
     while true do
@@ -33,13 +37,16 @@ local lastRefusal  = 'none yet'               -- for /skilltest
 local loopAlive    = false                    -- for /skilltest: did the thread survive start-up
 local bootState    = 'not started'            -- for /skilltest
 
--- Debug surface for /skilltest (cl_skilldebug.lua).
+-- Debug surface for /skilltest (cl_skilldebug.lua). Client scripts in a resource share one Lua state,
+-- so a global table of functions is enough. Functions, not values, so the command reports live state.
 BS_SkillsDebug = BS_SkillsDebug or {}
 
 -- INPUT_SPRINT, read as a modifier only. Never disabled, so Shift still sprints.
 local SPRINT_CONTROL = 21
 
--- Movement controls are polled, not registered as key mappings.
+-- Movement controls are polled, not registered as key mappings. Registering a mapping on a control that
+-- is also polled fires both on one press (a single tap would count as a double-tap).
+-- Never disabled, we only read them.
 local MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT = 32, 33, 34, 35
 
 -- Animations, checked with GetAnimDuration
@@ -62,7 +69,8 @@ local CANDIDATES = {
         { dict = 'melee@unarmed@streamed_core', clip = 'dodge_generic_centre',  flag = 48, style = 'upper' },
     },
 
-    -- 180 is the roll made for going backwards.
+    -- 180 is the roll made for going backwards. Fallback is the melee slip, upper body only,
+    -- so the legs keep the engine's backward locomotion.
     backward = {
         { dict = 'move_strafe@roll',            clip = 'combatroll_bwd_p1_180', flag = 32, style = 'roll' },
         { dict = 'move_strafe@roll_fps',        clip = 'combatroll_bwd_p1_180', flag = 32, style = 'roll' },
@@ -76,7 +84,7 @@ local CANDIDATES = {
         { dict = 'melee@unarmed@streamed_core', clip = 'dodge_generic_l',       flag = 32, style = 'sidestep' },
     },
 
-    -- +90 is the pure right roll, in the fwd family. dodge_generic_r is full-body because it is handed.
+    -- +90 is the pure right roll, in the fwd family. dodge_generic_r is full-body on purpose because it is handed.
     right = {
         { dict = 'move_strafe@roll',            clip = 'combatroll_fwd_p1_90',  flag = 32, style = 'roll' },
         { dict = 'move_strafe@roll_fps',        clip = 'combatroll_fwd_p1_90',  flag = 32, style = 'roll' },
@@ -84,7 +92,11 @@ local CANDIDATES = {
     },
 }
 
--- Skills.Dodge.animStyle: 'roll' - try everything, best first (default) 'sidestep' - skip the full-body rolls
+-- Skills.Dodge.animStyle:
+-- 'roll' - try everything, best first (default)
+-- 'sidestep' - skip the full-body rolls, use only the short melee slips
+-- 'none' - never play a clip, dodge is pure movement
+-- This filters one table so there is only one list of clip names to maintain.
 local STYLE_ALLOWED = {
     roll     = { roll = true, upper = true, sidestep = true },
     sidestep = { upper = true, sidestep = true },
@@ -116,6 +128,7 @@ local function resolveOne(direction)
     end
 
     -- Not an error: running off the end of the list means no clip, which is the intended floor.
+    -- The push still runs and the engine locomotion covers the legs.
     print(('^3[BeyondSurvival]^7 (skills) no dodge animation resolved for [%s] - the dodge still MOVES, it is just a fast step (this is the intended floor, not a bug)')
         :format(direction))
     return false
@@ -129,7 +142,8 @@ local function resolveAll()
         resolved[direction] = resolveOne(direction)
     end
 
-    -- Escape hatch for the sign convention (see note above the table).
+    -- Escape hatch for the sign convention (see note above the table). Swapped after the probe so the
+    -- printed probe lines still show which clip was found.
     if cfg and cfg.mirrorSides then
         resolved.left, resolved.right = resolved.right, resolved.left
         print('^3[BeyondSurvival]^7 (skills) dodge: mirrorSides is on - left and right clips swapped')
@@ -138,7 +152,8 @@ end
 
 -- Skill
 
--- Survival level, or 0 if the bs_skills cache is not filled yet.
+-- Survival level, or 0 if the bs_skills cache is not filled yet. Read through the export so this
+-- file also works if moved to another resource.
 local function survivalLevel()
     local ok, level = pcall(function() return exports.bs_skills:GetSkillLevel('survival') end)
     if ok and type(level) == 'number' then return level end
@@ -151,6 +166,7 @@ local function hasBreakFall()
 end
 
 -- 0.0 at the minimum level that unlocks the dodge, 1.0 at the tree cap.
+-- Everything that scales with training goes through this one number.
 local function trainedFraction()
     local tree    = (Skills.Trees and Skills.Trees.survival) or {}
     local maxLvl  = tree.maxLevel or 20
@@ -165,6 +181,8 @@ local function lerp(a, b, t) return a + (b - a) * t end
 -- Refusals
 
 -- Refusal reasons that are not shown to the player: driving, in a menu, dead or ragdolled.
+-- Aiming, cooldown, stamina and level are deliberately absent, since the player did mean to dodge there
+-- and should be told why nothing happened.
 local quietReasons = {
     ['in a vehicle'] = true,
     ['nui focus']    = true,
@@ -172,7 +190,9 @@ local quietReasons = {
     ['ragdoll']      = true,
 }
 
--- One sentence per refusal code.
+-- One sentence per refusal code. Level and stamina are functions so the text carries the actual numbers
+-- (e.g. "Dodging needs Survival 4, you have 0").
+-- Looked up when read, so the text follows the player's current language.
 local REASON_KEYS = {
     ['aiming']      = 'dodge.aiming',
     ['cooldown']    = 'dodge.cooldown',
@@ -200,7 +220,7 @@ end
 -- - ragdolled, dead or in a scripted task
 -- - in the air (would be a double jump)
 -- - NUI focus (typing WASD with Shift held would trigger dodges). IsNuiFocused covers every menu without
--- each one having to report in.
+--   each one having to report in.
 local function blocked(ped)
     if IsPedInAnyVehicle(ped, true)            then return 'in a vehicle' end
     if IsNuiFocused()                          then return 'nui focus' end
@@ -212,7 +232,8 @@ local function blocked(ped)
     if IsEntityInAir(ped)                      then return 'in air' end
     if IsPedCuffed(ped)                        then return 'cuffed' end
 
-    -- Aiming down sights: off by default, see config_abilities.lua.
+    -- Aiming down sights. Off by default, see config_abilities.lua. Checks both the disabled and the enabled
+    -- control read, because other systems disable aim in some states.
     if not cfg.allowWhileAiming then
         if IsPlayerFreeAiming(PlayerId())
             or IsControlPressed(0, 25)
@@ -268,7 +289,8 @@ local function complain(message)
     notify('warn', message, 2600)
 end
 
--- Single entry point for a refused dodge.
+-- Single entry point for a refused dodge. Records it for /skilltest and notifies unless the reason is in
+-- quietReasons. Returns false so call sites can write `return refuse('x')`.
 local function refuse(reason, text)
     debugPrint(reason)
     -- locked = skill not unlocked yet: the double tap is just movement, no message
@@ -278,7 +300,8 @@ local function refuse(reason, text)
     return false
 end
 
--- Is the dodge allowed right now, and if not why.
+-- Is the dodge allowed right now, and if not why. Separate from performDodge so /skilltest can ask
+-- without dodging, and the debug output can't drift from the real logic.
 local levelGate, stateGate  -- forward declarations, see the Lua 5.4 note above
 
 -- Unit vectors for the four directions from the ped's heading, so left means the character's left.
@@ -294,7 +317,8 @@ local function directionVector(ped, direction, fromHeading)
     return rx, ry
 end
 
--- Level gate: returns the sentence, not a boolean
+-- Level gate. Returns the sentence, not a boolean, with both numbers in it
+-- ("Dodging needs Survival 4 - you are Survival 0") so players see a skill tree rule and not a bug.
 function levelGate()
     local need = (cfg and cfg.minLevel) or 0
     if need <= 0 then return nil end
@@ -316,10 +340,6 @@ function stateGate(ped)
     -- Unlocked as a perk, not given to everyone.
     if (cfg.requirePerk ~= false) then
         local ok, has = pcall(function() return exports.bs_skills:HasPerk('dodge_roll') end)
-        -- the Fighting perk Footwork unlocks the same roll
-        if not (ok and has) then
-            ok, has = pcall(function() return exports.bs_skills:HasPerk('fight_footwork') end)
-        end
         if not (ok and has) then
             return 'locked', L('dodge.locked')
         end
@@ -353,6 +373,7 @@ function stateGate(ped)
 end
 
 local rollTimeMs
+-- Duration of p1 (+ p2 get-up), from GetAnimDuration.
 local function p2Of(anim)
     if not anim or anim.style ~= 'roll' then return nil end
     local c2 = anim.clip:gsub('_p1_', '_p2_', 1)
@@ -385,15 +406,14 @@ local function performDodge(direction, fromHeading)
     local speed = lerp(cfg.speed or 7.0, cfg.speedAtMax or 9.5, t or 0.0)
     local now   = GetGameTimer()
 
-    -- Stamina is read through GetNeeds and spent through AdjustStamina.
+    -- Stamina is read through GetNeeds and spent through AdjustStamina. Don't modify the returned table:
+    -- export results are copies, so writes never reach bs_core.
     lastRefusal = 'none - last dodge succeeded @ ' .. tostring(now)
 
     dodging     = true
     lastDodgeAt = now
 
     pcall(function() exports.bs_core:AdjustStamina(-cost) end)
-    -- bs_fighting listens for this to open a counter window
-    TriggerEvent('bs:skills:dodged', direction)
 
     local anim = resolved[direction]
     if anim then
@@ -424,18 +444,22 @@ local function performDodge(direction, fromHeading)
             local elapsed = GetGameTimer() - started
             if elapsed >= pushMs then break end
 
-            -- Exit conditions are re-checked every iteration, not just at the start: 340 ms is long enough to die
+            -- Exit conditions are re-checked every iteration, not just at the start: 340 ms is long enough to die,
+            -- fall or open a menu, and pushing a corpse or ragdoll can leave a player stuck under the map.
             local live = PlayerPedId()
             if live ~= ped or IsPedDeadOrDying(live, true) or IsPedRagdoll(live)
                 or IsPedInAnyVehicle(live, true) then
                 break
             end
 
-            -- Cosine decay from full speed to zero across the window, so it reads as a push you recover from instead of a lurch and stop.
+            -- Cosine decay from full speed to zero across the window, so it reads as a push you recover from
+            -- instead of a lurch and stop.
             local k  = 1.0 - (elapsed / pushMs)
             local mag = speed * (0.5 + 0.5 * math.cos((1.0 - k) * math.pi))
 
-            -- Z comes from the ped's current velocity, not zero, otherwise gravity is cancelled and a dodge off a ledge floats.
+            -- Z comes from the ped's current velocity, not zero, otherwise gravity is cancelled and a dodge off a
+            -- ledge floats. Lift is added for the first third only, to skim kerbs.
+            -- GetEntityVelocity returns a vector3, read .z off it; guarded in case the ped vanished.
             local vel      = GetEntityVelocity(live)
             local vz       = (type(vel) == 'table' or type(vel) == 'userdata') and (vel.z or 0.0) or 0.0
             local addLift  = (elapsed < pushMs / 3) and lift or 0.0
@@ -448,6 +472,7 @@ local function performDodge(direction, fromHeading)
             Wait(0)
         end
 
+        -- Push is over: let the roll finish (p1 then p2 get-up) with controls locked, then blend out slowly.
         local p1Ms = 0
         if anim and HasAnimDictLoaded(anim.dict) then
             local ok, d1 = pcall(GetAnimDuration, anim.dict, anim.clip)
@@ -477,7 +502,8 @@ local function performDodge(direction, fromHeading)
         end
         dodging = false
 
-        -- Shift is both the dodge modifier and sprint, and still held when controls return, so the ped would sprint off.
+        -- Shift is both the dodge modifier and sprint, and still held when controls return, so the ped would
+        -- sprint off. Sprint stays blocked until Shift is released (1.5 s max).
         local untilAt = GetGameTimer() + 1500
         while GetGameTimer() < untilAt
               and (IsControlPressed(0, SPRINT_CONTROL) or IsDisabledControlPressed(0, SPRINT_CONTROL)) do
@@ -497,7 +523,10 @@ local TAP_CONTROLS = {
     { control = MOVE_RIGHT, direction = 'right'    },
 }
 
--- Wait for bs_core, but don't depend on it.
+-- Wait for bs_core, but don't depend on it. The call is pcall'd (a missing export would kill this thread
+-- silently) and capped at 15 s (a never-true export would wait forever). The wait only helps the animation
+-- probe: dicts stream in late and probing during the loading screen caches a wrong "not there".
+-- The dodge itself needs nothing from bs_core, so on timeout we carry on.
 local function waitForCore(maxMs)
     local waited = 0
     while waited < maxMs do
@@ -545,6 +574,7 @@ CreateThread(function()
 
     while true do
         -- Two wait rates: per-frame polling only while Shift is held, 150 ms idle otherwise.
+        -- IsDisabledControlPressed too, since other systems disable sprint in some states.
         local shift = IsControlPressed(0, SPRINT_CONTROL)
             or IsDisabledControlPressed(0, SPRINT_CONTROL)
 
@@ -555,7 +585,9 @@ CreateThread(function()
         end
 
         do
-            -- The gesture is detected first and the gates are checked inside performDodge
+            -- The gesture is detected first and the gates are checked inside performDodge, so a refused dodge can be
+            -- reported by name instead of silently ignored. Only NUI focus is checked here: when someone is typing,
+            -- W-W is a letter and must not be recorded as a tap.
             if IsNuiFocused() then
                 lastTapKey = nil
                 Wait(100)
@@ -570,7 +602,9 @@ CreateThread(function()
 
                     if lastTapKey == entry.direction
                         and (now - lastTapAt) < (cfg.doubleTapMs or 420) then
-                        -- Consume the pair: otherwise a third tap would pair with the second
+                        -- Consume the pair. Otherwise a third tap would pair with the second, and an autorepeating held key
+                        -- would dodge on every repeat.
+                        -- Player's own off switch (Settings pane, saved per character): off means taps are plain movement.
                         local okS, hud = pcall(function() return exports.bs_ui:GetHudSettings() end)
                         local playerOff = okS and type(hud) == 'table' and hud.dodge == false
                         local h = lastTapHeading
@@ -595,7 +629,8 @@ CreateThread(function()
     end
 end)
 
--- Debug surface for /skilltest.
+-- Debug surface for /skilltest. Functions, not values, so it reports live state from this code
+-- rather than a second copy of the rules.
 
 BS_SkillsDebug.dodge = function()
     local ped = PlayerPedId()
@@ -628,7 +663,8 @@ BS_SkillsDebug.dodge = function()
     }
 end
 
--- Never stuck: `dodging` is cleared on every exit path of the push thread; death
+-- Never stuck: `dodging` is cleared on every exit path of the push thread; death, the panic button and
+-- resource stop also reset it, so the dodge key can't go dead for the session.
 
 local function release()
     dodging    = false
@@ -648,10 +684,4 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 -- For bs_zombies' claw: a dodge in progress beats a grab. True only while the roll/push is happening.
--- GrantEvade: a short window where IsDodging is also true, used by bs_fighting when a guard beats a walker swing.
-local evadeUntil = 0
-exports('IsDodging', function() return dodging == true or GetGameTimer() < evadeUntil end)
-exports('GrantEvade', function(ms)
-    ms = math.min(900, math.max(0, tonumber(ms) or 0))
-    evadeUntil = math.max(evadeUntil, GetGameTimer() + ms)
-end)
+exports('IsDodging', function() return dodging == true end)

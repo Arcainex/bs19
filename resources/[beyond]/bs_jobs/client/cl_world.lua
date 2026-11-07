@@ -125,22 +125,39 @@ CreateThread(function()
     end
 end)
 
+--------------------------------------------------------------------------------
 -- Fishing spots
+--------------------------------------------------------------------------------
 
 AddEventHandler('bs:jobs:fish', function()
-    TriggerEvent('bs:jobs:fish:use')
+    CreateThread(function()
+        local f = JC.TimedCall('jobs:fish:start', 'jobs:fish:finish', L('prog.fish'), JC.Anim.fish, 'none')
+        if f then
+            if f.item then notify('success', L('n.caught', { item = f.label or f.item })) else notify('info', L('n.no_bite')) end
+        end
+    end)
 end)
 
 CreateThread(function()
     while GetResourceState('bs_interactions') ~= 'started' do Wait(500) end
     Wait(1500)
+    for i, s in ipairs(Jobs.Fishing.spots) do
+        exports.bs_interactions:AddZone('bsjob:fish' .. i, vector3(s.x, s.y, s.z), s.r or 25.0, {
+            { labelKey = 'opt.fish', label = 'Fish here', icon = 'hand', event = 'bs:jobs:fish', filters = { onFoot = true } },
+        })
+        local b = AddBlipForCoord(s.x, s.y, s.z)
+        SetBlipSprite(b, 68); SetBlipScale(b, 0.6); SetBlipColour(b, 3); SetBlipAsShortRange(b, true)
+        BeginTextCommandSetBlipName('STRING'); AddTextComponentSubstringPlayerName(L('blip.fish')); EndTextCommandSetBlipName(b)
+    end
     -- Siphon fuel from parked cars (Fuel Runner).
     exports.bs_interactions:AddType('vehicle', {
         { labelKey = 'opt.siphon', label = 'Siphon fuel', icon = 'hand', distance = 3.0, event = 'bs:jobs:siphon', filters = { onFoot = true, playerStateTrue = 'bsJ_siphon' } },
     })
 end)
 
+--------------------------------------------------------------------------------
 -- Purifier, siphon, chop
+--------------------------------------------------------------------------------
 
 AddEventHandler('bs:jobs:purify', function()
     CreateThread(function()

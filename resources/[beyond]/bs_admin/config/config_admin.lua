@@ -19,6 +19,26 @@ Admin.Settings = {
 -- Read it through Admin.VehicleByModel instead of walking the groups
 Admin.Vehicles = {
     {
+        label = 'Herstellbare Mechaniker-Fahrzeuge',
+        items = {
+            { label = 'Emperor',        model = 'emperor2' },
+            { label = 'Tornado',        model = 'tornado3' },
+            { label = 'Tornado Cabrio', model = 'tornado4' },
+            { label = 'Voodoo',         model = 'voodoo2' },
+            { label = 'Rat-Loader',     model = 'ratloader' },
+            { label = 'Rebel',          model = 'rebel' },
+            { label = 'Surfer',         model = 'surfer2' },
+            { label = 'Journey',        model = 'journey' },
+            { label = 'Flatbed',        model = 'flatbed' },
+            { label = 'Bodhi',          model = 'bodhi2' },
+            { label = 'Duneloader',     model = 'dloader' },
+            { label = 'Wastelander',    model = 'wastelander' },
+            { label = 'Rat Bike',       model = 'ratbike' },
+            { label = 'Deathbike',      model = 'deathbike' },
+            { label = 'BMX',            model = 'bmx' },
+        },
+    },
+    {
         label = 'Base game',
         items = {
             { label = 'Sandking',   model = 'sandking'  },
@@ -58,14 +78,13 @@ Admin.Weather = {
 -- The server authorises the request, the client gives the weapon since it must exist on the firing ped
 Admin.Weapons = {
     {
-        label = 'Melee',
+        label = 'Melee - Alpha-Z Waffenpack',
         items = {
-            { label = 'Knife',        model = 'WEAPON_KNIFE' },
-            { label = 'Bat',          model = 'WEAPON_BAT' },
-            { label = 'Crowbar',      model = 'WEAPON_CROWBAR' },
-            { label = 'Machete',      model = 'WEAPON_MACHETE' },
-            { label = 'Hatchet',      model = 'WEAPON_HATCHET' },
-            { label = 'Hammer',       model = 'WEAPON_HAMMER' },
+            { label = 'Fleischklopfer',      model = 'WEAPON_HAMMER' },
+            { label = 'Baseball Bat',        model = 'WEAPON_BAT' },
+            { label = 'Schädelbrecher',      model = 'WEAPON_CROWBAR' },
+            { label = 'Barbed Wire Bat',     model = 'WEAPON_BARBEDBAT' },
+            { label = 'Zombie Arm',          model = 'WEAPON_ZOMBIEARM' },
         },
     },
     {
@@ -84,7 +103,8 @@ Admin.Weapons = {
             { label = 'Sawn-off',     model = 'WEAPON_SAWNOFFSHOTGUN', ammo = 60 },
             { label = 'Carbine',      model = 'WEAPON_CARBINERIFLE', ammo = 250 },
             { label = 'Assault rifle',model = 'WEAPON_ASSAULTRIFLE', ammo = 250 },
-            { label = 'Sniper',       model = 'WEAPON_SNIPERRIFLE',  ammo = 40 },
+            { label = 'Sniper',       model = 'WEAPON_HEAVYSNIPER',  ammo = 40 },
+            { label = 'Armbrust',      model = 'WEAPON_SNIPERRIFLE',  ammo = 40 },
             { label = 'Marksman',     model = 'WEAPON_MARKSMANRIFLE',ammo = 60 },
         },
     },

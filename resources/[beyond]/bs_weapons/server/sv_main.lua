@@ -2,7 +2,6 @@
 
 local Legacy = {}    -- [src] = { [weapon] = { slot = attachmentId } }
 local Active = {}    -- [src] = { [weapon] = serial }, the item last drawn for that weapon
-local Busy = {}
 local ItemNames = {} -- [weapon] = inventory item name
 
 -- Saved ammo: kept in the same bs_character_weapons row (see 012_weapon_ammo.sql) and given back
@@ -78,13 +77,11 @@ local function instance(src, weapon)
     local want = Active[src] and Active[src][weapon]
     local pick = list[1]
     if want then
-        pick = nil
         for _, e in ipairs(list) do
             if e.metadata.serial == want then pick = e break end
         end
     end
 
-    if not pick then return nil end
     local meta, dirty = pick.metadata, false
     if not meta.serial then meta.serial = newSerial(); dirty = true end
     if meta.attachments == nil then
@@ -213,19 +210,13 @@ BSB.RegisterCallback('weapons:state', function(src, weapon)
         end
     end
 
-    local slot,_,meta=instance(src,weapon)
-    if not slot then return {ok=false,error=Lp(src,'wp.not_carrying')}end
-    -- The item's own label ("Assault rifle"), so menus never show the raw weapon id.
-    local okLabel, label = pcall(function() return exports.bs_inventory:ItemLabel(itemFor(weapon), src) end)
-    return { ok = true, fitted = copySet(meta.attachments), counts = counts, serial=meta.serial, name=meta.customName,
-        label = okLabel and type(label) == 'string' and label ~= '' and label or nil }
+    return { ok = true, fitted = forWeapon(src, weapon), counts = counts }
 end)
 
 -- Cheap version for the client's weapon-change refit: just what is on the gun in hand.
 BSB.RegisterCallback('weapons:fitted', function(src, weapon)
     if type(weapon) ~= 'string' or #weapon > 48 then return { ok = false } end
-    local _, _, meta = instance(src, weapon)
-    return { ok = true, fitted = copySet(meta and meta.attachments), tint = meta and meta.tint or 0 }
+    return { ok = true, fitted = forWeapon(src, weapon) }
 end)
 
 -- bs_inventory calls this when a weapon item is drawn (use or hotbar), so the right gun's parts are used
@@ -244,31 +235,13 @@ exports('SetActive', function(src, weapon, slot)
             end
             Active[src] = Active[src] or {}
             Active[src][weapon] = e.metadata.serial
-            local _, _, activeMeta = instance(src, weapon)
-            if Weapons.PublishCosmetic then Weapons.PublishCosmetic(src, weapon, activeMeta) end
-            if Weapons.PublishStickers then Weapons.PublishStickers(src, weapon, activeMeta) end
-            if Weapons.PublishPaint then Weapons.PublishPaint(src, weapon, activeMeta) end
-            TriggerClientEvent('bs:weapons:instanceChanged', src, weapon)
-            return e.metadata.serial
+            instance(src, weapon)
+            return
         end
     end
 end)
 
-local function mutation(name, handler)
-    BSB.RegisterCallback(name, function(src, ...)
-        if Busy[src] then return { ok = false, error = 'Another weapon change is in progress' } end
-        Busy[src] = true
-        local ok, result = pcall(handler, src, ...)
-        Busy[src] = nil
-        if not ok then
-            print(('[bs_weapons] %s failed for player %s: %s'):format(name, src, result))
-            return { ok = false, error = 'Weapon change failed; please try again' }
-        end
-        return result
-    end)
-end
-
-mutation('weapons:fit', function(src, weapon, attachmentId, expectedSerial)
+BSB.RegisterCallback('weapons:fit', function(src, weapon, attachmentId)
     local player = exports.bs_core:GetPlayer(src)
     if not player then return { ok = false, error = 'no character' } end
 
@@ -281,20 +254,28 @@ mutation('weapons:fit', function(src, weapon, attachmentId, expectedSerial)
     local component = att.components and att.components[weapon]
     if not component then return { ok = false, error = Lp(src, 'wp.no_fit') } end
 
-    local inventorySlot, _, meta = instance(src, weapon)
-    if not inventorySlot then return { ok = false, error = Lp(src, 'wp.not_carrying') } end
-    if expectedSerial and meta.serial~=expectedSerial then return {ok=false,error='The selected weapon changed. Reopen attachments.'}end
-    local changed = exports.bs_inventory:WeaponTransfer(src, inventorySlot, meta.serial,
-        att.slot, attachmentId, att.item, 'fit')
-    if not changed or not changed.ok then return changed or { ok = false, error = 'Could not fit part' } end
+    local fitted = forWeapon(src, weapon)
+    if fitted[att.slot] then
+        return { ok = false, error = Lp(src, 'wp.slot_taken') }
+    end
 
-    if Weapons.PublishCosmetic then Weapons.PublishCosmetic(src,weapon,changed.metadata)end
+    if exports.bs_inventory:CountItem(src, att.item) < 1 then
+        return { ok = false, error = Lp(src, 'wp.no_part', { name = att.label }) }
+    end
+    if not exports.bs_inventory:RemoveItem(src, att.item, 1) then
+        return { ok = false, error = 'could not take the part' }
+    end
+
+    fitted[att.slot] = attachmentId
+    if not saveFitted(src, weapon, fitted) then
+        exports.bs_inventory:GiveItem(src, att.item, 1)
+        return { ok = false, error = Lp(src, 'wp.not_carrying') }
+    end
+
     return { ok = true, component = component, slot = att.slot, label = att.label }
 end)
 
-mutation('weapons:remove', function(src, weapon, slot, expectedSerial)
-    if expectedSerial then local _,_,meta=instance(src,weapon);if not meta or meta.serial~=expectedSerial then return {ok=false,error='The selected weapon changed. Reopen attachments.'}end end
-    if slot == 'cosmetic' then return { ok = false, error = 'Use the cosmetic mount controls to return this item' } end
+BSB.RegisterCallback('weapons:remove', function(src, weapon, slot)
     local player = exports.bs_core:GetPlayer(src)
     if not player then return { ok = false, error = 'no character' } end
 
@@ -310,14 +291,14 @@ mutation('weapons:remove', function(src, weapon, slot, expectedSerial)
         return { ok = true, component = nil }
     end
 
+    -- Give the item back before recording the removal: a full bag keeps it on the gun.
+    local given = exports.bs_inventory:GiveItem(src, att.item, 1)
+    if not given then return { ok = false, error = Lp(src, 'wp.no_room') } end
+
+    -- Mag came off: allow one ammo return for the rounds that no longer fit.
     local oldMag = Weapons.MagSizeFor(weapon, fitted)
-    local inventorySlot, _, meta = instance(src, weapon)
-    if not inventorySlot then return { ok = false, error = Lp(src, 'wp.not_carrying') } end
-    if expectedSerial and meta.serial~=expectedSerial then return {ok=false,error='The selected weapon changed. Reopen attachments.'}end
-    local changed = exports.bs_inventory:WeaponTransfer(src, inventorySlot, meta.serial,
-        slot, attachmentId, att.item, 'remove')
-    if not changed or not changed.ok then return changed or { ok = false, error = 'Could not remove part' } end
-    fitted = copySet(changed.metadata and changed.metadata.attachments)
+    fitted[slot] = nil
+    saveFitted(src, weapon, fitted)
     if slot == 'mag' then
         local newMag = Weapons.MagSizeFor(weapon, fitted)
         if oldMag and newMag and oldMag > newMag then
@@ -325,26 +306,8 @@ mutation('weapons:remove', function(src, weapon, slot, expectedSerial)
         end
     end
 
-    if Weapons.PublishCosmetic then Weapons.PublishCosmetic(src,weapon,changed.metadata)end
     return { ok = true, component = att.components and att.components[weapon],
              slot = slot, label = att.label }
-end)
-
-BSB.RegisterCallback('weapons:profile', function(src, weapon, changes)
-    if type(weapon) ~= 'string' or #weapon > 48 then return { ok = false } end
-    local slot, item, meta = instance(src, weapon)
-    if not slot then return { ok = false, error = 'Weapon is no longer in your inventory' } end
-    if changes ~= nil then
-        if type(changes) ~= 'table' or Busy[src] then return { ok = false } end
-        local name = tostring(changes.name or ''):gsub('[%c<>]', ''):sub(1, 40)
-        local tint = math.tointeger(tonumber(changes.tint))
-        -- The editor exposes only the palette supported by the selected model.
-        if not tint or tint < 0 or tint > 31 then return { ok = false } end
-        local saved = exports.bs_inventory:UpdateWeaponProfile(src, slot, meta.serial, { name = name, tint = tint })
-        if not saved or not saved.ok then return saved or { ok = false } end
-        meta = saved.metadata
-    end
-    return { ok = true, serial = meta.serial, name = meta.customName or '', tint = meta.tint or 0 }
 end)
 
 -- Magazines
@@ -466,5 +429,3 @@ RegisterCommand('weaponinfo', function(src, args)
 end, false)
 
 exports.bs_core:RegisterModule('weapons', { side = 'server', version = '1.0.0', ready = true })
-
-Weapons.Instance = instance

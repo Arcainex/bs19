@@ -11,7 +11,7 @@ local function notify(msg, kind)
     TriggerEvent('bs:ui:notify', { type = kind or 'info', message = msg, duration = 2500 })
 end
 
--- Label of whatever key the player actually bound to boosterN (e.g. "t_5" to "5").
+-- Label of whatever key the player actually bound to boosterN (e.g. "t_5" -> "5").
 local function keyLabels()
     local out = {}
     for i = 1, Boosters.Slots do
@@ -51,9 +51,10 @@ CreateThread(function()
     TriggerServerEvent('bs:boosters:request')
 end)
 
--- bite absorb
+------------------------------------------------------------ bite absorb
 
 -- Called by bs_zombies right before a bite lands. Returns what still gets through.
+-- The riot shield (bs_gadgets) soaks first, then fortify.
 exports('AbsorbZombieDamage', function(amount)
     amount = tonumber(amount) or 0
     if GetResourceState('bs_gadgets') == 'started' then
@@ -76,7 +77,7 @@ exports('DropRiotShield', function()
     if GetResourceState('bs_gadgets') == 'started' then pcall(function() exports.bs_gadgets:StowShield() end) end
 end)
 
--- adrenaline
+--------------------------------------------------------------- adrenaline
 
 local function startAdrenaline(t)
     adrenalineUntil = now() + t.duration * 1000
@@ -91,7 +92,7 @@ local function startAdrenaline(t)
     end)
 end
 
--- focus / regen
+----------------------------------------------------------- focus / regen
 
 local function startFocus(t)
     focusUntil = now() + t.duration * 1000
@@ -120,7 +121,7 @@ local function startFortify(t)
     fortify.untilAt = now() + t.duration * 1000
 end
 
--- dispatch
+------------------------------------------------------------------ dispatch
 
 RegisterNetEvent('bs:boosters:activate', function(item, t)
     if type(t) ~= 'table' then return end
@@ -139,10 +140,4 @@ AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
     LocalPlayer.state:set('bsSteady', nil, false)
-end)
-
-AddEventHandler('bs:hook:player:unloaded',function()
-    adrenalineUntil,focusUntil,regenUntil=0,0,0
-    fortify.reduce,fortify.untilAt=0,0
-    SetRunSprintMultiplierForPlayer(PlayerId(),1.0)
 end)

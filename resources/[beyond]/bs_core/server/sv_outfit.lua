@@ -3,7 +3,7 @@
 local MAX_COMPONENT = 11
 local MAX_PROP      = 7
 
--- Component 5 is the parachute pack and is never chosen by the framework.
+-- Component 5 is the parachute pack and is never chosen by the framework. Dropped here too, so rows that already hold one get cleaned on the next push (see cl_outfit.lua).
 local PARACHUTE_COMPONENT = 5
 
 -- Rebuilds a client-supplied outfit from scratch, keeping only well-formed numeric entries in range. Never trust the client's shape.
@@ -37,7 +37,7 @@ local function sanitize(outfit)
     return clean
 end
 
--- Only paid-for pieces are kept.
+-- Only paid-for pieces are kept. Shop pieces are checked with bs_traders' buy rules (bare / free / owned in bs_wardrobe_owned); a failing piece keeps the previously saved value or falls back to bare.
 local function withoutUnpaid(src, player, clean)
     if GetResourceState('bs_traders') ~= 'started' then return clean end
 
@@ -97,6 +97,7 @@ RegisterNetEvent(BS.Events.UpdateOutfit, function(outfit, weapon)
     clean = withoutUnpaid(src, player, clean)
     if not clean then return end
 
+    -- Face (0) and hair (2) are appearance, not clothes: only a ticket edit may change them, so keep the saved values.
     local prevComps = (player:GetMeta('outfit') or {}).components
     for _, k in ipairs({ '0', '2' }) do
         clean.components[k] = type(prevComps) == 'table' and prevComps[k] or nil
@@ -105,8 +106,12 @@ RegisterNetEvent(BS.Events.UpdateOutfit, function(outfit, weapon)
     player:SetMeta('outfit', clean)
     if weapon then
         player:SetMeta('lastWeapon', math.floor(tonumber(weapon) or 0))
+    else
+        -- Unarmed must also be persisted. Without this, the previous weapon stays in
+        -- metadata forever and can be restored as a ghost weapon on the next spawn.
+        player:SetMeta('lastWeapon', nil)
     end
 
-    -- Written immediately instead of waiting for the autosave, so a crash right after buying clothes cannot lose them.
+    -- Written immediately instead of waiting for the autosave, so a crash right after buying clothes cannot lose them. Outfit changes are rare, so the extra write is cheap.
     player:Save(true)
 end)

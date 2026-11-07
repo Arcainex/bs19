@@ -125,6 +125,7 @@ if not IS_SERVER then
     AddStateBagChangeHandler('bs_defaultLang', 'global', function() SetTimeout(0, changed) end)
 
     -- Pages can load before the account language arrives (or the bag lands before this handler exists).
+    -- Check for a short while after start and on spawn, so the first real language always reaches the page.
     CreateThread(function()
         for _ = 1, 60 do
             Wait(1000)
