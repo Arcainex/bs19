@@ -230,7 +230,10 @@ function FFA.FlagFor(dict, clip)
     if f == nil then f = (Freeflow.SafeClips or {})[key] end
     if f == false then return nil end
     if f ~= nil then return f end
-    return isSafe(dict, clip) and 0 or 'test'
+    if isSafe(dict, clip) then return 0 end
+    -- weapon clips never go full body until they have passed: upper-body layer only
+    if dict:find('@unarmed@', 1, true) == nil then return 'layer' end
+    return 'test'
 end
 function FFA.Usable(dict, clip) return FFA.Ms(dict, clip) > 0 and FFA.FlagFor(dict, clip) ~= nil end
 
@@ -290,7 +293,8 @@ function FFA.Solo(ped, dict, clip, speed, portion)
     local ms = math.floor(full * (portion or 1.0) / speed)
     local key = dict .. '/' .. clip
     local testing = flag == 'test'
-    local cur = testing and 48 or flag
+    local layerOnly = flag == 'layer'
+    local cur = (testing or layerOnly) and 48 or flag
     issue(ped, dict, clip, cur, ms)
     local mine = { dict = dict, clip = clip, untilAt = GetGameTimer() + ms }
     if ped == PlayerPedId() then FFA.current = mine end
@@ -298,6 +302,7 @@ function FFA.Solo(ped, dict, clip, speed, portion)
     local function drop(why)
         StopAnimTask(ped, dict, clip, INSTANT)
         ClearPedSecondaryTask(ped)
+        if ped == PlayerPedId() then FFA.failedAt = GetGameTimer() end
         if FFA.current == mine then FFA.current = nil end
         FFA.Ban(key, why)
     end
@@ -336,6 +341,7 @@ function FFA.Solo(ped, dict, clip, speed, portion)
         end
         -- passed the whole check full body: next time it starts full body straight away
         if cur == 0 and fullFrames > 5 then remember(key, 0) end
+        if layerOnly and cur == 48 and frames > 5 then remember(key, 48) end
     end)
     return ms
 end
@@ -361,13 +367,18 @@ function FFA.Strike(me, t, c, opts)
     local portion = opts.portion or 1.0
     if not FFA.Ready(c.dict, c.plyr) or not FFA.FlagFor(c.dict, c.plyr) then return false end
     local full = FFA.Ms(c.dict, c.plyr)
+    local vped = opts.victimPed
+    if FF.debug then
+        local cls = FF.WeaponClass(me)
+        print(('[bs_fighting] strike %s/%s class=%s speed=%.1f flag=%s'):format(c.dict, c.plyr, tostring(cls),
+            GetEntitySpeed(me), tostring(FFA.FlagFor(c.dict, c.plyr))))
+    end
     -- face the target before the clip starts
     local face = vped or (t and t.ped) or nil
     if face and DoesEntityExist(face) then
         local a, b = GetEntityCoords(me), GetEntityCoords(face)
         SetEntityHeading(me, headingOf(b.x - a.x, b.y - a.y))
     end
-    local vped = opts.victimPed
     if vped and (not DoesEntityExist(vped) or IsEntityDead(vped) or IsPedRagdoll(vped)) then vped = nil end
     local length = math.floor(full * portion / speed)
     local impactAt = math.floor(full * (c.hitAt or S.impactAt) / speed)
@@ -426,6 +437,7 @@ function FFA.Strike(me, t, c, opts)
     local t0 = GetGameTimer()
     local hitDone, checked, frames = false, false, 0
     local ok = true
+    local startedAt = GetGameTimer()
     local track = (not vped) and opts.trackPed or nil
     local faceEnt = vped or opts.trackPed
     while true do
@@ -434,6 +446,12 @@ function FFA.Strike(me, t, c, opts)
         local el = GetGameTimer() - t0
         if IsPedDeadOrDying(me, true) or IsPedRagdoll(me) or (opts.cancel and opts.cancel())
             or (opts.weapon and weaponNow(me) ~= opts.weapon) then ok = false break end
+        -- our clip failed the bone check: GTA's own melee swings this once
+        if (FFA.failedAt or 0) >= startedAt then
+            ok = false
+            FFA.NativeSwing(me, t and t.ped)
+            break
+        end
         -- a scene that did not take shows as a T-pose: check within a few frames, not later
         if usedScene and not checked and (frames >= 3 or el >= (S.sceneCheckMs or 120)) then
             local playing = IsEntityPlayingAnim(me, c.dict, c.plyr, 3)
@@ -488,4 +506,16 @@ function FFA.Strike(me, t, c, opts)
         FFA.End(me, c.dict, c.plyr)
     end
     return true
+end
+
+-- One native melee swing at the target when our clip can't be shown safely (weapon in hand)
+function FFA.NativeSwing(me, target)
+    FF.nativeUntil = GetGameTimer() + 800
+    if not target or not DoesEntityExist(target) or IsEntityDead(target) then return end
+    if FF.debug then print('[bs_fighting] native melee fallback for this swing') end
+    TaskCombatPed(me, target, 0, 16)
+    SetTimeout(600, function()
+        local p = PlayerPedId()
+        if DoesEntityExist(p) and not IsPedRagdoll(p) then ClearPedTasks(p) end
+    end)
 end

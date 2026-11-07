@@ -99,15 +99,26 @@ local function land(t, kind, weaponHash, held, reach)
 end
 
 -- Runs one action on a thread; FF.busy covers it and every exit clears it
+-- Armed and moving: come to a full stop before the clip (movement input is off while busy)
+function FF.StopRun(me)
+    if FF.WeaponClass(me) == 'unarmed' or GetEntitySpeed(me) < 1.6 then return end
+    local untilAt = now() + 300
+    while GetEntitySpeed(me) >= 0.5 and now() < untilAt do
+        local v = GetEntityVelocity(me)
+        SetEntityVelocity(me, v.x * 0.3, v.y * 0.3, v.z)
+        Wait(0)
+    end
+end
+
 local endedAt = 0
-local function run(fn)
+local function run(fn, noStop)
     FF.busy = true
     cancelSwing = false
     FF.lastActionAt = now()
     CreateThread(function()
         -- never start a clip on the frame the last one ended
         if now() - endedAt < 20 then Wait(0) end
-        local ok, err = pcall(fn)
+        local ok, err = pcall(function() if not noStop then FF.StopRun(PlayerPedId()) end; fn() end)
         if not ok then
             print(('[bs_fighting] freeflow action failed: %s'):format(tostring(err)))
             ClearPedTasks(PlayerPedId())
@@ -327,7 +338,7 @@ local function dodge()
             Wait(0)
         end
         FFA.End(me, d.dict, clip)
-    end)
+    end, true)
 end
 
 -- Walker wind-up from bs_zombies (cl_attack, on the victim's client)
@@ -452,8 +463,12 @@ CreateThread(function()
     while true do
         local me = PlayerPedId()
         if S.enabled and S.disableNative and FF.CanFight(me) then
-            DisableControlAction(0, 24, true);  DisableControlAction(0, 25, true)
-            DisableControlAction(0, 140, true); DisableControlAction(0, 141, true)
+            DisableControlAction(0, 25, true)
+            -- a native fallback swing gets GTA's melee keys back for a moment
+            if now() >= (FF.nativeUntil or 0) then
+                DisableControlAction(0, 24, true)
+                DisableControlAction(0, 140, true); DisableControlAction(0, 141, true)
+            end
             DisableControlAction(0, 142, true); DisableControlAction(0, 257, true)
             DisableControlAction(0, 263, true); DisableControlAction(0, 264, true)
             -- Q (cover) and R (reload) are ours while fists or a melee weapon are out
@@ -631,7 +646,12 @@ CreateThread(function()
     end
 end)
 
-RegisterCommand('fftest', function()
+RegisterCommand('fftest', function(_, args)
+    if args and args[1] == 'debug' then
+        FF.debug = not FF.debug
+        print(('[bs_fighting] strike debug %s'):format(FF.debug and 'on' or 'off'))
+        return
+    end
     local me = PlayerPedId()
     local class = FF.WeaponClass(me)
     print(('[bs_fighting] freeflow enabled=%s canFight=%s class=%s level=%d stamina=%.0f combo=%d window=%dms target=%s'):format(
@@ -673,7 +693,7 @@ CreateThread(function()
         else
             missing = 0
         end
-        if (FF.busy or cur or t - endedAt < 2000) and IsPedOnFoot(me) and not IsPedRagdoll(me)
+        if (FF.busy or cur or t - endedAt < 2000 or FF.InCombat()) and IsPedOnFoot(me) and not IsPedRagdoll(me)
             and not IsPedDeadOrDying(me, true) then
             wait = 100
             if FFA.IsTPose(me) then odd = odd + 1 else odd = 0 end

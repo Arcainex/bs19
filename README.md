@@ -82,6 +82,12 @@ connect 92.113.12.5:30120
 - Admin menu, `/atlas` live zombie map, logged staff actions
 - Every player picks their own language
 
+## Video tutorial
+
+New to BS19? Watch the full install, step by step:
+
+[![BS19 installation tutorial](https://img.youtube.com/vi/lTaZ_2aJhiM/maxresdefault.jpg)](https://youtu.be/lTaZ_2aJhiM)
+
 ## Install
 
 In txAdmin choose **Remote URL Template** and paste:
